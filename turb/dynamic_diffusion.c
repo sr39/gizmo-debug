@@ -35,6 +35,9 @@
 #define ASSIGN_ADD_PRESET(x,y,mode) (x+=y)
 #define MINMAX_CHECK(x,xmin,xmax) ((x<xmin)?(xmin=x):((x>xmax)?(xmax=x):(1)))
 #define SHOULD_I_USE_SPH_GRADIENTS(condition_number) ((condition_number > CONDITION_NUMBER_DANGER) ? (1):(0))
+#define MAX_ADD(x,y,mode) ((y > x) ? (x = y) : (1)) // simpler definition now used
+#define MIN_ADD(x,y,mode) ((y < x) ? (x = y) : (1))
+#define NV_MYSIGN(x) (( x > 0 ) - ( x < 0 ))
 
 #ifdef PTHREADS_NUM_THREADS
 extern pthread_mutex_t mutex_nexport;
@@ -46,7 +49,6 @@ extern pthread_mutex_t mutex_partnodedrift;
 #define UNLOCK_NEXPORT
 #endif
 
-#define NV_MYSIGN(x) (( x > 0 ) - ( x < 0 ))
 
 struct Quantities_for_Smooth_Gradients {
     double Velocity_hat[3];
@@ -154,8 +156,6 @@ static inline void particle2in_DynamicDiff(struct DynamicDiffdata_in *in, int i,
 }
 
 
-#define MAX_ADD(x,y,mode) ((y > x) ? (x = y) : (1)) // simpler definition now used
-#define MIN_ADD(x,y,mode) ((y < x) ? (x = y) : (1))
 
 
 static inline void out2particle_DynamicDiff_iter(struct DynamicDiffdata_out_iter *out, int i, int mode, int dynamic_iteration) {
@@ -191,7 +191,6 @@ static inline void out2particle_DynamicDiff(struct DynamicDiffdata_out *out, int
 
 
 void local_slopelimiter_dyndiff(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol);
-
 void local_slopelimiter_dyndiff(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol) {
     int k;
     double d_abs = 0.0;

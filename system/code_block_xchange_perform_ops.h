@@ -1,22 +1,7 @@
 /* This is a generic code block designed for simple neighbor loops, so that they don't have to
 be copy-pasted and can be generically optimized in a single place */
-
-
-/* define the number of loop iterations needed for the physics of interest, then loop over those iterations */
-int i, j, k, ngrp, ndone, ndone_flag, recvTask, place, save_NextParticle; long long n_exported = 0, NTaskTimesNumPart;
-double timeall=0, timecomp=0, timecomm=0, timewait=0, tstart, tend, t0, t1;
-/* allocate buffers to arrange communication */
-NTaskTimesNumPart = maxThreads * NumPart; size_t MyBufferSize = All.BufferSize;
-All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
-                                                       sizeof(struct INPUT_STRUCT_NAME) + sizeof(struct OUTPUT_STRUCT_NAME) + sizemax(sizeof(struct INPUT_STRUCT_NAME),sizeof(struct OUTPUT_STRUCT_NAME))));
-CPU_Step[CPU_MISC] += measure_time(); t0 = my_second();
-Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
-DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
-DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
-
-int loop_iteration, number_of_loop_iterations = 1;
-for(loop_iteration=0; loop_iteration<number_of_loop_iterations; loop_iteration++)
 {
+    int i, j, k, ngrp, ndone, ndone_flag, recvTask, place, save_NextParticle; long long n_exported = 0; double tstart, tend, t1; /* define some variables used only below */
     NextParticle = FirstActiveParticle;    /* begin the main loop; start with this index */
     do /* primary point-element loop */
     {
@@ -177,7 +162,6 @@ for(loop_iteration=0; loop_iteration<number_of_loop_iterations; loop_iteration++
         tend = my_second(); timewait += timediff(tstart, tend);
     }
     while(ndone < NTask);
-    myfree(DataNodeList); myfree(DataIndexTable); myfree(Ngblist);
     
-} // close loop over loop_iterations (master loop)
+} /* closes clause, so variables don't 'leak' */
 

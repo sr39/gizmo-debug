@@ -978,7 +978,9 @@ void hydro_force_initial_operations_preloop(void)
 void hydro_force(void)
 {
     hydro_force_initial_operations_preloop(); /* do initial pre-processing operations as needed before main hydro force loop */
+    #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
+    #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     hydro_final_operations_and_cleanup(); /* do final operations on results */
     /* collect timing information */
     CPU_Step[CPU_HYDCOMPUTE] += timecomp; CPU_Step[CPU_HYDWAIT] += timewait; CPU_Step[CPU_HYDCOMM] += timecomm;

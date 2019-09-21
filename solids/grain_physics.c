@@ -27,7 +27,7 @@
 #ifdef GRAIN_FLUID
 
 #ifdef GRAIN_BACKREACTION
-void grain_backrx_parent(void);
+void grain_backrx(void);
 #endif
 
 /* function to apply the drag on the grains from surrounding gas properties */
@@ -195,7 +195,7 @@ void apply_grain_dragforce(void)
     } // closes main particle loop
     
 #ifdef GRAIN_BACKREACTION
-    grain_backrx_parent(); /* call master routine to assign the back-reaction force among neighbors */
+    grain_backrx(); /* call master routine to assign the back-reaction force among neighbors */
 #endif
     CPU_Step[CPU_DRAGFORCE] += measure_time();
 }
@@ -253,7 +253,6 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 
 
 /* this subroutine does the actual neighbor-element calculations (this is the 'core' of the loop, essentially) */
-int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration);
 int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     int startnode, numngb_inbox, listindex = 0, j, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
@@ -295,11 +294,13 @@ int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnode
 }
 
 
-void grain_backrx_evaluate(void)
+void grain_backrx(void)
 {
     PRINT_STATUS(" ..assigning grain back-reaction to gas\n");
      //grain_backrx_initial_operations_preloop(); /* do initial pre-processing operations as needed before main loop [nothing needed here] */
+    #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
+    #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     //grain_backrx_final_operations_and_cleanup(); /* do final operations on results [nothing needed here] */
     CPU_Step[CPU_DRAGFORCE] += timeall; /* collect timing information [here lumping it all together] */
 }
