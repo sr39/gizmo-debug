@@ -206,7 +206,7 @@ void blackhole_environment_loop(void)
     myfree(Ngblist);
 
     /* DAA: normalize/finalized some of the environment variables */
-    for(i=0; i<N_active_loc_BHs; i++) {normalize_temp_info_struct(i);}        
+    for(i=0; i<N_active_loc_BHs; i++) {bh_normalize_temp_info_struct(i);}        
 }
 
 
@@ -399,7 +399,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     }
                     else 
                     { 
-                        /* dark matter */ // DAA: Jalt_in_Kernel and Malt_in_Kernel are updated in normalize_temp_info_struct() to be TOTAL angular momentum and mass 
+                        /* dark matter */ // DAA: Jalt_in_Kernel and Malt_in_Kernel are updated in bh_normalize_temp_info_struct() to be TOTAL angular momentum and mass 
                         out.Malt_in_Kernel += wt;
                         out.Jalt_in_Kernel[0] += wt*(dP[1]*dv[2] - dP[2]*dv[1]);
                         out.Jalt_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
