@@ -42,7 +42,7 @@ struct kernel_addthermalFB {double dp[3], r, wk, dwk, hinv, hinv3, hinv4;};
 #define MASTER_FUNCTION_NAME addthermalFB_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME particle2in_addthermalFB    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
 #define OUTPUTFUNCTION_NAME out2particle_addthermalFB  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
-#define CONDITIONFUNCTION_FOR_EVALUATION addthermalFB_evaluate_active_check(i) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(addthermalFB_evaluate_active_check(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 
@@ -187,7 +187,7 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
         } // if(mode == 1)
     } // while(startnode >= 0)
     /* Now collect the result at the right place */
-    if(mode == 0) {out2particle_addthermalFB(&out, target, 0);} else {DATARESULT_NAME[target] = out;}
+    if(mode == 0) {out2particle_addthermalFB(&out, target, 0, 0);} else {DATARESULT_NAME[target] = out;}
     return 0;
 } // int addthermalFB_evaluate
 

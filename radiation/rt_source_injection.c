@@ -32,10 +32,8 @@
 #ifdef RT_SOURCE_INJECTION
 
 
-#define MASTER_FUNCTION_NAME rt_source_injection /*! name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
-#define INPUTFUNCTION_NAME rt_particle2in_source    /*! name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
-#define OUTPUTFUNCTION_NAME rt_out2particle_source  /*! name of the function which takes the data returned from other processors and combines it back to the original elements */
-#define CONDITIONFUNCTION_FOR_EVALUATION rt_sourceinjection_active_check(i) /*! function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define MASTER_FUNCTION_NAME rt_sourceinjection_evaluate /*! name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(rt_sourceinjection_active_check(i)) /*! function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
 #include "../system/code_block_xchange_initialize.h" /*! pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 
@@ -51,7 +49,7 @@ static struct INPUT_STRUCT_NAME
 *DATAIN_NAME, *DATAGET_NAME;
 
 /*! subroutine to insert the data needed to be passed to other processors: here for convenience, match to structure above  */
-void rt_particle2in_source(struct INPUT_STRUCT_NAME *in, int i)
+void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
     int k;
     for(k=0; k<3; k++) {in->Pos[k] = P[i].Pos[k];}
@@ -76,13 +74,13 @@ void rt_particle2in_source(struct INPUT_STRUCT_NAME *in, int i)
 }
 
 
-/*! this structure defines the variables that need to be sent -back to- the 'searching' particle */
+/*! this structure defines the variables that need to be sent -back to- the 'searching' element */
 struct OUTPUT_STRUCT_NAME
 { /* define variables below as e.g. "double X;" */
 }
 *DATARESULT_NAME, *DATAOUT_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
-/*! this subroutine assigns the values to the variables that need to be sent -back to- the 'searching' particle */
+/*! this subroutine assigns the values to the variables that need to be sent -back to- the 'searching' element */
 static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {  /* "i" is the particle to which data from structure "out" will be assigned. mode=0 for local communication,
     =1 for data sent back from other processors. you must account for this. */
@@ -130,7 +128,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
     /* Load the data for the particle */
     int j, k, n, startnode, numngb_inbox, listindex = 0;
     struct INPUT_STRUCT_NAME local;
-    if(mode == 0) {rt_particle2in_source(&local, target);} else {local = DATAGET_NAME[target];}
+    if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
     /* basic calculations */
     if(local.Hsml<=0) return 0; // zero-extent kernel, no particles //
     double hinv, hinv3, hinv4, h2=local.Hsml*local.Hsml;

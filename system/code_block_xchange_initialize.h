@@ -28,11 +28,18 @@ extern pthread_mutex_t mutex_partnodedrift;
 #define DATARESULT_NAME     MACRO_NAME_CONCATENATE(MASTER_FUNCTION_NAME, _DataResult_)
 #define PRIMARY_SUBFUN_NAME MACRO_NAME_CONCATENATE(MASTER_FUNCTION_NAME, _subfun_primary_)
 #define SECONDARY_SUBFUN_NAME MACRO_NAME_CONCATENATE(MASTER_FUNCTION_NAME, _subfun_secondary_)
+#ifndef INPUTFUNCTION_NAME /* assign a default name if one is not user-specified */
+#define INPUTFUNCTION_NAME MACRO_NAME_CONCATENATE(MASTER_FUNCTION_NAME, _particle2in_)
+#endif
+#ifndef OUTPUTFUNCTION_NAME /* assign a default name if one is not user-specified */
+#define OUTPUTFUNCTION_NAME MACRO_NAME_CONCATENATE(MASTER_FUNCTION_NAME, _out2particle_)
+#endif
+
 
 /* define generic forms of functions used below */
 int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration);
-static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration);
-static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration);
+//static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration);
+//static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration);
 static inline void *PRIMARY_SUBFUN_NAME(void *p, int loop_iteration);
 static inline void *SECONDARY_SUBFUN_NAME(void *p, int loop_iteration);
 

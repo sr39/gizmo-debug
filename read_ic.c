@@ -708,6 +708,9 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_grDI:
         case IO_grDII:
         case IO_grHDI:
+        case IO_TURB_DIFF_COEFF:
+        case IO_DYNERROR:
+        case IO_DYNERRORDEFAULT:
             break;
 
         case IO_LASTENTRY:

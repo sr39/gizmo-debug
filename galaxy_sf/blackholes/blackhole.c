@@ -27,8 +27,6 @@
 
 #ifdef BLACK_HOLES
 
-extern struct blackhole_temp_particle_data *BlackholeTempInfo;
-
 
 /*  This is the master routine for the BH physics modules.
  *  It is called in calculate_non_standard_physics in run.c */
@@ -223,7 +221,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 {
     double mdot=0; int k; k=0;
 #ifdef BH_GRAVACCRETION
-    double m_tmp_for_bhar, mdisk_for_bhar, mbulge_for_bhar, bh_mass, fac;
+    double m_tmp_for_bhar, mdisk_for_bhar, bh_mass, fac;
     double rmax_for_bhar,fgas_for_bhar,f_disk_for_bhar, f0_for_bhar;
 #endif
 #ifdef BH_SUBGRIDBHVARIABILITY
@@ -249,7 +247,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #if defined(BH_GRAVACCRETION) && (BH_GRAVACCRETION == 0)
         /* DAA: torque rate based on kinematic B/D decomposition as in Angles-Alcazar et al. [here in brackets because it requires an extra pass] */
         m_tmp_for_bhar = BlackholeTempInfo[i].Mgas_in_Kernel + BlackholeTempInfo[i].Mstar_in_Kernel;
-        mbulge_for_bhar = BlackholeTempInfo[i].MstarBulge_in_Kernel;
+        double mbulge_for_bhar = BlackholeTempInfo[i].MstarBulge_in_Kernel;
         if(mbulge_for_bhar>BlackholeTempInfo[i].Mstar_in_Kernel) {mbulge_for_bhar=BlackholeTempInfo[i].Mstar_in_Kernel;}
         mdisk_for_bhar = m_tmp_for_bhar - mbulge_for_bhar;
         f_disk_for_bhar = mdisk_for_bhar / m_tmp_for_bhar;
@@ -545,12 +543,13 @@ void set_blackhole_new_mass(int i, int n, double dt)
 #if defined(BH_DRAG) || defined(BH_DYNFRICTION)
 void set_blackhole_drag(int i, int n, double dt)
 {
-    int k; double meddington = bh_eddington_mdot(BPP(n).BH_Mass);
+    int k;
 #ifdef BH_DRAG /* add a drag force for the black-holes, accounting for the accretion */
     if((dt>0)&&(BPP(n).BH_Mass>0))
     {
         double fac = BPP(n).BH_Mdot * dt / BPP(n).BH_Mass;
 #if (BH_DRAG == 2)
+        double meddington = bh_eddington_mdot(BPP(n).BH_Mass);
         fac = meddington * dt / BPP(n).BH_Mass; /* make the force stronger to keep the BH from wandering */
 #endif
         if(fac>1) fac=1;
@@ -697,12 +696,12 @@ void blackhole_final_operations(void)
     for(i=0; i<N_active_loc_BHs; i++)
     {
         n = BlackholeTempInfo[i].index;
-        if(((BlackholeTempInfo[i].accreted_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass>0)||(BlackholeTempInfo[i].accreted_BH_mass_alphadisk>0)) && P[n].Mass > 0)
+        if(((BlackholeTempInfo[i].accreted_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass_alphadisk>0)) && P[n].Mass > 0)
         {
             
             double m_new = P[n].Mass + BlackholeTempInfo[i].accreted_Mass;
 #if (BH_FOLLOW_ACCRETED_ANGMOM == 1) /* in this case we are only counting this if its coming from BH particles */
-            m_new = P[n].Mass + BlackholeTempInfo[i].accreted_BH_Mass + BlackholeTempInfo[i].accreted_BH_mass_alphadisk;
+            m_new = P[n].Mass + BlackholeTempInfo[i].accreted_BH_Mass + BlackholeTempInfo[i].accreted_BH_Mass_alphadisk;
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM) && !defined(BH_REPOSITION_ON_POTMIN)
             for(k=0;k<3;k++) {P[n].Vel[k] = (P[n].Vel[k]*m_new+ BlackholeTempInfo[i].accreted_momentum[k]) / m_new;} 
@@ -725,7 +724,7 @@ void blackhole_final_operations(void)
             P[n].Mass += BlackholeTempInfo[i].accreted_Mass;
             BPP(n).BH_Mass += BlackholeTempInfo[i].accreted_BH_Mass;
 #ifdef BH_ALPHADISK_ACCRETION
-            BPP(n).BH_Mass_AlphaDisk += BlackholeTempInfo[i].accreted_BH_mass_alphadisk;
+            BPP(n).BH_Mass_AlphaDisk += BlackholeTempInfo[i].accreted_BH_Mass_alphadisk;
 #endif
         } // if(masses > 0) check
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS

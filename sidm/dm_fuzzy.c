@@ -144,7 +144,6 @@ void do_dm_fuzzy_flux_computation_old(double HLLwt, double dt, double m0, double
  mode=0 -> 'kick', mode=1 -> 'drift' */
 void do_dm_fuzzy_drift_kick(int i, double dt, int mode)
 {
-    double vol_inv = P[i].AGS_Density / P[i].Mass;
     if(mode==0)
     {
         // calculate various energies: quantum potential QP0, 'stored' numerical pressure NQ0, kinetic energy KE0
@@ -158,6 +157,7 @@ void do_dm_fuzzy_drift_kick(int i, double dt, int mode)
     }
     
 #if (DM_FUZZY > 0) /* if using direct-wavefunction integration methods */
+    double vol_inv = P[i].AGS_Density / P[i].Mass;
     if(mode == 0)
     {
         double psimag_mass_old = (P[i].AGS_Psi_Re*P[i].AGS_Psi_Re + P[i].AGS_Psi_Im*P[i].AGS_Psi_Im) * vol_inv;
@@ -231,7 +231,7 @@ void dm_fuzzy_reconstruct_and_slopelimit_sub(double *u_R_f, double *u_L_f, doubl
     double dq_L=0; for(k=0;k<3;k++) {dq_L += 0.5*dx[k]*dq_L_0[k];}
     double dq_R=0; for(k=0;k<3;k++) {dq_R -= 0.5*dx[k]*dq_R_0[k];}
     double q0=q_L, u_L=0, u_R=0; q_L-=q0; q_R-=q0;
-    double qmid = 0.5*q_R;
+    //double qmid = 0.5*q_R;
     
     if(dq_L*q_R<0) {dq_L=0;}
     if(dq_R*q_R<0) {dq_R=0;}
@@ -296,7 +296,7 @@ struct kernel_DMGrad {double dp[3],r,wk_i, wk_j, dwk_i, dwk_j,h_i;};
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 
-/* this structure defines the variables that need to be sent -from- the 'searching' particle */
+/* this structure defines the variables that need to be sent -from- the 'searching' element */
 struct INPUT_STRUCT_NAME
 {
     MyDouble Pos[3], AGS_Hsml;
@@ -305,7 +305,7 @@ struct INPUT_STRUCT_NAME
 }
 *DATAIN_NAME, *DATAGET_NAME;
 
-/* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' particle */
+/* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' element */
 static inline void particle2in_DMGrad(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
     int k; for(k=0;k<3;k++) {in->Pos[k] = P[i].Pos[k];}
@@ -322,7 +322,7 @@ static inline void particle2in_DMGrad(struct INPUT_STRUCT_NAME *in, int i, int l
 }
 
 
-/* this structure defines the variables that need to be sent -back to- the 'searching' particle */
+/* this structure defines the variables that need to be sent -back to- the 'searching' element */
 struct OUTPUT_STRUCT_NAME
 {
     struct Quantities_for_Gradients_DM Gradients[3];
@@ -336,7 +336,7 @@ struct OUTPUT_STRUCT_NAME
 #define MAX_ADD(x,y,mode) ((y > x) ? (x = y) : (1)) // simpler definition now used
 #define MIN_ADD(x,y,mode) ((y < x) ? (x = y) : (1))
 
-/* this subroutine assigns the values to the variables that need to be sent -back to- the 'searching' particle */
+/* this subroutine assigns the values to the variables that need to be sent -back to- the 'searching' element */
 static inline void out2particle_DMGrad(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
     if(loop_iteration <= 0)
@@ -534,6 +534,7 @@ void DMGrad_gradient_calc(void)
     myfree(DMGradDataPasser); /* free the temporary structure we created for the MinMax and additional data passing */
     CPU_Step[CPU_AGSDENSCOMPUTE] += timecomp; CPU_Step[CPU_AGSDENSWAIT] += timewait; CPU_Step[CPU_AGSDENSCOMM] += timecomm; CPU_Step[CPU_AGSDENSMISC] += timeall - (timecomp + timewait + timecomm);
 }
+#include "../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 
 
 

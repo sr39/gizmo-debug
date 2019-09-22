@@ -29,6 +29,8 @@
 #include     <srfftw_mpi.h>
 #endif
 #endif
+#define cmplx_re(c) ((c).re)
+#define cmplx_im(c) ((c).im)
 #else /* FFTW3 */
 #include "../gravity/myfftw3.h"
 #endif

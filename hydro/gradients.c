@@ -561,7 +561,7 @@ void construct_gradient(double *grad, int i)
 
 void hydro_gradient_calc(void)
 {
-    int i, j, k, k1, ngrp, ndone, ndone_flag;
+    int i, j, k, k1, ndone, ndone_flag;
     int recvTask, place;
     double timeall = 0, timecomp1 = 0, timecomp2 = 0, timecommsumm1 = 0, timecommsumm2 = 0, timewait1 = 0, timewait2 = 0;
     double timecomp, timecomm, timewait, tstart, tend, t0, t1;
