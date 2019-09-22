@@ -108,7 +108,7 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
 #endif
     }
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-    double hinv; if(P[j].Type==0) {hinv=1/DMAX(bh_softening,P[j].Hsml);} else {hinv=1/All.ForceSoftening[5];}
+    double hinv; if(P[j].Type==0) hinv=1/All.ForceSoftening[5];
     if(r_code < 1/hinv) {
 	return sqrt(-2*All.G*m_eff*kernel_gravity(r_code*hinv, hinv, hinv*hinv*hinv, -1));
 //	double cs_min  = 2e4 / All.UnitVelocity_in_cm_per_s; // 200m/s	
@@ -157,7 +157,8 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
         double apocenter_max = 2*All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS // Bate 1995-style criterion, with a fixed sink/accretion radius that is distinct from both the force softening and the search radius
         double eps = sink_radius; //DMIN(2*Get_Particle_Size(j),sink_radius); // in the unresolved limit there's no need to force it to actually get within r_sink
-        if(dr_code>eps) {return 0;} 
+        if(dr_code>eps) {return 0;}
+	else {return 1;}
 #endif
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && (defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS))
         double r_j = All.ForceSoftening[P[j].Type];
@@ -502,7 +503,13 @@ void set_blackhole_mdot(int i, int n, double dt)
         double t_acc_disk = 4.2e7 * t_yr * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass) / BPP(n).BH_Mass_AlphaDisk, 0.4); /* shakura-sunyaev disk, integrated out to Q~1 radius, approximately */
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        double Gm_i=1./(All.G*P[n].Mass), reff=DMAX(All.SofteningTable[5],Get_Particle_Size(n)), t_dyn_eff=sqrt(reff*reff*reff*Gm_i);
+	double Gm_i=1./(All.G*P[n].Mass);
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+	double reff = P[n].SinkRadius; // Assuming this is scaled to the nominal minimum resolved Jeans length
+#else	
+	double reff=DMAX(All.SofteningTable[5],Get_Particle_Size(n)); // Note that using dynamic particle size for this can do weird stuff - e.g. accretion rate will vary according to the local interparticle spacing even for a disk that isn't accreting and would physically be in a steady state
+#endif
+	double t_dyn_eff=sqrt(reff*reff*reff*Gm_i);
         t_acc_disk = t_dyn_eff;// dynamical time at radius "H" where the neighbor gas is located
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
         double j=0; for(k=0;k<3;k++) {j+=P[n].BH_Specific_AngMom[k]*P[n].BH_Specific_AngMom[k];}
@@ -516,11 +523,13 @@ void set_blackhole_mdot(int i, int n, double dt)
 #ifdef SLOPE2_SINKS
         //t_acc_disk = DMAX(sqrt(pow(0.033*All.SofteningTable[5],3)/(All.G*P[n].BH_Mass)) , t_acc_disk); // catch against un-resolvably small j [since accreted particles are extended, there is always material at non-zero "j" even if accreted at zero impact parameter; 1/30th is conservative estimate for perfect impact parameter]
         t_acc_disk=t_dyn_eff; //use the dynamical time as the orbital time (equivalent to circular orbit at sink radius)
+        t_acc_disk = DMAX(10. * 2.*M_PI*t_acc_disk, t_dyn_eff); // 10 orbits at circularization radius to spiral all the way in (very fast), but should be no less than the resolution-scale dynamical time	
 #else
-        if(j*j*Gm_i < 6.957e11 / All.UnitLength_in_cm) {t_acc_disk *= 1.e-2;} // in the unlikely event that angular momentum is low enough, we're falling straight onto the protostellar surface, here taking 10R_solar as a rough number
-#endif
-#endif
-        t_acc_disk = DMAX(10. * 2.*M_PI*t_acc_disk, t_dyn_eff); // 10 orbits at circularization radius to spiral all the way in (very fast), but should be no less than the resolution-scale dynamical time
+        if(j*j*Gm_i < 6.957e11 / All.UnitLength_in_cm) {t_acc_disk = 0;} // when angular momentum is low enough, we're falling straight onto the protostellar surface, here taking 10R_solar as a rough number
+	double soundspeed = GAMMA*GAMMA_MINUS1 * BlackholeTempInfo[i].BH_InternalEnergy;
+	t_acc_disk = DMAX(0.01 * t_acc_disk * (1 / (Gm_i * reff)) / soundspeed, t_dyn_eff); // Shakura-Sunyaev prescription with alpha=0.01
+#endif // SLOPE2_SINKS
+#endif // BH_FOLLOW_ACCRETED_ANGMOM
 #endif // SINGLE_STAR_SINK_DYNAMICS
         
 #if defined(BH_GRAVCAPTURE_GAS)

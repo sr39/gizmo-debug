@@ -566,7 +566,12 @@ void star_formation_parent_routine(void)
                 P[i].BH_Mass = All.SeedBlackHoleMass; // if desired to make this appreciable fraction of particle mass, please do so in params file
                 TreeReconstructFlag = 1;
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-		P[i].SinkRadius = All.ForceSoftening[5]; //DMAX(pow(3 * P[i].Mass/ (All.PhysDensThresh * 4 * M_PI), 1./3) , All.ForceSoftening[5]); // want a sphere of equal volume to particle size at ncrit, R = (3V/(4 PI))^(1/3)
+		P[i].SinkRadius = All.ForceSoftening[5];
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+		double cs_min  = 2e4 / All.UnitVelocity_in_cm_per_s; // 200m/s
+//		P[i].SinkRadius = DMAX(pow(3 * P[i].Mass/ (SphP[i].Density * 4 * M_PI), 1./3) , All.ForceSoftening[5]); // want a sphere of equal volume to particle size at ncrit, R = (3V/(4 PI))^(1/3)				
+		P[i].SinkRadius = DMAX(3 * P[i].Mass * All.G / (M_PI * cs_min * cs_min), All.ForceSoftening[5]); // volume-equivalent particle radius R= (3V/(4PI))^(1/3) at the density where M_Jeans = particle mass
+#endif	
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
                 P[i].min_bh_t_orbital=MAX_REAL_NUMBER; P[i].comp_dx[0]=P[i].comp_dx[1]=P[i].comp_dx[2]=P[i].comp_dv[0]=P[i].comp_dv[1]=P[i].comp_dv[2]=P[i].is_in_a_binary = 0;
