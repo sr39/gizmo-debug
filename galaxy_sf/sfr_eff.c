@@ -288,18 +288,18 @@ double get_starformation_rate(int i)
     }
     /* add thermal support, although it is almost always irrelevant on large scales */
     double cs_eff = Particle_effective_soundspeed_i(i);    
-    double k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
+    double k_cs = M_PI * cs_eff / (Get_Particle_Size(i)*All.cf_atime);
     
 #ifdef SINGLE_STAR_SINK_FORMATION
 #ifdef COOLING
     double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
     if(nHcgs > 1e13) cs_eff=DMIN(cs_eff, 1.62e5/All.UnitVelocity_in_cm_per_s); // limiter to permit sink formation in simulations that really resolve the opacity limit and bog down when an optically-thick core forms. Modify this if you want to follow first collapse more/less - scale as c_s ~ n^(1/5)
-    k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
+    k_cs = M_PI * cs_eff / (Get_Particle_Size(i)*All.cf_atime);
 #endif
 #ifdef MAGNETIC
     double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
     double cs_b = sqrt(cs_eff*cs_eff + bmag/SphP[i].Density);
-    k_cs = cs_b / (Get_Particle_Size(i)*All.cf_atime);
+    k_cs = M_PI * cs_b / (Get_Particle_Size(i)*All.cf_atime);
 #endif
 #endif
                                             
