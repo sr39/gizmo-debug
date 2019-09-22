@@ -27,9 +27,12 @@
 /* blackhole_utils.c */
 void blackhole_start(void);
 void blackhole_end(void);
+void blackhole_properties_loop(void);
+double bh_eddington_mdot(double bh_mass);
+double bh_lum_bol(double mdot, double mass, long id);
+void bh_normalize_temp_info_struct(int i);
 
 /* blackholes.c */
-void blackhole_properties_loop(void);
 void blackhole_final_operations(void);
 
 /* blackhole_environment.c */
@@ -46,17 +49,14 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 
 /* blackhole_feed.c */
 void blackhole_feed_loop(void);
-int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local);
+int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration);
 
 
 void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target, int mode);
 
 //void check_for_bh_merger(int j, MyIDType id);
-double bh_eddington_mdot(double bh_mass);
-double bh_lum_bol(double mdot, double mass, long id);
 int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double sink_radius);
 double bh_vesc(int j, double mass, double r_code, double bh_softening);
-void normalize_temp_info_struct(int i);
 void set_blackhole_mdot(int i, int n, double dt);
 void set_blackhole_new_mass(int i, int n, double dt);
 #if defined(BH_DRAG) || defined(BH_DYNFRICTION)
