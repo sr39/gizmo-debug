@@ -1,7 +1,7 @@
 /* This is a generic code block designed for simple neighbor loops, so that they don't have to
 be copy-pasted and can be generically optimized in a single place */
 {
-    int i, j, k, ngrp, ndone, ndone_flag, recvTask, place, save_NextParticle; long long n_exported = 0; double tstart, tend, t1; /* define some variables used only below */
+    int j, k, ndone, ndone_flag, recvTask, place, save_NextParticle; long long n_exported = 0; double tstart, tend; /* define some variables used only below */
     NextParticle = FirstActiveParticle;    /* begin the main loop; start with this index */
     do /* primary point-element loop */
     {
@@ -162,6 +162,7 @@ be copy-pasted and can be generically optimized in a single place */
         tend = my_second(); timewait += timediff(tstart, tend);
     }
     while(ndone < NTask);
+    timeall = timediff(t0, tend);
     
 } /* closes clause, so variables don't 'leak' */
 

@@ -1,13 +1,12 @@
+/*! \file blackhole_feed.c
+*  \brief This is where particles are marked for gas accretion.
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../../allvars.h"
 #include "../../proto.h"
 #include "../../kernel.h"
-
-/*! \file blackhole_feed.c
- *  \brief This is where particles are marked for gas accretion.
- */
 /*
  * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org),
@@ -16,19 +15,22 @@
  *   on 1/9/15 by Paul Torrey (ptorrey@mit.edu) for clarity by parsing the existing code into
  *   smaller files and routines. Some communication and black hole structures were modified
  *   to reduce memory usage. Cleanup, de-bugging, and consolidation of routines by Xiangcheng Ma
- *   (xchma@caltech.edu) followed on 05/15/15; re-integrated by PFH.
+ *   (xchma@caltech.edu) followed on 05/15/15; re-integrated by PFH. Substantial modifications
+ *    by Paul Torrey, PFH, and then primarily Kung-Yi Su through 2018-2019 leading to current
+ *   spawning modules in this file and their connections throughout-code. Massive updates in 2019
+ *   from David Guszejnov and Mike Grudic to incorporate and develop single star modules, and
+ *   from PFH to integrate those and re-write the parallelism entirely to conform to the newer
+ *   code standards and be properly multi-threaded.
  */
 
 
 
 #define MASTER_FUNCTION_NAME blackhole_feed_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
-#define INPUTFUNCTION_NAME blackhole_feed_particle2in    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
-#define OUTPUTFUNCTION_NAME blackhole_feed_out2particle  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
 #define CONDITIONFUNCTION_FOR_EVALUATION if(P[i].Type==5) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
-#include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
+#include "../../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 
-/* this structure defines the variables that need to be sent -from- the 'searching' particle */
+/* this structure defines the variables that need to be sent -from- the 'searching' element */
 struct INPUT_STRUCT_NAME
 {
     int NodeList[NODELISTLENGTH]; MyDouble Pos[3]; MyFloat Vel[3], Hsml, Mass, BH_Mass, Dt, Density, Mdot; MyIDType ID;
@@ -56,13 +58,12 @@ struct INPUT_STRUCT_NAME
 }
 *DATAIN_NAME, *DATAGET_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
-/* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' particle */
+/* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' element */
 static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
-    int k, j_tempinfo = P[i].IndexMapToTempStruc; /* link to the location in the shared structure where this is stored */
+    int k, j_tempinfo; j_tempinfo=P[i].IndexMapToTempStruc; /* link to the location in the shared structure where this is stored */
     for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k]; in->Vel[k]=P[i].Vel[k];} /* good example - always needed */
-    in->Hsml = PPP[i].Hsml; in->Mass = P[i].Mass; in->BH_Mass = BPP(i).BH_Mass; in->ID = P[i].ID;
-    in->Density = BPP(i).DensAroundStar; in->Mdot = BPP(i).BH_Mdot;
+    in->Hsml = PPP[i].Hsml; in->Mass = P[i].Mass; in->BH_Mass = BPP(i).BH_Mass; in->ID = P[i].ID; in->Density = BPP(i).DensAroundStar; in->Mdot = BPP(i).BH_Mdot;
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
     in->SinkRadius = PPP[i].SinkRadius;
 #endif
@@ -91,12 +92,12 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 #endif
 #endif
 #if defined(BH_GRAVCAPTURE_GAS)
-    in->mass_to_swallow_edd = BlackholeTempInfo[P[j_tempinfo].IndexMapToTempStruc].mass_to_swallow_edd;
+    in->mass_to_swallow_edd = BlackholeTempInfo[j_tempinfo].mass_to_swallow_edd;
 #endif
 }
 
 
-/* this structure defines the variables that need to be sent -back to- the 'searching' particle */
+/* this structure defines the variables that need to be sent -back to- the 'searching' element */
 struct OUTPUT_STRUCT_NAME
 { /* define variables below as e.g. "double X;" */
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
@@ -109,10 +110,10 @@ struct OUTPUT_STRUCT_NAME
 *DATARESULT_NAME, *DATAOUT_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
 #define ASSIGN_ADD_PRESET(x,y,mode) (mode == 0 ? (x=y) : (x+=y))
-/* this subroutine assigns the values to the variables that need to be sent -back to- the 'searching' particle */
+/* this subroutine assigns the values to the variables that need to be sent -back to- the 'searching' element */
 static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
-    int target = P[i].IndexMapToTempStruc, k=0;
+    int k, target; k=0; target = P[i].IndexMapToTempStruc;
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     ASSIGN_ADD_PRESET(BlackholeTempInfo[target].BH_angle_weighted_kernel_sum, out->BH_angle_weighted_kernel_sum, mode);
 #endif
@@ -125,13 +126,14 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 
 
 /* do loop over neighbors to get quantities for accretion */
+int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration);
 int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     /* initialize variables before loop is started */
-    int startnode, numngb_inbox, listindex = 0, j, k, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
+    int startnode, numngb, listindex = 0, j, k, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
     double h_i = local.Hsml, wk, dwk, vrel, vesc, dpos[3], dvel[3], f_accreted=1; if((local.Mass<0)||(h_i<=0)) return -1;
-    double r2, r, u, h_i2 = h_i * h_i, hinv = 1 / h_i, hinv3 = hinv * hinv * hinv, ags_h_i = All.ForceSoftening[5]
+    double w, p, r2, r, u, sink_radius=0, h_i2 = h_i * h_i, hinv = 1 / h_i, hinv3 = hinv * hinv * hinv, ags_h_i = All.ForceSoftening[5];
 #ifdef BH_REPOSITION_ON_POTMIN
     out.BH_MinPot = BHPOTVALUEINIT;
 #endif
@@ -160,23 +162,25 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
     double norm=0; for(k=0;k<3;k++) {norm+=J_dir[k]*J_dir[k];}
     if(norm>0) {norm=1/sqrt(norm); for(k=0;k<3;k++) {J_dir[k]*=norm;}} else {J_dir[0]=J_dir[1]=0; J_dir[2]=1;}
 #endif
-    
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+    sink_radius = local.SinkRadius;
+#endif
     /* Now start the actual neighbor computation for this particle */
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
     while(startnode >= 0) {
         while(startnode >= 0) {
-            numngb = ngb_treefind_variable_threads_targeted(local.Pos, h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, BH_NEIGHBOR_BITFLAG);
+            numngb = ngb_treefind_pairs_threads_targeted(local.Pos, h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, BH_NEIGHBOR_BITFLAG);
             if(numngb < 0) return -1;
             for(n = 0; n < numngb; n++)
             {
                 j = Ngblist[n];
                 if(P[j].Mass > 0)
                 {
-                    for(k=0;k<3;k++) {dpos[k] = P[j].Pos[k] - local.pos[k]; dvel[k]=P[j].Vel[k]-local.Vel[k];}
+                    for(k=0;k<3;k++) {dpos[k] = P[j].Pos[k] - local.Pos[k]; dvel[k]=P[j].Vel[k]-local.Vel[k];}
                     NEAREST_XYZ(dpos[0],dpos[1],dpos[2],-1); r2=0; for(k=0;k<3;k++) {r2 += dpos[k]*dpos[k];}
 #ifdef BOX_SHEARING
-                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dvel[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dvel[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+                    if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dvel[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                    if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dvel[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
                     if(r2 < h_i2 || r2 < PPP[j].Hsml*PPP[j].Hsml)
                     {
@@ -218,17 +222,17 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                         {
                             if(local.ID != P[j].ID) /* check its not the same bh  (DAA: this is duplicated here...) */
                             {
-                                if((vrel < BH_CSND_FRAC_BH_MERGE * vesc) && (bh_check_boundedness(j,vrel,vesc,r,local.SinkRadius)==1))
+                                if((vrel < BH_CSND_FRAC_BH_MERGE * vesc) && (bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1))
                                 {
                                     PRINT_STATUS(" ..BH-BH Merger: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) local.ID);
                                     if((P[j].SwallowID == 0) && (BPP(j).BH_Mass < local.BH_Mass)) {P[j].SwallowID = local.ID;} // most massive BH swallows the other - simplifies analysis
                                 }
                                 else
                                 {
-#ifndef IO_REDUCED_MODE
 #ifdef BH_OUTPUT_MOREINFO           // DAA: BH merger info will be saved in a separate output file
                                     printf(" ..ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, local.ID, P[j].ID, vrel, vesc);
 #else
+#ifndef IO_REDUCED_MODE
                                     fprintf(FdBlackHolesDetails, "ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, local.ID, P[j].ID, vrel, vesc);
 #endif
 #endif
@@ -257,9 +261,9 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
                                 double spec_mom=0; for(k=0;k<3;k++) {spec_mom += dvel[k]*dpos[k];} // delta_x.delta_v
                                 spec_mom = (r2*vrel*vrel - spec_mom*spec_mom*All.cf_a2inv); // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2;
-				                if(spec_mom < All.G * (local.Mass + P[j].Mass) * local.SinkRadius)  // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
+				                if(spec_mom < All.G * (local.Mass + P[j].Mass) * sink_radius)  // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
 #endif
-                                if( bh_check_boundedness(j,vrel,vesc,r,local.SinkRadius)==1 ) { /* apocenter within target distance */
+                                if( bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1 ) { /* apocenter within target distance */
 #ifdef BH_GRAVCAPTURE_NONGAS        /* simply swallow non-gas particle if BH_GRAVCAPTURE_NONGAS enabled */
                                     if((P[j].Type != 0) && (P[j].SwallowID < local.ID)) P[j].SwallowID = local.ID;
 #endif
@@ -334,8 +338,8 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
 
 void blackhole_feed_loop(void)
 {
-#include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
-#include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
-#include "../system/code_block_xchange_perform_ops_demalloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
+#include "../../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
+#include "../../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
+#include "../../system/code_block_xchange_perform_ops_demalloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
 }
-#include "../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
+#include "../../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */

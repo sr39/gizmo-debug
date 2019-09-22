@@ -42,7 +42,7 @@ void blackhole_start(void)
         }
     }
     
-    /* allocate the blackhole temp struct -- defined in blackhole.h */
+    /* allocate the blackhole temp struct */
     if(N_active_loc_BHs>0)
     {
         BlackholeTempInfo = (struct blackhole_temp_particle_data *) mymalloc("BlackholeTempInfo", N_active_loc_BHs * sizeof(struct blackhole_temp_particle_data));
@@ -106,9 +106,7 @@ void blackhole_end(void)
             /* convert to solar masses per yr */
             mdot_in_msun_per_year = total_mdot * (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
             total_mdoteddington *= 1.0 / bh_eddington_mdot(1);
-            fprintf(FdBlackHoles, "%g %d %g %g %g %g %g\n",
-                    All.Time, All.TotBHs, total_mass_holes, total_mdot, mdot_in_msun_per_year,
-                    total_mass_real, total_mdoteddington);
+            fprintf(FdBlackHoles, "%g %d %g %g %g %g %g\n", All.Time, All.TotBHs, total_mass_holes, total_mdot, mdot_in_msun_per_year, total_mass_real, total_mdoteddington);
         }
         fflush(FdBlackHoles);
 
@@ -175,91 +173,4 @@ void blackhole_properties_loop(void) /* Note, normalize_temp_info_struct is now 
     }// for(i=0; i<N_active_loc_BHs; i++)
 }
 
-
-
-void bh_normalize_temp_info_struct(int i)
-{
-    /* for new quantities calculated in environment loop, divide out weights and convert to physical units */
-    int k; k=0;
-    if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
-    {
-        BlackholeTempInfo[i].BH_InternalEnergy /= BlackholeTempInfo[i].Mgas_in_Kernel;
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
-        for(k=0;k<3;k++) {BlackholeTempInfo[i].BH_SurroundingGasVel[k] /= BlackholeTempInfo[i].Mgas_in_Kernel * All.cf_atime;}
-#endif
-    }
-    else {BlackholeTempInfo[i].BH_InternalEnergy = 0;}
-
-    // DAA: add GAS/STAR mass/angular momentum to the TOTAL mass/angular momentum in kernel
-    BlackholeTempInfo[i].Malt_in_Kernel += (BlackholeTempInfo[i].Mgas_in_Kernel + BlackholeTempInfo[i].Mstar_in_Kernel);
-    for(k=0;k<3;k++) {BlackholeTempInfo[i].Jalt_in_Kernel[k] += (BlackholeTempInfo[i].Jgas_in_Kernel[k] + BlackholeTempInfo[i].Jstar_in_Kernel[k]);}
-
-#ifdef BH_DYNFRICTION
-    // DAA: normalize by the appropriate MASS in kernel depending on selected option
-    double Mass_in_Kernel;
-#if (BH_DYNFRICTION == 1)    // DAA: dark matter + stars
-    Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel - BlackholeTempInfo[i].Mgas_in_Kernel;
-#elif (BH_DYNFRICTION == 2)  // DAA: stars only
-    Mass_in_Kernel = BlackholeTempInfo[i].Mstar_in_Kernel;
-#else
-    Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel;
-#endif
-    if(Mass_in_Kernel > 0)
-    {
-#if (BH_REPOSITION_ON_POTMIN == 2)
-        Mass_in_Kernel = BlackholeTempInfo[i].DF_rms_vel;
-#else
-        BlackholeTempInfo[i].DF_rms_vel /= Mass_in_Kernel;
-        BlackholeTempInfo[i].DF_rms_vel = sqrt(BlackholeTempInfo[i].DF_rms_vel) / All.cf_atime;
-#endif
-        for(k=0;k<3;k++) {BlackholeTempInfo[i].DF_mean_vel[k] /= Mass_in_Kernel * All.cf_atime;}
-    }
-#endif
-    
-}
-
-
-
-
-
-/* simple routine to add quantities to BlackholeTempInfo */
-void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target, int mode)
-{
-    int k;
-    ASSIGN_ADD(BlackholeTempInfo[target].BH_InternalEnergy,out->BH_InternalEnergy,mode);
-    ASSIGN_ADD(BlackholeTempInfo[target].Mgas_in_Kernel,out->Mgas_in_Kernel,mode);
-    ASSIGN_ADD(BlackholeTempInfo[target].Mstar_in_Kernel,out->Mstar_in_Kernel,mode);
-    ASSIGN_ADD(BlackholeTempInfo[target].Malt_in_Kernel,out->Malt_in_Kernel,mode);
-    ASSIGN_ADD(BlackholeTempInfo[target].Sfr_in_Kernel,out->Sfr_in_Kernel,mode);
-    for(k=0;k<3;k++)
-    {
-        ASSIGN_ADD(BlackholeTempInfo[target].Jgas_in_Kernel[k],out->Jgas_in_Kernel[k],mode);
-        ASSIGN_ADD(BlackholeTempInfo[target].Jstar_in_Kernel[k],out->Jstar_in_Kernel[k],mode);
-        ASSIGN_ADD(BlackholeTempInfo[target].Jalt_in_Kernel[k],out->Jalt_in_Kernel[k],mode);
-    }
-#ifdef BH_DYNFRICTION
-    ASSIGN_ADD(BlackholeTempInfo[target].DF_rms_vel,out->DF_rms_vel,mode);
-    for(k=0;k<3;k++) {ASSIGN_ADD(BlackholeTempInfo[target].DF_mean_vel[k],out->DF_mean_vel[k],mode);}
-    if(mode==0) {BlackholeTempInfo[target].DF_mmax_particles = out->DF_mmax_particles;}
-        else {if(out->DF_mmax_particles > BlackholeTempInfo[target].DF_mmax_particles) {BlackholeTempInfo[target].DF_mmax_particles = out->DF_mmax_particles;}}
-#endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-    for(k=0;k<3;k++) {ASSIGN_ADD(BlackholeTempInfo[target].GradRho_in_Kernel[k],out->GradRho_in_Kernel[k],mode);}
-#endif
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
-    for(k=0;k<3;k++) {ASSIGN_ADD(BlackholeTempInfo[target].BH_SurroundingGasVel[k],out->BH_SurroundingGasVel[k],mode);}
-#endif
-#if (BH_GRAVACCRETION == 8)
-    ASSIGN_ADD(BlackholeTempInfo[target].hubber_mdot_bondi_limiter,out->hubber_mdot_bondi_limiter,mode);
-    ASSIGN_ADD(BlackholeTempInfo[target].hubber_mdot_vr_estimator,out->hubber_mdot_vr_estimator,mode);
-    ASSIGN_ADD(BlackholeTempInfo[target].hubber_mdot_disk_estimator,out->hubber_mdot_disk_estimator,mode);
-#endif
-#if defined(BH_GRAVCAPTURE_GAS)
-    ASSIGN_ADD(BlackholeTempInfo[target].mass_to_swallow_edd, out->mass_to_swallow_edd, mode);
-#endif
-#if defined(BH_RETURN_ANGMOM_TO_GAS)
-    for(k=0;k<3;k++) {ASSIGN_ADD(BlackholeTempInfo[target].angmom_prepass_sum_for_passback[k],out->angmom_prepass_sum_for_passback[k],mode);}
-#endif
-
-}
 

@@ -382,6 +382,7 @@ struct OUTPUT_STRUCT_NAME
 /* --------------------------------------------------------------------------------- */
 /* this subroutine actually loads the particle data into the structure to share between nodes */
 /* --------------------------------------------------------------------------------- */
+static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration);
 static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
     int k;
@@ -543,6 +544,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 /* --------------------------------------------------------------------------------- */
 /* this subroutine adds the output variables back to the particle values */
 /* --------------------------------------------------------------------------------- */
+static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration);
 static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
     int k;
@@ -772,9 +774,9 @@ void hydro_final_operations_and_cleanup(void)
             /* calculate the radiation pressure force */
             double radacc[3]; radacc[0]=radacc[1]=radacc[2]=0; int k2;
             // a = kappa*F/c = Gradients.E_gamma_ET[gradient of photon energy density] / rho[gas_density] //
-            double L_particle = Get_Particle_Size(i)*All.cf_atime; // particle effective size/slab thickness
-            double Sigma_particle = P[i].Mass / (M_PI*L_particle*L_particle); // effective surface density through particle
-            double abs_per_kappa_dt = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s) * (SphP[i].Density*All.cf_a3inv) * dt; // fractional absorption over timestep
+            //double L_particle = Get_Particle_Size(i)*All.cf_atime; // particle effective size/slab thickness
+            //double Sigma_particle = P[i].Mass / (M_PI*L_particle*L_particle); // effective surface density through particle
+            //double abs_per_kappa_dt = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s) * (SphP[i].Density*All.cf_a3inv) * dt; // fractional absorption over timestep
             for(k2=0;k2<N_RT_FREQ_BINS;k2++)
             {
                 // want to average over volume (through-slab) and over time (over absorption): both give one 'slab_fac' below //
@@ -984,7 +986,7 @@ void hydro_force(void)
     hydro_final_operations_and_cleanup(); /* do final operations on results */
     /* collect timing information */
     CPU_Step[CPU_HYDCOMPUTE] += timecomp; CPU_Step[CPU_HYDWAIT] += timewait; CPU_Step[CPU_HYDCOMM] += timecomm;
-    CPU_Step[CPU_HYDMISC] += timeall + timediff(t0, my_second()) - (timecomp + timewait + timecomm);
+    CPU_Step[CPU_HYDMISC] += timediff(t0, my_second()) - (timecomp + timewait + timecomm);
 }
 #include "../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 

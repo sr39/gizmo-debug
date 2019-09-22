@@ -211,13 +211,11 @@ void apply_grain_dragforce(void)
  etc, are all handled for you. */
 
 #define MASTER_FUNCTION_NAME grain_backrx_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
-#define INPUTFUNCTION_NAME particle2in_grainbackrx    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
-#define OUTPUTFUNCTION_NAME out2particle_grainbackrx  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
 #define CONDITIONFUNCTION_FOR_EVALUATION if((P[i].Type==3)&&(P[i].TimeBin>=0)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 
-/* this structure defines the variables that need to be sent -from- the 'searching' particle */
+/* this structure defines the variables that need to be sent -from- the 'searching' element */
 struct INPUT_STRUCT_NAME
 {
     int NodeList[NODELISTLENGTH]; MyDouble Pos[3], Hsml; /* these must always be defined */
@@ -227,7 +225,7 @@ struct INPUT_STRUCT_NAME
 }
 *DATAIN_NAME, *DATAGET_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
-/* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' particle */
+/* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' element */
 static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {   /* "i" is the particle from which data will be assigned, to structure "in" */
     int k; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k];} /* good example - always needed */
@@ -238,13 +236,13 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 #endif
 }
 
-/* this structure defines the variables that need to be sent -back to- the 'searching' particle */
+/* this structure defines the variables that need to be sent -back to- the 'searching' element */
 struct OUTPUT_STRUCT_NAME
 { /* define variables below as e.g. "double X;" */
 }
 *DATARESULT_NAME, *DATAOUT_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
-/* this subroutine assigns the values to the variables that need to be sent -back to- the 'searching' particle */
+/* this subroutine assigns the values to the variables that need to be sent -back to- the 'searching' element */
 static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {  /* "i" is the particle to which data from structure "out" will be assigned. mode=0 for local communication,
     =1 for data sent back from other processors. you must account for this. */
