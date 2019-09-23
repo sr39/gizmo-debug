@@ -1250,7 +1250,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
         } // while(startnode)
         if(mode == 1) {listindex++; if(listindex < NODELISTLENGTH) {startnode = DensDataGet[target].NodeList[listindex]; if(startnode >= 0) {startnode = Nodes[startnode].u.d.nextnode; /* open it */}}} /* continue to open leaves if needed */
     }
-    if(mode == 0) {out2particle_density(&out, target, 0, loop_iteration);} else {DensDataResult[target] = out;} /* collects the result at the right place */
+    if(mode == 0) {out2particle_density(&out, target, 0);} else {DensDataResult[target] = out;} /* collects the result at the right place */
     return 0;
 }
 

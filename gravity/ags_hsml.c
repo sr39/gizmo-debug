@@ -140,7 +140,7 @@ void ags_out2particle_density(struct OUTPUT_STRUCT_NAME *out, int i, int mode, i
  *  target particle may either be local, or reside in the communication
  *  buffer.
  */
-int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
+int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     int j, n;
     int startnode, numngb_inbox, listindex = 0;
@@ -272,8 +272,8 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
 void ags_density(void)
 {
     /* initialize variables used below, in particlar the structures we need to call throughout the iteration */
-    MyFloat *Left, *Right, *AGS_Prev; double fac, fac_lim, desnumngb, desnumngbdev;
-    int npleft, iter=0, redo_particle, particle_set_to_minhsml_flag = 0, particle_set_to_maxhsml_flag = 0;
+    MyFloat *Left, *Right, *AGS_Prev; double fac, fac_lim, desnumngb, desnumngbdev; long long ntot;
+    int i, npleft, iter=0, redo_particle, particle_set_to_minhsml_flag = 0, particle_set_to_maxhsml_flag = 0;
     AGS_Prev = (MyFloat *) mymalloc("AGS_Prev", NumPart * sizeof(MyFloat));
     Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));
     Right = (MyFloat *) mymalloc("Right", NumPart * sizeof(MyFloat));
@@ -295,7 +295,7 @@ void ags_density(void)
         #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
 
       /* do check on whether we have enough neighbors, and iterate for density-hsml solution */
-        tstart = my_second();
+        double tstart = my_second(), tend;
         for(i = FirstActiveParticle, npleft = 0; i >= 0; i = NextActiveParticle[i])
         {
             if(ags_density_isactive(i))
@@ -531,7 +531,7 @@ void ags_density(void)
         } // for(i = FirstActiveParticle, npleft = 0; i >= 0; i = NextActiveParticle[i])
         
         tend = my_second();
-        timecomp1 += timediff(tstart, tend);
+        timecomp += timediff(tstart, tend);
         sumup_large_ints(1, &npleft, &ntot);
         if(ntot > 0)
         {
@@ -585,7 +585,7 @@ void ags_density(void)
     myfree(AGS_Prev);
     
     /* collect some timing information */
-    t1 = WallclockTime = my_second(); timeall += timediff(t0, t1);
+    double t1; t1 = WallclockTime = my_second(); timeall += timediff(t0, t1);
     CPU_Step[CPU_AGSDENSCOMPUTE] += timecomp; CPU_Step[CPU_AGSDENSWAIT] += timewait;
     CPU_Step[CPU_AGSDENSCOMM] += timecomm; CPU_Step[CPU_AGSDENSMISC] += timeall - (timecomp + timewait + timecomm);
 }
@@ -911,7 +911,7 @@ int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecoun
     int startnode, numngb_inbox, listindex = 0, j, k, n; double r2, u_i, u_j;
     struct kernel_AGSForce kernel; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out;
     memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); memset(&kernel, 0, sizeof(struct kernel_AGSForce));
-    if(mode == 0) {particle2in_AGSForce(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
+    if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
     if(local.Mass <= 0 || local.AGS_Hsml <= 0) return 0;
     /* now set particle-i centric quantities so we don't do it inside the loop */
     kernel.h_i = local.AGS_Hsml; kernel_hinv(kernel.h_i, &kernel.hinv_i, &kernel.hinv3_i, &kernel.hinv4_i);
@@ -985,7 +985,7 @@ void AGSForce_calc(void)
     PRINT_STATUS(" ..entering AGS-Force calculation [as hydro loop for non-gas elements]\n");
     /* before doing any operations, need to zero the appropriate memory so we can correctly do pair-wise operations */
 #if defined(DM_SIDM)
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {P[i].dt_step_sidm = 10*P[i].dt_step;}
+    {int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {P[i].dt_step_sidm = 10*P[i].dt_step;}}
 #endif
 #ifdef CBE_INTEGRATOR
     /* need to zero values for active particles (which will be re-calculated) before they are added below */
