@@ -414,9 +414,6 @@ void treat_outflowing_particles(void);
 void set_injection_accel(void);
 
 
-int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *density_evaluate_primary(void *p);
-void *density_evaluate_secondary(void *p);
 int density_isactive(int n);
 
 size_t sizemax(size_t a, size_t b);
@@ -577,10 +574,6 @@ int blackhole_evaluate_PREPASS(int target, int mode, int *nexport, int *nSend_lo
 #if (GALSF_SUBGRID_WIND_SCALING==2)
 void disp_setup_smoothinglengths(void);
 void disp_density(void);
-int disp_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *disp_density_evaluate_primary(void *p);
-void *disp_density_evaluate_secondary(void *p);
-int disp_density_isactive(int i);
 #endif
 #endif
 
