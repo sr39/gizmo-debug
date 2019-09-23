@@ -477,7 +477,7 @@ void DMGrad_gradient_calc(void)
 
     /* allocate memory shared across all loops */
     DMGradDataPasser = (struct temporary_dmgradients_data_topass *) mymalloc("DMGradDataPasser",NumPart * sizeof(struct temporary_dmgradients_data_topass));
-    #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
+    #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
 
     /* loop over the number of iterations needed to actually compute the gradients fully */
     for(loop_iteration=0; loop_iteration<2; loop_iteration++) // need 2 iterations to compute gradients-of-gradients
@@ -530,7 +530,7 @@ void DMGrad_gradient_calc(void)
     } // end of loop_iteration
         
     /* de-allocate memory and collect timing information */
-    #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
+    #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */
     myfree(DMGradDataPasser); /* free the temporary structure we created for the MinMax and additional data passing */
     CPU_Step[CPU_AGSDENSCOMPUTE] += timecomp; CPU_Step[CPU_AGSDENSWAIT] += timewait; CPU_Step[CPU_AGSDENSCOMM] += timecomm; CPU_Step[CPU_AGSDENSMISC] += timeall - (timecomp + timewait + timecomm);
 }

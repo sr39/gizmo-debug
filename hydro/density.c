@@ -129,19 +129,14 @@ void particle2in_density(struct densdata_in *in, int i)
     int k;
     in->Type = P[i].Type;
     in->Hsml = PPP[i].Hsml;
-    for(k = 0; k < 3; k++)
-    {
-        in->Pos[k] = P[i].Pos[k];
-        if(P[i].Type==0) {in->Vel[k]=SphP[i].VelPred[k];} else {in->Vel[k]=P[i].Vel[k];}
-    }
+    for(k=0;k<3;k++) {in->Pos[k] = P[i].Pos[k];}
+    for(k=0;k<3;k++) {if(P[i].Type==0) {in->Vel[k]=SphP[i].VelPred[k];} else {in->Vel[k]=P[i].Vel[k];}}
     
     if(P[i].Type == 0)
     {
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
-        for(k = 0; k < 3; k++)
-            in->Accel[k] = All.cf_a2inv*P[i].GravAccel[k] + SphP[i].HydroAccel[k]; // PHYSICAL units //
+        for(k=0;k<3;k++) {in->Accel[k] = All.cf_a2inv*P[i].GravAccel[k] + SphP[i].HydroAccel[k];} // PHYSICAL units //
 #endif
-        
 #ifdef GALSF_SUBGRID_WINDS
         in->DelayTime = SphP[i].DelayTime;
 #endif
@@ -1161,70 +1156,38 @@ void density(void)
 
 
 /*! This function represents the core of the SPH density computation. The
- *  target particle may either be local, or reside in the communication
- *  buffer.
+ *  target particle may either be local, or reside in the communication buffer.
  */
-int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex,
-                     int *ngblist)
+int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
 {
-    int j, n;
-    int startnode, numngb_inbox, listindex = 0;
-    double r2, h2, u, mass_j, wk;
-    struct kernel_density kernel;
-    struct densdata_in local;
-    struct densdata_out out;
-    memset(&out, 0, sizeof(struct densdata_out));
+    int j, n, startnode, numngb_inbox, listindex = 0; double r2, h2, u, mass_j, wk;
+    struct kernel_density kernel; struct densdata_in local; struct densdata_out out; memset(&out, 0, sizeof(struct densdata_out));
+    if(mode == 0) {particle2in_density(&local, target);} else {local = DensDataGet[target];}
+    h2 = local.Hsml * local.Hsml; kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
 #if defined(BLACK_HOLES)
     out.BH_TimeBinGasNeighbor = TIMEBINS;
 #ifdef BH_ACCRETE_NEARESTFIRST
     out.BH_dr_to_NearestGasNeighbor = MAX_REAL_NUMBER;
 #endif 
 #endif
-    
-    if(mode == 0)
-        particle2in_density(&local, target);
-    else
-        local = DensDataGet[target];
-    h2 = local.Hsml * local.Hsml;
-    kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
-    
-    if(mode == 0)
-    {
-        startnode = All.MaxPart;	/* root node */
-    }
-    else
-    {
-        startnode = DensDataGet[target].NodeList[0];
-        startnode = Nodes[startnode].u.d.nextnode;	/* open it */
-    }
-    
-    while(startnode >= 0)
-    {
-        while(startnode >= 0)
-        {
+    if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DensDataGet[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
+    while(startnode >= 0) {
+        while(startnode >= 0) {
             numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
-            
             if(numngb_inbox < 0) return -1;
-            
             for(n = 0; n < numngb_inbox; n++)
             {
                 j = ngblist[n];
-#ifdef GALSF_SUBGRID_WINDS
-                if(SphP[j].DelayTime > 0)	/* partner is a wind particle */
-                    if(!(local.DelayTime > 0))	/* if I'm not wind, then ignore the wind particle */
-                        continue;
+#ifdef GALSF_SUBGRID_WINDS /* check if partner is a wind particle: if I'm not wind, then ignore the wind particle */
+                if(SphP[j].DelayTime > 0) {if(!(local.DelayTime > 0)) {continue;}}
 #endif
                 if(P[j].Mass <= 0) continue;
-                
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
-#ifdef BOX_PERIODIC
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
-#endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
-                
-                if(r2 < h2)
+                if(r2 < h2) /* this loop is only considering particles inside local.Hsml, i.e. seen-by-main */
                 {
                     kernel.r = sqrt(r2);
                     u = kernel.r * kernel.hinv;
@@ -1234,7 +1197,6 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     
                     out.Ngb += kernel.wk;
                     out.Rho += kernel.mj_wk;
-
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
                     if(local.Type == 0 && kernel.r==0) {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * SphP[j].VelPred[kv];}} // just the self-contribution //
 #endif
@@ -1250,7 +1212,6 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
                     out.DhsmlHydroSumFactor += -mass_eff * (NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
 #endif
-                    
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
                     if(local.Type == 0) {out.AGS_zeta += mass_j * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0);}
 #endif
@@ -1283,28 +1244,13 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         /* this is the -particle- divv estimator, which determines how Hsml will evolve (particle drift) */
                         
                         density_evaluate_extra_physics_gas(&local, &out, &kernel, j);
-                    } // kernel.r > 0 //
-                }
-            }
-        }
-        
-        if(mode == 1)
-        {
-            listindex++;
-            if(listindex < NODELISTLENGTH)
-            {
-                startnode = DensDataGet[target].NodeList[listindex];
-                if(startnode >= 0)
-                    startnode = Nodes[startnode].u.d.nextnode;	/* open it */
-            }
-        }
+                    } // kernel.r > 0
+                } // if(r2 < h2)
+            } // numngb_inbox loop
+        } // while(startnode)
+        if(mode == 1) {listindex++; if(listindex < NODELISTLENGTH) {startnode = DensDataGet[target].NodeList[listindex]; if(startnode >= 0) {startnode = Nodes[startnode].u.d.nextnode; /* open it */}}} /* continue to open leaves if needed */
     }
-    
-    if(mode == 0)
-        out2particle_density(&out, target, 0);
-    else
-        DensDataResult[target] = out;
-    
+    if(mode == 0) {out2particle_density(&out, target, 0, loop_iteration);} else {DensDataResult[target] = out;} /* collects the result at the right place */
     return 0;
 }
 

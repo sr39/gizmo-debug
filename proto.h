@@ -812,10 +812,6 @@ int ags_density_isactive(int i);
 double ags_return_maxsoft(int i);
 double ags_return_minsoft(int i);
 void AGSForce_calc(void);
-int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *AGSForce_evaluate_primary(void *p);
-void *AGSForce_evaluate_secondary(void *p);
-int AGSForce_isactive(int i);
 #endif
 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
