@@ -305,11 +305,14 @@ OPT     += -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN
 #     where quantities in (X) are the things you want to set.
 # With these options, hybrid MPI+OpenMP works well. Because of the node configuration, optimal hybrid performance will typically use either
 #   OPENMP=4 (ntasks-per-node=14) or OPENMP=7 (ntasks-per-node=8). Small jobs (<200 cores) might be better with smaller/no OPENMP, very large jobs higher,
-#   (OPENMP can be any integer, ntasks-per-node must be even or severe performance hits apply)
+#   (OPENMP can be any integer, ntasks-per-node must be even or severe performance hits apply).
+#   Intel/19 now functional seems to favor slightly lower OPENMP number, shifting to perhaps OPENMP=2 (ntasks-per-node=28) for small jobs, =4 for medium, =7 for very large
+#
 # Note that the Frontera setup is NOT built for hyperthreading, even though the CLX nodes are supposed to support it. If you ask for 112 threads/node (insteady of 56),
 #   the code will actually work, but very slowly. Stick to 56 for now.
-# There are still odd memory issues. The machine should have 3.3gb/core available after OS, etc, but in practice we need to allocate less than this. MPI errors
-#   have also been appearing in large runs (for almost all users) related to memory. Be careful for now, and communicate to TACC support staff re: memory issues.
+#
+# [old: There are still odd memory issues. The machine should have 3.3gb/core available after OS, etc, but in practice we need to allocate less than this. MPI errors
+#   have also been appearing in large runs (for almost all users) related to memory. Be careful for now, and communicate to TACC support staff re: memory issues.]
 #   I am using ~3gb/core for low task numbers, lower still for higher task numbers. 
 ##
 endif
