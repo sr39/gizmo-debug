@@ -805,9 +805,6 @@ int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary);
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
 void ags_setup_smoothinglengths(void);
 void ags_density(void);
-int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *ags_density_evaluate_primary(void *p);
-void *ags_density_evaluate_secondary(void *p);
 int ags_density_isactive(int i);
 double ags_return_maxsoft(int i);
 double ags_return_minsoft(int i);
