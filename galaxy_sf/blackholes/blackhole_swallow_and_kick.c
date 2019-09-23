@@ -399,9 +399,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 void blackhole_swallow_and_kick_loop(void)
 {
     N_gas_swallowed = N_star_swallowed = N_dm_swallowed = N_BH_swallowed = 0;
-    #include "../../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
+    #include "../../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
     #include "../../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
-    #include "../../system/code_block_xchange_perform_ops_demalloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
+    #include "../../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */
     /* collect and print results on any swallow operations in this pass */
     int Ntot_gas_swallowed=0, Ntot_star_swallowed=0, Ntot_dm_swallowed=0, Ntot_BH_swallowed=0;
     MPI_Reduce(&N_gas_swallowed, &Ntot_gas_swallowed, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
