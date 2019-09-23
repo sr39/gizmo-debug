@@ -203,8 +203,7 @@ double get_starformation_rate(int i)
     double factorEVP, egyhot, ne, tcool, x, cloudmass;
 #endif
 #ifdef GALSF_SUBGRID_WINDS
-    if(SphP[i].DelayTime > 0)
-    return 0;
+    if(SphP[i].DelayTime > 0) return 0;
 #endif
     
 #ifdef BH_WIND_SPAWN
@@ -751,7 +750,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
     prob = 1 - exp(-p);
 #endif
     
-#if (GALSF_SUBGRID_WIND_SCALING == 1    
+#if (GALSF_SUBGRID_WIND_SCALING == 1)
        /* wind model where launching scales with halo/galaxy bulk properties (as in Romeel's simulations) */
     if(SphP[i].HostHaloMass > 0 && sm > 0)
     {

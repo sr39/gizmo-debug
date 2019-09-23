@@ -7,18 +7,6 @@
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
-#ifdef PTHREADS_NUM_THREADS
-#include <pthread.h>
-#endif
-#ifdef PTHREADS_NUM_THREADS
-extern pthread_mutex_t mutex_nexport;
-extern pthread_mutex_t mutex_partnodedrift;
-#define LOCK_NEXPORT     pthread_mutex_lock(&mutex_nexport);
-#define UNLOCK_NEXPORT   pthread_mutex_unlock(&mutex_nexport);
-#else
-#define LOCK_NEXPORT
-#define UNLOCK_NEXPORT
-#endif
 
 /*! \file ags_hsml.c
  *  \brief kernel length determination for non-gas particles
@@ -288,7 +276,6 @@ void ags_density(void)
 
     /* allocate buffers to arrange communication */
     #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
-
     /* we will repeat the whole thing for those particles where we didn't find enough neighbours */
     do
     {
@@ -454,9 +441,7 @@ void ags_density(void)
                         {
                             if(Right[i] == 0 && Left[i] == 0)
                             {
-                                char buf[1000];
-                                sprintf(buf, "AGS: Right[i] == 0 && Left[i] == 0 && PPP[i].AGS_Hsml=%g\n", PPP[i].AGS_Hsml);
-                                terminate(buf);
+                                char buf[1000]; sprintf(buf, "AGS: Right[i] == 0 && Left[i] == 0 && PPP[i].AGS_Hsml=%g\n", PPP[i].AGS_Hsml); terminate(buf);
                             }
                             
                             if(Right[i] == 0 && Left[i] > 0)
@@ -536,7 +521,7 @@ void ags_density(void)
         if(ntot > 0)
         {
             iter++;
-            if(iter > 10 && ThisTask == 0) {printf("ags-ngb iteration %d: need to repeat for %d%09d particles.\n", iter, (int) (ntot / 1000000000), (int) (ntot % 1000000000));}
+            if(iter > 10 && ThisTask == 0) {printf("AGS-ngb iteration %d: need to repeat for %d%09d particles.\n", iter, (int) (ntot / 1000000000), (int) (ntot % 1000000000));}
             if(iter > MAXITER) {printf("ags-failed to converge in neighbour iteration in density()\n"); fflush(stdout); endrun(1155);}
         }
     }
