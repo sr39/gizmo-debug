@@ -264,8 +264,8 @@ GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = -I$(TACC_MKL_INC)
 MKL_LIBS = -L$(TACC_MKL_LIB) -mkl=sequential
-GSL_INCL = -I$(HOME_GSL_DIR)
-GSL_LIBS = -L$(HOME_GSL_DIR)/.libs -L$(HOME_GSL_DIR)/cblas/.libs
+GSL_INCL = -I$(TACC_GSL_INC)
+GSL_LIBS = -L$(TACC_GSL_LIB)
 FFTW_INCL= -I$(TACC_FFTW2_INC)
 FFTW_LIBS= -L$(TACC_FFTW2_LIB)
 ifeq (USE_FFTW3, $(findstring USE_FFTW3, $(CONFIGVARS)))
@@ -290,7 +290,9 @@ OPT     += -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN
 #       6. in your .bashrc file, add "export HOME_GSL_DIR=$HOME/gsl-2.5" and
 #           "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME_GSL_DIR:$HOME_GSL_DIR/.libs:$HOME_GSL_DIR/cblas/.libs"
 #           (obviously if you use a different parent install directory, change the directory name here accordingly).
-#       7. when you submit jobs, make sure you include a "source $HOME/.bashrc" in your run script or the export flags above, to link the libraries
+#       7. when you submit jobs, make sure you include a "source $HOME/.bashrc" in your run script or the export flags above, to link the libraries. I was using
+#			GSL_INCL = -I$(HOME_GSL_DIR)
+#			GSL_LIBS = -L$(HOME_GSL_DIR)/.libs -L$(HOME_GSL_DIR)/cblas/.libs
 # [update: GSL module is now installed for intel/18.0.5, so you can simply load the module. but I'll keep the install instructions above, they can be useful]
 #
 # As usual include "umask 022" and "ulimit -s unlimited" in your .bashrc file to save headaches later
