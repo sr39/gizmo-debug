@@ -388,10 +388,6 @@ int find_files(char *fname);
 int metals_compare_key(const void *a, const void *b);
 void enrichment_evaluate(int target, int mode);
 
-int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *hydro_evaluate_primary(void *p);
-void *hydro_evaluate_secondary(void *p);
-
 void pm_init_nonperiodic_allocate(void);
 
 void  pm_init_nonperiodic_free(void);
@@ -418,9 +414,6 @@ void treat_outflowing_particles(void);
 void set_injection_accel(void);
 
 
-int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *density_evaluate_primary(void *p);
-void *density_evaluate_secondary(void *p);
 int density_isactive(int n);
 
 size_t sizemax(size_t a, size_t b);
@@ -486,7 +479,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 double return_probability_of_this_forming_bh_from_seed_model(int i);
 
 // this structure needs to be defined here, because routines for feedback event rates, etc, are shared among files //
-struct addFBdata_in
+struct addFB_evaluate_data_in_
 {
     MyDouble Pos[3], Vel[3], Msne, unit_mom_SNe;
     MyFloat Hsml, V_i, SNe_v_ejecta;
@@ -498,17 +491,17 @@ struct addFBdata_in
 #endif
     int NodeList[NODELISTLENGTH];
 }
-*AddFBDataIn, *AddFBDataGet;
+*addFB_evaluate_DataIn_, *addFB_evaluate_DataGet_;
 
-void particle2in_addFB_fromstars(struct addFBdata_in *in, int i, int fb_loop_iteration);
+void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int fb_loop_iteration);
 double mechanical_fb_calculate_eventrates(int i, double dt);
 #if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
 double mechanical_fb_calculate_eventrates_SNe(int i, double dt);
 void mechanical_fb_calculate_eventrates_Winds(int i, double dt);
 void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt);
-void particle2in_addFB_SNe(struct addFBdata_in *in, int i);
-void particle2in_addFB_winds(struct addFBdata_in *in, int i);
-void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i);
+void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i);
+void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i);
+void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i);
 #endif
 #endif
 
@@ -540,18 +533,12 @@ void selfshield_local_incident_uv_flux(void);
 
 #ifdef GALSF_FB_MECHANICAL
 void determine_where_SNe_occur(void);
-void mechanical_fb_calc(int feedback_type);
-int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int feedback_type);
-void *addFB_evaluate_primary(void *p, int feedback_type);
-void *addFB_evaluate_secondary(void *p, int feedback_type);
+void mechanical_fb_calc(int fb_loop_iteration);
 #endif
 
 #ifdef GALSF_FB_THERMAL
 void determine_where_addthermalFB_events_occur(void);
 void thermal_fb_calc(void);
-int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *addthermalFB_evaluate_primary(void *p);
-void *addthermalFB_evaluate_secondary(void *p);
 #endif
 
 #ifdef COOL_METAL_LINES_BY_SPECIES
@@ -587,10 +574,6 @@ int blackhole_evaluate_PREPASS(int target, int mode, int *nexport, int *nSend_lo
 #if (GALSF_SUBGRID_WIND_SCALING==2)
 void disp_setup_smoothinglengths(void);
 void disp_density(void);
-int disp_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *disp_density_evaluate_primary(void *p);
-void *disp_density_evaluate_secondary(void *p);
-int disp_density_isactive(int i);
 #endif
 #endif
 
@@ -621,10 +604,7 @@ void determine_interior(void);
 int dissolvegas(void);
 void do_box_wrapping(void);
 double enclosed_mass(double R);
-void endrun(int);
-#ifndef IO_REDUCED_MODE
 void energy_statistics(void);
-#endif
 void ensure_neighbours(void);
 
 void output_log_messages(void);
@@ -818,17 +798,10 @@ int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary);
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
 void ags_setup_smoothinglengths(void);
 void ags_density(void);
-int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *ags_density_evaluate_primary(void *p);
-void *ags_density_evaluate_secondary(void *p);
 int ags_density_isactive(int i);
 double ags_return_maxsoft(int i);
 double ags_return_minsoft(int i);
 void AGSForce_calc(void);
-int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *AGSForce_evaluate_primary(void *p);
-void *AGSForce_evaluate_secondary(void *p);
-int AGSForce_isactive(int i);
 #endif
 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -847,19 +820,14 @@ void init_sort_ID(MyIDType *data, int ndata);
 
 void hydro_gradient_calc(void);
 int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
-void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
-void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
 void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol);
 
 #ifdef TURB_DIFF_DYNAMIC
+void dynamic_diff_vel_calc(void);
 void dynamic_diff_calc(void);
 int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int dynamic_iteration);
 void *DynamicDiff_evaluate_primary(void *p, int dynamic_iteration);
 void *DynamicDiff_evaluate_secondary(void *p, int dynamic_iteration);
-void diffusion_velocity_calc(void);
-int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *DiffFilter_evaluate_primary(void *p);
-void *DiffFilter_evaluate_secondary(void *p);
 #endif
 
 #ifdef PARTICLE_EXCISION
@@ -897,9 +865,6 @@ double do_cbe_nvt_inversion_for_faces(int i);
 void do_dm_fuzzy_initialization(void);
 void do_dm_fuzzy_drift_kick(int pindex, double dt_entr, int mode);
 void DMGrad_gradient_calc(void);
-int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
-void *DMGrad_evaluate_primary(void *p, int gradient_iteration);
-void *DMGrad_evaluate_secondary(void *p, int gradient_iteration);
 void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double prev_a, double dv[3],
                                   double GradRho_L[3], double GradRho_R[3],
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],

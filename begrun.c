@@ -61,8 +61,8 @@ void begrun(void)
       }
 #endif
 
-      printf("Size of particle structure       %d  [bytes]\n", (int) sizeof(struct particle_data));
-      printf("\nSize of sph particle structure   %d  [bytes]\n", (int) sizeof(struct sph_particle_data));
+      printf("\nSize of particle structure       %d  [bytes]\n", (int) sizeof(struct particle_data));
+      printf("Size of hydro-cell structure   %d  [bytes]\n\n", (int) sizeof(struct sph_particle_data));
 
     }
 
@@ -566,7 +566,6 @@ void open_outputfiles(void)
   MPI_Barrier(MPI_COMM_WORLD);
 
 #ifdef BLACK_HOLES
-//#ifndef IO_REDUCED_MODE  DAA-IO: BH_OUTPUT_MOREINFO overrides IO_REDUCED_MODE
 #if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
   /* Note: This is done by everyone */
   if(ThisTask == 0)
@@ -1971,10 +1970,9 @@ void read_parameter_file(char *fname)
                     else
                     {
 #ifdef ALLOWEXTRAPARAMS
-                        fprintf(stdout, "WARNING from file %s:   Tag '%s' ignored !\n", fname, buf1);
+                        fprintf(stdout, "Possible warning to be aware of from file %s:   Tag '%s' was specified, but it is being ignored -- make sure this is intended!\n", fname, buf1);
 #else
-                        fprintf(stdout, "Error in file %s:   Tag '%s' not allowed or multiple defined.\n",
-                                fname, buf1);
+                        fprintf(stdout, "Error in file %s:   Tag '%s' not allowed or multiple defined.\n", fname, buf1);
                         errorFlag = 1;
 #endif
                     }
@@ -2394,7 +2392,7 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
   if(ThisTask == 0)
     {
       printf("\nAll.TimeMax has been changed in the parameterfile\n");
-      printf("Need to adjust integer timeline\n\n\n");
+      printf("Need to adjust integer timeline\n\n");
     }
 
   if(TimeMax_new < TimeMax_old)

@@ -459,7 +459,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     if((dt_cr_dimless > 0)&&(dt_cr_dimless < 20.)) {q_cr = exp(-dt_cr_dimless);} // factor for CR interpolation
     if(mode==0) {for(k=0;k<3;k++) {flux[k]=SphP[i].CosmicRayFlux[k];}} else {for(k=0;k<3;k++) {flux[k]=SphP[i].CosmicRayFluxPred[k];}}
 #ifdef MAGNETIC // do projection onto field lines
-    double fluxmag=0, fluxdot=0, Bmag=0; for(k=0;k<3;k++) {fluxmag+=flux[k]*flux[k]; fluxdot+=flux[k]*B0[k];}
+    double fluxmag=0, fluxdot=0; for(k=0;k<3;k++) {fluxmag+=flux[k]*flux[k]; fluxdot+=flux[k]*B0[k];}
     if(fluxmag>0) {fluxmag=sqrt(fluxmag);} else {fluxmag=0;}
     if(fluxdot<0) {fluxmag*=-1;} // points down-field
     if(Bmag2>0) {for(k=0;k<3;k++) {flux[k] = fluxmag * B0[k] / sqrt(Bmag2);}} // re-assign to be along field

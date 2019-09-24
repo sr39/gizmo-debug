@@ -51,7 +51,7 @@ void read_ic(char *fname)
 #ifdef RESCALEVINI
     if(ThisTask == 0 && RestartFlag == 0)
     {
-        fprintf(stdout, "\nRescaling v_ini !\n\n");
+        fprintf(stdout, "Rescaling v_ini !\n");
         fflush(stdout);
     }
 #endif
@@ -708,6 +708,9 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_grDI:
         case IO_grDII:
         case IO_grHDI:
+        case IO_TURB_DIFF_COEFF:
+        case IO_DYNERROR:
+        case IO_DYNERRORDEFAULT:
             break;
 
         case IO_LASTENTRY:
@@ -875,8 +878,8 @@ void read_file(char *fname, int readTask, int lastTask)
         for(i = 0, n_in_file = 0; i < 6; i++)
             n_in_file += header.npart[i];
         
-        printf("\nreading file `%s' on task=%d (contains %lld particles.)\n"
-               "distributing this file to tasks %d-%d\n"
+        printf("\nReading file `%s' on task=%d (contains %lld particles.)\n"
+               " ..distributing this file to tasks %d-%d\n"
                "Type 0 (gas):   %8d  (tot=%6d%09d) masstab=%g\n"
                "Type 1 (halo):  %8d  (tot=%6d%09d) masstab=%g\n"
                "Type 2 (disk):  %8d  (tot=%6d%09d) masstab=%g\n"
@@ -1041,9 +1044,6 @@ void read_file(char *fname, int readTask, int lastTask)
             {
                 get_dataset_name(blocknr, buf);
                 printf("reading block %d (%s)...\n", bnr, buf);
-#ifndef IO_REDUCED_MODE
-                fflush(stdout);
-#endif
             }
             
             bytes_per_blockelement = get_bytes_per_blockelement(blocknr, 1);
@@ -1617,7 +1617,7 @@ void find_block(char *label, FILE * fd)
         if(blksize != 8)
         {
             printf("Incorrect Format (blksize=%u)!\n", blksize);
-            exit(1891);
+            endrun(1891);
         }
         else
         {

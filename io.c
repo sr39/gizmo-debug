@@ -5054,9 +5054,6 @@ void mpi_printf(const char *fmt, ...)
         va_list l;
         va_start(l, fmt);
         vprintf(fmt, l);
-#ifndef IO_REDUCED_MODE
-        fflush(stdout);
-#endif
         va_end(l);
     }
 }

@@ -7,7 +7,7 @@
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
-#ifdef OMP_NUM_THREADS
+#ifdef PTHREADS_NUM_THREADS
 #include <pthread.h>
 #endif
 
@@ -35,8 +35,11 @@
 #define ASSIGN_ADD_PRESET(x,y,mode) (x+=y)
 #define MINMAX_CHECK(x,xmin,xmax) ((x<xmin)?(xmin=x):((x>xmax)?(xmax=x):(1)))
 #define SHOULD_I_USE_SPH_GRADIENTS(condition_number) ((condition_number > CONDITION_NUMBER_DANGER) ? (1):(0))
+#define MAX_ADD(x,y,mode) ((y > x) ? (x = y) : (1)) // simpler definition now used
+#define MIN_ADD(x,y,mode) ((y < x) ? (x = y) : (1))
+#define NV_MYSIGN(x) (( x > 0 ) - ( x < 0 ))
 
-#ifdef OMP_NUM_THREADS
+#ifdef PTHREADS_NUM_THREADS
 extern pthread_mutex_t mutex_nexport;
 extern pthread_mutex_t mutex_partnodedrift;
 #define LOCK_NEXPORT     pthread_mutex_lock(&mutex_nexport);
@@ -46,7 +49,6 @@ extern pthread_mutex_t mutex_partnodedrift;
 #define UNLOCK_NEXPORT
 #endif
 
-#define NV_MYSIGN(x) (( x > 0 ) - ( x < 0 ))
 
 struct Quantities_for_Smooth_Gradients {
     double Velocity_hat[3];
@@ -154,8 +156,6 @@ static inline void particle2in_DynamicDiff(struct DynamicDiffdata_in *in, int i,
 }
 
 
-#define MAX_ADD(x,y,mode) ((y > x) ? (x = y) : (1)) // simpler definition now used
-#define MIN_ADD(x,y,mode) ((y < x) ? (x = y) : (1))
 
 
 static inline void out2particle_DynamicDiff_iter(struct DynamicDiffdata_out_iter *out, int i, int mode, int dynamic_iteration) {
@@ -191,7 +191,6 @@ static inline void out2particle_DynamicDiff(struct DynamicDiffdata_out *out, int
 
 
 void local_slopelimiter_dyndiff(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol);
-
 void local_slopelimiter_dyndiff(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol) {
     int k;
     double d_abs = 0.0;
@@ -342,9 +341,9 @@ void dynamic_diff_calc(void) {
             /* do local particles and prepare export list */
             tstart = my_second();
             
-#ifdef OMP_NUM_THREADS
-            pthread_t mythreads[OMP_NUM_THREADS - 1];
-            int threadid[OMP_NUM_THREADS - 1];
+#ifdef PTHREADS_NUM_THREADS
+            pthread_t mythreads[PTHREADS_NUM_THREADS - 1];
+            int threadid[PTHREADS_NUM_THREADS - 1];
             pthread_attr_t attr;
             
             pthread_attr_init(&attr);
@@ -354,7 +353,7 @@ void dynamic_diff_calc(void) {
             
             TimerFlag = 0;
             
-            for (j = 0; j < OMP_NUM_THREADS - 1; j++) {
+            for (j = 0; j < PTHREADS_NUM_THREADS - 1; j++) {
                 threadid[j] = j + 1;
                 pthread_create(&mythreads[j], &attr, DynamicDiff_evaluate_primary, &threadid[j]);
             }
@@ -371,8 +370,8 @@ void dynamic_diff_calc(void) {
                 DynamicDiff_evaluate_primary(&mainthreadid, dynamic_iteration);	/* do local particles and prepare export list */
             }
             
-#ifdef OMP_NUM_THREADS
-            for (j = 0; j < OMP_NUM_THREADS - 1; j++) pthread_join(mythreads[j], NULL);
+#ifdef PTHREADS_NUM_THREADS
+            for (j = 0; j < PTHREADS_NUM_THREADS - 1; j++) pthread_join(mythreads[j], NULL);
 #endif
             
             tend = my_second();
@@ -495,8 +494,8 @@ void dynamic_diff_calc(void) {
             tstart = my_second();
             NextJ = 0;
             
-#ifdef OMP_NUM_THREADS
-            for (j = 0; j < OMP_NUM_THREADS - 1; j++) pthread_create(&mythreads[j], &attr, DynamicDiff_evaluate_secondary, &threadid[j]);
+#ifdef PTHREADS_NUM_THREADS
+            for (j = 0; j < PTHREADS_NUM_THREADS - 1; j++) pthread_create(&mythreads[j], &attr, DynamicDiff_evaluate_secondary, &threadid[j]);
 #endif
 #ifdef _OPENMP
 #pragma omp parallel
@@ -510,8 +509,8 @@ void dynamic_diff_calc(void) {
                 DynamicDiff_evaluate_secondary(&mainthreadid, dynamic_iteration);
             }
             
-#ifdef OMP_NUM_THREADS
-            for (j = 0; j < OMP_NUM_THREADS - 1; j++) pthread_join(mythreads[j], NULL);
+#ifdef PTHREADS_NUM_THREADS
+            for (j = 0; j < PTHREADS_NUM_THREADS - 1; j++) pthread_join(mythreads[j], NULL);
             
             pthread_mutex_destroy(&mutex_partnodedrift);
             pthread_mutex_destroy(&mutex_nexport);
