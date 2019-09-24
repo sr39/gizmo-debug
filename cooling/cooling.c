@@ -970,8 +970,11 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
                             + (Z[0]/All.SolarAbundances[0])*(Z[0]/All.SolarAbundances[0])/(1.0+nHcgs));
             /* add dust cooling as well */
             double Tdust = 30.;
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(BH_COMPTON_HEATING)
+#if defined(SINGLE_STAR_SINK_DYNAMICS)
+            Tdust = 10.;
+#if defined(BH_COMPTON_HEATING)
             Tdust = AGN_T_Compton;
+#endif
 #endif
 #ifdef RT_INFRARED
             if(target >= 0) {Tdust = SphP[target].Dust_Temperature;}
@@ -1090,8 +1093,11 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #if defined(COOL_METAL_LINES_BY_SPECIES) && defined(COOL_LOW_TEMPERATURES)
         /* Dust collisional heating */
         double Tdust = 30.;
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(BH_COMPTON_HEATING)
+#if defined(SINGLE_STAR_SINK_DYNAMICS)
+        Tdust = 10.;
+#if defined(BH_COMPTON_HEATING)
         Tdust = AGN_T_Compton;
+#endif
 #endif
 #ifdef RT_INFRARED
         if(target >= 0) {Tdust = SphP[target].Dust_Temperature;}
