@@ -2176,7 +2176,7 @@ point, then write a restart-file, and a snapshot file corresponding to this time
      
 **Omega0**: Cosmological matter density parameter in units of the critical density at z=0. Relevant only for comoving integration.
 
-**OmegaLambda**: Cosmological vacuum energy density (cosmological constant) in units of the critical density at z=0. Relevant only for comoving integration. For a geometrically flat universe, one has Omega0 + OmegaLambda = 1. For simulations in Newtonian space, this parameter has to be set to zero.
+**OmegaLambda**: Cosmological vacuum energy density (cosmological constant) in units of the critical density at z=0. Relevant for comoving integration, but can in principle be set for a non-periodic box to reflect uniform expansion. For a geometrically flat universe, one has Omega0 + OmegaLambda = 1. For simulations in Newtonian space (non-cosmological, non-expanding), this parameter has to be set to zero.
 
 **OmegaBaryon**: Baryon density in units of the critical density at z=0. Relevant only for comoving integration.
      
