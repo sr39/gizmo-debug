@@ -251,7 +251,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
 			                if(eps*eps*eps /(P[j].Mass + local.Mass) <= P[j].SwallowTime)
 #endif
 #if defined(BH_ALPHADISK_ACCRETION)
-                            if(bh_mass_alphadisk < BH_ALPHADISK_ACCRETION*local.BH_Mass)
+                            if(local.BH_Mass_AlphaDisk < BH_ALPHADISK_ACCRETION*local.BH_Mass)
 #endif
 #if defined(BH_ACCRETE_NEARESTFIRST)
                             if((P[j].Type != 0) || (r<=1.0001*local.BH_dr_to_NearestGasNeighbor))
