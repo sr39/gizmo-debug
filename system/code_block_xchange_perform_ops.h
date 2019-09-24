@@ -109,8 +109,6 @@ be copy-pasted and can be generically optimized in a single place */
             }
             tend = my_second(); timecomm += timediff(tstart, tend);
             
-            //report_memory_usage(&HighMark_sphhydro, "SPH_HYDRO"); ???? //
-            
             /* now do the particles that were sent to us */
             tstart = my_second(); NextJ = 0;
 #ifdef _OPENMP

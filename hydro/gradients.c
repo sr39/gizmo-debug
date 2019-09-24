@@ -1426,6 +1426,9 @@ void hydro_gradient_calc(void)
 #endif
                         for(k=0;k<3;k++) {SphP[i].Gradients.E_gamma_ET[k_freq][k] = chifac_ot*SphP[i].Gradients.E_gamma_ET[k_freq][k] + chifac_iso/3.*GasGradDataPasser[i].Gradients_E_gamma[k_freq][k];}
 #endif // ifdef otvet
+#ifdef RT_FLUXLIMITEDDIFFUSION /* this is simple because the Eddington tensor is always isotropic */
+                        for(k=0;k<3;k++) {SphP[i].Gradients.E_gamma_ET[k_freq][k] = GasGradDataPasser[i].Gradients_E_gamma[k_freq][k]/3.;}
+#endif
                     }
 #endif // ifdef fluxlimiter
                     SphP[i].Lambda_FluxLim[k_freq] = lambda;

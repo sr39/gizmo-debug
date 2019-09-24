@@ -499,12 +499,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define RT_USE_GRAVTREE
 #endif
 
-#ifdef RT_FLUXLIMITEDDIFFUSION
-#define RT_OTVET /* for FLD, we use the OTVET architecture, but then just set the tensor to isotropic */
-#endif
 
-/* options for OTVET module */
-#if defined(RT_OTVET)
+/* options for FLD or OTVET or M1 modules */
+#if defined(RT_OTVET) || defined(RT_FLUXLIMITEDDIFFUSION) || defined(RT_M1)
 // RADTRANSFER is ON, obviously
 #ifndef RADTRANSFER
 #define RADTRANSFER
@@ -513,39 +510,29 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #ifndef RT_DIFFUSION
 #define RT_DIFFUSION
 #endif
-// use gravity tree for Eddington tensor
-#define RT_USE_GRAVTREE
-// and be sure to track luminosity locations 
-#ifndef RT_SEPARATELY_TRACK_LUMPOS
-#define RT_SEPARATELY_TRACK_LUMPOS
-#endif
 // need source injection enabled to define emissivity
 #define RT_SOURCE_INJECTION
+// default to explicit solutins. note, at the moment, M1 only works for explicit solutions
 #if !defined(RT_DIFFUSION_IMPLICIT) && !defined(RT_DIFFUSION_EXPLICIT)
 #define RT_DIFFUSION_EXPLICIT // default to explicit (more accurate) solver //
 #endif
-#endif
+//
+#endif /* end of otvet or fld or m1 options */
 
-/* options for M1 module */
+/* OTVET-specific options [uses the gravity tree to calculate the Eddington tensor] */
+#if defined(RT_OTVET)
+// use gravity tree for Eddington tensor
+#define RT_USE_GRAVTREE
+// and be sure to track luminosity locations
+#ifndef RT_SEPARATELY_TRACK_LUMPOS
+#define RT_SEPARATELY_TRACK_LUMPOS
+#endif
+#endif /* end of otvet-specific options */
+
+/* M1-specific options: need to evolve fluxes */
 #if defined(RT_M1)
-// RADTRANSFER is ON, obviously
-#ifndef RADTRANSFER
-#define RADTRANSFER
-#endif
-// need to solve a diffusion equation
-#ifndef RT_DIFFUSION
-#define RT_DIFFUSION
-#endif
-// need source injection enabled to define emissivity
-#define RT_SOURCE_INJECTION
-// and need to evolve fluxes
 #define RT_EVOLVE_FLUX
-// at the moment, this only works for explicit solutions, so set this on
-#ifndef RT_DIFFUSION_EXPLICIT
-#define RT_DIFFUSION_EXPLICIT
 #endif
-#endif
-
 
 /* options for direct/exact Jiang et al. method for direct evolution on an intensity grid */
 #if defined(RT_LOCALRAYGRID)
