@@ -445,7 +445,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
     dt=DMIN(dt,dt_tidal);
 #endif
-
+    
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step, which gives superior conservation
     if(P[p].Type == 5)
     {
@@ -475,7 +475,6 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
     }
 #endif // SINGLE_STAR_TIMESTEPPING
-    
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     /* make sure smoothing length of non-gas particles doesn't change too much in one timestep */
@@ -985,14 +984,14 @@ integertime get_timestep(int p,		/*!< particle index */
 #if defined(SINGLE_STAR_TIMESTEPPING)
 	    if(P[p].DensAroundStar > 0)
 	    {
-		    double eps = DMAX(KERNEL_CORE_SIZE*All.ForceSoftening[5], BPP(p).BH_dr_to_NearestGasNeighbor);
-		    if(eps < MAX_REAL_NUMBER) {eps = DMAX(Get_Particle_Size(p), eps);} else {eps = Get_Particle_Size(p);}
+		double eps = DMAX(DMAX(BPP(p).SinkRadius,KERNEL_CORE_SIZE*All.ForceSoftening[5]), BPP(p).BH_dr_to_NearestGasNeighbor);
+		if(eps < MAX_REAL_NUMBER) {eps = DMAX(Get_Particle_Size(p), eps);} else {eps = Get_Particle_Size(p);}
 #if (ADAPTIVE_GRAVSOFT_FORALL & 32)
-		    eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
+		eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
 #endif		
-		    double dt_gas = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest
-		    if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas;}
-		}
+		double dt_gas = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest
+		if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas;}
+	    }
 #endif
     } // if(P[p].Type == 5)
 

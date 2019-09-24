@@ -217,7 +217,11 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
 #if !defined(BH_DEBUG_DISABLE_MERGERS)
                         if((local.ID != P[j].ID) && (P[j].Mass > 0) && (P[j].Type == 5))	/* we may have a black hole merger */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
+<<<<<<< HEAD
                         if((r < 1.0001*P[j].min_dist_to_bh) && (P[j].Mass < local.Mass) && (r < PPP[j].Hsml) && (P[j].Mass < 3*All.MinMassForParticleMerger) && (r < All.ForceSoftening[5])) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
+=======
+                        if((r < 1.0001*P[j].min_dist_to_bh) && (P[j].Mass < mass) && (r < PPP[j].Hsml) && (P[j].Mass < 3*All.MinMassForParticleMerger) && (r < sink_radius)) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
+>>>>>>> remotes/guszejnov/gizmo_imf/master
 #endif
                         {
                             if(local.ID != P[j].ID) /* check its not the same bh  (DAA: this is duplicated here...) */
