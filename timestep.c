@@ -984,7 +984,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #if defined(SINGLE_STAR_TIMESTEPPING)
 	    if(P[p].DensAroundStar > 0)
 	    {
-		double eps = DMAX(DMAX(BPP(p).SinkRadius,KERNEL_CORE_SIZE*All.ForceSoftening[5]), BPP(p).BH_dr_to_NearestGasNeighbor);
+		double eps = DMAX(DMAX(BPP(p).SinkRadius, KERNEL_CORE_SIZE*All.ForceSoftening[5]), BPP(p).BH_dr_to_NearestGasNeighbor);
 		if(eps < MAX_REAL_NUMBER) {eps = DMAX(Get_Particle_Size(p), eps);} else {eps = Get_Particle_Size(p);}
 #if (ADAPTIVE_GRAVSOFT_FORALL & 32)
 		eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);

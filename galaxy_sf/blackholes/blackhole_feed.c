@@ -133,7 +133,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
     int startnode, numngb, listindex = 0, j, k, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
     double h_i = local.Hsml, wk, dwk, vrel, vesc, dpos[3], dvel[3], f_accreted=1; if((local.Mass<0)||(h_i<=0)) return -1;
-    double w, p, r2, r, u, sink_radius=0, h_i2 = h_i * h_i, hinv = 1 / h_i, hinv3 = hinv * hinv * hinv, ags_h_i = All.ForceSoftening[5];
+    double w, p, r2, r, u, sink_radius=All.ForceSoftening[5], h_i2 = h_i * h_i, hinv = 1 / h_i, hinv3 = hinv * hinv * hinv, ags_h_i = All.ForceSoftening[5];
 #ifdef BH_REPOSITION_ON_POTMIN
     out.BH_MinPot = BHPOTVALUEINIT;
 #endif
@@ -217,11 +217,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
 #if !defined(BH_DEBUG_DISABLE_MERGERS)
                         if((local.ID != P[j].ID) && (P[j].Mass > 0) && (P[j].Type == 5))	/* we may have a black hole merger */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-<<<<<<< HEAD
-                        if((r < 1.0001*P[j].min_dist_to_bh) && (P[j].Mass < local.Mass) && (r < PPP[j].Hsml) && (P[j].Mass < 3*All.MinMassForParticleMerger) && (r < All.ForceSoftening[5])) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
-=======
-                        if((r < 1.0001*P[j].min_dist_to_bh) && (P[j].Mass < mass) && (r < PPP[j].Hsml) && (P[j].Mass < 3*All.MinMassForParticleMerger) && (r < sink_radius)) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
->>>>>>> remotes/guszejnov/gizmo_imf/master
+                        if((r < 1.0001*P[j].min_dist_to_bh) && (P[j].Mass < local.Mass) && (r < PPP[j].Hsml) && (P[j].Mass < 3*All.MinMassForParticleMerger) && (r < sink_radius)) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
 #endif
                         {
                             if(local.ID != P[j].ID) /* check its not the same bh  (DAA: this is duplicated here...) */

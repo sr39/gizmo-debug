@@ -287,19 +287,18 @@ double get_starformation_rate(int i)
     }
     /* add thermal support, although it is almost always irrelevant on large scales */
     double cs_eff = Particle_effective_soundspeed_i(i);    
-    double k_cs = M_PI * cs_eff / (Get_Particle_Size(i)*All.cf_atime);
+    double k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
     
 #ifdef SINGLE_STAR_SINK_FORMATION
 #ifdef COOLING
     double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
     if(nHcgs > 1e13) cs_eff=DMIN(cs_eff, 1.62e5/All.UnitVelocity_in_cm_per_s); // limiter to permit sink formation in simulations that really resolve the opacity limit and bog down when an optically-thick core forms. Modify this if you want to follow first collapse more/less - scale as c_s ~ n^(1/5)
-    k_cs = M_PI * cs_eff / (Get_Particle_Size(i)*All.cf_atime);
 #endif
 #ifdef MAGNETIC
     double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
-    double cs_b = sqrt(cs_eff*cs_eff + bmag/SphP[i].Density);
-    k_cs = M_PI * cs_b / (Get_Particle_Size(i)*All.cf_atime);
+    cs_eff = sqrt(cs_eff*cs_eff + bmag/SphP[i].Density);
 #endif
+    k_cs = M_PI * cs_eff / (Get_Particle_Size(i)*All.cf_atime);
 #endif
                                             
     dv2abs += 2.*k_cs*k_cs; // account for thermal pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
@@ -568,7 +567,7 @@ void star_formation_parent_routine(void)
 		P[i].SinkRadius = All.ForceSoftening[5];
 #ifdef SINGLE_STAR_SINK_DYNAMICS
 		double cs_min  = 2e4 / All.UnitVelocity_in_cm_per_s; // 200m/s
-//		P[i].SinkRadius = DMAX(pow(3 * P[i].Mass/ (SphP[i].Density * 4 * M_PI), 1./3) , All.ForceSoftening[5]); // want a sphere of equal volume to particle size at ncrit, R = (3V/(4 PI))^(1/3)				
+		//P[i].SinkRadius = DMAX(pow(3 * P[i].Mass/ (SphP[i].Density * 4 * M_PI), 1./3) , All.ForceSoftening[5]); // want a sphere of equal volume to particle size at ncrit, R = (3V/(4 PI))^(1/3)				
 		P[i].SinkRadius = DMAX(3 * P[i].Mass * All.G / (M_PI * cs_min * cs_min), All.ForceSoftening[5]); // volume-equivalent particle radius R= (3V/(4PI))^(1/3) at the density where M_Jeans = particle mass
 #endif	
 #endif
