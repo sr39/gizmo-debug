@@ -28,11 +28,7 @@ static int *Id;
 
 void peano_hilbert_order(void)
 {
-  int i;
-
-#ifndef IO_REDUCED_MODE
-    if(ThisTask == 0) {printf("begin Peano-Hilbert order...\n");}
-#endif
+  int i; PRINT_STATUS("Begin Peano-Hilbert order...");
     
   if(N_gas)
     {
@@ -93,9 +89,7 @@ void peano_hilbert_order(void)
       myfree(mp);
     }
 
-#ifndef IO_REDUCED_MODE
-    if(ThisTask == 0) {printf("Peano-Hilbert done.\n");}
-#endif
+    PRINT_STATUS(" ..Peano-Hilbert done");
 }
 
 

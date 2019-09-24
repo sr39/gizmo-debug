@@ -340,12 +340,11 @@ struct info_block *InfoBlock;
  */
 struct io_header header;	/*!< holds header for snapshot files */
 
+
 #ifdef BLACK_HOLES
 int N_active_loc_BHs=0;       /*!< number of active black holes on the LOCAL processor */
-struct blackhole_temp_particle_data *BlackholeTempInfo, *BlackholeDataPasserOut, *BlackholeDataPasserResult;
+struct blackhole_temp_particle_data *BlackholeTempInfo; /*! declare this structure, we'll malloc it below */
 #endif
-
-
 
 /*
  * Variables for Tree
@@ -358,7 +357,7 @@ int NextParticle;
 int NextJ;
 int TimerFlag;
 
-struct NODE *Nodes_base,	/*!< points to the actual memory allocted for the nodes */
+struct NODE *Nodes_base,	/*!< points to the actual memory allocated for the nodes */
 *Nodes;			/*!< this is a pointer used to access the nodes which is shifted such that Nodes[All.MaxPart] gives the first allocated node */
 struct extNODE *Extnodes, *Extnodes_base;
 

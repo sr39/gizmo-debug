@@ -499,12 +499,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define RT_USE_GRAVTREE
 #endif
 
-#ifdef RT_FLUXLIMITEDDIFFUSION
-#define RT_OTVET /* for FLD, we use the OTVET architecture, but then just set the tensor to isotropic */
-#endif
 
-/* options for OTVET module */
-#if defined(RT_OTVET)
+/* options for FLD or OTVET or M1 modules */
+#if defined(RT_OTVET) || defined(RT_FLUXLIMITEDDIFFUSION) || defined(RT_M1)
 // RADTRANSFER is ON, obviously
 #ifndef RADTRANSFER
 #define RADTRANSFER
@@ -513,39 +510,29 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #ifndef RT_DIFFUSION
 #define RT_DIFFUSION
 #endif
-// use gravity tree for Eddington tensor
-#define RT_USE_GRAVTREE
-// and be sure to track luminosity locations 
-#ifndef RT_SEPARATELY_TRACK_LUMPOS
-#define RT_SEPARATELY_TRACK_LUMPOS
-#endif
 // need source injection enabled to define emissivity
 #define RT_SOURCE_INJECTION
+// default to explicit solutins. note, at the moment, M1 only works for explicit solutions
 #if !defined(RT_DIFFUSION_IMPLICIT) && !defined(RT_DIFFUSION_EXPLICIT)
 #define RT_DIFFUSION_EXPLICIT // default to explicit (more accurate) solver //
 #endif
-#endif
+//
+#endif /* end of otvet or fld or m1 options */
 
-/* options for M1 module */
+/* OTVET-specific options [uses the gravity tree to calculate the Eddington tensor] */
+#if defined(RT_OTVET)
+// use gravity tree for Eddington tensor
+#define RT_USE_GRAVTREE
+// and be sure to track luminosity locations
+#ifndef RT_SEPARATELY_TRACK_LUMPOS
+#define RT_SEPARATELY_TRACK_LUMPOS
+#endif
+#endif /* end of otvet-specific options */
+
+/* M1-specific options: need to evolve fluxes */
 #if defined(RT_M1)
-// RADTRANSFER is ON, obviously
-#ifndef RADTRANSFER
-#define RADTRANSFER
-#endif
-// need to solve a diffusion equation
-#ifndef RT_DIFFUSION
-#define RT_DIFFUSION
-#endif
-// need source injection enabled to define emissivity
-#define RT_SOURCE_INJECTION
-// and need to evolve fluxes
 #define RT_EVOLVE_FLUX
-// at the moment, this only works for explicit solutions, so set this on
-#ifndef RT_DIFFUSION_EXPLICIT
-#define RT_DIFFUSION_EXPLICIT
 #endif
-#endif
-
 
 /* options for direct/exact Jiang et al. method for direct evolution on an intensity grid */
 #if defined(RT_LOCALRAYGRID)
@@ -805,7 +792,7 @@ int network_integrate( double temp, double rho, const double *x, double *dx, dou
 
 
 
-#define  GIZMO_VERSION   "2017"	/*!< code version string */
+#define  GIZMO_VERSION   "2019"	/*!< code version string */
 
 #ifndef  GALSF_GENERATIONS
 #define  GALSF_GENERATIONS     1	/*!< Number of star particles that may be created per gas particle */
@@ -947,7 +934,6 @@ typedef unsigned long long peanokey;
 
 
 
-#define  terminate(x) {char termbuf[2000]; sprintf(termbuf, "code termination on task=%d, function '%s()', file '%s', line %d: '%s'\n", ThisTask, __FUNCTION__, __FILE__, __LINE__, x); printf("%s", termbuf); fflush(stdout); MPI_Abort(MPI_COMM_WORLD, 1); exit(0);}
 
 #ifndef DISABLE_MEMORY_MANAGER
 #define  mymalloc(x, y)            mymalloc_fullinfo(x, y, __FUNCTION__, __FILE__, __LINE__)
@@ -1354,6 +1340,23 @@ z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
 #define FACT1 0.366025403785	/* FACT1 = 0.5 * (sqrt(3)-1) */
 #define FACT2 0.86602540        /* FACT2 = 0.5 * sqrt(3) */
 
+
+
+/*****************************************************************/
+/*  Utility functions used for printing status, warning, endruns */
+/*****************************************************************/
+
+#define terminate(x) {char termbuf[2000]; sprintf(termbuf, "TERMINATE issued on task=%d, function '%s()', file '%s', line %d: '%s'\n", ThisTask, __FUNCTION__, __FILE__, __LINE__, x); fflush(stdout); printf("%s", termbuf); fflush(stdout); MPI_Abort(MPI_COMM_WORLD, 1); exit(0);}
+#define endrun(x) {if(x==0) {MPI_Finalize(); exit(0);} else {char termbuf[2000]; sprintf(termbuf, "ENDRUN issued on task=%d, function '%s()', file '%s', line %d: error level %d\n", ThisTask, __FUNCTION__, __FILE__, __LINE__, x); fflush(stdout); printf("%s", termbuf); fflush(stdout); MPI_Abort(MPI_COMM_WORLD, x); exit(0);}}
+#define PRINT_WARNING(...) {char termbuf1[1000], termbuf2[1000]; sprintf(termbuf1, "WARNING issued on task=%d, function %s(), file %s, line %d", ThisTask, __FUNCTION__, __FILE__, __LINE__); sprintf(termbuf2, __VA_ARGS__); fflush(stdout); printf("%s: %s\n", termbuf1, termbuf2); fflush(stdout);}
+#ifdef IO_REDUCED_MODE
+#define PRINT_STATUS(...) {if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {if(ThisTask==0) {fflush(stdout); printf( __VA_ARGS__ ); printf("\n"); fflush(stdout);}}}
+#else
+#define PRINT_STATUS(...) {if(ThisTask==0) {fflush(stdout); printf( __VA_ARGS__ ); printf("\n"); fflush(stdout);}}
+#endif
+
+#define MACRO_NAME_CONCATENATE(A, B) MACRO_NAME_CONCATENATE_(A, B)
+#define MACRO_NAME_CONCATENATE_(A, B) A##B
 
 
 /*********************************************************/
@@ -2971,72 +2974,6 @@ extern struct info_block
 *InfoBlock;
 
 
-#ifdef BLACK_HOLES
-#define BHPOTVALUEINIT 1.0e30
-
-extern int N_active_loc_BHs;    /*!< number of active black holes on the LOCAL processor */
-
-extern struct blackhole_temp_particle_data       // blackholedata_topass
-{
-    MyIDType index;
-    MyFloat BH_InternalEnergy;
-    MyLongDouble accreted_Mass;
-    MyLongDouble accreted_BH_Mass;
-    MyLongDouble accreted_BH_mass_alphadisk;
-    MyLongDouble Mgas_in_Kernel;                 // mass/angular momentum for GAS/STAR/TOTAL components computed always now
-    MyLongDouble Mstar_in_Kernel;
-    MyLongDouble Malt_in_Kernel;
-    MyLongDouble Sfr_in_Kernel;
-    MyLongDouble Jgas_in_Kernel[3];
-    MyLongDouble Jstar_in_Kernel[3];
-    MyLongDouble Jalt_in_Kernel[3];
-#if defined(BH_GRAVACCRETION) && (BH_GRAVACCRETION == 0)
-    MyLongDouble MgasBulge_in_Kernel;
-    MyLongDouble MstarBulge_in_Kernel;
-#endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-    MyLongDouble GradRho_in_Kernel[3];
-    MyFloat BH_angle_weighted_kernel_sum;
-#endif
-#ifdef BH_DYNFRICTION
-    MyFloat DF_mean_vel[3];
-    MyFloat DF_rms_vel;
-    MyFloat DF_mmax_particles;
-#endif
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
-    MyFloat BH_SurroundingGasVel[3];
-#endif
-#if (BH_GRAVACCRETION == 8)
-    MyFloat hubber_mdot_vr_estimator;
-    MyFloat hubber_mdot_disk_estimator;
-    MyFloat hubber_mdot_bondi_limiter;
-#endif
-#if defined(BH_ALPHADISK_ACCRETION)
-    MyFloat mdot_alphadisk;             /*!< gives mdot of mass going into alpha disk */
-#endif
-#if defined(BH_GRAVCAPTURE_GAS)
-    MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
-#if defined(BH_ACCRETE_NEARESTFIRST)
-    MyFloat BH_dr_to_NearestGasNeighbor;      /*!< this needs to be here for looping over neighbors to restrict to <=1 accreted per timestep */
-#endif
-#endif
-#if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
-    MyLongDouble accreted_momentum[3];        /*!< accreted linear momentum */
-#endif
-#if defined(BH_FOLLOW_ACCRETED_COM)
-    MyLongDouble accreted_centerofmass[3];    /*!< accreted center-of-mass */
-#endif
-#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
-    MyLongDouble accreted_J[3];               /*!< accreted angular momentum */
-#endif
-#if defined(BH_RETURN_ANGMOM_TO_GAS)
-    MyFloat angmom_prepass_sum_for_passback[3]; /*!< Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013 */
-    MyFloat angmom_norm_topass_in_swallowloop;  /*!< corresponding scalar normalization calculated from the vector above */
-#endif
-
-}
-*BlackholeTempInfo, *BlackholeDataPasserResult, *BlackholeDataPasserOut;
-#endif
 
 
 
@@ -3362,7 +3299,7 @@ extern ALIGN(32) struct NODE
   MyFloat mass_dm;
 #endif
 }
- *Nodes_base,			/*!< points to the actual memory allocted for the nodes */
+ *Nodes_base,			/*!< points to the actual memory allocated for the nodes */
  *Nodes;			/*!< this is a pointer used to access the nodes which is shifted such that Nodes[All.MaxPart]
 				   gives the first allocated node */
 

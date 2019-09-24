@@ -1858,7 +1858,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
     }
 #ifdef HERMITE_INTEGRATION // if we're doing a force evaluation for Hermite-integrated particles only, quit right here if it isn't one
-    if (mode==0) {if(HermiteOnlyFlag && !eligible_for_hermite(target)) return 0;}
+    if(mode==0) {if(HermiteOnlyFlag && !eligible_for_hermite(target)) return 0;}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     /* quick check if particle has mass: if not, we won't deal with it */
@@ -3808,13 +3808,13 @@ void force_treeallocate(int maxnodes, int maxpart)
     {
         printf("Failed to allocate %d spaces for 'Nextnode' array (%g MB)\n",
                maxpart + NTopnodes, bytes / (1024.0 * 1024.0));
-        exit(0);
+        endrun(8267342);
     }
     allbytes += bytes;
     if(!(Father = (int *) mymalloc("Father", bytes = (maxpart) * sizeof(int))))
     {
         printf("Failed to allocate %d spaces for 'Father' array (%g MB)\n", maxpart, bytes / (1024.0 * 1024.0));
-        exit(0);
+        endrun(438965237);
     }
     allbytes += bytes;
     if(first_flag == 0)
@@ -3822,7 +3822,7 @@ void force_treeallocate(int maxnodes, int maxpart)
         first_flag = 1;
         if(ThisTask == 0)
             printf
-            ("\nAllocated %g MByte for BH-tree, and %g Mbyte for top-leaves.  (presently allocted %g MB)\n\n",
+            ("Allocated %g MByte for tree, and %g Mbyte for top-leaves.  (presently allocated %g MB)\n",
              allbytes / (1024.0 * 1024.0), allbytes_topleaves / (1024.0 * 1024.0),
              AllocatedBytes / (1024.0 * 1024.0));
         for(i = 0; i < NTAB; i++)
@@ -3906,13 +3906,7 @@ void ewald_init(void)
     char buf[200];
     FILE *fd;
     
-    if(ThisTask == 0)
-    {
-        printf("initialize Ewald correction...\n");
-#ifndef IO_REDUCED_MODE
-        fflush(stdout);
-#endif
-    }
+    if(ThisTask == 0) {printf("Initializing Ewald correction...\n");}
     
 #ifdef DOUBLEPRECISION
     sprintf(buf, "ewald_spc_table_%d_dbl.dat", EN);
@@ -3929,13 +3923,7 @@ void ewald_init(void)
     }
     else
     {
-        if(ThisTask == 0)
-        {
-            printf("\nNo Ewald tables in file `%s' found.\nRecomputing them...\n", buf);
-#ifndef IO_REDUCED_MODE
-            fflush(stdout);
-#endif
-        }
+        printf("\nNo Ewald tables in file `%s' found.\nRecomputing them...\n", buf);
         
         /* ok, let's recompute things. Actually, we do that in parallel. */
         
@@ -3951,17 +3939,7 @@ void ewald_init(void)
                     n = (i * (EN + 1) + j) * (EN + 1) + k;
                     if(n >= beg && n < (beg + len))
                     {
-                        if(ThisTask == 0)
-                        {
-#ifndef IO_REDUCED_MODE
-                            if((count % (len / 20)) == 0)
-                            {
-                                printf("%4.1f percent done\n", count / (len / 100.0));
-                                fflush(stdout);
-                            }
-#endif
-                        }
-                        
+                        if((count % (len / 20)) == 0) {PRINT_STATUS("%4.1f percent done", count / (len / 100.0));}
                         x[0] = 0.5 * ((double) i) / EN;
                         x[1] = 0.5 * ((double) j) / EN;
                         x[2] = 0.5 * ((double) k) / EN;
@@ -4014,10 +3992,7 @@ void ewald_init(void)
                 fcorrz[i][j][k] /= All.BoxSize * All.BoxSize;
             }
     
-    if(ThisTask == 0)
-    {
-        printf("initialization of periodic boundaries finished.\n");
-    }
+    if(ThisTask == 0) {printf(" ..initialization of periodic boundaries finished.\n");}
 #endif // #ifndef SELFGRAVITY_OFF
 }
 

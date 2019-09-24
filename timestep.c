@@ -355,7 +355,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 #if defined(TIDAL_TIMESTEP_CRITERION)
 #if defined(RT_USE_GRAVTREE)
-        if(P[p].Type>0) // strictly this is better for accuracy, but necessary???
+        if(P[p].Type>0) // strictly this is better for accuracy, but not necessary
 #endif
         ax = ay = az = 0.0; // we're getting our gravitational timestep criterion from the tidal tensor, but still want to do the accel criterion for other forces
 #endif
@@ -984,7 +984,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #if defined(SINGLE_STAR_TIMESTEPPING)
 	    if(P[p].DensAroundStar > 0)
 	    {
-		double eps = DMAX(DMAX(BPP(p).SinkRadius,KERNEL_CORE_SIZE*All.ForceSoftening[5]), BPP(p).BH_dr_to_NearestGasNeighbor);
+		double eps = DMAX(DMAX(BPP(p).SinkRadius, KERNEL_CORE_SIZE*All.ForceSoftening[5]), BPP(p).BH_dr_to_NearestGasNeighbor);
 		if(eps < MAX_REAL_NUMBER) {eps = DMAX(Get_Particle_Size(p), eps);} else {eps = Get_Particle_Size(p);}
 #if (ADAPTIVE_GRAVSOFT_FORALL & 32)
 		eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
@@ -1016,17 +1016,15 @@ integertime get_timestep(int p,		/*!< particle index */
     
     if((dt < All.MinSizeTimestep)||(((integertime) (dt / All.Timebase_interval)) <= 1))
     {
-#ifdef STOP_WHEN_BELOW_MINTIMESTEP
-        printf("warning: Timestep wants to be below the limit `MinSizeTimestep'\n");
-        
+        PRINT_WARNING("warning: Timestep wants to be below the limit `MinSizeTimestep'");
         if(P[p].Type == 0)
         {
 #ifndef LONGIDS
-            printf("Part-ID=%d  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
+            PRINT_WARNING("Part-ID=%d  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
              (int) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],
              PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type]);
 #else
-            printf("Part-ID=%llu  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
+            PRINT_WARNING("Part-ID=%llu  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
              (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],
              PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type]);
 #endif // ndef LONGIDS
@@ -1034,13 +1032,15 @@ integertime get_timestep(int p,		/*!< particle index */
         else // if(P[p].Type == 0)
         {
 #ifndef LONGIDS
-            printf("Part-ID=%d  dt=%g ac=%g xyz=(%g|%g|%g)\n", (int) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
+            PRINT_WARNING("Part-ID=%d  dt=%g ac=%g xyz=(%g|%g|%g)\n", (int) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
 #else
-            printf("Part-ID=%llu  dt=%g ac=%g xyz=(%g|%g|%g)\n", (MyIDType) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
+            PRINT_WARNING("Part-ID=%llu  dt=%g ac=%g xyz=(%g|%g|%g)\n", (MyIDType) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
 #endif // ndef LONGIDS
         }
-        fflush(stdout); fprintf(stderr, "\n @ fflush \n"); endrun(888);
-#endif // STOP_WHEN_BELOW_MINTIMESTEP
+        fflush(stdout); fprintf(stderr, "\n @ fflush \n");
+#ifdef STOP_WHEN_BELOW_MINTIMESTEP
+        endrun(888);
+#endif
         dt = All.MinSizeTimestep;
     }
     
@@ -1124,6 +1124,8 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
 #endif
 #endif
         
+        if(ThisTask == 0)
+            printf("Global displacement time constraint computation: \n");
         for(type = 0; type < 6; type++)
         {
             if(count_sum[type] > 0)
@@ -1153,7 +1155,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
 #endif
                 
                 if(ThisTask == 0)
-                    printf("type=%d  dmean=%g asmth=%g minmass=%g a=%g  sqrt(<p^2>)=%g  dlogmax=%g\n",
+                    printf(" ..type=%d  dmean=%g asmth=%g minmass=%g a=%g  sqrt(<p^2>)=%g  dlogmax=%g\n",
                            type, dmean, asmth, min_mass[type], All.Time, sqrt(v_sum[type] / count_sum[type]), dt);
                 
                 if(dt < dt_displacement)
@@ -1162,7 +1164,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
         }
         
         if(ThisTask == 0)
-            printf("displacement time constraint: %g  (%g)\n", dt_displacement, All.MaxSizeTimestep);
+            printf(" ..global displacement time constraint: %g  (All.MaxSizeTimestep=%g)\n", dt_displacement, All.MaxSizeTimestep);
     }
 }
 
@@ -1223,9 +1225,7 @@ void process_wake_ups(void)
     
     MPI_Allreduce(&ti_next_kick, &ti_next_kick_global, 1, MPI_TYPE_TIME, MPI_MIN, MPI_COMM_WORLD);
     
-#ifndef IO_REDUCED_MODE
-    if(ThisTask == 0) printf("predicting next timestep: %g\n", (ti_next_kick_global - All.Ti_Current) * All.Timebase_interval);
-#endif
+    PRINT_STATUS("Predicting next timestep: %g", (ti_next_kick_global - All.Ti_Current) * All.Timebase_interval);
     max_time_bin_active = 0;
     /* get the highest bin, that is active next time */
     for(n = 0; n < TIMEBINS; n++)

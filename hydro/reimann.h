@@ -645,7 +645,7 @@ void Riemann_solver_exact(struct Input_vec_Riemann Riemann_vec, struct Riemann_o
     } else {
         /* one of the densities is zero or negative */
         if((Riemann_vec.L.rho<0)||(Riemann_vec.R.rho<0))
-            exit(1234);
+            endrun(1234545);
         if(Riemann_vec.L.rho>0)
             sample_reimann_vaccum_right(0.0,Riemann_vec,Riemann_out,n_unit,v_line_L,v_line_R,cs_L,cs_R);
         if(Riemann_vec.R.rho>0)

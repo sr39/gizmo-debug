@@ -140,7 +140,7 @@ double particle_ionizing_luminosity_in_cgs(long i)
     of the ejecta for the event[s] of interest. Mass [Msne] and velocity [SNe_v_ejecta] should
     be in code units. yields[k] should be defined for all metal species [k], and in dimensionless units
     (mass fraction of the ejecta in that species). */
-void particle2in_addFB_fromstars(struct addFBdata_in *in, int i, int fb_loop_iteration)
+void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int fb_loop_iteration)
 {
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
@@ -313,7 +313,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 
 
 
-void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
+void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i)
 {
 #ifdef GALSF_FB_FIRE_RPROCESS
     if(P[i].RProcessEvent_ThisTimeStep<=0) {in->Msne=0; return;} // no event
@@ -332,7 +332,7 @@ void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
 
 
 
-void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
+void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
 {
     int k; if(P[i].SNe_ThisTimeStep<=0) {in->Msne=0; return;} // no event
     int SNeIaFlag=0; if(evaluate_stellar_age_Gyr(P[i].StellarAge) > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
@@ -383,7 +383,7 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
 
 
 
-void particle2in_addFB_winds(struct addFBdata_in *in, int i)
+void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
 {
     int k; if(P[i].MassReturn_ThisTimeStep<=0) {in->Msne=0; return;} // no event
 #ifdef METALS

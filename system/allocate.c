@@ -60,7 +60,7 @@ void allocate_memory(void)
       bytes_tot += bytes;
 
       if(ThisTask == 0)
-	printf("\nAllocated %g MByte for particle storage.\n\n", bytes_tot / (1024.0 * 1024.0));
+	printf("Allocated %g MByte for particle storage.\n", bytes_tot / (1024.0 * 1024.0));
     }
 
   if(All.MaxPartSph > 0)
@@ -76,7 +76,7 @@ void allocate_memory(void)
       bytes_tot += bytes;
 
       if(ThisTask == 0)
-	printf("Allocated %g MByte for storage of SPH data.\n\n", bytes_tot / (1024.0 * 1024.0));
+	printf("Allocated %g MByte for storage of hydro data.\n", bytes_tot / (1024.0 * 1024.0));
 
 #ifdef CHIMES 
       if (!(ChimesGasVars = (struct gasVariables *) mymalloc("gasVars", bytes = All.MaxPartSph * sizeof(struct gasVariables)))) 
@@ -87,7 +87,7 @@ void allocate_memory(void)
       bytes_tot += bytes; 
 
       if(ThisTask == 0)
-	printf("Allocated %g MByte for storage of ChimesGasVars data.\n\n", bytes_tot / (1024.0 * 1024.0));
+	printf("Allocated %g MByte for storage of ChimesGasVars data.\n", bytes_tot / (1024.0 * 1024.0));
 #endif
     }
 

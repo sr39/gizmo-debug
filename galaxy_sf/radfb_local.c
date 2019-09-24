@@ -24,10 +24,8 @@ void radiation_pressure_winds_consolidated(void)
 #endif
     if(All.WindMomentumLoading<=0) return;
     Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
-#ifndef IO_REDUCED_MODE
-    if(ThisTask == 0) {printf("Beginning Local Radiation-Pressure Acceleration\n");} // if(ThisTask == 0)
-#endif
-    
+    PRINT_STATUS("Local Radiation-Pressure acceleration calculation");
+
     unitmass_in_msun=(All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS; sigma_eff_0 = 0.955 * All.UnitMass_in_g*All.HubbleParam/(All.UnitLength_in_cm*All.UnitLength_in_cm) / (All.cf_atime*All.cf_atime) * KAPPA_IR;
     double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
@@ -190,22 +188,16 @@ void radiation_pressure_winds_consolidated(void)
     {
         if(totMPI_prob_kick>0)
         {
-#ifdef IO_REDUCED_MODE
             if(totMPI_n_wind>0)
-#endif
             {
                 if(totMPI_n_wind>0) {totMPI_avg_v /= totMPI_n_wind; totMPI_pwt_avg_v /= totMPI_mom_wind;}
                 fprintf(FdMomWinds, "%lg %g %g %g %g %g \n", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v);
-#ifndef IO_REDUCED_MODE
-                printf("Momentum Wind Feedback: Time=%g Nkicked=%g (L/c)dt=%g Momkicks=%g V_avg=%g tau_j_mean=%g \n", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v); fflush(stdout);
-#endif
+                PRINT_STATUS("Momentum Wind Feedback: Time=%g Nkicked=%g (L/c)dt=%g Momkicks=%g V_avg=%g tau_j_mean=%g \n", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v);
             }
         }
-#ifdef IO_REDUCED_MODE
-        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
-#endif
-        {fflush(FdMomWinds);}
+        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {fflush(FdMomWinds);}
     } // if(ThisTask==0)
+    PRINT_STATUS(" .. completed local Radiation-Pressure acceleration");
 } // end routine :: void radiation_pressure_winds_consolidated(void)
 
 #endif /* closes defined(GALSF_FB_FIRE_RT_LOCALRP)  */
@@ -369,15 +361,10 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
         if(totMPI_m_ionizing>0)
         {
             totMPI_avg_RHII /= totMPI_m_ionizing;
-#ifndef IO_REDUCED_MODE
-            printf("HII PhotoHeating: Time=%g: %g sources with L_tot/erg=%g ; M_ionized=%g ; <R_HII>=%g \n", All.Time,totMPI_m_ionizing,totMPI_l_ionizing,totMPI_m_ionized,totMPI_avg_RHII); fflush(stdout);
-#endif
+            PRINT_STATUS("HII PhotoHeating: Time=%g: %g sources with L_tot/erg=%g ; M_ionized=%g ; <R_HII>=%g", All.Time,totMPI_m_ionizing,totMPI_l_ionizing,totMPI_m_ionized,totMPI_avg_RHII);
             fprintf(FdHIIHeating, "%lg %g %g %g %g \n",All.Time,totMPI_m_ionizing,totMPI_l_ionizing,totMPI_m_ionized,totMPI_avg_RHII);
         }
-#ifdef IO_REDUCED_MODE
-        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
-#endif
-        {fflush(FdHIIHeating);}
+        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {fflush(FdHIIHeating);}
     } // ThisTask == 0
 } // void HII_heating_singledomain(void)
 #endif // GALSF_FB_FIRE_RT_HIIHEATING

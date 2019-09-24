@@ -144,9 +144,6 @@ void run(void)
 	
         /* Check whether we need to interrupt the run */
         int stopflag = 0;
-#ifdef IO_REDUCED_MODE
-        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
-#endif
         if(ThisTask == 0)
         {
             FILE *fd;
@@ -273,9 +270,7 @@ void calculate_non_standard_physics(void)
     /* use the CG method to solve the RT diffusion equation implicitly for all particles */
     if(Flag_FullStep) /* only do it for full timesteps */
     {
-#ifndef IO_REDUCED_MODE
-        if(ThisTask == 0) {printf("start CG iteration for radiative transfer (diffusion equation)...\n"); //fflush(stdout);}
-#endif
+        PRINT_STATUS("start CG iteration for radiative transfer (diffusion equation)...");
         All.Radiation_Ti_endstep = All.Ti_Current;
         double timeeach = 0, timeall = 0, tstart = 0, tend = 0;
         tstart = my_second();
@@ -358,9 +353,7 @@ void compute_statistics(void)
         compute_potential();
 #endif
 #endif
-#ifndef IO_REDUCED_MODE
         energy_statistics();	/* compute and output energy statistics */
-#endif
         All.TimeLastStatistics += All.TimeBetStatistics;
     }
 }
@@ -446,12 +439,7 @@ void find_next_sync_point_and_drift(void)
 #endif
 #endif
 
-
-#ifndef IO_REDUCED_MODE
-      mpi_printf("\n\n\nI found the last snapshot call...\n\n\n");
-#endif
         savepositions(All.SnapshotFileCount++);	/* write snapshot file */
-
       All.Ti_nextoutput = find_next_outputtime(All.Ti_nextoutput + 1);
     }
 
@@ -688,7 +676,7 @@ integertime find_next_outputtime(integertime ti_curr)
 	next = All.TimeBegin + ti_next * All.Timebase_interval;
 
       if(ThisTask == 0)
-	printf("\nSetting next time for snapshot file to Time_next= %g  (DumpFlag=%d)\n\n", next, DumpFlag);
+	printf("\nSetting next time for snapshot file to Time_next= %g  (DumpFlag=%d)\n", next, DumpFlag);
 
     }
 
@@ -801,7 +789,7 @@ void output_log_messages(void)
 #ifdef PMGRID
         if(All.PM_Ti_endstep == All.Ti_Current)
         {
-            printf("PM-Step. Total: %10llu  %10llu    Sum: %10llu\n", tot - tot_sph, tot_sph, tot);
+            printf("PM-Step. Total: %10llu  %10llu    Sum: %10llu\n\n", tot - tot_sph, tot_sph, tot);
 #ifndef IO_REDUCED_MODE
             fprintf(FdTimebin, "PM-Step. Total: %10llu  %10llu    Sum: %10llu\n", tot - tot_sph, tot_sph, tot);
 #endif
@@ -809,7 +797,7 @@ void output_log_messages(void)
         else
 #endif
         {
-            printf("Total active:   %10llu  %10llu    Sum: %10llu\n", tot - tot_sph, tot_sph, tot);
+            printf("Total active:   %10llu  %10llu    Sum: %10llu\n\n", tot - tot_sph, tot_sph, tot);
 #ifndef IO_REDUCED_MODE
             fprintf(FdTimebin, "Total active:   %10llu  %10llu    Sum: %10llu\n", tot - tot_sph, tot_sph, tot);
 #endif
@@ -1064,7 +1052,6 @@ void put_symbol(double t0, double t1, char c)
 
 
 
-#ifndef IO_REDUCED_MODE
 /*! This routine first calls a computation of various global
  * quantities of the particle distribution, and then writes some
  * statistics about the energies in the various particle components to
@@ -1072,6 +1059,7 @@ void put_symbol(double t0, double t1, char c)
  */
 void energy_statistics(void)
 {
+#ifndef IO_REDUCED_MODE
   compute_global_quantities_of_system();
 
   if(ThisTask == 0)
@@ -1091,8 +1079,8 @@ void energy_statistics(void)
       fprintf(FdEnergy," \n");
       fflush(FdEnergy);
     }
-}
 #endif
+}
 
 
 
