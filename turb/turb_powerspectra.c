@@ -844,7 +844,7 @@ double powerspec_turb_obtain_fields(void)
   /* we will repeat the whole thing for those points where we didn't find enough neighbours */
   do
     {
-      i = 0;			/* beginn with this index */
+      i = 0;			/* begin with this index */
 
       do
 	{

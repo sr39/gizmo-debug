@@ -3822,7 +3822,7 @@ void force_treeallocate(int maxnodes, int maxpart)
         first_flag = 1;
         if(ThisTask == 0)
             printf
-            ("Allocated %g MByte for tree, and %g Mbyte for top-leaves.  (presently allocted %g MB)\n",
+            ("Allocated %g MByte for tree, and %g Mbyte for top-leaves.  (presently allocated %g MB)\n",
              allbytes / (1024.0 * 1024.0), allbytes_topleaves / (1024.0 * 1024.0),
              AllocatedBytes / (1024.0 * 1024.0));
         for(i = 0; i < NTAB; i++)

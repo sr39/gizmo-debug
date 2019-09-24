@@ -3312,7 +3312,7 @@ extern ALIGN(32) struct NODE
   MyFloat mass_dm;
 #endif
 }
- *Nodes_base,			/*!< points to the actual memory allocted for the nodes */
+ *Nodes_base,			/*!< points to the actual memory allocated for the nodes */
  *Nodes;			/*!< this is a pointer used to access the nodes which is shifted such that Nodes[All.MaxPart]
 				   gives the first allocated node */
 
