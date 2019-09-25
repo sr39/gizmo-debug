@@ -103,7 +103,7 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
     struct INPUT_STRUCT_NAME local;
     struct OUTPUT_STRUCT_NAME out;
     memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME));
-    kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1);
+    kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0;
     
     /* Load the data for the particle injecting feedback */
     if(mode == 0) {particle2in_addthermalFB(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
@@ -144,7 +144,7 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
                 kernel.r = sqrt(r2);
                 if(kernel.r <= 0) continue;
                 u = kernel.r * kernel.hinv;
-                kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 0);
+                if(u<1) {kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 0);} else {kernel.wk=kernel.dwk=0;}
                 if((kernel.wk <= 0)||(isnan(kernel.wk))) continue;
                 wk = P[j].Mass * kernel.wk / local.wt_sum; // normalized weight function
                 
