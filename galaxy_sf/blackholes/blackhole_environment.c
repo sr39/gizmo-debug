@@ -213,7 +213,7 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
             if(numngb < 0) return -1;
             for(n = 0; n < numngb; n++)
             {
-                j = Ngblist[n];
+                j = ngblist[n];
 #ifdef BH_WAKEUP_GAS
                 if (local.Timebin < P[j].LowestBHTimeBin) {P[j].LowestBHTimeBin = local.Timebin;}
 #endif
@@ -268,7 +268,7 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
                         u=0; for(k=0;k<3;k++) {u+=dP[k]*dP[k];}
-                        u=sqrt(u)/h_i; kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,1);
+                        u=sqrt(u)/h_i; if(u<1) {kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,1);} else {wk=dwk=0;}
                         dwk /= u*h_i; for(k=0;k<3;k++) out.GradRho_in_Kernel[k] += wt * dwk * fabs(dP[k]);
 #endif
 #if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
@@ -280,7 +280,7 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
 #endif
 #if (BH_GRAVACCRETION == 8)
                         u=0; for(k=0;k<3;k++) {u+=dP[k]*dP[k];}
-                        u=sqrt(u)/h_i; kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,-1);
+                        u=sqrt(u)/h_i; if(u<1) {kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,-1);} else {wk=dwk=0;}
                         double rj=u*h_i*All.cf_atime; double csj=Particle_effective_soundspeed_i(j);
                         double vdotrj=0; for(k=0;k<3;k++) {vdotrj+=-dP[k]*dv[k];}
                         double vr_mdot = 4*M_PI * wt*(wk*All.cf_a3inv) * rj*vdotrj;

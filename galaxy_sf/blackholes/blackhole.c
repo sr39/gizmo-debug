@@ -147,8 +147,8 @@ double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r
     double hinv=1./H_bh,hinv_j=1./H_j,hinv3_j=hinv_j*hinv_j*hinv_j,wk_j=0,u=r/H_bh; /* note these lines and many below assume 3D sims! */
     double dwk_j=0,u_j=r*hinv_j,hinv4_j=hinv_j*hinv3_j,V_j=P[j].Mass/SphP[j].Density;
     double hinv3=hinv*hinv*hinv,hinv4=hinv*hinv3,wk=0,dwk=0;
-    kernel_main(u,hinv3,hinv4,&wk,&dwk,0);
-    kernel_main(u_j,hinv3_j,hinv4_j,&wk_j,&dwk_j,0);
+    if(u<1) {kernel_main(u,hinv3,hinv4,&wk,&dwk,0);} else {wk=dwk=0;}
+    if(u_j<1) {kernel_main(u_j,hinv3_j,hinv4_j,&wk_j,&dwk_j,0);} else {wk_j=dwk_j=0;}
     double V_i = 4.*M_PI/3. * H_bh*H_bh*H_bh / (All.DesNumNgb * All.BlackHoleNgbFactor); // this is approximate, will be wrong (but ok b/c just increases weight to neighbors) when not enough neighbors found //
     if(V_i<0 || isnan(V_i)) {V_i=0;}
     if(V_j<0 || isnan(V_j)) {V_j=0;}

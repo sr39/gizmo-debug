@@ -1872,7 +1872,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if((r2 >= (hhat_i * hhat_i)) && (r2 >= (hhat_j * hhat_j))) continue;
                     double h_avg = 0.5 * (hhat_i + hhat_j), particle_distance = sqrt(r2);
                     kernel_hinv(h_avg, &hhatinv_i, &hhatinv3_i, &hhatinv4_i); u = DMIN(particle_distance * hhatinv_i, 1.0);
-                    kernel_main(u, hhatinv3_i, hhatinv4_i, &wkhat_i, &dwkhat_i, 0); /* wkhat is symmetric in this case W_{ij} = W_{ji} */
+                    if(u<1) {kernel_main(u, hhatinv3_i, hhatinv4_i, &wkhat_i, &dwkhat_i, 0);} else {wkhat_i=dwkhat_i=0;} /* wkhat is symmetric in this case W_{ij} = W_{ji} */
                     double mean_weight = wkhat_i * 0.5 * (SphP[j].Norm_hat + local.Norm_hat) / (local.Norm_hat * SphP[j].Norm_hat);
                     double weight_i = P[j].Mass * mean_weight, weight_j = local.Mass * mean_weight, Velocity_bar_diff[3];
                     if(particle_distance < h_avg) {
