@@ -87,7 +87,7 @@ void radiation_pressure_winds_consolidated(void)
                                 {
                                     dx=P[j].Pos[0]-P[i].Pos[0]; dy=P[j].Pos[1]-P[i].Pos[1]; dz=P[j].Pos[2]-P[i].Pos[2]; r2 = dx*dx + dy*dy + dz*dz; r2 += MIN_REAL_NUMBER; // just a small number to prevent errors on near-overlaps
                                     double h_eff_i = Get_Particle_Size(i), h_eff_j = Get_Particle_Size(j); r2 += (h_eff_i/5.)*(h_eff_i/5.); // just a small number to prevent errors on near-overlaps
-                                    u=sqrt(r2)*hinv; kernel_main(u,hinv3,1,&wk,&vq,-1); rho += (P[j].Mass*wk); wt_sum += h_eff_j*h_eff_j;// / r2;
+                                    u=sqrt(r2)*hinv; if(u<1) {kernel_main(u,hinv3,1,&wk,&vq,-1);} else {wk=vq=0;} rho += (P[j].Mass*wk); wt_sum += h_eff_j*h_eff_j;// / r2;
                                 } /* if( (P[j].Mass>0) && (SphP[j].Density>0) ) */
                             } /* for(n=0; n<numngb_inbox; n++) */
                             if (rho <= 0) {h*= 1.2123212335; startnode=All.MaxPart;} /* rho <= 0; no massive particles found, trigger a new loop */

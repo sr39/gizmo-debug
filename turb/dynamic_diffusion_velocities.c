@@ -257,7 +257,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
 
                 kernel_hinv(h_avg, &hinv, &hinv3, &hinv4);
                 u = DMIN(kernel.r * hinv, 1.0);
-                kernel_main(u, hinv3, hinv4, &kernel.wk_i, &kernel.dwk_i, kernel_mode_i);
+                if(u<1) {kernel_main(u, hinv3, hinv4, &kernel.wk_i, &kernel.dwk_i, kernel_mode_i);} else {kernel.wk_i=kernel.dwk_i=0;}
 
                 double weight_i = kernel.wk_i * V_j;
                 double weight_j = kernel.wk_i * V_i;

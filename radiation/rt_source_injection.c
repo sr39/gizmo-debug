@@ -155,9 +155,6 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 if(r2<=0) continue; // same particle //
                 if(r2>=h2) continue; // outside kernel //
                 // calculate kernel quantities //
-                //double wk, dwk, u = sqrt(r2) * hinv;
-                //kernel_main(u, hinv3, hinv4, &wk, &dwk, -1); // traditional kernel
-                //wk *= P[j].Mass / local.KernelSum_Around_RT_Source;
                 double wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;
 #if defined(RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION)
                 double r = sqrt(r2);

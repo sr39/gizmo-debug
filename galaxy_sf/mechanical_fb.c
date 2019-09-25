@@ -157,7 +157,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     
     v_ejecta_max = 5000.0 * 1.0e5/ All.UnitVelocity_in_cm_per_s;
     // 'speed limit' to prevent numerically problematic kicks at low resolution //
-    kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1);
+    kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0;
     
     /* Load the data for the particle injecting feedback */
     if(mode == 0)
@@ -240,14 +240,14 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 u = kernel.r * kernel.hinv;
                 double hinv_j = 1./PPP[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j; /* note these lines and many below assume 3D sims! */
                 double wk_j = 0, dwk_j = 0, u_j = kernel.r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = P[j].Mass / SphP[j].Density;
-                kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 1);
-                kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);
+                if(u<1) {kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 1);} else {kernel.dwk=kernel.wk=0;}
+                if(u_j<1) {kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);} else {wk_j=dwk_j=0;}
                 if(local.V_i<0 || isnan(local.V_i)) {local.V_i=0;}
                 if(V_j<0 || isnan(V_j)) {V_j=0;}
                 double sph_area = fabs(local.V_i*local.V_i*kernel.dwk + V_j*V_j*dwk_j); // effective face area //
                 wk = 0.5 * (1 - 1/sqrt(1 + sph_area / (M_PI*kernel.r*kernel.r))); // corresponding geometric weight //
 #ifdef FIRE1_SNE_COUPLING
-                kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 0);
+                if(u<1) {kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 0);} else {kernel.wk=kernel.dwk=0;}
                 wk = P[j].Mass * kernel.wk;
 #endif
                 if((wk <= 0)||(isnan(wk))) continue; // no point in going further, there's no physical weight here
@@ -455,7 +455,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     
     // some units (just used below, but handy to define for clarity) //
     double h2 = local.Hsml*local.Hsml;
-    kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); // define the kernel zero-point value, needed to prevent some nasty behavior when no neighbors found
+    kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0; // define the kernel zero-point value, needed to prevent some nasty behavior when no neighbors found
     kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4); // define kernel quantities
     double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
     double density_to_n=All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / PROTONMASS;
@@ -545,8 +545,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 u = kernel.r * kernel.hinv;
                 double hinv_j = 1./PPP[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j;
                 double wk_j = 0, dwk_j = 0, u_j = kernel.r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = P[j].Mass / SphP[j].Density;
-                kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 1);
-                kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);
+                if(u<1) {kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 1);} else {kernel.wk=kernel.dwk=0;}
+                if(u_j<1) {kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);} else {wk_j=dwk_j=0;}
                 if(local.V_i<0 || isnan(local.V_i)) {local.V_i=0;}
                 if(V_j<0 || isnan(V_j)) {V_j=0;}
                 double sph_area = fabs(local.V_i*local.V_i*kernel.dwk + V_j*V_j*dwk_j); // effective face area //
@@ -757,7 +757,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 /* master routine which calls the relevant loops */
 void mechanical_fb_calc(int fb_loop_iteration)
 {
-    PRINT_STATUS(" ..mechanical feedback loop: iteration %d\n",fb_loop_iteration);
+    PRINT_STATUS(" ..mechanical feedback loop: iteration %d",fb_loop_iteration);
     #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
     loop_iteration = fb_loop_iteration; /* sets the appropriate feedback type for the calls below */
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
