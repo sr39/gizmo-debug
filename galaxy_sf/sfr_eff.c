@@ -697,7 +697,7 @@ void star_formation_parent_routine(void)
   MPI_Allreduce(&stars_converted, &tot_converted, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   if(tot_spawned > 0 || tot_converted > 0)
     {
-      printf("SFR: spawned %d stars, converted %d gas particles into stars\n", tot_spawned, tot_converted);
+      if(ThisTask==0) printf("SFR: spawned %d stars, converted %d gas particles into stars\n", tot_spawned, tot_converted);
       All.TotNumPart += tot_spawned;
       All.TotN_gas -= tot_converted;
       NumPart += stars_spawned;

@@ -173,7 +173,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
             if(numngb < 0) return -1;
             for(n = 0; n < numngb; n++)
             {
-                j = Ngblist[n];
+                j = ngblist[n];
                 if(P[j].Mass > 0)
                 {
                     for(k=0;k<3;k++) {dpos[k] = P[j].Pos[k] - local.Pos[k]; dvel[k]=P[j].Vel[k]-local.Vel[k];}
@@ -295,7 +295,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                         /* now is the more standard accretion only of gas, according to the mdot calculated before */
                         if(P[j].Type == 0) /* here we have a gas particle */
                         {
-                            u=r*hinv; kernel_main(u,hinv3,hinv*hinv3,&wk,&dwk,-1);
+                            u=r*hinv; if(u<1) {kernel_main(u,hinv3,hinv*hinv3,&wk,&dwk,-1);} else {wk=dwk=0;}
 #if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS) /* compute accretion probability, this below is only meaningful if !defined(BH_GRAVCAPTURE_GAS)... */
                             double dm_toacc = bh_mass_withdisk - (local.Mass + mass_markedswallow); if(dm_toacc>0) {p=dm_toacc*wk/local.Density;} else {p=0;}
 #ifdef BH_WIND_KICK /* DAA: for stochastic winds (BH_WIND_KICK) we remove a fraction of mass from gas particles prior to kicking --> need to increase the probability here to balance black hole growth */
