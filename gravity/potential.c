@@ -63,12 +63,9 @@ void compute_potential(void)
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
 
-#ifndef SUBFIND_RESHUFFLE_AND_POTENTIAL
-  for(i = 0; i < NumPart; i++)
-    if(P[i].Ti_current != All.Ti_Current)
-      drift_particle(i, All.Ti_Current);
-#endif
-  i = 0;			/* begin with this index */
+  for(i = 0; i < NumPart; i++) {if(P[i].Ti_current != All.Ti_Current) {drift_particle(i, All.Ti_Current);}}
+
+    i = 0;			/* begin with this index */
 
   do
     {

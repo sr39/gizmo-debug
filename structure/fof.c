@@ -25,7 +25,7 @@
 #ifdef FOF
 #include "fof.h"
 #ifdef SUBFIND
-#include "subfind.h"
+#include "subfind/subfind.h"
 #endif
 
 
@@ -73,7 +73,7 @@ static int NgroupsExt, Nids;
 
 static int MyFOF_PRIMARY_LINK_TYPES;
 static int MyFOF_SECONDARY_LINK_TYPES;
-static int MyFOF_GROUP_MIN_LEN;
+static int MyFOF_GROUP_MIN_SIZE;
 
 static MyIDType *Head, *Len, *Next, *Tail, *MinID, *MinIDTask;
 static char *NonlocalFlag;
@@ -90,51 +90,13 @@ void fof_fof(int num)
   struct unbind_data *d;
   long long ndmtot;
 
-
-#ifdef SUBFIND_DENSITY_AND_POTENTIAL
-  if(ThisTask == 0)
-    printf("\nStarting SUBFIND_DENSITY_AND_POTENTIAL...\n");
-
-  subfind(num);
-  strcat(All.SnapshotFileBase, "_rho_and_pot");
-  savepositions(RestartSnapNum);
-  if(ThisTask == 0)
-    printf("\nSUBFIND_DENSITY_AND_POTENTIAL done.\n");
-  endrun(0);
-#endif
-
-#ifdef SUBFIND_READ_FOF
+#ifdef IO_SUBFIND_READFOF_FROMIC
   read_fof(num);
-#endif
-
-
-#ifdef SUBFIND_RESHUFFLE_CATALOGUE
-  force_treefree();
-
-  read_subfind_ids();
-
-  if(All.TotN_gas > 0)
-    {
-      if(ThisTask == 0)
-	printf("\nThe option SUBFIND_RESHUFFLE_CATALOGUE does not work with gas particles yet\n");
-      endrun(0);
-    }
-
-  t0 = my_second();
-  //  parallel_sort(P, NumPart, sizeof(struct particle_data), io_compare_P_GrNr_ID);
-  parallel_sort_special_P_GrNr_ID();
-  t1 = my_second();
-  if(ThisTask == 0)
-    printf("Ordering of particle-data took = %g sec\n", timediff(t0, t1));
-
-  strcat(All.SnapshotFileBase, "_subidorder");
-  savepositions(RestartSnapNum);
-  endrun(0);
 #endif
 
   MyFOF_PRIMARY_LINK_TYPES = FOF_PRIMARY_LINK_TYPES;
   MyFOF_SECONDARY_LINK_TYPES = FOF_SECONDARY_LINK_TYPES;
-  MyFOF_GROUP_MIN_LEN = FOF_GROUP_MIN_LEN;
+  MyFOF_GROUP_MIN_SIZE = FOF_GROUP_MIN_SIZE;
 
   if(ThisTask == 0)
     {
@@ -146,11 +108,6 @@ void fof_fof(int num)
   domain_Decomposition(1, 0, 0);
 
   force_treefree();
-
-#ifdef ONLY_PRODUCE_HSML_FILES
-  subfind(num);
-  endrun(0);
-#endif
 
   for(i = 0, ndm = 0, mass = 0; i < NumPart; i++)
     if(((1 << P[i].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
@@ -284,7 +241,7 @@ void fof_fof(int num)
 
   if(ThisTask == 0)
     {
-      printf("\nTotal number of groups with at least %d particles: %d\n", MyFOF_GROUP_MIN_LEN, TotNgroups);
+      printf("\nTotal number of groups with at least %d particles: %d\n", MyFOF_GROUP_MIN_SIZE, TotNgroups);
       if(TotNgroups > 0)
 	{
 	  printf("Largest group has %d particles.\n", largestgroup);
@@ -295,16 +252,8 @@ void fof_fof(int num)
 
   t0 = my_second();
 
-#ifdef KD_ALTERNATIVE_GROUP_SORT
-  MaxNgroups = 2 * IMAX(NgroupsExt, TotNgroups / NTask + NTask);
-  Group =
-    (group_properties *) mymalloc("Group", sizeof(group_properties) *
-					 MaxNgroups);
-#else
-  Group =
-    (group_properties *) mymalloc("Group", sizeof(group_properties) *
+  Group = (group_properties *) mymalloc("Group", sizeof(group_properties) *
 					 IMAX(NgroupsExt, TotNgroups / NTask + 1));
-#endif
 
   PRINT_STATUS("group properties are now allocated.. (presently allocated=%g MB)",AllocatedBytes / (1024.0 * 1024.0));
     
@@ -933,9 +882,9 @@ void fof_compile_catalogue(void)
   for(i = 0, Ngroups = 0, Nids = 0; i < NgroupsExt; i++)
     {
 #ifdef FOF_DENSITY_SPLIT_TYPES
-      if(FOF_GList[i].LocDMCount + FOF_GList[i].ExtDMCount < MyFOF_GROUP_MIN_LEN)
+      if(FOF_GList[i].LocDMCount + FOF_GList[i].ExtDMCount < MyFOF_GROUP_MIN_SIZE)
 #else
-      if(FOF_GList[i].LocCount + FOF_GList[i].ExtCount < MyFOF_GROUP_MIN_LEN)
+      if(FOF_GList[i].LocCount + FOF_GList[i].ExtCount < MyFOF_GROUP_MIN_SIZE)
 #endif
 	{
 	  FOF_GList[i] = FOF_GList[NgroupsExt - 1];
@@ -1200,12 +1149,8 @@ void fof_save_groups(int num)
 #endif
     }
 
-#ifdef ALTERNATIVE_PSORT
-  fof_sort_FOF_GList_LocCountTaskDiffMinID(FOF_GList, NgroupsExt);
-#else
   parallel_sort(FOF_GList, NgroupsExt, sizeof(fof_group_list),
 		fof_compare_FOF_GList_LocCountTaskDiffMinID);
-#endif
 
   for(i = 0, ngr = 0; i < NgroupsExt; i++)
     {
@@ -1232,11 +1177,7 @@ void fof_save_groups(int num)
     }
 
   /* bring the group list back into the original order */
-#ifdef ALTERNATIVE_PSORT
-  fof_sort_FOF_GList_ExtCountMinID(FOF_GList, NgroupsExt);
-#else
   parallel_sort(FOF_GList, NgroupsExt, sizeof(fof_group_list), fof_compare_FOF_GList_ExtCountMinID);
-#endif
 
   /* Assign the group numbers to the group properties array */
   for(i = 0, start = 0; i < Ngroups; i++)
@@ -1251,11 +1192,7 @@ void fof_save_groups(int num)
     }
 
   /* sort the groups according to group-number */
-#ifdef ALTERNATIVE_PSORT
-  fof_sort_Group_GrNr(Group, Ngroups);
-#else
   parallel_sort(Group, Ngroups, sizeof(group_properties), fof_compare_Group_GrNr);
-#endif
 
   /* fill in the offset-values */
   for(i = 0, totlen = 0; i < Ngroups; i++)
@@ -1330,12 +1267,7 @@ void fof_save_groups(int num)
     }
 
   /* sort the particle IDs according to group-number */
-
-#ifdef ALTERNATIVE_PSORT
-  fof_sort_ID_list_GrNrID(ID_list, Nids);
-#else
   parallel_sort(ID_list, Nids, sizeof(fof_id_list), fof_compare_ID_list_GrNrID);
-#endif
 
   t1 = my_second();
   PRINT_STATUS("Group catalogues globally sorted. took = %g sec. Started saving of group catalogue", timediff(t0, t1));
@@ -2278,7 +2210,7 @@ int fof_compare_ID_list_GrNrID(const void *a, const void *b)
 
 
 
-#ifdef SUBFIND_READ_FOF		/* read already existing FOF instead of recomputing it */
+#ifdef IO_SUBFIND_READFOF_FROMIC		/* read already existing FOF instead of recomputing it */
 
 void read_fof(int num)
 {
@@ -2831,6 +2763,6 @@ int fof_compare_P_SubNr(const void *a, const void *b)
   return 0;
 }
 
-#endif // SUBFIND_READ_FOF
+#endif // IO_SUBFIND_READFOF_FROMIC
 
 #endif /* of FOF */

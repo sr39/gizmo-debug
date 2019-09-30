@@ -931,18 +931,6 @@ void init(void)
     
     if(RestartFlag == 3)
     {
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-        if(ThisTask == 0)
-            printf("SUBFIND_RESHUFFLE_AND_POTENTIAL: Calculating potential energy before reshuffling...\n");
-#ifdef PMGRID
-        long_range_init_regionsize();
-#endif
-        compute_potential();
-        if(ThisTask == 0)
-            printf("potential energy done.\n");
-        
-#endif
-        
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
         if(ThisTask == 0) {printf("*AGS_HSML_CALCULATION_IS_ACTIVE* Computation of softening lengths... \n");}
         ags_setup_smoothinglengths();
@@ -1299,11 +1287,7 @@ void test_id_uniqueness(void)
     for(i = 0; i < NumPart; i++)
         ids[i] = P[i].ID;
     
-#ifdef ALTERNATIVE_PSORT
-    init_sort_ID(ids, NumPart);
-#else
     parallel_sort(ids, NumPart, sizeof(MyIDType), compare_IDs);
-#endif
     
     for(i = 1; i < NumPart; i++)
         if(ids[i] == ids[i - 1])

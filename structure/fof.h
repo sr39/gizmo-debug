@@ -28,6 +28,9 @@ void fof_assign_HostHaloMass(void);
 extern int Ngroups, TotNgroups;
 extern long long TotNids;
 
+
+
+
 typedef struct
 {
   MyIDType MinID;
@@ -70,17 +73,9 @@ typedef struct
   int Nsubs;
   int FirstSub;
   MyDouble Pos[3];
-  MyOutputFloat M_Mean200, R_Mean200;
-  MyOutputFloat M_Crit200, R_Crit200;
-  MyOutputFloat M_TopHat200, R_TopHat200;
   int ContaminationLen;
   MyOutputFloat ContaminationMass;
-#ifdef SO_VEL_DISPERSIONS  
-  MyOutputFloat VelDisp_Mean200, VelDisp_Crit200, VelDisp_TopHat200;
-#endif
-#ifdef SO_BAR_INFO
-  MyOutputFloat gas_mass[3], star_mass[3], temp[3], xlum[3]; 
-#endif
+  struct Subfind_DensityOtherPropsEval_data_out SubHaloProps_vsDelta[SUBFIND_ADDIO_NUMOVERDEN];
 #endif
 
 } group_properties;
@@ -91,15 +86,5 @@ typedef struct
   MyIDType ID;
   unsigned int GrNr;
 } fof_id_list;
-
-
-#ifdef ALTERNATIVE_PSORT
-void fof_sort_FOF_GList_LocCountTaskDiffMinID(fof_group_list *data, int ndata);
-void fof_sort_FOF_GList_ExtCountMinID(fof_group_list *data, int ndata);
-void fof_sort_Group_GrNr(group_properties *data, int ndata);
-void fof_sort_ID_list_GrNrID(fof_id_list *data, int ndata);
-#endif
-
-
 
 #endif // FOF_H

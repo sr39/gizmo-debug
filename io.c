@@ -136,11 +136,7 @@ void savepositions(int num)
         All.Ti_lastoutput = All.Ti_Current;
         
         CPU_Step[CPU_SNAPSHOT] += measure_time();
-        
-#ifdef SUBFIND_RESHUFFLE_CATALOGUE
-        endrun(0);
-#endif
-    }
+}
     
 #ifdef FOF
     if(RestartFlag != 4)
@@ -742,7 +738,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif // CHIMES
             
         case IO_POT:		/* gravitational potential */
-#if defined(OUTPUT_POTENTIAL)  || defined(SUBFIND_RESHUFFLE_AND_POTENTIAL)
+#if defined(OUTPUT_POTENTIAL)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1455,45 +1451,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
             
-        case IO_DMHSML:
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE) && defined(SUBFIND)
-            for(n = 0; n < pc; pindex++)
-                if(P[pindex].Type == type)
-                {
-                    *fp_single++ = P[pindex].DM_Hsml;
-                    n++;
-                }
-#endif
-            break;
-            
-        case IO_DMDENSITY:
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE) && defined(SUBFIND)
-            for(n = 0; n < pc; pindex++)
-                if(P[pindex].Type == type)
-                {
-                    *fp_single++ = P[pindex].u.DM_Density;
-                    n++;
-                }
-#endif
-            break;
-            
-        case IO_DMVELDISP:
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE) && defined(SUBFIND)
-            for(n = 0; n < pc; pindex++)
-                if(P[pindex].Type == type)
-                {
-                    *fp_single++ = P[pindex].v.DM_VelDisp;
-                    n++;
-                }
-#endif
-            break;
-            
-        case IO_DMHSML_V:
-            break;
-            
-        case IO_DMDENSITY_V:
-            break;
-            
         case IO_CHEM:
             break;
         case IO_AGS_SOFT:		/* Adaptive Gravitational Softening: softening */
@@ -1899,15 +1856,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
             
             
-        case IO_DMHSML:
-        case IO_DMDENSITY:
-        case IO_DMVELDISP:
-        case IO_DMHSML_V:
-        case IO_DMDENSITY_V:
-            bytes_per_blockelement = sizeof(float);
-            break;
-
-            
         case IO_IMF:
 #ifdef GALSF_SFR_IMF_VARIATION
             if(mode)
@@ -2231,11 +2179,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_EOSYE:
         case IO_PRESSURE:
         case IO_INIT_DENSITY:
-        case IO_DMHSML:
-        case IO_DMDENSITY:
-        case IO_DMVELDISP:
-        case IO_DMHSML_V:
-        case IO_DMDENSITY_V:
         case IO_AGS_SOFT:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
@@ -2733,20 +2676,6 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return nsel;
             break;
             
-            
-        case IO_DMHSML:
-        case IO_DMDENSITY:
-        case IO_DMVELDISP:
-        case IO_DMHSML_V:
-        case IO_DMDENSITY_V:
-            for(i = 0; i < 6; i++)
-                if(((1 << i) & (FOF_PRIMARY_LINK_TYPES)))
-                    nsel += header.npart[i];
-                else
-                    typelist[i] = 0;
-            return nsel;
-            break;
-            
         case IO_MG_ACCEL:
             for(i = 2; i < 6; i++)
                 typelist[i] = 0;
@@ -2967,7 +2896,7 @@ int blockpresent(enum iofields blocknr)
             break;
             
         case IO_POT:
-#if defined(OUTPUT_POTENTIAL) || defined(SUBFIND_RESHUFFLE_AND_POTENTIAL)
+#if defined(OUTPUT_POTENTIAL)
             return 1;
 #else
             return 0;
@@ -3344,21 +3273,6 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
-        case IO_DMHSML:
-        case IO_DMDENSITY:
-        case IO_DMVELDISP:
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE) && defined(SUBFIND)
-            return 1;
-#else
-            return 0;
-#endif
-            break;
-            
-        case IO_DMHSML_V:
-        case IO_DMDENSITY_V:
-            return 0;
-            break;
             
         case IO_CHEM:
             return 0;
@@ -3793,21 +3707,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
             break;
         case IO_EDDINGTON_TENSOR:
             strncpy(label, "ET", 4);
-            break;
-        case IO_DMHSML:
-            strncpy(label, "DMHS", 4);
-            break;
-        case IO_DMDENSITY:
-            strncpy(label, "DMDE", 4);
-            break;
-        case IO_DMVELDISP:
-            strncpy(label, "DMVD", 4);
-            break;
-        case IO_DMHSML_V:
-            strncpy(label, "VDMH", 4);
-            break;
-        case IO_DMDENSITY_V:
-            strncpy(label, "VDMD", 4);
             break;
         case IO_CHEM:
             strncpy(label, "CHEM", 4);
@@ -4247,21 +4146,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_EDDINGTON_TENSOR:
             strcpy(buf, "EddingtonTensor");
             break;
-        case IO_DMHSML:
-            strcpy(buf, "DM Hsml");
-            break;
-        case IO_DMDENSITY:
-            strcpy(buf, "DM Density");
-            break;
-        case IO_DMVELDISP:
-            strcpy(buf, "DM Velocity Dispersion");
-            break;
-        case IO_DMHSML_V:
-            strcpy(buf, "DM Hsml Voronoi");
-            break;
-        case IO_DMDENSITY_V:
-            strcpy(buf, "DM Density Voronoi");
-            break;
         case IO_CHEM:
             strcpy(buf, "ChemicalAbundances");
             break;
@@ -4391,12 +4275,6 @@ void write_file(char *fname, int writeTask, int lastTask)
 #endif
     
 #define SKIP  {my_fwrite(&blksize,sizeof(int),1,fd);}
-    
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-    FILE *fd_pot = 0;
-    
-#define SKIP_POT  {my_fwrite(&blksize,sizeof(int),1,fd_pot);}
-#endif
     
     /* determine particle numbers of each type in file */
     
@@ -4532,19 +4410,6 @@ void write_file(char *fname, int writeTask, int lastTask)
             my_fwrite(&header, sizeof(header), 1, fd);
             SKIP;
         }
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-        char fname_pot[1000], *s_split_1, *s_split_2;
-        
-        s_split_1 = strtok(fname, ".");
-        s_split_2 = strtok(NULL, " ,");
-        
-        sprintf(fname_pot, "%s_pot.%s", s_split_1, s_split_2);
-        if(!(fd_pot = fopen(fname_pot, "w")))
-        {
-            printf("can't open file `%s' for writing pot_snapshot.\n", fname_pot);
-            endrun(1234);
-        }
-#endif
     }
     
     if((All.SnapFormat == 1 || All.SnapFormat == 2) && ThisTask == writeTask)
@@ -4667,14 +4532,7 @@ void write_file(char *fname, int writeTask, int lastTask)
                             SKIP;
                         }
                         blksize = npart * bytes_per_blockelement;
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-                        if(blocknr == IO_POT)
-                            SKIP_POT;
-                        if(blocknr != IO_POT)
-                            SKIP;
-#else
                         SKIP;
-#endif
                     }
                 }
                 
@@ -4798,14 +4656,7 @@ void write_file(char *fname, int writeTask, int lastTask)
                                     }
                                     else
                                     {
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-                                        if(blocknr == IO_POT)
-                                            my_fwrite(CommBuffer, bytes_per_blockelement, pc, fd_pot);
-                                        else
-                                            my_fwrite(CommBuffer, bytes_per_blockelement, pc, fd);
-#else
                                         my_fwrite(CommBuffer, bytes_per_blockelement, pc, fd);
-#endif
                                     }
                                 }
                                 
@@ -4831,14 +4682,7 @@ void write_file(char *fname, int writeTask, int lastTask)
                 {
                     if(All.SnapFormat == 1 || All.SnapFormat == 2)
                     {
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-                        if(blocknr == IO_POT)
-                            SKIP_POT;
-                        if(blocknr != IO_POT)
-                            SKIP;
-#else
                         SKIP;
-#endif
                     }
                 }
             }
@@ -4866,9 +4710,6 @@ void write_file(char *fname, int writeTask, int lastTask)
         {
             fclose(fd);
         }
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-        fclose(fd_pot);
-#endif
     }
 }
 
@@ -5058,7 +4899,7 @@ void mpi_printf(const char *fmt, ...)
     }
 }
 
-#if defined(SUBFIND_READ_FOF) || defined(SUBFIND_RESHUFFLE_CATALOGUE)
+#if defined(IO_SUBFIND_READFOF_FROMIC)
 int io_compare_P_ID(const void *a, const void *b)
 {
     if(((struct particle_data *) a)->ID < (((struct particle_data *) b)->ID))

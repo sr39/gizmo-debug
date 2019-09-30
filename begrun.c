@@ -154,9 +154,6 @@ void begrun(void)
   if(RestartFlag != 3 && RestartFlag != 4)
 #endif
     long_range_init();
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-  long_range_init();
-#endif
 #endif
 
 #ifdef SUBFIND
