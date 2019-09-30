@@ -11,10 +11,9 @@
 #    Even public modules have citations which must be included if the module is used for published work,
 #    these are all given in the User Guide.
 #
-# This file was originally part of the GADGET3 code developed by
-#   Volker Springel (volker.springel@h-its.org). The code has been modified
-#   substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO (to add new modules and clean
-#   up the naming conventions and changed many of them to match the new GIZMO conventions)
+# This file was originally part of the GADGET3 code developed by Volker Springel. It has been modified
+#   substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO (to add new modules, change
+#   naming conventions, restructure, add documention, and match GIZMO conventions)
 #
 ####################################################################################################
 

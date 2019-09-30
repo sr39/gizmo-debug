@@ -26,9 +26,9 @@
 
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
- * slightly (re-arranged, consolidated, and added compute_stellar_feedback and 
- * the gradients loop) by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ * Volker Springel. The code has been modified (re-arranged, consolidated, and a number of additional
+ * sub-loops and other structures for e.g. feedback, gradients, neighbor operations on non-gas, etc,
+ * added) by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
 void compute_grav_accelerations(void)

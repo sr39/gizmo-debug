@@ -7,8 +7,7 @@
 #include <unistd.h>
 
 /*
- * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org).
+ * This file was originally part of the GADGET3 code by Volker Springel.
  */
 
 #ifdef IMPOSE_PINNING

@@ -6,11 +6,16 @@
 #include <gsl/gsl_math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-
 #include "../../allvars.h"
 #include "../../proto.h"
 #include "../../kernel.h"
+/*
+* This file was originally part of the GADGET3 code developed by Volker Springel.
+* It has been updated significantly by PFH for basic compatibility with GIZMO,
+* as well as code cleanups, and accommodating new GIZMO functionality for various
+* other operations. See notes in subfind.c and GIZMO User Guide for details.
+*/
+
 
 #ifdef SUBFIND
 

@@ -16,13 +16,16 @@
  */
 /*
  * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
- *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org),
+ *   It was based on a similar file in GADGET3 by Volker Springel,
  *   but the physical modules for black hole accretion and feedback have been
- *   replaced, and the algorithm for their coupling is new to GIZMO.  This file was modified
+ *   replaced, and the algorithms for their coupling are new to GIZMO.  This file was modified
  *   on 1/9/15 by Paul Torrey (ptorrey@mit.edu) for clarity by parsing the existing code into
  *   smaller files and routines.  Some communication and black hole structures were modified
  *   to reduce memory usage. Cleanup, de-bugging, and consolidation of routines by Xiangcheng Ma
- *   (xchma@caltech.edu) followed on 05/15/15; re-integrated by PFH.
+ *   (xchma@caltech.edu) followed on 05/15/15; re-integrated by PFH. Massive updates in 2019
+ *   from David Guszejnov and Mike Grudic to incorporate and develop single star modules, and
+ *   from PFH to integrate those and re-write the parallelism entirely to conform to the newer
+ *   code standards and be properly multi-threaded. 
  */
 
 #ifdef BLACK_HOLES
