@@ -8,7 +8,7 @@
 
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * Volker Springel. The code has been modified
  * substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO 
  * (added energy/entropy switch, terms for explicit mass conservation in mass fluxes, 
  *  and updates to additional fluid variables as needed)

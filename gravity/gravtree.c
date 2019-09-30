@@ -36,7 +36,7 @@ pthread_mutex_t mutex_partnodedrift;
  */
 
 /*!
- * This file was originally part of the GADGET3 code developed by Volker Springel (volker.springel@h-its.org).
+ * This file was originally part of the GADGET3 code developed by Volker Springel.
  * The code has been modified substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 

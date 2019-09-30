@@ -3,13 +3,20 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-
 #include "../../kernel.h"
 #include "../../allvars.h"
 #include "../../proto.h"
-#include "subfind.h"
+/*
+* This file was originally part of the GADGET3 code developed by Volker Springel.
+* It has been updated significantly by PFH for basic compatibility with GIZMO,
+* as well as code cleanups, and accommodating new GIZMO functionality for various
+* other operations. See notes in subfind.c and GIZMO User Guide for details.
+*/
+
 
 #ifdef SUBFIND
+
+#include "subfind.h"
 
 static int last;		/* auxialiary variable used to set-up non-recursive walk */
 

@@ -8,22 +8,37 @@
 #include <unistd.h>
 #include <gsl/gsl_rng.h>
 
+/*
+* This file was originally part of the GADGET3 code developed by Volker Springel.
+* It has been updated significantly by PFH for basic compatibility with GIZMO,
+* as well as code cleanups, and accommodating new GIZMO functionality for various
+* other operations. See GIZMO User Guide for discussion of the state of the code.
+* Some parts have been heavily re-written by PFH, in particular the ADDIO flags, which
+* are designed to more flexibly use the modern GIZMO structures and minimize the user
+* having to add large amounts of redundant code for new operations. But most of the module
+* remains in the GADGET3 format and parallelization style, with only basic modifications
+* by PFH to remove bugs, dead code, correct incorrect function calls, update variable names
+* to the modern GIZMO conventions, replace variables no longer used, rewrite macro syntax to
+* GIZMO conventions, and ensure compilation without errors on modern compilers.
+*/
+
+
 /* by default, always use snapshot format for outputs, otherwise these get unwieldy very fast */
 #if !defined(IO_SUBFIND_IN_OLD_ASCII_FORMAT)
 #define SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT
 #endif
-
 #if defined(HAVE_HDF5)&& defined(SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT)
 #include <hdf5.h>
 #endif
-
-#include "../fof.h"
 #include "../../allvars.h"
 #include "../../proto.h"
 #include "../../domain.h"
-#include "subfind.h"
+
 
 #ifdef SUBFIND
+
+#include "../fof.h"
+#include "subfind.h"
 
 static struct subfind_id_list
 {
