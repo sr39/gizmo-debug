@@ -10,8 +10,7 @@
  * This file contains the definitions for the cooling.c routines
  *
  * This file was originally part of the GADGET3 code developed by
- *   Volker Springel (volker.springel@h-its.org). The code has been modified by
- *   Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ *   Volker Springel. The code has been modified by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
 #ifndef CHIMES 

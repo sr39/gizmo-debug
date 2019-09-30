@@ -15,8 +15,7 @@
  *   free-free, metal-line, Compton, collisional, photo-ionization and recombination, and more. Some of these 
  *   are controlled by individual modules that need to be enabled or disabled explicitly.
  *
- * This file was originally part of the GADGET3 code developed by
- *   Volker Springel (volker.springel@h-its.org). The code has been modified heavily by 
+ * This file was originally part of the GADGET3 code developed by Volker Springel. The code has been modified heavily by 
  *   Phil Hopkins (phopkins@caltech.edu) for GIZMO; essentially everything has been re-written at this point */
 
 
@@ -1823,7 +1822,7 @@ void chimes_update_gas_vars(int target)
   ChimesGasVars[target].ThermEvolOn = All.ChimesThermEvolOn; 
   
   // If there is an EoS, need to set TempFloor to that instead. 
-#ifndef GALSF_FB_HII_HEATING
+#ifndef GALSF_FB_FIRE_RT_HIIHEATING
   ChimesGasVars[target].TempFloor = All.MinGasTemp; 
 #else 
   if (SphP[target].DelayTimeHII > 0) 

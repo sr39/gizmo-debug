@@ -15,9 +15,10 @@
  */
 /*
  * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
- *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org),
+ *   It was based on a similar file in GADGET3 by Volker Springel,
  *   but the physical modules for star formation and feedback have been
- *   replaced, and the algorithm is mostly new to GIZMO.
+ *   replaced, and the algorithm is mostly new to GIZMO. Many additional modules
+ *   added since, with significant contributions from Mike Grudic.
  */
 
 

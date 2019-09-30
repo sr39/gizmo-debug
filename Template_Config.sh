@@ -11,10 +11,9 @@
 #    Even public modules have citations which must be included if the module is used for published work,
 #    these are all given in the User Guide.
 #
-# This file was originally part of the GADGET3 code developed by
-#   Volker Springel (volker.springel@h-its.org). The code has been modified
-#   substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO (to add new modules and clean
-#   up the naming conventions and changed many of them to match the new GIZMO conventions)
+# This file was originally part of the GADGET3 code developed by Volker Springel. It has been modified
+#   substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO (to add new modules, change
+#   naming conventions, restructure, add documention, and match GIZMO conventions)
 #
 ####################################################################################################
 
@@ -194,12 +193,25 @@
 ## ----------------------------------------------------------------------------------------------------
 # ------------------------------------- Friends-of-friends on-the-fly finder options (source in fof.c)
 # -----------------------------------------------------------------------------------------------------
-#FOF                                # enable FoF searching on-the-fly and outputs (set parameter LINKLENGTH=x to control LinkingLength; default=0.2)
-#FOF_PRIMARY_LINK_TYPES=2           # 2^type for the primary dark matter type
-#FOF_SECONDARY_LINK_TYPES=1+16+32   # 2^type for the types linked to nearest primaries
-#FOF_DENSITY_SPLIT_TYPES=1+2+16+32  # 2^type for whch the densities should be calculated seperately
-#FOF_GROUP_MIN_LEN=32               # default is 32
-####################################################################################################
+#FOF                                # master switch: enable FoF searching on-the-fly and outputs (set parameter LINKLENGTH=x to control LinkingLength; default=0.2)
+#FOF_PRIMARY_LINK_TYPES=2           # bitflag: sum of 2^type for the primary type used to define initial FOF groups (use a common type to ensure 'start' in reasonable locations)
+#FOF_SECONDARY_LINK_TYPES=1+16+32   # bitflag: sum of 2^type for the seconary types which can be linked to nearest primaries (will be 'seen' when calculating group properties)
+#FOF_DENSITY_SPLIT_TYPES=1+2+16+32  # bitflag: sum of 2^type for which the densities should be calculated seperately (i.e. if 1+2+16+32, fof densities are separately calculated for types 0,1,4,5, and shared for types 2,3)
+#FOF_GROUP_MIN_SIZE=32              # minimum number of identified members required to qualify as a 'group': default is 32
+## ----------------------------------------------------------------------------------------------------
+# -------------------------------------  Subhalo on-the-fly finder options (uses "subfind" source code).
+## ----------------------------------------------------------------------------------------------------
+#SUBFIND                            # master switch to enable substructure-finding with the SubFind algorithm
+#SUBFIND_ADDIO_NUMOVERDEN=1         # for M200,R200-type properties, compute values within in this number of different overdensities (default=1=)
+#SUBFIND_ADDIO_VELDISP              # add the mass-weighted 1D velocity dispersions to properties computed in parent group[s], within the chosen overdensities
+#SUBFIND_ADDIO_BARYONS              # add gas mass, mass-weighted temperature, and x-ray luminosity (assuming ionized primoridal gas), and stellar masses, to properties computed in parent group[s], within the chosen overdensities
+## ----------------------------------------------------------------------------------------------------
+#SUBFIND_REMOVE_GAS_STRUCTURES      # delete (do not save) any structures which are entirely gas (or have fewer than target number of elements which are non-gas, with the rest in gas)
+#SUBFIND_SAVE_PARTICLEDATA          # save all particle positions,velocity,type,mass in subhalo file (in addition to IDs: this is highly redundant with snapshots, so makes subhalo info more like a snapshot)
+####################################################################################################-
+
+
+
 
 
 
@@ -413,6 +425,8 @@
 #IO_DISABLE_HDF5                # disable HDF5 I/O support (for both reading/writing; use only if HDF5 not install-able)
 #IO_COMPRESS_HDF5     		    # write HDF5 in compressed form (will slow down snapshot I/O and may cause issues on old machines, but reduce snapshots 2x)
 #IO_SUPPRESS_TIMEBIN_STDOUT=10  # only prints timebin-list to log file if highest active timebin index is within N (value set) of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
+#IO_SUBFIND_IN_OLD_ASCII_FORMAT # write sub-find outputs in the old massive ascii-table format (unweildy and can cause lots of filesystem issues, but here for backwards compatibility)
+#IO_SUBFIND_READFOF_FROMIC      # try read already existing FOF files associated with a run instead of recomputing them: not de-bugged
 ####################################################################################################
 
 
@@ -503,48 +517,16 @@
 #CHIMES                         #- enable CHIMES: cooling & chemistry package. Requires COOLING above. Also, requires COOL_METAL_LINES_BY_SPECIES to include metals.
 #CHIMES_HYDROGEN_ONLY           #- Hydrogen-only. This is ignored if METALS are also set.
 #CHIMES_SOBOLEV_SHIELDING       #- Enables local self-shielding over a Sobolev-like length scale
-#CHIMES_HII_REGIONS             #- Disables shielding withing HII region (requires FIRE modules for radiation transport/coupling: uses GALSF_FB_HII_HEATING, and permissions follow those modules)
+#CHIMES_HII_REGIONS             #- Disables shielding withing HII region (requires FIRE modules for radiation transport/coupling: uses GALSF_FB_FIRE_RT_HIIHEATING, and permissions follow those modules)
 #CHIMES_STELLAR_FLUXES          #- Couple UV fluxes from the luminosity tree to CHIMES (requires FIRE modules for radiation transport/coupling: use permissions follow those modules)
 #CHIMES_SFR_MOLECULAR_CRITERION #- As GALSF_SFR_MOLECULAR_CRITERION, but using the H2 fraction from CHIMES (requires appropriate star formation parent flags be set)
 #CHIMES_REDUCED_OUTPUT          #- Full CHIMES abundance array only output in some snapshots
 #CHIMES_NH_OUTPUT               #- Write out column densities of gas particles to snapshots
 #CHIMES_OUTPUT_DENS_AROUND_STAR #- Write out DensAroundStar
-#CHIMES_OUTPUT_DELAY_TIME_HII   #- Output DelayTimeHII. Requires CHIMES_HII_REGIONS or GALSF_FB_HII_HEATING (and corresponding flags/permissions set)
+#CHIMES_OUTPUT_DELAY_TIME_HII   #- Output DelayTimeHII. Requires CHIMES_HII_REGIONS or GALSF_FB_FIRE_RT_HIIHEATING (and corresponding flags/permissions set)
 #CHIMES_INITIALISE_IN_EQM       #- Initialise CHIMES abundances in equilibrium at the start of the simulation
 #CHIMES_TURB_DIFF_IONS          #- Turbulent diffusions of CHIMES abundances. Requires TURB_DIFF_METALS and TURB_DIFF_METALS_LOWORDER (see modules for metal diffusion above: use/citation policy follows those)
 #CHIMES_METAL_DEPLETION         #- Uses density-dependent metal depletion factors (Jenkins 2009, De Cia et al. 2016)
-####################################################################################################-
-
-
-
-####################################################################################################-
-#---------------------------------------- Subhalo on-the-fly finder options (needs "subfind" source code)
-#------------------ This is originally developed as part of GADGET-3 (SUBFIND) by V. Springel
-#------------------ Use of these modules follows the GADGET-3 permissions; if you are not sure, contact Volker
-####################################################################################################-
-#SUBFIND                            #- enables substructure finder
-#MAX_NGB_CHECK=3                    #- Max numbers of neighbours for sattlepoint detection (default = 2)
-#SAVE_MASS_TAB                      #- Saves the an additional array with the masses of the different components
-#SUBFIND_SAVE_PARTICLELISTS         #- Saves also phase-space and type variables parallel to IDs
-#SO_VEL_DISPERSIONS                 #- computes velocity dispersions for as part of FOF SO-properties
-#ONLY_PRODUCE_HSML_FILES            #- only carries out density estimate
-#SAVE_HSML_IN_IC_ORDER              #- will store the hsml-values in the order of the particles in the IC file
-#KEEP_HSML_AS_GUESS                 #- keep using hsml for gas particles in subfind_density
-#NO_GAS_CLOUDS                      #- Do not accept pure gaseous substructures
-#WRITE_SUB_IN_SNAP_FORMAT           #- Save subfind results in snap format
-#DUSTATT=11                         #- Includes dust attenuation into the luminosity calculation (using 11 radial bins)
-#OBSERVER_FRAME                     #- If defined, use CB07 Observer Frame Luminosities, otherwise CB07 Rest Frame Luminosities
-#SO_BAR_INFO                        #- Adds temperature, Lx, bfrac, etc to Groups
-#SUBFIND_COUNT_BIG_HALOS=1e4        #- Adds extra blocks for Halos with M_TopHat > SUBFIND_COUNT_BIG_HALOS
-#KD_CHOOSE_PSUBFIND_LIMIT           #- Increases the limit for the parallel subfind to the maximum possible
-#KD_ALTERNATIVE_GROUP_SORT          #- Alternative way to sort the Groups/SubGroupe before writing
-#SUBFIND_READ_FOF                   #-
-#SUBFIND_COLLECTIVE_STAGE1          #-
-#SUBFIND_COLLECTIVE_STAGE2          #-
-#SUBFIND_ALTERNATIVE_COLLECTIVE     #-
-#SUBFIND_RESHUFFLE_CATALOGUE        #-
-#SUBFIND_RESHUFFLE_AND_POTENTIAL    #- needs -DSUBFIND_RESHUFFLE_CATALOGUE and COMPUTE_POTENTIAL_ENERGY
-#SUBFIND_DENSITY_AND_POTENTIAL      #- only calculated density and potential and write them into snapshot
 ####################################################################################################-
 
 
