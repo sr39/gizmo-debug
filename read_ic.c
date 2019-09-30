@@ -8,9 +8,6 @@
 
 #include "allvars.h"
 #include "proto.h"
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE)
-#include "subfind/subfind.h"
-#endif
 
 /* This function reads initial conditions that are in the default file format
  * of Gadget, i.e. snapshot files can be used as input files.  However, when a
@@ -28,16 +25,10 @@
 
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * Volker Springel. The code has been modified
  * in part (adding/removing read items and changing variable units as necessary)
  * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
-
-#if defined(SAVE_HSML_IN_IC_ORDER) || defined(SUBFIND_RESHUFFLE_CATALOGUE)
-static unsigned long FileNr;
-static long long *NumPartPerFile;
-#endif
-
 
 void read_ic(char *fname)
 {
@@ -61,25 +52,13 @@ void read_ic(char *fname)
     All.TotNumPart = 0;
     
     num_files = find_files(fname);
-    
-#if defined(SAVE_HSML_IN_IC_ORDER) || defined(SUBFIND_RESHUFFLE_CATALOGUE)
-    NumPartPerFile = (long long *) mymalloc("NumPartPerFile", num_files * sizeof(long long));
-    
-    if(ThisTask == 0)
-        get_particle_numbers(fname, num_files);
-    
-    MPI_Bcast(NumPartPerFile, num_files * sizeof(long long), MPI_BYTE, 0, MPI_COMM_WORLD);
-#endif
-    
+        
     rest_files = num_files;
     
     while(rest_files > NTask)
     {
         sprintf(buf, "%s.%d", fname, ThisTask + (rest_files - NTask));
         if(All.ICFormat == 3) {sprintf(buf, "%s.%d.hdf5", fname, ThisTask + (rest_files - NTask));}
-#if defined(SAVE_HSML_IN_IC_ORDER) || defined(SUBFIND_RESHUFFLE_CATALOGUE)
-        FileNr = ThisTask + (rest_files - NTask);
-#endif
         
         ngroups = NTask / All.NumFilesWrittenInParallel;
         if((NTask % All.NumFilesWrittenInParallel))
@@ -106,18 +85,12 @@ void read_ic(char *fname)
             sprintf(buf, "%s.%d", fname, filenr);
             if(All.ICFormat == 3)
                 sprintf(buf, "%s.%d.hdf5", fname, filenr);
-#if defined(SAVE_HSML_IN_IC_ORDER) || defined(SUBFIND_RESHUFFLE_CATALOGUE)
-            FileNr = filenr;
-#endif
         }
         else
         {
             sprintf(buf, "%s", fname);
             if(All.ICFormat == 3)
                 sprintf(buf, "%s.hdf5", fname);
-#if defined(SAVE_HSML_IN_IC_ORDER) || defined(SUBFIND_RESHUFFLE_CATALOGUE)
-            FileNr = 0;
-#endif
         }
         
         ngroups = rest_files / All.NumFilesWrittenInParallel;
@@ -132,10 +105,6 @@ void read_ic(char *fname)
         }
     }
     
-    
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE)
-    subfind_reshuffle_free();
-#endif
     
     myfree(CommBuffer);
     
@@ -528,36 +497,8 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
             
-        case IO_DMHSML:
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE) && defined(SUBFIND)
-            for(n = 0; n < pc; n++)
-                P[offset + n].DM_Hsml = *fp_single++;
-#endif
-            break;
-            
-        case IO_DMDENSITY:
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE) && defined(SUBFIND)
-            for(n = 0; n < pc; n++)
-                P[offset + n].u.DM_Density = *fp_single++;
-#endif
-            break;
-            
-        case IO_DMVELDISP:
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE) && defined(SUBFIND)
-            for(n = 0; n < pc; n++)
-                P[offset + n].v.DM_VelDisp = *fp_single++;
-#endif
-            break;
-            
-        case IO_DMHSML_V:
-            break;
-            
-        case IO_DMDENSITY_V:
-            break;
-            
         case IO_CHEM:		/* Chemical abundances */
             break;
-            
             
             /* adaptive softening parameters */
         case IO_AGS_SOFT:
@@ -997,11 +938,6 @@ void read_file(char *fname, int readTask, int lastTask)
 #endif
             if((RestartFlag == 0) && (All.InitGasTemp > 0) && (blocknr == IO_U)) continue;
             
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-            if(blocknr == IO_POT)
-                continue;
-#endif
-            
             
 #ifdef MHD_B_SET_IN_PARAMS
             if(RestartFlag == 0 && blocknr == IO_BFLD)
@@ -1055,8 +991,6 @@ void read_file(char *fname, int readTask, int lastTask)
             
             if(npart > 0)
             {
-                if(blocknr != IO_DMHSML && blocknr != IO_DMDENSITY && blocknr != IO_DMVELDISP
-                   && blocknr != IO_DMHSML_V && blocknr != IO_DMDENSITY_V)
                     if(ThisTask == readTask)
                     {
                         if(All.ICFormat == 2)
@@ -1115,21 +1049,8 @@ void read_file(char *fname, int readTask, int lastTask)
                                 {
                                     if(All.ICFormat == 1 || All.ICFormat == 2)
                                     {
-                                        if(blocknr != IO_DMHSML && blocknr != IO_DMDENSITY
-                                           && blocknr != IO_DMVELDISP && blocknr != IO_DMHSML_V
-                                           && blocknr != IO_DMDENSITY_V)
-                                        {
                                             my_fread(CommBuffer, bytes_per_blockelement, pc, fd);
                                             nread += pc;
-                                        }
-                                        else
-                                        {
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE) && !defined(SUBFIND_DENSITY_AND_POTENTIAL)
-                                            read_hsml_files(CommBuffer, pc, blocknr,
-                                                            NumPartPerFile[FileNr] + nread);
-#endif
-                                            nread += pc;
-                                        }
                                     }
                                     
 #ifdef HAVE_HDF5
@@ -1220,8 +1141,6 @@ void read_file(char *fname, int readTask, int lastTask)
                 
                 if(ThisTask == readTask)
                 {
-                    if(blocknr != IO_DMHSML && blocknr != IO_DMDENSITY && blocknr != IO_DMVELDISP
-                       && blocknr != IO_DMHSML_V && blocknr != IO_DMDENSITY_V)
                         if(All.ICFormat == 1 || All.ICFormat == 2)
                         {
                             SKIP2;
@@ -1244,36 +1163,6 @@ void read_file(char *fname, int readTask, int lastTask)
             }
         }
     }
-    
-    
-#ifdef SAVE_HSML_IN_IC_ORDER
-    MyIDType IdCount = 0;
-    
-    for(type = 0, offset = 0; type < 6; type++)
-    {
-        n_in_file = header.npart[type];
-        
-        for(task = readTask; task <= lastTask; task++)
-        {
-            n_for_this_task = n_in_file / ntask;
-            if((task - readTask) < (n_in_file % ntask))
-                n_for_this_task++;
-            
-            if(ThisTask == task)
-            {
-                int i;
-                
-                for(i = 0; i < n_for_this_task; i++)
-                    P[nstart + offset + i].ID_ic_order = NumPartPerFile[FileNr] + IdCount + i;
-                
-                offset += n_for_this_task;
-            }
-            
-            IdCount += n_for_this_task;
-        }
-    }
-#endif
-    
     
     for(type = 0; type < 6; type++)
     {
@@ -1412,100 +1301,6 @@ int find_files(char *fname)
     endrun(0);
     return 0;
 }
-
-#if defined(SAVE_HSML_IN_IC_ORDER) || defined(SUBFIND_RESHUFFLE_CATALOGUE)
-void get_particle_numbers(char *fname, int num_files)
-{
-    char buf[1000];
-    long blksize1, blksize2;
-    char label[4];
-    long nextblock;
-    long i, j;
-    
-    printf("num_files=%d\n", num_files);
-    
-    for(i = 0; i < num_files; i++)
-    {
-        if(num_files > 1)
-        {
-            sprintf(buf, "%s.%d", fname, i);
-            if(All.ICFormat == 3)
-                sprintf(buf, "%s.%d.hdf5", fname, i);
-        }
-        else
-        {
-            sprintf(buf, "%s", fname);
-            if(All.ICFormat == 3)
-                sprintf(buf, "%s.hdf5", fname);
-        }
-        
-#define SKIP  {my_fread(&blksize1,sizeof(int),1,fd);}
-#define SKIP2  {my_fread(&blksize2,sizeof(int),1,fd);}
-        
-        if(All.ICFormat == 1 || All.ICFormat == 2)
-        {
-            FILE *fd;
-            
-            if(!(fd = fopen(buf, "r")))
-            {
-                printf("can't open file `%s' for reading initial conditions.\n", buf);
-                endrun(1239);
-            }
-            
-            if(All.ICFormat == 2)
-            {
-                SKIP;
-                my_fread(&label, sizeof(char), 4, fd);
-                my_fread(&nextblock, sizeof(int), 1, fd);
-                SKIP2;
-            }
-            
-            SKIP;
-            my_fread(&header, sizeof(header), 1, fd);
-            SKIP2;
-            if(blksize1 != 256 || blksize2 != 256)
-            {
-                printf("incorrect header format\n");
-                fflush(stdout);
-                endrun(890);
-            }
-            fclose(fd);
-        }
-        
-#ifdef HAVE_HDF5
-        if(All.ICFormat == 3)
-        {
-            read_header_attributes_in_hdf5(buf);
-        }
-#endif
-        
-        NumPartPerFile[i] = 0;
-        
-        for(j = 0; j < 6; j++)
-        {
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE)
-            if(((1 << j) & (FOF_PRIMARY_LINK_TYPES)))
-#endif
-                NumPartPerFile[i] += header.npart[j];
-        }
-        
-        printf("File=%4d:  NumPart= %d\n", i, (int) (NumPartPerFile[i]));
-    }
-    
-    
-    long long n, sum;
-    
-    for(i = 0, sum = 0; i < num_files; i++)
-    {
-        n = NumPartPerFile[i];
-        
-        NumPartPerFile[i] = sum;
-        
-        sum += n;
-    }
-}
-#endif
-
 
 
 

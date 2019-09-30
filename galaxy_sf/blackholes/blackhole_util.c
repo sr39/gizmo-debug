@@ -14,17 +14,9 @@
  *  \brief util routines for memory (de)allocation and array setting for black holes
  */
 /*
- * This file was largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
- *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org),
- *   but the physical modules for black hole accretion and feedback have been
- *   replaced, and the algorithm for their coupling is new to GIZMO.  This file was modified
- *   by Paul Torrey (ptorrey@mit.edu) for clairity.  It was rearranged and parsed into
- *   smaller files and routines. The main functional difference is that BlackholeTempInfo
- *   is now allocated only for N_active_loc_BHs, rather than NumPart (as was done before).  Some
- *   extra index gymnastics are required to follow this change through in the MPI comm routines.
- *   Cleanup, de-bugging, and consolidation of routines by Xiangcheng Ma
- *   (xchma@caltech.edu) followed on 05/15/15; re-integrated by PFH.
- */
+* This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+* see notes in blackhole.c for details on code history.
+*/
 
 /* function for allocating temp BH data struc needed for feedback routines*/
 void blackhole_start(void)

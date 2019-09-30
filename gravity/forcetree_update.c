@@ -10,11 +10,12 @@
 
 
 /*
- * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
- * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
- */
-
+* This file was originally part of the GADGET3 code developed by
+* Volker Springel. The code has been modified
+* substantially (condensed, new feedback routines added,
+* some optimizatins, and new variable/memory conventions added)
+* by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+*/
 
 void force_update_tree(void)
 {

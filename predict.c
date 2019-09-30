@@ -11,7 +11,7 @@
 
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * Volker Springel. The code has been modified
  * substantially in detail (although the actual algorithm 
  * structure remains essentially the same) 
  * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
