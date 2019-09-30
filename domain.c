@@ -2408,9 +2408,6 @@ int domain_determineTopTree(void)
 						 (int) ((P[i].Pos[2] - DomainCorner[2]) * DomainFac),
 						 BITS_PER_DIMENSION);
 
-#ifdef SUBFIND_ALTERNATIVE_COLLECTIVE
-      P[i].Key = Key[i];
-#endif
       mp[count].index = i;
       count++;
     }

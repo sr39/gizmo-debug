@@ -8,7 +8,7 @@
 #include "../proto.h"
 #include "../kernel.h"
 #ifdef SUBFIND
-#include "../subfind/subfind.h"
+#include "../structure/subfind/subfind.h"
 #endif
 #ifdef PTHREADS_NUM_THREADS
 #include <pthread.h>
@@ -3299,10 +3299,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
             {
                 /* the index of the node is the index of the particle */
                 /* observe the sign  */
-#ifndef SUBFIND_RESHUFFLE_AND_POTENTIAL
-                if(P[no].Ti_current != All.Ti_Current)
-                    drift_particle(no, All.Ti_Current);
-#endif
+                if(P[no].Ti_current != All.Ti_Current) {drift_particle(no, All.Ti_Current);}
                 dx = P[no].Pos[0] - pos_x;
                 dy = P[no].Pos[1] - pos_y;
                 dz = P[no].Pos[2] - pos_z;
@@ -3367,10 +3364,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                     no = nop->u.d.nextnode;
                     continue;
                 }
-#ifndef SUBFIND_RESHUFFLE_AND_POTENTIAL
-                if(nop->Ti_current != All.Ti_Current)
-                    force_drift_node(no, All.Ti_Current);
-#endif
+                if(nop->Ti_current != All.Ti_Current) {force_drift_node(no, All.Ti_Current);}
                 mass = nop->u.d.mass;
                 dx = nop->u.d.s[0] - pos_x;
                 dy = nop->u.d.s[1] - pos_y;
@@ -3600,7 +3594,7 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
     struct NODE *nop = 0;
     MyLongDouble pot;
     int no, ptype, task, nexport_save, listindex = 0;
-    double r2, dx, dy, dz, mass, r, u, h, h_inv, wp;
+    double r2, dx, dy, dz, mass, r, u, h, h_inv;
     double pos_x, pos_y, pos_z;
     
     nexport_save = *nexport;

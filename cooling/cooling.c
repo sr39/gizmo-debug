@@ -1823,7 +1823,7 @@ void chimes_update_gas_vars(int target)
   ChimesGasVars[target].ThermEvolOn = All.ChimesThermEvolOn; 
   
   // If there is an EoS, need to set TempFloor to that instead. 
-#ifndef GALSF_FB_HII_HEATING
+#ifndef GALSF_FB_FIRE_RT_HIIHEATING
   ChimesGasVars[target].TempFloor = All.MinGasTemp; 
 #else 
   if (SphP[target].DelayTimeHII > 0) 

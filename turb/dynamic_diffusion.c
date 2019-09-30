@@ -254,7 +254,7 @@ void construct_gradient_dyndiff(double *grad, int i) {
  *      - D. Rennehan
  */
 void dynamic_diff_calc(void) {
-    mpi_printf("start dynamic diffusion calculations...\n");
+    PRINT_STATUS("Start dynamic diffusion calculations...");
     int i, j, k, v, k1, u, ngrp, ndone, ndone_flag, dynamic_iteration;
     double shear_factor, dynamic_denominator, trace = 0, trace_dynamic_fac = 0, hhat2 = 0, leonardTensor[3][3], prefactor = 0;
 #ifdef TURB_DIFF_DYNAMIC_ERROR
@@ -283,10 +283,7 @@ void dynamic_diff_calc(void) {
     Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
-
-#ifdef TURB_DIFF_DYNAMIC_VERBOSE
-    mpi_printf("Begin initializing smoothed quantities.\n");
-#endif
+    PRINT_STATUS(" ..begin initializing smoothed quantities.");
 
     /* Because of smoothing operation, we don't zero these out, they get set to their current value */
     for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
@@ -314,19 +311,13 @@ void dynamic_diff_calc(void) {
             }
         }
     }
- 
-#ifdef TURB_DIFF_DYNAMIC_VERBOSE
-    mpi_printf("Entering iteration loop for the first time. # of iterations = %d\n", (All.TurbDynamicDiffIterations + 2));
-#endif
-
+    PRINT_STATUS(" ..entering iteration loop for the first time. # of iterations = %d", (All.TurbDynamicDiffIterations + 2));
+    
     /* prepare to do the requisite number of sweeps over the particle distribution */
     for (dynamic_iteration = 0; dynamic_iteration < (All.TurbDynamicDiffIterations + 1); dynamic_iteration++) {      
         // now we actually begin the main gradient loop //
         NextParticle = FirstActiveParticle;	/* begin with this index */
-    
-#ifdef TURB_DIFF_DYNAMIC_VERBOSE
-        mpi_printf("First loop over active particles (iter = %d)\n", dynamic_iteration);
-#endif
+        PRINT_STATUS(" ..first loop over active particles (iter = %d)", dynamic_iteration);
 
         do {    
             BufferFullFlag = 0;
@@ -586,10 +577,7 @@ void dynamic_diff_calc(void) {
             myfree(DynamicDiffDataGet);
         }
         while(ndone < NTask);
-  
-#ifdef TURB_DIFF_DYNAMIC_VERBOSE
-        mpi_printf("Finished communication, beginning secondary calculations (iter = %d)\n", dynamic_iteration);
-#endif
+        PRINT_STATUS(" ..finished communication, beginning secondary calculations (iter = %d)", dynamic_iteration);
 
         /* The first two iterations were solely to calculate the hat quantities */ 
         { 
@@ -783,13 +771,8 @@ void dynamic_diff_calc(void) {
                 } /* P[i].Type == 0 */
             } /* Active particle loop */
         } /* dynamic_iteration >= 0 */
-
         tstart = my_second();
-
-#ifdef TURB_DIFF_DYNAMIC_VERBOSE
-        mpi_printf("Waiting for tasks... (iter = %d)\n", dynamic_iteration);
-#endif
-
+        PRINT_STATUS(" ..waiting for tasks... (iter = %d)", dynamic_iteration);
         /* Must wait for ALL tasks for finish each iteration in order to converge */
         MPI_Barrier(MPI_COMM_WORLD);   
 
@@ -800,13 +783,8 @@ void dynamic_diff_calc(void) {
     myfree(DataNodeList);
     myfree(DataIndexTable);
     myfree(Ngblist);
-   
     myfree(DynamicDiffDataPasser);
  
-#ifdef TURB_DIFF_DYNAMIC_VERBOSE
-    mpi_printf("Dynamic diffusion iterations complete\n");
-#endif
-
     /* collect some timing information */
     t1 = WallclockTime = my_second();
     timeall += timediff(t0, t1);
@@ -818,7 +796,7 @@ void dynamic_diff_calc(void) {
     CPU_Step[CPU_DYNDIFFWAIT] += timewait;
     CPU_Step[CPU_DYNDIFFCOMM] += timecomm;
     CPU_Step[CPU_DYNDIFFMISC] += timeall - (timecomp + timewait + timecomm);
-    mpi_printf("dynamic diffusion calculations done.\n");
+    PRINT_STATUS(" ..dynamic diffusion calculations done.");
 }
 
 

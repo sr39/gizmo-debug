@@ -61,7 +61,7 @@ CpuTimeBetRestartFile   3500  	% in seconds
 ResubmitOn              0 
 ResubmitCommand         my-scriptfile 
 
-%----- Memory alloction 
+%----- Memory allocation 
 MaxMemSize          1500    % sets maximum MPI process memory use in MByte 
 PartAllocFactor     2.0     % memory load allowed for better cpu balance 
 BufferSize          50     % in MByte 

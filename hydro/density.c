@@ -472,7 +472,7 @@ void density(void)
     desnumngb = All.DesNumNgb; desnumngbdev = All.MaxNumNgbDeviation;
     /* in the initial timestep and iteration, use a much more strict tolerance for the neighbor number */
     if(All.Time==All.TimeBegin) {if(All.MaxNumNgbDeviation > 0.05) desnumngbdev=0.05;}
-    double desnumngbdev_0 = desnumngbdev, Tinv[3][3], detT, CNumHolder=0, ConditionNumber=0; int k,k1,k2;
+    double desnumngbdev_0 = desnumngbdev, Tinv[3][3], detT, CNumHolder=0, ConditionNumber=0; int k,k1,k2; k=0;
 
     /* allocate buffers to arrange communication */
     #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */

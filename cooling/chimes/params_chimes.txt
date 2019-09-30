@@ -171,9 +171,9 @@ InitStellarAge              0.001   % initial mean age (in Gyr; for stars in sim
 WindMomentumLoading         1.0     % fraction of photon momentum to couple
 %--- SneII Heating Model (GALSF_FB_SNE_HEATING) 
 SNeIIEnergyFrac             1.0     % fraction of mechanical energy to couple
-%--- HII region photo-heating model (GALSF_FB_HII_HEATING)  
+%--- HII region photo-heating model (GALSF_FB_FIRE_RT_HIIHEATING)  
 HIIRegion_fLum_Coupled      1.0     % fraction of ionizing photons allowed to see gas
-%--- long-range radiation pressure acceleration (GALSF_FB_RT_PHOTONMOMENTUM) 
+%--- long-range radiation pressure acceleration (GALSF_FB_FIRE_RT_LONGRANGE) 
 PhotonMomentum_Coupled_Fraction  1.0  % fraction of L to allow incident
 PhotonMomentum_fUV          0.0    % incident SED f(L) in UV (minimum scattering)
 PhotonMomentum_fOPT         0.0    % incident SED f(L) in optical/near-IR 

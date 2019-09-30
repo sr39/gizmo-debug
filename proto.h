@@ -198,7 +198,6 @@ void compare_partitions(void);
 void assign_unique_ids(void);
 int permut_data_compare(const void *a, const void *b);
 void  generate_permutation_in_active_list(void);
-void get_particle_numbers(char *fname, int num_files);
 
 void conduction(void);
 void conduction_matrix_multiply(double *in, double *out);
@@ -813,10 +812,6 @@ double calculate_face_area_for_cartesian_mesh(double *dp, double rinv, double l_
 void subtract_companion_gravity(int i);
 #endif
 
-
-#ifdef ALTERNATIVE_PSORT
-void init_sort_ID(MyIDType *data, int ndata);
-#endif
 
 void hydro_gradient_calc(void);
 int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
