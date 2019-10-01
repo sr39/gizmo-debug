@@ -1250,15 +1250,15 @@ void process_wake_ups(void)
     
     for(i = 0; i < NumPart; i++)
     {
+	if(!PPPZ[i].wakeup)
+            continue;
+	
 #if !defined(AGS_HSML_CALCULATION_IS_ACTIVE)
         if(P[i].Type != 0) {continue;} // only gas particles can be awakened
 #endif
         
         if(P[i].Mass <= 0)
-            continue;
-        
-        if(!PPPZ[i].wakeup)
-            continue;
+            continue;       
         
         binold = P[i].TimeBin;
         if(TimeBinActive[binold])
