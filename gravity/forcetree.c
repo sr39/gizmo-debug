@@ -3718,8 +3718,8 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
             else			/* we have an internal node. Need to check opening criterion */
             {
                 /* check Barnes-Hut opening criterion */
-                
-                if(nop->len * nop->len > r2 * All.ErrTolThetaSubfind * All.ErrTolThetaSubfind)
+                double ErrTolThetaSubfind = All.ErrTolTheta;
+                if(nop->len * nop->len > r2 * ErrTolThetaSubfind * ErrTolThetaSubfind)
                 {
                     /* open cell */
                     if(mass)
