@@ -8,21 +8,9 @@
 #include "../../proto.h"
 #include "../../kernel.h"
 /*
- * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
- *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org),
- *   but the physical modules for black hole accretion and feedback have been
- *   replaced, and the algorithm for their coupling is new to GIZMO.  This file was modified
- *   on 1/9/15 by Paul Torrey (ptorrey@mit.edu) for clarity by parsing the existing code into
- *   smaller files and routines. Some communication and black hole structures were modified
- *   to reduce memory usage. Cleanup, de-bugging, and consolidation of routines by Xiangcheng Ma
- *   (xchma@caltech.edu) followed on 05/15/15; re-integrated by PFH. Substantial modifications
- *    by Paul Torrey, PFH, and then primarily Kung-Yi Su through 2018-2019 leading to current
- *   spawning modules in this file and their connections throughout-code. Massive updates in 2019
- *   from David Guszejnov and Mike Grudic to incorporate and develop single star modules, and
- *   from PFH to integrate those and re-write the parallelism entirely to conform to the newer
- *   code standards and be properly multi-threaded.
- */
-
+* This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+* see notes in blackhole.c for details on code history.
+*/
 
 
 #define MASTER_FUNCTION_NAME blackhole_feed_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */

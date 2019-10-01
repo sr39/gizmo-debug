@@ -28,12 +28,11 @@
 #endif
 
 
-/*
+/*!
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO. 
- *   However some of the sub-routines here are adopted from other codes, in particular
- *   AREPO by Volker Springel (volker.springel@h-its.org) and 
- *   ATHENA by Jim Stone (jstone@astro.princeton.edu). These sections should be 
- *   identified explicitly in the code below.
+ *   However some of the sub-routines here are adopted from other codes (with permission), in particular
+ *   AREPO by Volker Springel and ATHENA by Jim Stone. These sections are identified explicitly in the
+ *   code below (anything not identified as such was written by PFH). 
  */
 
 

@@ -20,9 +20,11 @@
 
 /*
  * This file (and the relevant routines) were originally part of the GADGET3 
- * code developed by Volker Springel (volker.springel@h-its.org). The routines 
+ * code developed by Volker Springel. Some routines
  * have been collected and re-arranged a bit, but not substantially modified, by 
- * Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ * Phil Hopkins (phopkins@caltech.edu) for GIZMO. Others have been written from
+ * scratch by PFH, particularly any that deal with the new modular memory allocation,
+ * parallelization, neighbor communication, and multi-threading methods.
  */
 
 

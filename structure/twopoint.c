@@ -12,10 +12,9 @@
  *  \brief computes the two-point mass correlation function on the fly
  */
 /*
- * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). It is here in GIZMO
- * as legacy code at the moment, and needs to be re-written or removed.
- */
+* This file was originally part of the GADGET3 code developed by Volker Springel.
+* It has been updated by PFH for basic compatibility with GIZMO.
+*/
 
 /* Note: This routine will only work correctly for particles of equal mass ! */
 
@@ -240,10 +239,7 @@ int twopoint_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat rsearch, in
   int no, p, bin, task, bin2, nexport_save;
   struct NODE *current;
   MyDouble dx, dy, dz, dist;
-
-#ifdef BOX_PERIODIC
-  MyDouble xtmp;
-#endif
+    MyDouble xtmp; xtmp=0;
 
   nexport_save = *nexport;
 

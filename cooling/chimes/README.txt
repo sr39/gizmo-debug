@@ -87,13 +87,13 @@ There are some Config flags that CHIMES does not currently work with, or its beh
   - GALSF_SFR_MOLECULAR_CRITERION - calculates the H2 fraction using the model of Krumholz and Gnedin (2012), 
     rather than using the H2 fraction from CHIMES. If you want to use the CHIMES H2 fraction, use 
     CHIMES_SFR_MOLECULAR_CRITERION instead.     
-  - GALSF_FB_HII_HEATING - if this option is used with CHIMES, then, for gas particles that are flagged as 
+  - GALSF_FB_FIRE_RT_HIIHEATING - if this option is used with CHIMES, then, for gas particles that are flagged as 
     being 'ionised' by a local star, the minimum temperature is set to HIIRegion_Temp. In other words, 
     particles below this are instantly heated to this temperature, and are not allowed to cool below it 
     for a time of DelayTimeHII. However, the ions are left to evolve in non-equilibrium, i.e. we do not 
     instantly ionise the particle (just heat it). Also, if CHIMES_LOCAL_UV is enabled, we explicitly include 
     the UV radiation from local stars, both for photoionisation and for photoheating, so this should explicitly 
-    model HII regions, and then GALSF_FB_HII_HEATING is not required. 
+    model HII regions, and then GALSF_FB_FIRE_RT_HIIHEATING is not required. 
   - GALSF_FB_LOCAL_UV_HEATING - currently, switching this on would have no effect on CHIMES. We need to add a 
     UV field in CHIMES and use the SphP[i].RadFluxUV of each gas particle. Also, note that, in accel.c, the 
     RadFluxUV of each SPH particle is attenuated by local self-shielding by calling selfshield_local_incident_uv_flux(). 

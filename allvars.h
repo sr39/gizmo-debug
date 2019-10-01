@@ -16,9 +16,9 @@
 
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
- * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (new variables, 
- * and different naming conventions for some old variables)
+ * Volker Springel. The code has been modified
+ * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (many new variables,
+ * structures, and different naming conventions for some old variables)
  */
 
 
@@ -1090,19 +1090,19 @@ typedef unsigned long long peanokey;
 #define LINKLENGTH 0.2
 #endif
 
-#ifndef FOF_GROUP_MIN_LEN
-#define FOF_GROUP_MIN_LEN 32
+#ifndef FOF_GROUP_MIN_SIZE
+#ifdef FOF_GROUP_MIN_LEN
+#define FOF_GROUP_MIN_SIZE FOF_GROUP_MIN_LEN
+#else
+#define FOF_GROUP_MIN_SIZE 32
 #endif
+#endif
+#ifndef SUBFIND_ADDIO_NUMOVERDEN
+#define SUBFIND_ADDIO_NUMOVERDEN 1
+#endif
+
 
 #define MINRESTFAC 0.05
-
-
-#ifdef SUBFIND_DENSITY_AND_POTENTIAL  /*!< activate needed options */
- #define ONLY_PRODUCE_HSML_FILES
- #define COMPUTE_POTENTIAL_ENERGY
- #define SUBFIND_RESHUFFLE_AND_POTENTIAL
- #define SUBFIND_RESHUFFLE_CATALOGUE
-#endif
 
 
 #ifndef GDE_TYPES 
@@ -1528,6 +1528,17 @@ extern double RndTable[RNDTABLE];
 #ifdef SUBFIND
 extern int GrNr;
 extern int NumPartGroup;
+extern struct Subfind_DensityOtherPropsEval_data_out
+{
+    MyOutputFloat M200, R200;
+#ifdef SUBFIND_ADDIO_VELDISP
+    MyOutputFloat V200[3], Disp200;
+#endif
+#ifdef SUBFIND_ADDIO_BARYONS
+    MyOutputFloat gas_mass, star_mass, temp, xlum;
+#endif
+}
+*Subfind_DensityOtherPropsEval_DataResult, *Subfind_DensityOtherPropsEval_DataOut, *Subfind_DensityOtherPropsEval_GlobalPasser;
 #endif
 
 
@@ -2405,12 +2416,6 @@ extern ALIGN(32) struct particle_data
         MyFloat density_sum;
     } w;
 #endif
-#ifdef SAVE_HSML_IN_IC_ORDER
-    MyIDType ID_ic_order;
-#endif
-#ifdef SUBFIND_ALTERNATIVE_COLLECTIVE
-    peanokey Key;
-#endif
 #endif
     
     float GravCost[GRAVCOSTLEVELS];   /*!< weight factor used for balancing the work-load */
@@ -3113,11 +3118,6 @@ enum iofields
   IO_SHEET_ORIENTATION,
   IO_INIT_DENSITY,
   IO_CAUSTIC_COUNTER,
-  IO_DMHSML,                    /* for 'SUBFIND_RESHUFFLE_CATALOGUE' option */
-  IO_DMDENSITY,
-  IO_DMVELDISP,
-  IO_DMHSML_V,                
-  IO_DMDENSITY_V,
   IO_VRMS,
   IO_VBULK,
   IO_VRAD,
@@ -3176,19 +3176,13 @@ enum siofields
   SIO_GOFF,
   SIO_MTOT,
   SIO_GPOS,
-  SIO_MMEA,
-  SIO_RMEA,
-  SIO_MCRI,
-  SIO_RCRI,
-  SIO_MTOP,
-  SIO_RTOP,
-  SIO_DMEA,
-  SIO_DCRI,
-  SIO_DTOP,
-  SIO_MGAS,
-  SIO_MSTR,
-  SIO_TGAS,
-  SIO_LGAS,
+  SIO_DELTA_MSUB,
+  SIO_DELTA_RSUB,
+  SIO_DELTA_DISPSUB,
+  SIO_DELTA_MGASSUB,
+  SIO_DELTA_MSTSUB,
+  SIO_DELTA_TEMPSUB,
+  SIO_DELTA_LXSUB,
   SIO_NCON,
   SIO_MCON,
   SIO_BGPOS,
@@ -3222,7 +3216,6 @@ enum siofields
   SIO_PVEL,
   SIO_PTYP,
   SIO_PMAS,
-  SIO_PAGE,
   SIO_PID,
 
   SIO_LASTENTRY
