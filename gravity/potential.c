@@ -14,8 +14,8 @@
  */
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
- * slightly by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ * Volker Springel. The code has been modified
+ * significantly by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
 #if !defined(EVALPOTENTIAL) && (defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL))
@@ -63,12 +63,9 @@ void compute_potential(void)
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
 
-#ifndef SUBFIND_RESHUFFLE_AND_POTENTIAL
-  for(i = 0; i < NumPart; i++)
-    if(P[i].Ti_current != All.Ti_Current)
-      drift_particle(i, All.Ti_Current);
-#endif
-  i = 0;			/* begin with this index */
+  for(i = 0; i < NumPart; i++) {if(P[i].Ti_current != All.Ti_Current) {drift_particle(i, All.Ti_Current);}}
+
+    i = 0;			/* begin with this index */
 
   do
     {

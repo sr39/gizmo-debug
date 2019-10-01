@@ -11,19 +11,9 @@
 #include "../../proto.h"
 #include "../../kernel.h"
 /*
- * This file was largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
- *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org),
- *   but the physical modules for black hole accretion and feedback have been
- *   replaced, and the algorithm for their coupling is new to GIZMO.  This file was modified
- *   by Paul Torrey (ptorrey@mit.edu) on 1/9/15 for clairity.  The main functional difference is that BlackholeTempInfo
- *   is now allocated only for N_active_loc_BHs, rather than NumPart (as was done before).  Some
- *   extra index gymnastics are required to follow this change through in the MPI comm routines.
- *   Cleanup, de-bugging, and consolidation of routines by Xiangcheng Ma
- *   (xchma@caltech.edu) followed on 05/15/15; re-integrated by PFH. Massive updates in 2019
- *   from David Guszejnov and Mike Grudic to incorporate and develop single star modules, and
- *   from PFH to integrate those and re-write the parallelism entirely to conform to the newer
- *   code standards and be properly multi-threaded.
- */
+* This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+* see notes in blackhole.c for details on code history.
+*/
 
 
 #define MASTER_FUNCTION_NAME blackhole_environment_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
@@ -195,7 +185,7 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
     /* initialize variables before loop is started */
     int startnode, numngb, listindex = 0, j, k, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
-    double ags_h_i, h_i=local.Hsml, hinv=1./h_i, hinv3=hinv*hinv*hinv; ags_h_i=All.ForceSoftening[5];
+    double ags_h_i, h_i, hinv, hinv3; h_i=local.Hsml; hinv=1./h_i; hinv3=hinv*hinv*hinv; ags_h_i=All.ForceSoftening[5];
 #if (ADAPTIVE_GRAVSOFT_FORALL & 32)
     ags_h_i = local.AGS_Hsml;
 #endif
@@ -245,11 +235,11 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
                         if(P[j].Mass>out.DF_mmax_particles) out.DF_mmax_particles=P[j].Mass;
                         for (k=0;k<3;k++)
                         {
-                            out.DF_mean_vel[k] += wt*dv[k];
+                            out.DF_mean_vel[k] += wtfac*dv[k];
 #if (BH_REPOSITION_ON_POTMIN == 2)
-                            out.DF_rms_vel += wt;
+                            out.DF_rms_vel += wtfac;
 #else
-                            out.DF_rms_vel += wt*dv[k]*dv[k];
+                            out.DF_rms_vel += wtfac*dv[k]*dv[k];
 #endif
                         }
                     }

@@ -29,11 +29,13 @@
 
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * Volker Springel. The code has been modified
  * somewhat by Phil Hopkins (phopkins@caltech.edu) for GIZMO; these 
  * modifications do not change the core algorithm, but have optimized it in 
  * some places, changed relative weighting factors for different levels in the 
- * domain decomposition, and similar details.
+ * domain decomposition, and similar details. Also how some memory issues are
+ * handled has been updated to reflect the newer more general parallelization
+ * structures in GIZMO.
  */
 
 
@@ -2408,9 +2410,6 @@ int domain_determineTopTree(void)
 						 (int) ((P[i].Pos[2] - DomainCorner[2]) * DomainFac),
 						 BITS_PER_DIMENSION);
 
-#ifdef SUBFIND_ALTERNATIVE_COLLECTIVE
-      P[i].Key = Key[i];
-#endif
       mp[count].index = i;
       count++;
     }

@@ -51,7 +51,7 @@
 ###########
 #
 # This file was originally part of the GADGET3 code developed by
-#   Volker Springel (volker.springel@h-its.org). The code has been modified
+#   Volker Springel. The code has been modified
 #   slighty by Phil Hopkins (phopkins@caltech.edu) for GIZMO (mostly 
 #   dealing with new files and filename conventions)
 #
@@ -1224,10 +1224,19 @@ OBJS	+= radiation/rt_utilities.o radiation/rt_CGmethod.o radiation/rt_source_inj
 endif
 
 ifeq (SUBFIND,$(findstring SUBFIND,$(CONFIGVARS)))
-OBJS	+= subfind/subfind.o subfind/subfind_vars.o subfind/subfind_collective.o subfind/subfind_serial.o subfind/subfind_so.o subfind/subfind_cont.o \
-	subfind/subfind_distribute.o subfind/subfind_findlinkngb.o subfind/subfind_nearesttwo.o subfind/subfind_loctree.o subfind/subfind_alternative_collective.o subfind/subfind_reshuffle.o \
-	subfind/subfind_potential.o subfind/subfind_density.o
-INCL	+= subfind/subfind.h
+OBJS	+=  structure/subfind/subfind.o \
+			structure/subfind/subfind_vars.o \
+			structure/subfind/subfind_collective.o \
+			structure/subfind/subfind_serial.o \
+			structure/subfind/subfind_so.o \
+			structure/subfind/subfind_cont.o \
+			structure/subfind/subfind_distribute.o \
+			structure/subfind/subfind_findlinkngb.o \
+			structure/subfind/subfind_nearesttwo.o \
+			structure/subfind/subfind_loctree.o \
+			structure/subfind/subfind_potential.o \
+			structure/subfind/subfind_density.o
+INCL	+= structure/subfind/subfind.h
 endif
 
 ifeq (TURB_DIFF_DYNAMIC,$(findstring TURB_DIFF_DYNAMIC,$(CONFIGVARS)))
@@ -1264,14 +1273,7 @@ FFLAGS = $(OPTIONS)
 endif
 
 
-ifeq (ALTERNATIVE_PSORT,$(findstring ALTERNATIVE_PSORT,$(CONFIGVARS)))
-OBJS  += fof_alt_psort.o modules/psort-1.0/error_handling.o
-CXXFLAGS = $(CFLAGS)
-FC    = $(CXX)
-endif
-
-FFTW = $(FFTW_LIBS)  $(FFTW_LIBNAMES) 
-
+FFTW = $(FFTW_LIBS)  $(FFTW_LIBNAMES)
 
 LIBS   = $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas $(FFTW) -lm $(GRACKLELIBS)
 

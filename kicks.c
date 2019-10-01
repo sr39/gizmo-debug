@@ -8,7 +8,7 @@
 
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * Volker Springel. The code has been modified
  * substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO 
  * (added energy/entropy switch, terms for explicit mass conservation in mass fluxes, 
  *  and updates to additional fluid variables as needed)
@@ -508,18 +508,18 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
                 }
             }
         }
-        if(isnan(SphP[i].DtPhi)) {SphP[i].DtPhi=0;}
-        if(isnan(SphP[i].Phi)) {SphP[i].Phi=0;}
-        if(isnan(SphP[i].PhiPred)) {SphP[i].PhiPred=SphP[i].Phi;}
     } else {
         SphP[i].Phi = SphP[i].PhiPred = SphP[i].DtPhi = 0;
     }
     /* now apply the usual damping term */
     double t_damp = Get_Particle_PhiField_DampingTimeInv(i);
-    if((t_damp>0) && (!isnan(t_damp)))
+    if((t_damp>0) && (!isnan(t_damp)) && (dt_entr>0))
     {
         SphP[i].Phi *= exp( -dt_entr * t_damp );
     }
+    if(isnan(SphP[i].DtPhi)) {SphP[i].DtPhi=0;}
+    if(isnan(SphP[i].Phi)) {SphP[i].Phi=0;}
+    if(isnan(SphP[i].PhiPred)) {SphP[i].PhiPred=SphP[i].Phi;}
 #endif
 #endif
 #endif
