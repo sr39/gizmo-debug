@@ -392,7 +392,8 @@ double subfind_loctree_treeevaluate_potential(int target)
 	}
       else			/* we have an internal node. Need to check opening criterion */
 	{
-	  if(nop->len * nop->len > r2 * All.ErrTolThetaSubfind * All.ErrTolThetaSubfind)
+        double ErrTolThetaSubfind = All.ErrTolThetaSubfind;
+	  if(nop->len * nop->len > r2 * ErrTolThetaSubfind * ErrTolThetaSubfind)
 	    {
 	      /* open cell */
 	      if(mass)
