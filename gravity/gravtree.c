@@ -78,6 +78,7 @@ void gravity_tree(void)
         PRINT_STATUS(" ..Tree construction done.");
     }
 
+    CPU_Step[CPU_TREEMISC] += measure_time(); t0 = my_second();
 #ifndef SELFGRAVITY_OFF
     /* allocate buffers to arrange communication */
     PRINT_STATUS(" ..Begin tree force. (presently allocated=%g MB)", AllocatedBytes / (1024.0 * 1024.0));
@@ -90,7 +91,6 @@ void gravity_tree(void)
     if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {if(ThisTask == 0) printf(" ..All.BunchSize=%d\n", All.BunchSize);}
     int k, ewald_max, diff, save_NextParticle, ndone, ndone_flag, place, recvTask; double tstart, tend, ax, ay, az; MPI_Status status;
     Ewaldcount = 0; Costtotal = 0; N_nodesinlist = 0; ewald_max=0;
-    CPU_Step[CPU_TREEMISC] += measure_time(); t0 = my_second();
 #if defined(BOX_PERIODIC) && !defined(PMGRID) && !defined(GRAVITY_NOT_PERIODIC)
     ewald_max = 1; /* the tree-code will need to iterate to perform the periodic boundary condition corrections */
 #endif
