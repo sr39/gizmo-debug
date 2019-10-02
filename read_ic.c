@@ -399,6 +399,13 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 P[offset + n].Grain_Size = *fp++;
 #endif
             break;
+
+        case IO_GRAINTYPE:
+#ifdef GRAIN_FLUID
+            for(n = 0; n < pc; n++)
+                P[offset + n].Grain_Type = *fp++;
+#endif
+            break;
             
         case IO_Z:			/* Gas and star metallicity */
 #ifdef METALS

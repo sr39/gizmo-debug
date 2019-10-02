@@ -2291,6 +2291,7 @@ extern ALIGN(32) struct particle_data
 #if defined(GRAIN_FLUID)
     MyFloat Grain_Size;
     MyFloat Gas_Density;
+    int Grain_Type;
     MyFloat Gas_InternalEnergy;
     MyFloat Gas_Velocity[3];
 #ifdef GRAIN_BACKREACTION
@@ -3042,6 +3043,7 @@ enum iofields
   IO_SFR,
   IO_AGE,
   IO_GRAINSIZE,
+  IO_GRAINTYPE,
   IO_HSMS,
   IO_Z,
   IO_BHMASS,
