@@ -563,7 +563,7 @@ void open_outputfiles(void)
   MPI_Barrier(MPI_COMM_WORLD);
 
 #ifdef BLACK_HOLES
-#if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
+#if defined(BH_OUTPUT_MOREINFO) || defined(BH_OUTPUT_GASSWALLOW)
   /* Note: This is done by everyone */
   if(ThisTask == 0)
     {
@@ -571,13 +571,14 @@ void open_outputfiles(void)
       mkdir(buf, 02755);
     }
   MPI_Barrier(MPI_COMM_WORLD);
-
+#if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
   sprintf(buf, "%sblackhole_details/blackhole_details_%d.txt", All.OutputDir, ThisTask);
   if(!(FdBlackHolesDetails = fopen(buf, mode)))
     {
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
+#endif
 #ifdef BH_OUTPUT_GASSWALLOW
   sprintf(buf, "%sblackhole_details/bhswallow_%d.txt", All.OutputDir, ThisTask); 
   if(!(FdBhSwallowDetails = fopen(buf, mode)))

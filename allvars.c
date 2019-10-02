@@ -249,11 +249,11 @@ FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 
 #ifdef BLACK_HOLES
 FILE *FdBlackHoles;		/*!< file handle for blackholes.txt log-file. */
-#if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
-FILE *FdBlackHolesDetails;
 #ifdef BH_OUTPUT_GASSWALLOW
 FILE *FdBhSwallowDetails;
 #endif
+#if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
+FILE *FdBlackHolesDetails;
 #ifdef BH_OUTPUT_MOREINFO
 FILE *FdBhMergerDetails;
 #ifdef BH_WIND_KICK
