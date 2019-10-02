@@ -1149,13 +1149,6 @@ void read_parameter_file(char *fname)
 #endif
         
 
-
-#ifdef SUBFIND
-      strcpy(tag[nt], "ErrTolThetaSubfind");
-      addr[nt] = &All.ErrTolThetaSubfind;
-      id[nt++] = REAL;
-#endif
-
         strcpy(tag[nt], "MinGasHsmlFractional");
         addr[nt] = &All.MinGasHsmlFractional;
         id[nt++] = REAL;

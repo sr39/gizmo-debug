@@ -1670,8 +1670,7 @@ extern struct global_data_all_processes
 
   double DesNumNgb;		/*!< Desired number of SPH neighbours */
 #ifdef SUBFIND
-  int DesLinkNgb;
-  double ErrTolThetaSubfind;
+  int DesLinkNgb;       /*! < Number of neighbors used for linking and density estimation in SUBFIND */
 #endif
 
   double MaxNumNgbDeviation;	/*!< Maximum allowed deviation neighbour number */
