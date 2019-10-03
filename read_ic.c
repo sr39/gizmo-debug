@@ -989,6 +989,9 @@ void read_file(char *fname, int readTask, int lastTask)
 #if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM) 
 		   && blocknr != IO_CHIMES_ABUNDANCES 
 #endif 
+#ifdef GRAIN_FLUID
+           && blocknr != IO_GRAINTYPE
+#endif
                    )
 #if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
                     if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_SHEET_ORIENTATION))
