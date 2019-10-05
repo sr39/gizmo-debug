@@ -414,7 +414,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #else
         if(j*j*Gm_i < 6.957e11 / All.UnitLength_in_cm) {t_acc_disk = 0;} // when angular momentum is low enough, we're falling straight onto the protostellar surface, here taking 10R_solar as a rough number
         double soundspeed = GAMMA*GAMMA_MINUS1 * BlackholeTempInfo[i].BH_InternalEnergy;
-        t_acc_disk = DMAX(100. * t_acc_disk * (1 / (Gm_i * reff)) / soundspeed, t_dyn_eff); // Shakura-Sunyaev prescription with alpha=0.01
+        t_acc_disk = DMAX(100. * t_acc_disk * (1 / (Gm_i * DMIN(reff, j*j*Gm_i))) / soundspeed, t_dyn_eff); // Shakura-Sunyaev prescription with alpha=0.01, using minimum of sink and circularization radius
 #endif // SLOPE2_SINKS
 #endif // BH_FOLLOW_ACCRETED_ANGMOM
 #endif // SINGLE_STAR_SINK_DYNAMICS
