@@ -40,9 +40,8 @@ void do_first_halfstep_kick(void)
     {
         if((TimeBinActive[P[i].TimeBin]) || (P[i].Type==0)) /* active OR gas, need to check each timestep to ensure manifest conservation */
 #else
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) /* 'full' kick for active particles */
     {	    
-//        if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
 #endif
         {
             if(P[i].Mass > 0)
@@ -75,9 +74,8 @@ void do_second_halfstep_kick(void)
     {
         if((TimeBinActive[P[i].TimeBin]) || (P[i].Type==0)) /* active OR gas, need to check each timestep to ensure manifest conservation */
 #else
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) /* 'full' kick for active particles */
     {
-//        if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
 #endif
         {
             if(P[i].Mass > 0)
