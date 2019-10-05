@@ -247,7 +247,7 @@ void drift_particle(int i, integertime time1)
 
         
             SphP[i].Pressure = get_pressure(i);
-#ifdef EOS_ENFORCE_ADIABAT
+#if defined(EOS_ENFORCE_ADIABAT) || defined(EOS_GMC_BAROTROPIC)
             SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
 #endif
         }
