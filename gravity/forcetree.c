@@ -2861,6 +2861,9 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
     cost = 0;
     if(mode == 0)
     {
+#ifdef HERMITE_INTEGRATION	
+	if(HermiteOnlyFlag && !eligible_for_hermite(target)) return 0;
+#endif	
         pos_x = P[target].Pos[0];
         pos_y = P[target].Pos[1];
         pos_z = P[target].Pos[2];
