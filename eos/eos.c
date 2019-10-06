@@ -83,6 +83,9 @@ double get_pressure(int i)
     else if (nH_cgs < 2.30181e21) press = 3.1783e-15 * pow(nH_cgs, 1.1);
     else press = 2.49841e-27 * pow(nH_cgs, 5./3);
     press /= All.UnitPressure_in_cgs;
+    
+    if (nH_cgs < 2.30181e16) SphP[i].SoundSpeed = sqrt(7./5 * press / Particle_density_for_energy_i(i));// we're molecular, gamma=7/5
+    else SphP[i].SoundSpeed = sqrt(5./3 * press / Particle_density_for_energy_i(i)); // atomic now, gamma=5/3
 #endif    
     
     
