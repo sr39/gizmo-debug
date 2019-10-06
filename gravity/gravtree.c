@@ -55,9 +55,6 @@ void gravity_tree(void)
     double t0, t1, timeall = 0, timetree1 = 0, timetree2 = 0, timetree, timewait, timecomm;
     double timecommsumm1 = 0, timecommsumm2 = 0, timewait1 = 0, timewait2 = 0, sum_costtotal, ewaldtot;
     double maxt, sumt, maxt1, sumt1, maxt2, sumt2, sumcommall, sumwaitall, plb, plb_max;
-#ifdef FIXEDTIMEINFIRSTPHASE
-    int counter; double min_time_first_phase, min_time_first_phase_glob;
-#endif
     CPU_Step[CPU_MISC] += measure_time();
     
     /* set new softening lengths */
@@ -539,10 +536,6 @@ void gravity_tree(void)
     CPU_Step[CPU_TREEWALK1] += timetree1; CPU_Step[CPU_TREEWALK2] += timetree2;
     CPU_Step[CPU_TREESEND] += timecommsumm1; CPU_Step[CPU_TREERECV] += timecommsumm2;
     CPU_Step[CPU_TREEWAIT1] += timewait1; CPU_Step[CPU_TREEWAIT2] += timewait2;
-#ifdef FIXEDTIMEINFIRSTPHASE
-    MPI_Reduce(&min_time_first_phase, &min_time_first_phase_glob, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
-    PRINT_STATUS("FIXEDTIMEINFIRSTPHASE=%g  min_time_first_phase_glob=%g\n", FIXEDTIMEINFIRSTPHASE, min_time_first_phase_glob);
-#endif
 #ifndef IO_REDUCED_MODE
     if(ThisTask == 0)
     {
@@ -571,14 +564,8 @@ void gravity_tree(void)
 void *gravity_primary_loop(void *p)
 {
     int i, j, ret, thread_id = *(int *) p, *exportflag, *exportnodecount, *exportindex;
-    exportflag = Exportflag + thread_id * NTask;
-    exportnodecount = Exportnodecount + thread_id * NTask;
-    exportindex = Exportindex + thread_id * NTask;
+    exportflag = Exportflag + thread_id * NTask; exportnodecount = Exportnodecount + thread_id * NTask; exportindex = Exportindex + thread_id * NTask;
     for(j = 0; j < NTask; j++) {exportflag[j] = -1;} /* Note: exportflag is local to each thread */
-#ifdef FIXEDTIMEINFIRSTPHASE
-    int counter = 0; double tstart;
-    if(thread_id == 0) {tstart = my_second();}
-#endif
     
     while(1)
     {
@@ -587,19 +574,15 @@ void *gravity_primary_loop(void *p)
 #ifdef _OPENMP
 #pragma omp critical(_nexport_)
 #endif
-        if(BufferFullFlag != 0 || NextParticle < 0)
-        {
-            exitFlag = 1;
-        }
-        else
-        {
-            i = NextParticle;
-            ProcessedFlag[i] = 0;
-            NextParticle = NextActiveParticle[NextParticle];
-        }
+        if(BufferFullFlag != 0 || NextParticle < 0) {exitFlag=1;}
+            else {i=NextParticle; ProcessedFlag[i]=0; NextParticle=NextActiveParticle[NextParticle];}
         UNLOCK_NEXPORT;
         if(exitFlag) {break;}
-		    
+		 
+#ifdef HERMITE_INTEGRATION /* if we are in the Hermite extra loops and a particle is not flagged for this, simply mark it done and move on */
+        if(HermiteOnlyFlag && !eligible_for_hermite(target)) {ProcessedFlag[i]=1; continue;}
+#endif
+
 #if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC) && !defined(PMGRID)
         if(Ewald_iter)
         {
@@ -614,23 +597,7 @@ void *gravity_primary_loop(void *p)
             Costtotal += ret;
         }
         ProcessedFlag[i] = 1;	/* particle successfully finished */
-        
-#ifdef FIXEDTIMEINFIRSTPHASE
-        if(thread_id == 0)
-        {
-            counter++;
-            if((counter & 255) == 0)
-            {
-                if(timediff(tstart, my_second()) > FIXEDTIMEINFIRSTPHASE)
-                {
-                    TimerFlag = 1;
-                    break;
-                }
-            }
-        }
-        else {if(TimerFlag) {break;}}
-#endif
-    }
+    } // while loop
     return NULL;
 }
 
