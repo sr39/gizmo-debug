@@ -1454,6 +1454,11 @@ extern int GlobFlag;
 
 extern char DumpFlag;
 
+#ifdef WAKEUP
+extern int NeedToWakeupParticles;
+extern int NeedToWakeupParticles_local;
+#endif
+
 extern int NumPart;		/*!< number of particles on the LOCAL processor */
 extern int N_gas;		/*!< number of gas particles on the LOCAL processor  */
 #ifdef SEPARATE_STELLARDOMAINDECOMP
