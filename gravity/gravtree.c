@@ -91,7 +91,7 @@ void gravity_tree(void)
     if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {if(ThisTask == 0) printf(" ..All.BunchSize=%d\n", All.BunchSize);}
     int k, ewald_max, diff, save_NextParticle, ndone, ndone_flag, place, recvTask; double tstart, tend, ax, ay, az; MPI_Status status;
     Ewaldcount = 0; Costtotal = 0; N_nodesinlist = 0; ewald_max=0;
-#if defined(BOX_PERIODIC) && !defined(PMGRID) && !defined(GRAVITY_NOT_PERIODIC)
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC) && !defined(PMGRID)
     ewald_max = 1; /* the tree-code will need to iterate to perform the periodic boundary condition corrections */
 #endif
 
@@ -339,9 +339,6 @@ void gravity_tree(void)
             for(j = 0; j < Nexport; j++)
             {
                 place = DataIndexTable[j].Index;
-#ifdef HERMITE_INTEGRATION		    
-                if(HermiteOnlyFlag) {if(!eligible_for_hermite(place)) continue;} /* if we are doing the extra Hermite loops, we don't actually assign anything here */
-#endif
                 for(k=0;k<3;k++) {P[place].GravAccel[k] += GravDataOut[j].Acc[k];}
                 if(Ewald_iter > 0) continue; /* everything below is ONLY evaluated if we are in the first sub-loop, not the periodic correction, or else we will get un-allocated memory or un-physical values */
 
@@ -603,8 +600,7 @@ void *gravity_primary_loop(void *p)
         UNLOCK_NEXPORT;
         if(exitFlag) {break;}
 		    
-#if !defined(PMGRID)
-#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC) && !defined(PMGRID)
         if(Ewald_iter)
         {
             ret = force_treeevaluate_ewald_correction(i, 0, exportflag, exportnodecount, exportindex);
@@ -617,18 +613,6 @@ void *gravity_primary_loop(void *p)
             if(ret < 0) {break;} /* export buffer has filled up */
             Costtotal += ret;
         }
-#else
-        
-#ifdef NEUTRINOS
-        if(P[i].Type != 2)
-#endif
-        {
-            ret = force_treeevaluate(i, 0, exportflag, exportnodecount, exportindex);
-            if(ret < 0) {break;} /* export buffer has filled up */
-            Costtotal += ret;
-        }
-        
-#endif
         ProcessedFlag[i] = 1;	/* particle successfully finished */
         
 #ifdef FIXEDTIMEINFIRSTPHASE
@@ -667,8 +651,7 @@ void *gravity_secondary_loop(void *p)
         UNLOCK_NEXPORT;
         if(j >= Nimport) {break;}
 
-#if !defined(PMGRID)
-#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC) && !defined(PMGRID)
         if(Ewald_iter)
         {
             int cost = force_treeevaluate_ewald_correction(j, 1, &dummy, &dummy, &dummy);
@@ -680,10 +663,6 @@ void *gravity_secondary_loop(void *p)
             ret = force_treeevaluate(j, 1, &nodesinlist, &dummy, &dummy);
             N_nodesinlist += nodesinlist; Costtotal += ret;
         }
-#else
-        ret = force_treeevaluate(j, 1, &nodesinlist, &dummy, &dummy);
-        N_nodesinlist += nodesinlist; Costtotal += ret;
-#endif
     }
     return NULL;
 }

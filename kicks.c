@@ -113,10 +113,6 @@ void do_hermite_prediction(void)
 {
     int i,j; integertime ti_step, tstart=0, tend=0;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
-        /* 	if(HERMITE_INTEGRATION & (1<<P[i].Type)) */
-        /* #if defined(BLACK_HOLES) || defined(GALSF)	     */
-        /*         if(P[i].StellarAge < All.Time) // if we were literally born yesterday then we won't have the proper Old variables set */
-        /* #endif	     */
 	if(eligible_for_hermite(i)) { /* check if we're actually eligible */	    
 	    if(P[i].Mass > 0) { /* skip massless particles scheduled for deletion */
 		ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
