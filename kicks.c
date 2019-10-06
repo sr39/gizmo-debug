@@ -445,7 +445,7 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #endif
         
         SphP[i].Pressure = get_pressure(i);
-#ifdef EOS_ENFORCE_ADIABAT
+#if defined(EOS_ENFORCE_ADIABAT) || defined(EOS_GMC_BAROTROPIC)
         SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
 #endif
     }
