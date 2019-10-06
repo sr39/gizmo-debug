@@ -218,11 +218,6 @@ int force_treebuild_single(int npart, struct unbind_data *mp)
         else
             i = k;
         
-#ifdef NEUTRINOS
-        if(P[i].Type == 2)
-            continue;
-#endif
-        
         rep = 0;
         
         key = peano_and_morton_key((int) ((P[i].Pos[0] - DomainCorner[0]) * DomainFac),
@@ -1857,9 +1852,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         }
 #endif
     }
-#ifdef HERMITE_INTEGRATION // if we're doing a force evaluation for Hermite-integrated particles only, quit right here if it isn't one
-    if(mode==0) {if(HermiteOnlyFlag && !eligible_for_hermite(target)) return 0;}
-#endif
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     /* quick check if particle has mass: if not, we won't deal with it */
     if(pmass<=0) return 0;
@@ -2869,9 +2861,6 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
     cost = 0;
     if(mode == 0)
     {
-#ifdef HERMITE_INTEGRATION	
-	if(HermiteOnlyFlag && !eligible_for_hermite(target)) return 0;
-#endif	
         pos_x = P[target].Pos[0];
         pos_y = P[target].Pos[1];
         pos_z = P[target].Pos[2];

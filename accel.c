@@ -46,9 +46,8 @@ void compute_grav_accelerations(void)
 
   gravity_tree();		/* computes gravity accel. */
 
-  /* For the first timestep, we redo it to allow usage of 
-   relative opening criterion for consistent accuracy */
-    if(All.TypeOfOpeningCriterion == 1 && All.Ti_Current == 0) {gravity_tree();}
+  /* For the first timestep, we redo it to allow usage of relative opening criterion for consistent accuracy */
+  if(All.TypeOfOpeningCriterion == 1 && All.Ti_Current == 0) {gravity_tree();}
 
   PRINT_STATUS(" ..gravity force computation done");
 }
