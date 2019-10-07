@@ -580,7 +580,7 @@ void *gravity_primary_loop(void *p)
         if(exitFlag) {break;}
 		 
 #ifdef HERMITE_INTEGRATION /* if we are in the Hermite extra loops and a particle is not flagged for this, simply mark it done and move on */
-        if(HermiteOnlyFlag && !eligible_for_hermite(target)) {ProcessedFlag[i]=1; continue;}
+        if(HermiteOnlyFlag && !eligible_for_hermite(i)) {ProcessedFlag[i]=1; continue;}
 #endif
 
 #if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC) && !defined(PMGRID)
