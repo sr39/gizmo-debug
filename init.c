@@ -849,8 +849,8 @@ void init(void)
 #endif
 #ifdef WAKEUP
         if(RestartFlag!=0) {PPPZ[i].wakeup=0;}
-	NeedToWakeupParticles = 0;
-	NeedToWakeupParticles_local = 0;
+        NeedToWakeupParticles = 0;
+        NeedToWakeupParticles_local = 0;
 #endif
 #ifdef SUPER_TIMESTEP_DIFFUSION
         SphP[i].Super_Timestep_Dt_Explicit = 0;
