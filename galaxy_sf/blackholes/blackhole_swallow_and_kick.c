@@ -531,6 +531,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         P[j].Ti_begstep = All.Ti_Current; P[j].Ti_current = All.Ti_Current;
 #ifdef WAKEUP
         PPPZ[j].wakeup = 1;
+	NeedToWakeupParticles_local = 1;
 #endif
         /* this is a giant pile of variables to zero out. dont need everything here because we cloned a valid particle, but handy anyways */
         P[j].Particle_DivVel = 0; SphP[j].DtInternalEnergy = 0; for(k=0;k<3;k++) {SphP[j].HydroAccel[k] = 0; P[j].GravAccel[k] = 0;}
