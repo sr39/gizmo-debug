@@ -563,8 +563,7 @@ void open_outputfiles(void)
   MPI_Barrier(MPI_COMM_WORLD);
 
 #ifdef BLACK_HOLES
-#if defined(BH_OUTPUT_MOREINFO) || defined(BH_OUTPUT_GASSWALLOW)
-  /* Note: This is done by everyone */
+  /* Note: This is done by everyone, even if it might be empty */
   if(ThisTask == 0)
     {
       sprintf(buf, "%sblackhole_details", All.OutputDir);
@@ -578,7 +577,7 @@ void open_outputfiles(void)
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
-#endif
+#endif // no io-reduced, or more-info if
 #ifdef BH_OUTPUT_GASSWALLOW
   sprintf(buf, "%sblackhole_details/bhswallow_%d.txt", All.OutputDir, ThisTask); 
   if(!(FdBhSwallowDetails = fopen(buf, mode)))
@@ -586,7 +585,7 @@ void open_outputfiles(void)
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
-#endif
+#endif // output-gas-swallow if
 #ifdef BH_OUTPUT_MOREINFO
   sprintf(buf, "%sblackhole_details/bhmergers_%d.txt", All.OutputDir, ThisTask); 
   if(!(FdBhMergerDetails = fopen(buf, mode)))
@@ -601,10 +600,9 @@ void open_outputfiles(void)
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
-#endif
-#endif
-#endif
-#endif
+#endif // bh-wind-kick if
+#endif // bh-output-more-info if
+#endif // black-holes if
 
   if(ThisTask != 0)		/* only the root processors writes to the log files */
     return;
