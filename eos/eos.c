@@ -76,19 +76,31 @@ double get_pressure(int i)
 #endif
 
 #ifdef EOS_GMC_BAROTROPIC // barytropic EOS calibrated to Masunaga & Inutsuka 2000, eq. 4 in Federrath 2014 Apj 790. Reasonable over the range of densitites relevant to some small-scale star formation problems
-    double gamma_eff_phase=7./5., rho=Particle_density_for_energy_i(i); nH_cgs= rho*All.cf_a3inv * ( All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam ) / PROTONMASS;
+    double gamma_eff_phase=7./5., rho=Particle_density_for_energy_i(i), nH_cgs= rho*All.cf_a3inv * ( All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam ) / PROTONMASS;
+#ifdef EOS_GMC_BAROTROPIC_SIMPLE // version used in Bate Bonnel & Bromm 2003 - isothermal below 6e10 cm^-3, adiabatic above    
+    if (nH_cgs < 6e10) {press = 6.60677e-16 * nH_cgs;} // isothermal below 6e10 cm^-3 (adiabatic gamma=5/3 for soundspeed, etc, but this assumes effective eos from cooling, etc
+    else press = 0.00003964062 * pow(nH_cgs/6e10,1.4);
+#else
     if(nH_cgs > 2.30181e16) {gamma_eff_phase=5./3.;} /* dissociates to atomic if dense enough (hot) */
     if (nH_cgs < 1.49468e8) {press = 6.60677e-16 * nH_cgs;} // isothermal below ~10^8 cm^-3 (adiabatic gamma=5/3 for soundspeed, etc, but this assumes effective eos from cooling, etc
     else if (nH_cgs < 2.30181e11) {press = 1.00585e-16 * pow(nH_cgs, 1.1);} // 'transition' region
     else if (nH_cgs < 2.30181e16) {press = 3.92567e-20 * pow(nH_cgs, gamma_eff_phase);} // adiabatic molecular
     else if (nH_cgs < 2.30181e21) {press = 3.1783e-15 * pow(nH_cgs, 1.1);} // 'transition' region
     else {press = 2.49841e-27 * pow(nH_cgs, gamma_eff_phase);} // adiabatic atomic
+#endif
     press /= All.UnitPressure_in_cgs;
     /* in this case the EOS is modeling cooling, etc, so -does not- allow shocks or deviations from adiabat, so we reset the internal energy every time this is checked */
     SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (rho * (gamma_eff_phase-1.));
     SphP[i].SoundSpeed = sqrt(gamma_eff_phase * press / rho);
 #endif
-    
+
+
+    double gamma_eff_phase=7./5., rho=Particle_density_for_energy_i(i), nH_cgs= rho*All.cf_a3inv * ( All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam ) / PROTONMASS;
+
+    /* in this case the EOS is modeling cooling, etc, so -does not- allow shocks or deviations from adiabat, so we reset the internal energy every time this is checked */
+    SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (rho * (gamma_eff_phase-1.));
+    SphP[i].SoundSpeed = sqrt(gamma_eff_phase * press / rho);
+#endif    
     
 #ifdef COSMIC_RAYS
     press += Get_Particle_CosmicRayPressure(i);
