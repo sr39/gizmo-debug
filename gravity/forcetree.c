@@ -519,7 +519,7 @@ void force_update_node_recursive(int no, int sib, int father)
     MyFloat divVmax, divVel;
     MyFloat s[3], vs[3], mass;
     struct particle_data *pa;
-    
+
 #ifdef DM_SCALARFIELD_SCREENING
     MyFloat s_dm[3], vs_dm[3], mass_dm;
 #endif
@@ -565,6 +565,9 @@ void force_update_node_recursive(int no, int sib, int father)
         
         last = no;
         
+#ifdef TREECOL
+        MyFloat gasmass = 0;
+#endif            
 #ifdef RT_USE_GRAVTREE
         for(j=0;j<N_RT_FREQ_BINS;j++) {stellar_lum[j]=0;}
 #endif
@@ -581,7 +584,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #else
         MyFloat bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
 #endif
-#endif
+#endif        
 #ifdef BH_CALC_DISTANCES
         MyFloat bh_mass=0;
         MyFloat bh_pos_times_mass[3]={0,0,0};   /* position of each black hole in the node times its mass; divide by total mass at the end to get COM */
@@ -643,6 +646,9 @@ void force_update_node_recursive(int no, int sib, int father)
                         vs[0] += (Nodes[p].u.d.mass * Extnodes[p].vs[0]);
                         vs[1] += (Nodes[p].u.d.mass * Extnodes[p].vs[1]);
                         vs[2] += (Nodes[p].u.d.mass * Extnodes[p].vs[2]);
+#ifdef TREECOL
+			gasmass += Nodes[p].gasmass;
+#endif			    
 #ifdef RT_USE_GRAVTREE
                         for(k=0;k<N_RT_FREQ_BINS;k++) {stellar_lum[k] += (Nodes[p].stellar_lum[k]);}
 #ifdef CHIMES_STELLAR_FLUXES 
@@ -725,7 +731,9 @@ void force_update_node_recursive(int no, int sib, int father)
                     vs[0] += (pa->Mass * pa->Vel[0]);
                     vs[1] += (pa->Mass * pa->Vel[1]);
                     vs[2] += (pa->Mass * pa->Vel[2]);
-                    
+#ifdef TREECOL
+		    if(pa->Type == 0) gasmass += pa->Mass;
+#endif		    
 #ifdef RT_USE_GRAVTREE
                     double lum[N_RT_FREQ_BINS];
 #ifdef CHIMES_STELLAR_FLUXES 
@@ -915,6 +923,9 @@ void force_update_node_recursive(int no, int sib, int father)
         Nodes[no].u.d.s[1] = s[1];
         Nodes[no].u.d.s[2] = s[2];
         Nodes[no].GravCost = 0;
+#ifdef TREECOL
+	Nodes[no].gasmass = gasmass;
+#endif	
 #ifdef RT_USE_GRAVTREE
         for(k=0;k<N_RT_FREQ_BINS;k++) {Nodes[no].stellar_lum[k] = stellar_lum[k];}
 #ifdef CHIMES_STELLAR_FLUXES 
@@ -1262,7 +1273,7 @@ void force_treeupdate_pseudos(int no)
     MyFloat hmax, vmax;
     MyFloat divVmax;
     MyFloat s[3], vs[3], mass;
-    
+
 #ifdef RT_USE_GRAVTREE
     MyFloat stellar_lum[N_RT_FREQ_BINS];
 #ifdef CHIMES_STELLAR_FLUXES 
@@ -1314,6 +1325,9 @@ void force_treeupdate_pseudos(int no)
     s_dm[1] = vs_dm[1] = 0;
     s_dm[2] = vs_dm[2] = 0;
 #endif
+#ifdef TREECOL
+    MyFloat gasmass = 0;
+#endif    
     mass = 0;
     s[0] = 0;
     s[1] = 0;
@@ -1691,7 +1705,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(REDUCE_TREEWALK_BRANCHING) && defined(PMGRID)
     double dxx, dyy, dzz, pdxx, pdyy, pdzz;
 #endif
-    
+#ifdef TREECOL
+    double treecol_angular_bins[TREECOL] = {0};    
+#endif    
 #ifdef RT_USE_GRAVTREE
     double mass_stellarlum[N_RT_FREQ_BINS];
     int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) {mass_stellarlum[k_freq]=0;}
@@ -2573,7 +2589,25 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             
             ninteractions++;
             
-            
+#ifdef TREECOL
+	    /* //int angular_bin = which_angular_bin(dx,dy,dz); */
+	     int bin;
+             if ((fabs(dx) > fabs(dy)) && (fabs(dx)>fabs(dz))){
+                 if (dx > 0) {bin = 0;}
+                 else {bin=1;}
+	    } else if (fabs(dy)>fabs(dz)){
+	        if (dy > 0) {bin = 2;}
+	        else {bin=3;}
+	    } else {
+	        if (dz > 0) {bin = 4;}
+	        else {bin = 5;}
+	    }
+//            if (bin<0 || bin > 5) printf("bin=%d\n", bin);
+             
+	    double angular_bin_size = 4*M_PI / TREECOL;
+            treecol_angular_bins[bin] += fac*r / (angular_bin_size);
+             // in our binning scheme, we stretch the gas mass over a patch */ of the sphere located at radius r subtending solid angle equal to the bin size - thus the area is r^2 * angular_bin_size, so sigma = m/(r^2 * angular bin size) = fac/r / angular bin size
+#endif 	    
 #ifdef RT_USE_GRAVTREE
             if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
             {
@@ -2708,6 +2742,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].GravAccel[0] = acc_x;
         P[target].GravAccel[1] = acc_y;
         P[target].GravAccel[2] = acc_z;
+#ifdef TREECOL
+	for(int k=0; k < TREECOL; k++) P[target].ColumnDensityBins[k] = treecol_angular_bins[k];
+#endif	
 #ifdef RT_OTVET
         if(valid_gas_particle_for_rt) {int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {SphP[target].ET[k][k_et] = RT_ET[k][k_et];}} else {if(P[target].Type==0) {int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {SphP[target].ET[k][k_et]=0;}}}
 #endif
@@ -2763,6 +2800,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         GravDataResult[target].Acc[0] = acc_x;
         GravDataResult[target].Acc[1] = acc_y;
         GravDataResult[target].Acc[2] = acc_z;
+#ifdef TREECOL
+	for(int k=0; k < TREECOL; k++) GravDataResult[target].ColumnDensityBins[k] = treecol_angular_bins[k];
+#endif	
 #ifdef RT_OTVET
         int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {GravDataResult[target].ET[k][k_et] = RT_ET[k][k_et];}
 #endif
