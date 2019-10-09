@@ -104,6 +104,8 @@ void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, stru
                                       double *S_L_out, double *S_R_out, double press_tot_limiter);
 void Riemann_solver_Rusanov(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
                             double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R);
+void Riemann_solver_KurganovTadmor_PWK(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
+                            double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R);
 void HLLC_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
                          double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R, double press_tot_limiter);
 void convert_face_to_flux(struct Riemann_outputs *Riemann_out, double n_unit[3]);
@@ -344,7 +346,11 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
     double h_R = Riemann_vec.R.p/Riemann_vec.R.rho + Riemann_vec.R.u + 0.5*(Riemann_vec.R.v[0]*Riemann_vec.R.v[0]+Riemann_vec.R.v[1]*Riemann_vec.R.v[1]+Riemann_vec.R.v[2]*Riemann_vec.R.v[2]);
     double v_line_L = Riemann_vec.L.v[0]*n_unit[0] + Riemann_vec.L.v[1]*n_unit[1] + Riemann_vec.L.v[2]*n_unit[2];
     double v_line_R = Riemann_vec.R.v[0]*n_unit[0] + Riemann_vec.R.v[1]*n_unit[1] + Riemann_vec.R.v[2]*n_unit[2];
-    
+
+#ifdef HYDRO_REPLACE_RIEMANN_KT
+    Riemann_solver_KurganovTadmor_PWK(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R)
+    if((Riemann_out->P_M<=0)||(isnan(Riemann_out->P_M))) /* check if it failed, if so compute HLLC instead */
+#endif
     HLLC_Riemann_solver(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R, press_tot_limiter);
 #ifdef EOS_GENERAL
     /* check if HLLC failed: if so, compute the Rusanov flux instead */
@@ -447,6 +453,42 @@ void Riemann_solver_Rusanov(struct Input_vec_Riemann Riemann_vec, struct Riemann
     if(Riemann_out->S_M==S_L) {Riemann_out->Face_Density=Riemann_vec.L.rho;}
     if(Riemann_out->S_M==S_R) {Riemann_out->Face_Density=Riemann_vec.R.rho;}
     if((Riemann_out->P_M<=0)&&(!isnan(Riemann_out->P_M))) {Riemann_out->Face_Density = 0.5*(Riemann_vec.L.rho+Riemann_vec.R.rho);}
+#endif
+    return;
+}
+
+
+
+
+/* generalized Kurganov-Tadmor flux as derived in Panuelos, Wadsley, and Kevlahan [PWK] 'Low Shear Diffusion Central Schemes for Particle Methods' (this implementation written by P. Hopkins).
+    This is qualitatively similar to a Rusanov flux, as they are essentially Lax-Friedrichs schemes with some improvements */
+void Riemann_solver_KurganovTadmor_PWK(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
+                            double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R)
+{
+    /* estimate wave speed using the PWK 'switch' alpha */
+    double dv[3], dv2, dvL, delta_threshold, nu=0, alpha=0; int k;
+    delta_threshold = 0.001 * 0.5*(Riemann_vec.L.rho+Riemann_vec.R.rho) * 0.5*(cs_L+cs_R); /* alpha is non-zero only if relative momentum is appreciable fraction of this value */
+    for(k=0;k<3;k++) {dv[k]=Riemann_vec.R.rho*Riemann_vec.R.v[k] - Riemann_vec.L.rho*Riemann_vec.L.v[k]; dv2=dv[k]*dv[k];} /* calculate relative momentum */
+    if(dv2 > delta_threshold*delta_threshold) {dvL=fabs(Riemann_vec.R.rho*v_line_R-Riemann_vec.L.rho*v_line_L); alpha=dvL/sqrt(dv2);} /* calculate non-zero alpha if needed */
+    S_L=alpha*cs_L; if(v_line_L>0) {S_L+=v_line_L;} else {S_L-=v_line_L;} /* fastest left-side wavespeed */
+    S_R=alpha*cs_R; if(v_line_R>0) {S_R+=v_line_R;} else {S_R-=v_line_R;} /* fastest right-side wavespeed */
+    S_M=DMAX(S_L,S_R); Riemann_out->S_M = S_M;
+    double f_rho_left = Riemann_vec.L.rho * (v_line_L + S_M);
+    double f_rho_right = Riemann_vec.R.rho * (v_line_R - S_M);
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) /* MFV face vel is null, as we are in frame co-moving with face already */
+    Riemann_out->P_M = 0.5 * (Riemann_vec.R.p - Riemann_vec.L.p);
+    Riemann_out->Fluxes.rho = 0.5 * (f_rho_left + f_rho_right);
+    for(k=0;k<3;k++) {Riemann_out->Fluxes.v[k] = 0.5*(f_rho_left*Riemann_vec.L.v[k] + f_rho_right*Riemann_vec.R.v[k]) + (Riemann_out->P_M)*n_unit[k];}
+    Riemann_out->Fluxes.p = 0.5 * (f_rho_left*h_L + f_rho_right*h_R + S_M*(Riemann_vec.R.p - Riemann_vec.L.p));
+#else
+    double denom = 1/(Riemann_vec.L.rho*v_line_L - Riemann_vec.R.rho*v_line_R + S_M*(Riemann_vec.L.rho+Riemann_vec.R.rho));
+    Riemann_out->P_M = (f_rho_left*Riemann_vec.L.p + f_rho_right*Riemann_vec.R.p) * denom;
+    Riemann_out->Fluxes.rho = 0; /* vanishes by definition in this frame */
+    for(k=0;k<3;k++) {Riemann_out->Fluxes.v[k] = (Riemann_vec.L.v[k]-Riemann_vec.R.v[k])*f_rho_left*f_rho_right*denom + (Riemann_out->P_M)*n_unit[k];}
+    Riemann_out->Fluxes.p = S_M*(Riemann_out->P_M) + (h_R-h_L)*f_rho_left*f_rho_right*denom;
+#endif
+#ifdef SAVE_FACE_DENSITY
+    Riemann_out->Face_Density = 0.5*(Riemann_vec.L.rho+Riemann_vec.R.rho);}
 #endif
     return;
 }
