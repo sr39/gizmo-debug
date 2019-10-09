@@ -509,7 +509,7 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         csnd = GAMMA * GAMMA_MINUS1 * P[p].Gas_InternalEnergy;
         int k; for(k=0;k<3;k++) {csnd += (P[p].Gas_Velocity[k]-P[p].Vel[k])*(P[p].Gas_Velocity[k]-P[p].Vel[k]);}
-#ifdef GRAIN_LORENTZFORCE
+#if defined(GRAIN_LORENTZFORCE) || defined(GRAIN_CR)
         for(k=0;k<3;k++) {csnd += P[p].Gas_B[k]*P[p].Gas_B[k] / (2.0 * P[p].Gas_Density);}
 #endif
         csnd = sqrt(csnd);

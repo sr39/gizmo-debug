@@ -1057,6 +1057,16 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt],"Grain_Size_Spectrum_Powerlaw");
         addr[nt] = &All.Grain_Size_Spectrum_Powerlaw;
         id[nt++] = REAL;
+
+#ifdef GRAIN_CR
+        strcpy(tag[nt],"Grain_CR_Charge_to_Mass_Ratio");
+        addr[nt] = &All.Grain_CR_Charge_to_Mass_Ratio;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt],"Grain_CR_Reduced_Speed_of_Light");
+        addr[nt] = &All.Grain_CR_Reduced_Speed_of_Light;
+        id[nt++] = REAL;
+#endif
 #endif
 	
 #if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)

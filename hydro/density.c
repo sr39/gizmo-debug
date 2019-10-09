@@ -170,7 +170,7 @@ static struct OUTPUT_STRUCT_NAME
 #endif
 #if defined(GRAIN_FLUID)
     MyDouble Gas_InternalEnergy;
-#ifdef GRAIN_LORENTZFORCE
+#if defined(GRAIN_LORENTZFORCE) || defined(GRAIN_CR)
     MyDouble Gas_B[3];
 #endif
 #endif
@@ -225,7 +225,7 @@ void hydrokerneldensity_out2particle(struct OUTPUT_STRUCT_NAME *out, int i, int 
         ASSIGN_ADD(P[i].Gas_Density, out->Rho, mode);
         ASSIGN_ADD(P[i].Gas_InternalEnergy, out->Gas_InternalEnergy, mode);
         for(k = 0; k<3; k++) {ASSIGN_ADD(P[i].Gas_Velocity[k], out->GasVel[k], mode);}
-#ifdef GRAIN_LORENTZFORCE
+#if defined(GRAIN_LORENTZFORCE) || defined(GRAIN_CR)
         for(k = 0; k<3; k++) {ASSIGN_ADD(P[i].Gas_B[k], out->Gas_B[k], mode);}
 #endif
     }
@@ -369,7 +369,7 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
         out->GasVel[0] += kernel->mj_wk * (local->Vel[0]-kernel->dv[0]);
         out->GasVel[1] += kernel->mj_wk * (local->Vel[1]-kernel->dv[1]);
         out->GasVel[2] += kernel->mj_wk * (local->Vel[2]-kernel->dv[2]);
-#ifdef GRAIN_LORENTZFORCE
+#if defined(GRAIN_LORENTZFORCE) || defined(GRAIN_CR)
         out->Gas_B[0] += kernel->wk * SphP[j].BPred[0];
         out->Gas_B[1] += kernel->wk * SphP[j].BPred[1];
         out->Gas_B[2] += kernel->wk * SphP[j].BPred[2];
@@ -611,7 +611,7 @@ void density(void)
                 {
                     desnumngb = All.DesNumNgb;
                     desnumngbdev = All.DesNumNgb / 4;
-#ifdef GRAIN_BACKREACTION
+#if defined(GRAIN_BACKREACTION) || defined(GRAIN_CR)
                     desnumngbdev = desnumngbdev_0;
 #endif
                 }
@@ -980,7 +980,7 @@ void density(void)
                 } else {
                     P[i].Gas_InternalEnergy = 0;
                     for(k = 0; k<3; k++) {P[i].Gas_Velocity[k] = 0;}
-#ifdef GRAIN_LORENTZFORCE
+#if defined(GRAIN_LORENTZFORCE) || defined(GRAIN_CR)
                     for(k = 0; k<3; k++) {P[i].Gas_B[k] = 0;}
 #endif
                 }
