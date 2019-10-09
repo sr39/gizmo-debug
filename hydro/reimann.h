@@ -466,7 +466,7 @@ void Riemann_solver_KurganovTadmor_PWK(struct Input_vec_Riemann Riemann_vec, str
                             double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R)
 {
     /* estimate wave speed using the PWK 'switch' alpha */
-    double dv[3], dv2, dvL, delta_threshold, nu=0, alpha=0; int k;
+    double S_L, S_R, S_M, dv[3], dv2, dvL, delta_threshold, nu=0, alpha=0; int k;
     delta_threshold = 0.001 * 0.5*(Riemann_vec.L.rho+Riemann_vec.R.rho) * 0.5*(cs_L+cs_R); /* alpha is non-zero only if relative momentum is appreciable fraction of this value */
     for(k=0;k<3;k++) {dv[k]=Riemann_vec.R.rho*Riemann_vec.R.v[k] - Riemann_vec.L.rho*Riemann_vec.L.v[k]; dv2=dv[k]*dv[k];} /* calculate relative momentum */
     if(dv2 > delta_threshold*delta_threshold) {dvL=fabs(Riemann_vec.R.rho*v_line_R-Riemann_vec.L.rho*v_line_L); alpha=dvL/sqrt(dv2);} /* calculate non-zero alpha if needed */
@@ -488,7 +488,7 @@ void Riemann_solver_KurganovTadmor_PWK(struct Input_vec_Riemann Riemann_vec, str
     Riemann_out->Fluxes.p = S_M*(Riemann_out->P_M) + (h_R-h_L)*f_rho_left*f_rho_right*denom;
 #endif
 #ifdef SAVE_FACE_DENSITY
-    Riemann_out->Face_Density = 0.5*(Riemann_vec.L.rho+Riemann_vec.R.rho);}
+    Riemann_out->Face_Density = 0.5*(Riemann_vec.L.rho+Riemann_vec.R.rho);
 #endif
     return;
 }
