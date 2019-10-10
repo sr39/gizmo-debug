@@ -370,7 +370,7 @@
             mdot_estimated = Riemann_out.Mdot_estimated * Face_Area_Norm;
 #endif            
             
-#if defined(HYDRO_MESHLESS_FINITE_MASS) && !defined(MAGNETIC)
+#if defined(HYDRO_MESHLESS_FINITE_MASS) && !defined(MAGNETIC) && !defined(HYDRO_REPLACE_RIEMANN_KT)
             Riemann_out.P_M -= dummy_pressure; // correct back to (allowed) negative pressures //
             double facenorm_pm = Face_Area_Norm * Riemann_out.P_M;
             for(k=0;k<3;k++) {Fluxes.v[k] = facenorm_pm * n_unit[k];} /* total momentum flux */
