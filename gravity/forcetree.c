@@ -1678,6 +1678,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     struct NODE *nop = 0;
     int no, nodesinlist, ptype, ninteractions, nexp, task, listindex = 0;
     double r2, dx, dy, dz, mass, r, fac, u, h, h_inv, h3_inv, xtmp;
+#ifdef TREECOL
+    double gasmass;
+#endif    
 #ifdef COMPUTE_JERK_IN_GRAVTREE
     double dvx, dvy, dvz;
     double jerk[3] = {0,0,0};
@@ -1958,7 +1961,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 GRAVITY_NEAREST_XYZ(dx,dy,dz,-1);
                 r2 = dx * dx + dy * dy + dz * dz;
                 mass = P[no].Mass;
-
+#ifdef TREECOL
+                if(P[no].Type == 0) gasmass = P[no].Mass;
+#endif                
                 /* only proceed if the mass is positive and there is separation! */
                 if((r2 > 0) && (mass > 0))
                 {
@@ -2149,7 +2154,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
                 
                 mass = nop->u.d.mass;
-                
+#ifdef TREECOL                
+                gasmass = nop->gasmass;
+#endif                
                 if(!(nop->u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)))
                 {
                     /* open cell */
@@ -2589,9 +2596,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             
             ninteractions++;
             
-#ifdef TREECOL
-	    /* //int angular_bin = which_angular_bin(dx,dy,dz); */
+#ifdef TREECOL	               
 	     int bin;
+             // Here we do a simple six-bin angular binning scheme
              if ((fabs(dx) > fabs(dy)) && (fabs(dx)>fabs(dz))){
                  if (dx > 0) {bin = 0;}
                  else {bin=1;}
@@ -2602,11 +2609,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 	        if (dz > 0) {bin = 4;}
 	        else {bin = 5;}
 	    }
-//            if (bin<0 || bin > 5) printf("bin=%d\n", bin);
              
 	    double angular_bin_size = 4*M_PI / TREECOL;
-            treecol_angular_bins[bin] += fac*r / (angular_bin_size);
-             // in our binning scheme, we stretch the gas mass over a patch */ of the sphere located at radius r subtending solid angle equal to the bin size - thus the area is r^2 * angular_bin_size, so sigma = m/(r^2 * angular bin size) = fac/r / angular bin size
+            treecol_angular_bins[bin] += fac*gasmass*r / (angular_bin_size*mass);
+             // in our binning scheme, we stretch the gas mass over a patch */ of the sphere located at radius r subtending solid angle equal to the bin size - thus the area is r^2 * angular_bin_size, so sigma = m/(r^2 * angular bin size) = fac/r / angular bin size. Factor of gasmass / mass corrects the gravitational mass to the gas mass
 #endif 	    
 #ifdef RT_USE_GRAVTREE
             if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
