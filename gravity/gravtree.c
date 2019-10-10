@@ -508,7 +508,7 @@ void gravity_tree(void)
         for(kbin=0; kbin<TREECOL; kbin++) {sigma_eff += exp(-P[i].ColumnDensityBins[kbin]/sigma_sum);}
         P[i].SigmaEff = -log(sigma_eff/TREECOL) * sigma_sum;
         double L = Get_Particle_Size(i)*All.cf_atime;
-        P[i].SigmaEff += P[i].Mass * 2 / (M_PI*L*L); // column density from the centre of the particle to infinity
+        P[i].SigmaEff += P[i].Mass / (2*M_PI*L*L); // column density from the centre of the particle to infinity
 #endif        
         
 #if !defined(BOX_PERIODIC) && !defined(PMGRID) /* some factors here in case we are trying to do comoving simulations in a non-periodic box (special use cases) */
