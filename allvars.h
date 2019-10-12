@@ -2789,12 +2789,16 @@ extern struct sph_particle_data
     short int wakeup;                     /*!< flag to wake up particle */
 #endif
     
-#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+#if (defined(OUTPUT_COOLRATE_DETAIL) || defined(RT_INFRARED)) && defined(COOLING)
     MyFloat CoolingRate;
     MyFloat HeatingRate;
     MyFloat NetHeatingRateQ;
     MyFloat HydroHeatingRate;
     MyFloat MetalCoolingRate;
+#if defined(RT_INFRARED)
+    MyFloat DustHeatingRate;
+    MyFloat DustCoolingRate;
+#endif
 #endif
     
 #if defined(COOLING) && defined(COOL_GRACKLE)

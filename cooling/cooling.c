@@ -265,6 +265,25 @@ void do_the_cooling_for_particle(int i)
 #ifndef COOLING_OPERATOR_SPLIT
         SphP[i].DtInternalEnergy = 0;
 #endif
+
+#ifdef RT_INFRARED
+
+    double nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, neguess=SphP[i].Ne;
+    //double temp = GAMMA_MINUS1 / BOLTZMANN * SphP[i].InternalEnergy * (All.UnitPressure_in_cgs/All.UnitDensity_in_cgs) * PROTONMASS;
+    double temp = convert_u_to_temp(SphP[i].InternalEnergy* (All.UnitPressure_in_cgs/All.UnitDensity_in_cgs), SphP[i].Density*All.UnitDensity_in_cgs, i, &neguess, &nH0_guess, &nHp_guess, &nHe0_guess, &nHep_guess, &nHepp_guess);
+
+
+
+    /*We should put all emission (cooling) into the IR band and take the dust heating from it*/
+    double rho_cgs=(SphP[i].Density * All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam);
+    double nHcgs = HYDROGEN_MASSFRAC * rho_cgs / PROTONMASS;	/* hydrogen number dens in cgs units */
+    double ratefact = nHcgs * nHcgs / rho_cgs;
+    /* Using du = ratefact * LambdaNet * (dt*All.UnitTime_in_s / All.HubbleParam)* All.UnitDensity_in_cgs / All.UnitPressure_in_cgs */
+    SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] += P[i].Mass*(SphP[i].CoolingRate-SphP[i].DustHeatingRate)*ratefact*(dtime*All.UnitTime_in_s / All.HubbleParam) / (All.UnitPressure_in_cgs/All.UnitDensity_in_cgs);
+    
+    printf("i %d Gas density %g Gas temp %g  Rad temp %g Dust temp %g DustCoolingRate %g DustHeatingRate %g CoolingRate %g HeatingRate %g\n",i, nHcgs, temp, SphP[i].Radiation_Temperature, SphP[i].Dust_Temperature, SphP[i].DustCoolingRate, SphP[i].DustHeatingRate, SphP[i].CoolingRate, SphP[i].HeatingRate);
+    
+#endif
         
        
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) 
@@ -948,7 +967,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             LambdaMetal *= n_elec;
             /* (modified now to correct out tabulated ne so that calculated ne can be inserted; ni not used b/c it should vary species-to-species */
             Lambda += LambdaMetal;
-#ifdef OUTPUT_COOLRATE_DETAIL
+#if defined(OUTPUT_COOLRATE_DETAIL) || defined(RT_INFRARED)
             if(target>=0){SphP[target].MetalCoolingRate = LambdaMetal;}
 #endif
         }
@@ -979,6 +998,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             if(target >= 0) {Tdust = SphP[target].Dust_Temperature;}
 #endif
             if(T > Tdust) {LambdaDust = 1.116e-32 * (T-Tdust)*sqrt(T)*(1.-0.8*exp(-75./T)) * (Z[0]/All.SolarAbundances[0]);}  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
+#ifdef RT_INFRARED
+            SphP[target].DustCoolingRate=LambdaDust;
+#endif
 #endif
             Lambda += LambdaMol + LambdaDust;
         }
@@ -1092,6 +1114,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #if defined(COOL_METAL_LINES_BY_SPECIES) && defined(COOL_LOW_TEMPERATURES)
         /* Dust collisional heating */
         double Tdust = 30.;
+        double HeatDust = 0;
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
         Tdust = 10.;
 #if defined(BH_COMPTON_HEATING)
@@ -1101,8 +1124,13 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #ifdef RT_INFRARED
         if(target >= 0) {Tdust = SphP[target].Dust_Temperature;}
 #endif
-        if(T < Tdust) {Heat += 1.116e-32 * (Tdust-T)*sqrt(T)*(1.-0.8*exp(-75./T)) * (Z[0]/All.SolarAbundances[0]);} // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
+        if(T < Tdust) {HeatDust = 1.116e-32 * (Tdust-T)*sqrt(T)*(1.-0.8*exp(-75./T)) * (Z[0]/All.SolarAbundances[0]);} // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
+#ifdef RT_INFRARED
+        SphP[target].DustHeatingRate=HeatDust;
 #endif
+        Heat += HeatDust;
+#endif
+
         
 #if defined(BH_COMPTON_HEATING) && !defined(SINGLE_STAR_SINK_DYNAMICS)
         /* Compton heating from AGN */
@@ -1172,10 +1200,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     
     
     double Q = Heat - Lambda;
-#ifdef OUTPUT_COOLRATE_DETAIL
+#if defined(OUTPUT_COOLRATE_DETAIL) || defined(RT_INFRARED)
     if (target>=0){SphP[target].CoolingRate = Lambda; SphP[target].HeatingRate = Heat;}
 #endif
-    
 
 #if defined(COOL_LOW_TEMPERATURES) && !defined(COOL_LOWTEMP_THIN_ONLY)
     /* if we are in the optically thick limit, we need to modify the cooling/heating rates according to the appropriate limits; 
@@ -1230,7 +1257,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     }
 #endif
 
-#ifdef OUTPUT_COOLRATE_DETAIL
+#if defined(OUTPUT_COOLRATE_DETAIL) || defined(RT_INFRARED)
     if (target>=0){SphP[target].NetHeatingRateQ = Q;}
 #endif
     
@@ -1239,7 +1266,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         in the semi-implicit solution determined here. this is more accurate when tcool << tdynamical */
     if(target >= 0) Q += SphP[target].DtInternalEnergy / nHcgs;
 
-#ifdef OUTPUT_COOLRATE_DETAIL
+#if defined(OUTPUT_COOLRATE_DETAIL) || defined(RT_INFRARED)
     if (target>=0){SphP[target].HydroHeatingRate = SphP[target].DtInternalEnergy / nHcgs;}
 #endif
 
