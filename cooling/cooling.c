@@ -1201,11 +1201,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
      */
     if( (nHcgs > 0.1) && (target >= 0) )  /* don't bother at very low densities, since youre not optically thick, and protect from target=-1 with GALSF_EFFECTIVE_EQS */
     {
-#ifdef TREECOL
-        double surface_density = P[target].SigmaEff;
-#else
-        double surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1);
-#endif        
+        double surface_density = evaluate_NH(target,1);
         surface_density *= All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; // converts to cgs
         double effective_area = 2.3 * PROTONMASS / surface_density; // since cooling rate is ultimately per-particle, need a particle-weight here
         double kappa_eff; // effective kappa, accounting for metal abundance, temperature, and density //
@@ -1781,8 +1777,9 @@ void selfshield_local_incident_uv_flux(void)
             {
                 SphP[i].RadFluxUV *= code_flux_to_physical; // convert to cgs
                 SphP[i].RadFluxEUV *= code_flux_to_physical; // convert to cgs
-                
-                GradRho = sigma_eff_0 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1); // in CGS 
+
+                GradRho = sigma_eff_0 * evaluate_NH(i,1); // in CGS
+
                 double tau_nuv = KAPPA_UV * GradRho * (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // optical depth: this part is attenuated by dust //
                 double tau_euv = 3.7e6 * GradRho; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas //
                 SphP[i].RadFluxUV *= exp(-tau_nuv); // attenuate
@@ -1882,8 +1879,8 @@ void chimes_update_gas_vars(int target)
 #endif 
   
 #ifdef CHIMES_SOBOLEV_SHIELDING 
-  double surface_density; 
-  surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1); 
+  double surface_density;
+  surface_density = evaluate_NH(target, 1);
   surface_density *= All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm; // converts to cgs
   ChimesGasVars[target].cell_size = shielding_length_factor * surface_density / rho_cgs; 
 #else 

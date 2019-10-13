@@ -502,13 +502,11 @@ void gravity_tree(void)
 
 #ifdef TREECOL  /* compute the effective column density that gives equivalent attenuation of a uniform background: -log(avg(exp(-sigma))) */
         double sigma_eff=0, sigma_sum=0;
-        // first do a sum of the columns and express columns in units of that sum, so that we're plugging O(1) values into exp and avoid underflow when we have the wrong units. Then we just multiply by the sum at the end.
+        // first do a sum of the columns and express columns in units of that sum, so that we're plugging O(1) values into exp and avoid overflow when we have unfortunate units. Then we just multiply by the sum at the end.
         int kbin;
         for(kbin=0; kbin<TREECOL; kbin++) {sigma_sum += P[i].ColumnDensityBins[kbin];}
         for(kbin=0; kbin<TREECOL; kbin++) {sigma_eff += exp(-P[i].ColumnDensityBins[kbin]/sigma_sum);}
         P[i].SigmaEff = -log(sigma_eff/TREECOL) * sigma_sum;
-        double L = Get_Particle_Size(i)*All.cf_atime;
-        P[i].SigmaEff += P[i].Mass / (2*M_PI*L*L); // column density from the centre of the particle to infinity
 #endif        
         
 #if !defined(BOX_PERIODIC) && !defined(PMGRID) /* some factors here in case we are trying to do comoving simulations in a non-periodic box (special use cases) */
