@@ -114,7 +114,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 
         double f_uv, f_op;
 #ifndef RT_FIRE_FIX_SPECTRAL_SHAPE
-        double sigma_eff = sigma_0 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,P[i].DensAroundStar,PPP[i].NumNgb,0);
+        double sigma_eff = sigma_0 * evaluate_NH(i,0);
         if((sigma_eff <= 0)||(isnan(sigma_eff))) {sigma_eff=0;}
         if(star_age <= 0.0025) {f_op=0.09;} else {
             if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));

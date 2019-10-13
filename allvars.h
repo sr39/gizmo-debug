@@ -2290,7 +2290,7 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef TREECOL
     MyFloat ColumnDensityBins[TREECOL];     /*!< angular bins for column density */
-    MyFloat SigmaEff; /*< effective column density -log(avg(exp(-sigma))) averaged over column density bins */
+    MyFloat SigmaEff;              /*!< effective column density -log(avg(exp(-sigma))) averaged over column density bins from the gravity tree (does not include the self-contribution) */
 #endif         
 #if defined(RT_SOURCE_INJECTION)
     MyFloat KernelSum_Around_RT_Source; /*!< kernel summation around sources for radiation injection (save so can be different from 'density') */

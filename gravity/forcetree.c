@@ -1680,6 +1680,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double r2, dx, dy, dz, mass, r, fac, u, h, h_inv, h3_inv, xtmp;
 #ifdef TREECOL
     double gasmass;
+    double angular_bin_size = 4*M_PI / TREECOL;    
 #endif    
 #ifdef COMPUTE_JERK_IN_GRAVTREE
     double dvx, dvy, dvz;
@@ -2596,23 +2597,24 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             
             ninteractions++;
             
-#ifdef TREECOL	               
-	     int bin;
-             // Here we do a simple six-bin angular binning scheme
-             if ((fabs(dx) > fabs(dy)) && (fabs(dx)>fabs(dz))){
-                 if (dx > 0) {bin = 0;}
-                 else {bin=1;}
-	    } else if (fabs(dy)>fabs(dz)){
-	        if (dy > 0) {bin = 2;}
-	        else {bin=3;}
-	    } else {
-	        if (dz > 0) {bin = 4;}
-	        else {bin = 5;}
-	    }
+#ifdef TREECOL
+            if(gasmass>0){
+                int bin;
+                // Here we do a simple six-bin angular binning scheme
+                if ((fabs(dx) > fabs(dy)) && (fabs(dx)>fabs(dz))){
+                    if (dx > 0) {bin = 0;}
+                    else {bin=1;}
+                } else if (fabs(dy)>fabs(dz)){
+                    if (dy > 0) {bin = 2;}
+                    else {bin=3;}
+                } else {
+                    if (dz > 0) {bin = 4;}
+                    else {bin = 5;}
+                }
              
-	    double angular_bin_size = 4*M_PI / TREECOL;
-            treecol_angular_bins[bin] += fac*gasmass*r / (angular_bin_size*mass);
-             // in our binning scheme, we stretch the gas mass over a patch */ of the sphere located at radius r subtending solid angle equal to the bin size - thus the area is r^2 * angular_bin_size, so sigma = m/(r^2 * angular bin size) = fac/r / angular bin size. Factor of gasmass / mass corrects the gravitational mass to the gas mass
+                treecol_angular_bins[bin] += fac*gasmass*r / (angular_bin_size*mass);
+                // in our binning scheme, we stretch the gas mass over a patch */ of the sphere located at radius r subtending solid angle equal to the bin size - thus the area is r^2 * angular_bin_size, so sigma = m/(r^2 * angular bin size) = fac/r / angular bin size. Factor of gasmass / mass corrects the gravitational mass to the gas mass
+            }
 #endif 	    
 #ifdef RT_USE_GRAVTREE
             if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
