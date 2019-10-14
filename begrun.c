@@ -320,8 +320,8 @@ void begrun(void)
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
       strcpy(All.AgeTracerListFilename, all.AgeTracerListFilename);
 #else
-      strcpy(All.AgeTracerBinStart, all.AgeTracerBinStart);
-      strcpy(All.AgeTracerBinEnd,   all.AgeTracerBinEnd);
+      All.AgeTracerBinStart = all.AgeTracerBinStart;
+      All.AgeTracerBinEnd   = all.AgeTracerBinEnd;
 #endif
 #endif
 
