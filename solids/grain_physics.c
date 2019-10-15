@@ -50,7 +50,8 @@ void apply_grain_dragforce(void)
                     double dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
                     if(dt > 0)
                     {
-                        double cs = sqrt( GAMMA * GAMMA_MINUS1 * P[i].Gas_InternalEnergy);
+                        double gamma_eff = GAMMA_DEFAULT; // adiabatic index to use below
+                        double cs = sqrt( (gamma_eff*(gamma_eff-1)) * P[i].Gas_InternalEnergy);
                         double R_grain_cgs = P[i].Grain_Size;
                         double R_grain_code = R_grain_cgs / (All.UnitLength_in_cm / All.HubbleParam);
                         double rho_gas = P[i].Gas_Density * All.cf_a3inv;
@@ -62,18 +63,18 @@ void apply_grain_dragforce(void)
                         if(vgas_mag > 0)
                         {
                             vgas_mag = sqrt(vgas_mag) / All.cf_atime;
-                            double x0 = 0.469993*sqrt(GAMMA) * vgas_mag/cs; // (3/8)*sqrt[pi/2]*|vgas-vgrain|/cs //
-                            double tstop_inv = 1.59577/sqrt(GAMMA) * rho_gas * cs / (R_grain_code * rho_grain_code); // 2*sqrt[2/pi] * 1/tstop //
+                            double x0 = 0.469993*sqrt(gamma_eff) * vgas_mag/cs; // (3/8)*sqrt[pi/2]*|vgas-vgrain|/cs //
+                            double tstop_inv = 1.59577/sqrt(gamma_eff) * rho_gas * cs / (R_grain_code * rho_grain_code); // 2*sqrt[2/pi] * 1/tstop //
 #ifdef GRAIN_LORENTZFORCE
                             /* calculate the grain charge following Draine & Sutin */
                             double cs_cgs = cs * All.UnitVelocity_in_cm_per_s;
-                            double tau_draine_sutin = R_grain_cgs * (2.3*PROTONMASS) * (cs_cgs*cs_cgs) / (GAMMA * ELECTRONCHARGE*ELECTRONCHARGE);
+                            double tau_draine_sutin = R_grain_cgs * (2.3*PROTONMASS) * (cs_cgs*cs_cgs) / (gamma_eff * ELECTRONCHARGE*ELECTRONCHARGE);
                             double Z_grain = -DMAX( 1./(1. + sqrt(1.0e-3/tau_draine_sutin)) , 2.5*tau_draine_sutin );
                             if(isnan(Z_grain)||(Z_grain>=0)) {Z_grain=0;}
 #endif
 #ifdef GRAIN_EPSTEIN_STOKES
-                            double mu = 2.3 * PROTONMASS;
-                            double temperature = mu * (P[i].Gas_InternalEnergy*All.UnitEnergy_in_cgs*All.HubbleParam/All.UnitMass_in_g) / BOLTZMANN;
+                            double mu = 2.3 * PROTONMASS; // assume molecular gas, as its the only regime where this is relevant
+                            double temperature = mu * (1.4-1.) * U_TO_TEMP_UNITS * P[i].Gas_InternalEnergy; // assume molecular eos with gamma=1.4
                             double cross_section = GRAIN_EPSTEIN_STOKES * 2.0e-15 * (1. + 70./temperature);
                             cross_section /= (All.UnitLength_in_cm * All.UnitLength_in_cm / (All.HubbleParam*All.HubbleParam));
                             double n_mol = rho_gas / (mu * All.HubbleParam/All.UnitMass_in_g);
@@ -82,12 +83,12 @@ void apply_grain_dragforce(void)
                             if(corr_mfp > 1) {tstop_inv /= corr_mfp;}
 #ifdef GRAIN_LORENTZFORCE
                             /* also have charged grains, so we will calculate Coulomb forces as well */
-                            double a_Coulomb = sqrt(2.*GAMMA*GAMMA*GAMMA/(9.*M_PI));
-                            double tstop_Coulomb_inv = 0.797885/sqrt(GAMMA) * rho_gas * cs / (R_grain_code * rho_grain_code); // base normalization //
+                            double a_Coulomb = sqrt(2.*gamma_eff*gamma_eff*gamma_eff/(9.*M_PI));
+                            double tstop_Coulomb_inv = 0.797885/sqrt(gamma_eff) * rho_gas * cs / (R_grain_code * rho_grain_code); // base normalization //
                             tstop_Coulomb_inv /= (1. + a_Coulomb *(vgas_mag/cs)*(vgas_mag/cs)*(vgas_mag/cs)) * sqrt(1.+x0*x0); // velocity dependence (force becomes weak when super-sonic)
                             tstop_Coulomb_inv *= (Z_grain/tau_draine_sutin) * (Z_grain/tau_draine_sutin) / 17.; // coulomb attraction terms, assuming ions have charge ~1, and Coulomb logarithm is 17
                             // don't need super-accuration gas ionization states, just need approximate estimate, which we can make based on temperature //
-                            double T_Kelvin = (2.3*PROTONMASS) * (cs_cgs*cs_cgs) / (1.3807e-16 * GAMMA), f_ion_to_use = 0; // temperature in K
+                            double T_Kelvin = (2.3*PROTONMASS) * (cs_cgs*cs_cgs) / (1.3807e-16 * gamma_eff), f_ion_to_use = 0; // temperature in K
 #ifdef COOLING  // in this case, have the ability to calculate more accurate ionization fraction
                             {
                                 double u_tmp, ne_tmp = 1, nh0_tmp = 0, mu_tmp = 1, temp_tmp, nHeII_tmp, nhp_tmp, nHe0_tmp, nHepp_tmp;
@@ -127,7 +128,7 @@ void apply_grain_dragforce(void)
                             
                             double grain_mass = (4.*M_PI/3.) * R_grain_code*R_grain_code*R_grain_code * rho_grain_code; // code units
                             double lorentz_units = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); // code B to Gauss
-                            lorentz_units *= (ELECTRONCHARGE/C) * All.UnitVelocity_in_cm_per_s / (All.UnitMass_in_g / All.HubbleParam); // converts acceleration to cgs
+                            lorentz_units *= (ELECTRONCHARGE/C_LIGHT) * All.UnitVelocity_in_cm_per_s / (All.UnitMass_in_g / All.HubbleParam); // converts acceleration to cgs
                             lorentz_units /= All.UnitVelocity_in_cm_per_s / (All.UnitTime_in_s / All.HubbleParam); // converts it to code-units acceleration
                             
                             /* define unit vectors and B for evolving the lorentz force */

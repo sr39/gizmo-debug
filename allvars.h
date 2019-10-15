@@ -733,6 +733,17 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 
 
+
+#if defined(EOS_GAMMA_VARIABLE)
+#define GAMMA(i) (gamma_eos(i)) /*! use an actual function! */
+#ifndef EOS_GENERAL
+#define EOS_GENERAL /*! needs to be on for this to work */
+#endif
+#else
+#define GAMMA(i) (EOS_GAMMA) /*! default to this being a universal constant */
+#endif
+#define GAMMA_DEFAULT (EOS_GAMMA)
+
 #if defined(CONDUCTION) || defined(EOS_GENERAL)
 #define DOGRAD_INTERNAL_ENERGY 1
 #endif
@@ -961,20 +972,14 @@ typedef unsigned long long peanokey;
 #endif
 
 
+#if !defined(EOS_GAMMA)
+#define EOS_GAMMA (5.0/3.0) /*!< adiabatic index of simulated gas */
+#endif
+
 #ifdef GAMMA_ENFORCE_ADIABAT
 #define EOS_ENFORCE_ADIABAT (GAMMA_ENFORCE_ADIABAT) /* this allows for either term to be defined, for backwards-compatibility */
 #endif
 
-#if !defined(GAMMA) /* this allows for either term to be defined, for backwards-compatibility */
-#ifndef EOS_GAMMA
-#define  GAMMA         (5.0/3.0)	/*!< adiabatic index of simulated gas */
-#else
-#define  GAMMA         (EOS_GAMMA)
-#endif
-#endif
-
-#define  GAMMA_MINUS1  (GAMMA-1)
-#define  GAMMA_MINUS1_INV  (1./(GAMMA-1))
 
 #if !defined(RT_HYDROGEN_GAS_ONLY) || defined(RT_CHEM_PHOTOION_HE)
 #define  HYDROGEN_MASSFRAC 0.76 /*!< mass fraction of hydrogen, relevant only for radiative cooling */
@@ -996,57 +1001,44 @@ typedef unsigned long long peanokey;
 #endif
 
 /* ... often used physical constants (cgs units) */
+#define  GRAVITY_G      (6.672e-8)
+#define  SOLAR_MASS     (1.989e33)
+#define  SOLAR_LUM      (3.826e33)
+#define  BOLTZMANN      (1.38066e-16)
+#define  C_LIGHT        (2.9979e10)
+#define  PROTONMASS     (1.6726e-24)
+#define  ELECTRONMASS   (9.10953e-28)
+#define  THOMPSON       (6.65245e-25)
+#define  ELECTRONCHARGE (4.8032e-10)
+#define  SEC_PER_YEAR   (3.155e7)
+#define  HUBBLE_CGS     (3.2407789e-18)	/* in h/sec */
+#define  ELECTRONVOLT_IN_ERGS (1.60217733e-12)
 
-#define  GRAVITY     6.672e-8
-#define  SOLAR_MASS  1.989e33
-#define  SOLAR_LUM   3.826e33
-#define  RAD_CONST   7.565e-15
-#define  AVOGADRO    6.0222e23
-#define  BOLTZMANN   1.38066e-16
-#define  GAS_CONST   8.31425e7
-#define  C           2.9979e10
-#define  PLANCK      6.6262e-27
-#define  CM_PER_MPC  3.085678e24
-#define  PROTONMASS  1.6726e-24
-#define  ELECTRONMASS 9.10953e-28
-#define  THOMPSON     6.65245e-25
-#define  ELECTRONCHARGE  4.8032e-10
-#define  HUBBLE          3.2407789e-18	/* in h/sec */
-#define  LYMAN_ALPHA      1215.6e-8	/* 1215.6 Angstroem */
-#define  LYMAN_ALPHA_HeII  303.8e-8	/* 303.8 Angstroem */
-#define  OSCILLATOR_STRENGTH       0.41615
-#define  OSCILLATOR_STRENGTH_HeII  0.41615
-#define  ELECTRONVOLT_IN_ERGS      1.60217733e-12
+#define KAPPA_IR    (10.0)   /* in cm^2/g for solar abundances */
+#define KAPPA_OP    (180.0)
+#define KAPPA_UV    (1800.0)
 
-#define KAPPA_IR 10.0   /* in cm^2/g for solar abundances */
-#define KAPPA_OP 180.0
-#define KAPPA_UV 1800.0
+#define C_LIGHT_CODE ((C_LIGHT/All.UnitVelocity_in_cm_per_s)) /* pure convenience function, speed-of-light in code units */
+#define C_LIGHT_CODE_REDUCED ((RT_SPEEDOFLIGHT_REDUCTION*(C_LIGHT/All.UnitVelocity_in_cm_per_s))) /* reduced speed-of-light in code units, again here as a convenience function */
+#define U_TO_TEMP_UNITS ((PROTONMASS / BOLTZMANN) * (All.UnitEnergy_in_cgs / All.UnitMass_in_g)) /* units to convert specific internal energy to temperature. needs to be multiplied by dimensionless factor=mean_molec_weight_in_amu*(gamma_eos-1) */
 
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
-#define HIIRegion_Temp 1.0e4 /* temperature (in K) of heated gas */
+#define HIIRegion_Temp (1.0e4) /* temperature (in K) of heated gas */
 #endif
 
-
 #ifdef METALS
-
 #ifdef GALSF_FB_FIRE_RPROCESS
 #define NUM_RPROCESS_SPECIES (GALSF_FB_FIRE_RPROCESS)
 #else
 #define NUM_RPROCESS_SPECIES 0
 #endif
-
 #ifdef COOL_METAL_LINES_BY_SPECIES
 #define NUM_METAL_SPECIES (11+NUM_RPROCESS_SPECIES)
 #else
 #define NUM_METAL_SPECIES (1+NUM_RPROCESS_SPECIES)
 #endif
-
 #endif // METALS //
 
-
-
-#define  SEC_PER_MEGAYEAR   3.155e13
-#define  SEC_PER_YEAR       3.155e7
 
 
 #ifndef FOF_PRIMARY_LINK_TYPES
@@ -1851,9 +1843,6 @@ extern struct global_data_all_processes
     double MaxHsml;           /*!< minimum allowed gas kernel length */
     
 #ifdef TURB_DRIVING
-  double RefDensity;
-  double RefInternalEnergy;
-  double IsoSoundSpeed;
   double TurbInjectedEnergy;
   double TurbDissipatedEnergy;
   double TimeBetTurbSpectrum;
@@ -2130,10 +2119,6 @@ extern struct global_data_all_processes
   double BlackHoleMaxAccretionRadius;
   double BlackHoleEddingtonFactor;	/*!< Factor above Eddington */
   double BlackHoleRadiativeEfficiency;  /**< Radiative efficiency determined by the spin value, default value is 0.1 */
-#ifdef MODIFIEDBONDI
-  double BlackHoleRefDensity;
-  double BlackHoleRefSoundspeed;
-#endif
 #endif
 
 #if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
@@ -2890,7 +2875,7 @@ extern struct gravdata_in
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     MyFloat Mass;
 #endif
-#ifdef SINGLE_STAR_TIMESTEPPING
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE)
     MyFloat Vel[3];
 #endif  
     int Type;

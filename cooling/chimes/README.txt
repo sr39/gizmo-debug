@@ -20,7 +20,7 @@ The CHIMES flag is the 'master' switch. When this is switched on, the following 
     altogether, so this should only be done for elements that you are sure will not contribute 
     to the cooling. Note that the included elements will also depend on other Config flags: 
     - If METALS is NOT defined, He is set according to XH (from allvars.h) and all element abundances of 
-      C and above are set to zero. Note that if the 'IncludeXXX' parameters are set to 1, they will still 
+      Carbon and above are set to zero. Note that if the 'IncludeXXX' parameters are set to 1, they will still 
       allocate memory to the metal ions, they will just be set to zero. 
     - To include metals, you need to set both METALS and COOL_METAL_LINES_BY_SPECIES. Then each element 
       abundance is set from the mass fractions given in the P[i].Metallicity array, and we calculate XH 

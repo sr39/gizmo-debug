@@ -221,7 +221,6 @@ ST_SolWeight   1.0      % fractional wt of solenoidal modes (wt*curl + (1-wt)*di
 ST_AmplFac     1.0      % multiplies turb amplitudes
 ST_SpectForm   2        % driving pwr-spec: 0=Ek~const; 1=sharp-peak at kc; 2=Ek~k^(-5/3); 3=Ek~k^-2
 ST_Seed        42       % random number seed for modes (so you can reproduce it)
-IsoSoundSpeed  1.0      % initializes gas sound speed in box to this value
 TimeBetTurbSpectrum 0.5 % time (code units) between evaluations of turb pwrspec
 
 
@@ -247,7 +246,7 @@ relativeTolerance 	   1.0e-4   % Controls accuracy of thermo-chemistry integrati
 absoluteTolerance 	   1.0e-10  % Controls accuracy of chemistry integration. 
 thermalAbsoluteTolerance   1.0e-40  % Controls accuracy of temperature integration. 
 scale_metal_tolerances     0   % 0=fixed, 1=scaled 
-IncludeCarbon 		   1   % 0=excl C from chemistry network; 1=include it. 
+IncludeCarbon 		   1   % 0=exclude carbon from chemistry network; 1=include it. 
 IncludeNitrogen		   1   % NOTE: These IncludeXXX parameters also require 
 IncludeOxygen 		   1   % the METALS and COOL_METAL_LINES_BY_SPECIES Config flags, 
 IncludeNeon 		   1   % otherwise the metal abundances will be set to zero. 

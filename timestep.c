@@ -88,19 +88,7 @@ void find_timesteps(void)
     
     if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin || dt_displacement == 0)
         find_dt_displacement_constraint(All.cf_hubble_a * All.cf_atime * All.cf_atime);
- 
-#ifdef BH_WIND_SPAWN
-    if(All.HighestActiveTimeBin >= All.HighestOccupiedTimeBin-5)
-    {
-        double local_max_u=0.0, global_max_u, global_max_t;
-        for(i = 0; i < NumPart; i++) {if(P[i].Type==0) {local_max_u = DMAX( local_max_u, SphP[i].InternalEnergy );}}
-        MPI_Allreduce(&local_max_u, &global_max_u, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-        double u_to_temp_fac = PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
-        global_max_t = global_max_u * u_to_temp_fac;
-        if(ThisTask==0)  printf("Global Maximum SphP.u = %g (Max Temperature = %g) \n", global_max_u, global_max_t);
-    }
-#endif
-    
+     
 #ifdef DIVBCLEANING_DEDNER
     /* need to calculate the global fastest wave speed to manage the damping terms stably */
     if((All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)||(All.FastestWaveSpeed == 0))
@@ -507,7 +495,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef GRAIN_FLUID
     if(P[p].Type > 0)
     {
-        csnd = GAMMA * GAMMA_MINUS1 * P[p].Gas_InternalEnergy;
+        csnd = convert_internalenergy_soundspeed2(p, P[p].Gas_InternalEnergy);
         int k; for(k=0;k<3;k++) {csnd += (P[p].Gas_Velocity[k]-P[p].Vel[k])*(P[p].Gas_Velocity[k]-P[p].Vel[k]);}
 #ifdef GRAIN_LORENTZFORCE
         for(k=0;k<3;k++) {csnd += P[p].Gas_B[k]*P[p].Gas_B[k] / (2.0 * P[p].Gas_Density);}
@@ -655,7 +643,7 @@ integertime get_timestep(int p,		/*!< particle index */
                             if(crv > 0)
                             {
                                 crv = sqrt(crv) / SphP[p].CosmicRayEnergy;
-                                cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , fabs(SphP[p].CosmicRayDiffusionCoeff)/(Get_Particle_Size(p)*All.cf_atime)));// * (C/All.UnitVelocity_in_cm_per_s);
+                                cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , fabs(SphP[p].CosmicRayDiffusionCoeff)/(Get_Particle_Size(p)*All.cf_atime)));
 #ifdef COSMIC_RAYS_ALFVEN
                                 cr_speed = COSMIC_RAYS_ALFVEN;
 #endif
@@ -700,7 +688,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
                 }
                 /* even with a fully-implicit solver, we require a CFL-like criterion on timesteps (much larger steps allowed for stability, but not accuracy) */
-                dt_courant = All.CourantFac * (L_particle*All.cf_atime) / (RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s)); /* courant-type criterion, using the reduced speed of light */
+                dt_courant = All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED; /* courant-type criterion, using the reduced speed of light */
 #ifdef RT_M1
 #ifndef GALSF
                 dt_rad = dt_courant;
