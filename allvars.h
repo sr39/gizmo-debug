@@ -1937,6 +1937,10 @@ extern struct global_data_all_processes
     double Grain_Size_Min;
     double Grain_Size_Max;
     double Grain_Size_Spectrum_Powerlaw;
+#ifdef GRAIN_CR
+    double Grain_CR_Charge_to_Mass_Ratio;
+    double Grain_CR_Reduced_Speed_of_Light;
+#endif
 #endif
     
 #ifdef COSMIC_RAYS
@@ -2292,12 +2296,13 @@ extern ALIGN(32) struct particle_data
 #if defined(GRAIN_FLUID)
     MyFloat Grain_Size;
     MyFloat Gas_Density;
+    short int Grain_Type;
     MyFloat Gas_InternalEnergy;
     MyFloat Gas_Velocity[3];
-#ifdef GRAIN_BACKREACTION
+#if defined(GRAIN_BACKREACTION) || defined(GRAIN_CR)
     MyFloat Grain_DeltaMomentum[3];
 #endif
-#ifdef GRAIN_LORENTZFORCE
+#if defined(GRAIN_LORENTZFORCE) || defined(GRAIN_CR)
     MyFloat Gas_B[3];
 #endif
 #endif
@@ -3037,6 +3042,7 @@ enum iofields
   IO_SFR,
   IO_AGE,
   IO_GRAINSIZE,
+  IO_GRAINTYPE,
   IO_HSMS,
   IO_Z,
   IO_BHMASS,
