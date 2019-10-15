@@ -359,6 +359,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #ifdef RT_INFRARED
 #define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
 #endif
+#if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY))
+#define TREECOL 6 
+#endif
 #ifdef SINGLE_STAR_FB_JETS
 #define JET_DIRECTION_FROM_KERNEL_AND_SINK //the direction of the jet is a mass weighted average of Jsink and Jgaskernel
 #endif
