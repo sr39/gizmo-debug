@@ -159,11 +159,9 @@ void set_units_sfr(void)
     All.PhysDensThresh = All.CritPhysDensity * PROTONMASS / (HYDROGEN_MASSFRAC * All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam);
 #ifdef GALSF_EFFECTIVE_EQS
     double meanweight = 4 / (1 + 3 * HYDROGEN_MASSFRAC);	/* note: assuming NEUTRAL GAS */
-    All.EgySpecCold = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.TempClouds;
-    All.EgySpecCold *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
+    All.EgySpecCold = All.TempClouds / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
     meanweight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));	/* note: assuming FULL ionization */
-    All.EgySpecSN = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.TempSupernova;
-    All.EgySpecSN *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
+    All.EgySpecSN = All.TempSupernova / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
 #endif // GALSF_EFFECTIVE_EQS
 }
 
@@ -514,7 +512,7 @@ void star_formation_parent_routine(void)
 #endif
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
                 double bh_mu=2.0*get_random_number(P[i].ID+3)-1.0, bh_phi=2*M_PI*get_random_number(P[i].ID+4), bh_sin=sqrt(1-bh_mu*bh_mu);
-                double spin_prefac = All.G * P[i].BH_Mass / (C/All.UnitVelocity_in_cm_per_s); // assume initially maximally-spinning BH with random orientation
+                double spin_prefac = All.G * P[i].BH_Mass / C_LIGHT_CODE; // assume initially maximally-spinning BH with random orientation
                 P[i].BH_Specific_AngMom[0]=spin_prefac * bh_sin*cos(bh_phi); P[i].BH_Specific_AngMom[1]=spin_prefac * bh_sin*sin(bh_phi); P[i].BH_Specific_AngMom[2]=spin_prefac * bh_mu;
 #endif
 #ifdef BH_WIND_SPAWN
@@ -586,7 +584,7 @@ void star_formation_parent_routine(void)
 #endif
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)		
                 double bh_mu=2.0*get_random_number(P[i].ID+3)-1.0, bh_phi=2*M_PI*get_random_number(P[i].ID+4), bh_sin=sqrt(1-bh_mu*bh_mu);
-                double spin_prefac = All.G * P[i].BH_Mass / (C/All.UnitVelocity_in_cm_per_s); // assume initially maximally-spinning BH with random orientation
+                double spin_prefac = All.G * P[i].BH_Mass / C_LIGHT_CODE; // assume initially maximally-spinning BH with random orientation
 #ifdef SLOPE2_SINKS
                 spin_prefac = sqrt(All.G * P[i].Mass * All.ForceSoftening[5]); // assume material is initially in a circular orbit at the resolution limit
 #endif
@@ -850,7 +848,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
 /* Routine to initialize quantities needed for the Spingel & Hernquist effective equation of state */
 void init_clouds(void)
 {
-  double A0, dens, tcool, ne, coolrate, egyhot, x, u4, meanweight;
+  double A0, dens, tcool, ne, coolrate, egyhot, x, u4, meanweight, gamma_minus1_eff;
   double tsfr, y, peff, fac, neff, egyeff, factorEVP, thresholdStarburst;
 #ifdef COOL_METAL_LINES_BY_SPECIES
   int k; double Z[NUM_METAL_SPECIES]; for(k=0;k<NUM_METAL_SPECIES;k++) Z[k]=0;
@@ -861,8 +859,7 @@ void init_clouds(void)
       A0 = All.FactorEVP;
       egyhot = All.EgySpecSN / A0;
       meanweight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));	/* note: assuming FULL ionization */
-      u4 = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * 1.0e4;
-      u4 *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
+      u4 = 1.0e4 / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
       dens = 1.0e6 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 
       if(All.ComovingIntegrationOn)
@@ -903,7 +900,8 @@ void init_clouds(void)
 	  y = tsfr / tcool * egyhot / (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold);
 	  x = 1 + 1 / (2 * y) - sqrt(1 / y + 1 / (4 * y * y));
 	  egyeff = egyhot * (1 - x) + All.EgySpecCold * x;
-	  peff = GAMMA_MINUS1 * dens * egyeff;
+      gamma_minus1_eff = (GAMMA_DEFAULT-1);
+	  peff = gamma_minus1_eff * dens * egyeff;
 	  fac = 1 / (log(dens * 1.025) - log(dens));
 	  dens *= 1.025;
 	  neff = -log(peff) * fac;
@@ -917,16 +915,12 @@ void init_clouds(void)
 	  y = tsfr / tcool * egyhot / (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold);
 	  x = 1 + 1 / (2 * y) - sqrt(1 / y + 1 / (4 * y * y));
 	  egyeff = egyhot * (1 - x) + All.EgySpecCold * x;
-	  peff = GAMMA_MINUS1 * dens * egyeff;
+	  peff = gamma_minus1_eff * dens * egyeff;
 	  neff += log(peff) * fac;
 	}
       while(neff > 4.0 / 3);
 
       thresholdStarburst = dens;
-#ifdef MODIFIEDBONDI
-      All.BlackHoleRefDensity = thresholdStarburst;
-      All.BlackHoleRefSoundspeed = sqrt(GAMMA * GAMMA_MINUS1 * egyeff);
-#endif
 
       if(ThisTask == 0)
 	{

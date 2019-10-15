@@ -4886,8 +4886,7 @@ size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream)
     return nread;
 }
 
-/** This is so we don't have to preface every printf call with the if
- statement to only make it print once. */
+/** This is so we don't have to preface every printf call with the if statement to only make it print once. */
 void mpi_printf(const char *fmt, ...)
 {
     if(ThisTask == 0)

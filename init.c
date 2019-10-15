@@ -177,7 +177,7 @@ void init(void)
     /* To construct the BH-tree for N particles, somewhat less than N
      internal tree-nodes are necessary for ‘normal’ particle distributions. 
      TreeAllocFactor sets the number of internal tree-nodes allocated in units of the particle number. 
-     By experience, space for ≃ 0.65N internal nodes is usually fully sufficient for typical clustered 
+     By experience, space for ~0.65N internal nodes is usually fully sufficient for typical clustered 
      particle distributions, so a value of 0.7 should put you on the safe side. If the employed particle 
      number per processor is very small (less than a thousand or so), or if there are many particle pairs 
      with identical or nearly identical coordinates, a higher value may be required. Since the number of 
@@ -341,7 +341,7 @@ void init(void)
 	    {
 		P[i].Mass *= All.Dust_to_Gas_Mass_Ratio;
 		{ 	
-			double tS0 = 0.626657 * P[i].Grain_Size * sqrt(GAMMA); /* stopping time [Epstein] for driftvel->0 */
+			double tS0 = 0.626657 * P[i].Grain_Size * sqrt(GAMMA_DEFAULT); /* stopping time [Epstein] for driftvel->0 */
             double a0 = tS0 * All.Vertical_Grain_Accel / (1.+All.Dust_to_Gas_Mass_Ratio); /* acc * tS0 / (1+mu) */
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
 			a0 *= All.Grain_Size_Max / P[i].Grain_Size;
@@ -488,7 +488,7 @@ void init(void)
 #endif
 #ifdef BH_FOLLOW_ACCRETED_ANGMOM
                 double bh_mu=2*get_random_number(P[i].ID+3)-1, bh_phi=2*M_PI*get_random_number(P[i].ID+4), bh_sin=sqrt(1-bh_mu*bh_mu);
-                double spin_prefac = All.G * P[i].BH_Mass / (C/All.UnitVelocity_in_cm_per_s); // assume initially maximally-spinning BH with random orientation
+                double spin_prefac = All.G * P[i].BH_Mass / C_LIGHT_CODE; // assume initially maximally-spinning BH with random orientation
                 P[i].BH_Specific_AngMom[0]=spin_prefac*bh_sin*cos(bh_phi); P[i].BH_Specific_AngMom[1]=spin_prefac*bh_sin*sin(bh_phi); P[i].BH_Specific_AngMom[2]=spin_prefac*bh_mu;
 #endif		
 #ifdef BH_COUNTPROGS
@@ -775,17 +775,9 @@ void init(void)
     for(i=0;i<NumPart;i++) {P[i].wakeup=0;}
 #endif
 
-#if defined(TURB_DRIVING)
-    {
-        double mass = 0, glob_mass; int i;
-        for(i=0; i< N_gas; i++) {mass += P[i].Mass;}
-        MPI_Allreduce(&mass, &glob_mass, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        All.RefDensity = glob_mass / (boxSize_X*boxSize_Y*boxSize_Z);
-        All.RefInternalEnergy = All.IsoSoundSpeed*All.IsoSoundSpeed / (GAMMA*GAMMA_MINUS1);
-    }
-#endif
     
     /* HELLO! This here is where you should insert custom code for hard-wiring the ICs of various test problems */
+
     
     density();
     for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
@@ -793,13 +785,8 @@ void init(void)
         int k; k=0;
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
         
-#if defined(TURB_DRIVING) && defined(EOS_ENFORCE_ADIABAT)
-        SphP[i].InternalEnergy = All.RefInternalEnergy;
-        SphP[i].InternalEnergyPred = All.RefInternalEnergy;
-#endif
         // re-match the predicted and initial velocities and B-field values, just to be sure //
         for(j=0;j<3;j++) SphP[i].VelPred[j]=P[i].Vel[j];
-        
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION==0)
         for(j=0;j<3;j++) {SphP[i].ParticleVel[k] = 0;} // set these to zero and forget them, for the rest of the run //
 #endif
