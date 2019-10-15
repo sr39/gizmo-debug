@@ -38,20 +38,20 @@ double return_user_desired_target_pressure(int i)
 
 
 
-/* return the pressure of particle i */
+/*! return the pressure of particle i: this subroutine needs to  set the value of the 'press' variable (pressure), which you can see from the
+    templates below can follow an arbitrary equation-of-state. for more general equations-of-state you want to specifically set the soundspeed
+    variable as well. */
 double get_pressure(int i)
 {
-    double gamma_eos_index = GAMMA(i); /* get effective adiabatic index */
-    MyFloat press = (gamma_eos_index-1) * SphP[i].InternalEnergyPred * Particle_density_for_energy_i(i); /* ideal gas EOS (will get over-written it more complex EOS assumed) */
+    double soundspeed=0, press=0, gamma_eos_index = GAMMA(i); /* get effective adiabatic index */
+    press = (gamma_eos_index-1) * SphP[i].InternalEnergyPred * Particle_density_for_energy_i(i); /* ideal gas EOS (will get over-written it more complex EOS assumed) */
     
-#ifdef GALSF_EFFECTIVE_EQS
-    /* modify pressure to 'interpolate' between effective EOS and isothermal, with the Springel & Hernquist 2003 'effective' EOS */
+#ifdef GALSF_EFFECTIVE_EQS /* modify pressure to 'interpolate' between effective EOS and isothermal, with the Springel & Hernquist 2003 'effective' EOS */
     if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh) {press = All.FactorForSofterEQS * press + (1 - All.FactorForSofterEQS) * All.cf_afac1 * (gamma_eos_index-1) * SphP[i].Density * All.InitGasU;}
 #endif
     
     
-#ifdef EOS_HELMHOLTZ
-    /* pass the necessary quantities to wrappers for the Timms EOS */
+#ifdef EOS_HELMHOLTZ /* pass the necessary quantities to wrappers for the Timms EOS */
     struct eos_input eos_in;
     struct eos_output eos_out;
     eos_in.rho  = SphP[i].Density;
@@ -61,15 +61,16 @@ double get_pressure(int i)
     eos_in.temp = SphP[i].Temperature;
     int ierr = eos_compute(&eos_in, &eos_out);
     assert(!ierr);
-    press              = eos_out.press;
-    SphP[i].SoundSpeed = eos_out.csound;
-    SphP[i].Temperature= eos_out.temp;
+    press      = eos_out.press;
+    soundspeed = eos_out.csound;
+    SphP[i].Temperature = eos_out.temp;
 #endif
 
     
 #ifdef EOS_TILLOTSON
-    press = calculate_eos_tillotson(i);
+    press = calculate_eos_tillotson(i); soundspeed = SphP[i].SoundSpeed; /* done in subroutine, save for below */
 #endif
+    
     
 #ifdef EOS_ENFORCE_ADIABAT
     press = EOS_ENFORCE_ADIABAT * pow(SphP[i].Density, gamma_eos_index);
@@ -79,33 +80,30 @@ double get_pressure(int i)
     SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (SphP[i].Density * (gamma_eos_index-1.)); /* reset internal energy: particles live -exactly- along this relation */
 #endif
 
+    
 #ifdef EOS_GMC_BAROTROPIC // barytropic EOS calibrated to Masunaga & Inutsuka 2000, eq. 4 in Federrath 2014 Apj 790. Reasonable over the range of densitites relevant to some small-scale star formation problems
-    double gamma_eff_phase=7./5., rho=Particle_density_for_energy_i(i); nH_cgs= rho*All.cf_a3inv * ( All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam ) / PROTONMASS;
-    if(nH_cgs > 2.30181e16) {gamma_eff_phase=5./3.;} /* dissociates to atomic if dense enough (hot) */
+    gamma_eos_index=7./5.; double rho=Particle_density_for_energy_i(i), nH_cgs=rho*All.cf_a3inv * ( All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam ) / PROTONMASS;
+    if(nH_cgs > 2.30181e16) {gamma_eos_index=5./3.;} /* dissociates to atomic if dense enough (hot) */
     if (nH_cgs < 1.49468e8) {press = 6.60677e-16 * nH_cgs;} // isothermal below ~10^8 cm^-3 (adiabatic gamma=5/3 for soundspeed, etc, but this assumes effective eos from cooling, etc
     else if (nH_cgs < 2.30181e11) {press = 1.00585e-16 * pow(nH_cgs, 1.1);} // 'transition' region
-    else if (nH_cgs < 2.30181e16) {press = 3.92567e-20 * pow(nH_cgs, gamma_eff_phase);} // adiabatic molecular
+    else if (nH_cgs < 2.30181e16) {press = 3.92567e-20 * pow(nH_cgs, gamma_eos_index);} // adiabatic molecular
     else if (nH_cgs < 2.30181e21) {press = 3.1783e-15 * pow(nH_cgs, 1.1);} // 'transition' region
-    else {press = 2.49841e-27 * pow(nH_cgs, gamma_eff_phase);} // adiabatic atomic
+    else {press = 2.49841e-27 * pow(nH_cgs, gamma_eos_index);} // adiabatic atomic
     press /= All.UnitPressure_in_cgs;
     /* in this case the EOS is modeling cooling, etc, so -does not- allow shocks or deviations from adiabat, so we reset the internal energy every time this is checked */
-    SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (rho * (gamma_eff_phase-1.));
-    SphP[i].SoundSpeed = sqrt(gamma_eff_phase * press / rho);
+    SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (rho * (gamma_eos_index-1.));
 #endif
     
     
 #ifdef COSMIC_RAYS
     press += Get_Particle_CosmicRayPressure(i);
     /* we will also compute the CR contribution to the effective soundspeed here */
-    if((P[i].Mass > 0) && (SphP[i].Density>0) && (SphP[i].CosmicRayEnergyPred > 0))
-    {
-        SphP[i].SoundSpeed = sqrt(gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred + GAMMA_COSMICRAY*GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred / P[i].Mass);
-    } else {
-        SphP[i].SoundSpeed = sqrt(gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred);
-    }
+    if((P[i].Mass > 0) && (SphP[i].Density>0) && (SphP[i].CosmicRayEnergyPred > 0)) {
+        soundspeed = sqrt(gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred + GAMMA_COSMICRAY*GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred / P[i].Mass);
+        } else {soundspeed = sqrt(gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred);}
 #ifdef COSMIC_RAYS_ALFVEN
     press += (GAMMA_ALFVEN_CRS-1) * SphP[i].Density * (SphP[i].CosmicRayAlfvenEnergy[0]+SphP[i].CosmicRayAlfvenEnergy[1]);
-    SphP[i].SoundSpeed = sqrt(SphP[i].SoundSpeed*SphP[i].SoundSpeed + GAMMA_ALFVEN_CRS*(GAMMA_ALFVEN_CRS-1)*(SphP[i].CosmicRayAlfvenEnergy[0]+SphP[i].CosmicRayAlfvenEnergy[1])/P[i].Mass);
+    soundspeed = sqrt(soundspeed*soundspeed + GAMMA_ALFVEN_CRS*(GAMMA_ALFVEN_CRS-1)*(SphP[i].CosmicRayAlfvenEnergy[0]+SphP[i].CosmicRayAlfvenEnergy[1])/P[i].Mass);
 #endif
 #endif
     
@@ -118,7 +116,6 @@ double get_pressure(int i)
     double NJeans = 4; // set so that resolution = lambda_Jeans/NJeans -- fragmentation with Jeans/Toomre scales below this will be artificially suppressed now
     double xJeans = (NJeans * NJeans / gamma_eos_index) * All.G * h_eff*h_eff * SphP[i].Density * SphP[i].Density * All.cf_afac1/All.cf_atime;
     if(xJeans>press) press=xJeans;
-    SphP[i].SoundSpeed = sqrt(gamma_eos_index * press / Particle_density_for_energy_i(i));
 #endif
     
     
@@ -127,6 +124,9 @@ double get_pressure(int i)
     SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = return_user_desired_target_pressure(i) / ((gamma_eos_index-1) * SphP[i].Density);
 #endif
     
+#ifdef EOS_GENERAL /* need to be sure soundspeed variable is set: if not defined above, set it to the default which is given by the effective gamma */
+    if(soundspeed == 0) {SphP[i].SoundSpeed = sqrt(gamma_eos_index * press / Particle_density_for_energy_i(i));} else {SphP[i].SoundSpeed = soundspeed;}
+#endif
     return press;
 }
 

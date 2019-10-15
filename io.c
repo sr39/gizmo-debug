@@ -546,6 +546,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+
+        case IO_GRAINTYPE:      /* grain type */
+#ifdef GRAIN_FLUID
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].Grain_Type;
+                    n++;
+                }
+#endif
+            break;
             
             
         case IO_VSTURB_DISS:
@@ -1787,6 +1798,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_AGE:
         case IO_OSTAR:
         case IO_GRAINSIZE:
+        case IO_GRAINTYPE:
         case IO_DELAYTIME:
         case IO_HSMS:
         case IO_POT:
@@ -2140,6 +2152,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_AGE:
         case IO_OSTAR:
         case IO_GRAINSIZE:
+        case IO_GRAINTYPE:
         case IO_DELAYTIME:
         case IO_HSMS:
         case IO_POT:
@@ -2536,6 +2549,17 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return nngb;
             break;
 
+        case IO_GRAINTYPE:
+            nngb = 0;
+            for(i = 0; i < 6; i++)
+            {
+                if(i == 0) typelist[i] = 0;
+                if(i == 4) typelist[i] = 0;
+                nngb += header.npart[i];
+            }
+            return nngb;
+            break;
+
 
         case IO_IMF:
             for(i = 1; i < 6; i++) {if(i != 4 && i != 5) {typelist[i] = 0;}}
@@ -2756,6 +2780,14 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_GRAINSIZE:
+#ifdef GRAIN_FLUID
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+
+        case IO_GRAINTYPE:
 #ifdef GRAIN_FLUID
             return 1;
 #else
@@ -3481,6 +3513,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_GRAINSIZE:
             strncpy(label, "GRSZ", 4);
             break;
+        case IO_GRAINTYPE:
+            strncpy(label, "GRTP", 4);
+            break;
         case IO_DELAYTIME:
             strncpy(label, "DETI", 4);
             break;
@@ -3927,6 +3962,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_GRAINSIZE:
             strcpy(buf, "GrainSize");
+            break;
+        case IO_GRAINTYPE:
+            strcpy(buf, "GrainType");
             break;
         case IO_HSMS:
             strcpy(buf, "StellarSmoothingLength");

@@ -370,10 +370,10 @@ void init(void)
 #endif
 
             P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
-#ifdef GRAIN_BACKREACTION
+#if defined(GRAIN_BACKREACTION) || defined(GRAIN_CR)
             P[i].Grain_DeltaMomentum[0]=P[i].Grain_DeltaMomentum[1]=P[i].Grain_DeltaMomentum[2]=0;
 #endif
-#ifdef GRAIN_LORENTZFORCE
+#if defined(GRAIN_LORENTZFORCE) || defined(GRAIN_CR)
             P[i].Gas_B[0]=P[i].Gas_B[1]=P[i].Gas_B[2]=0;
 #endif
         }

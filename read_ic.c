@@ -367,6 +367,13 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 P[offset + n].Grain_Size = *fp++;
 #endif
             break;
+
+        case IO_GRAINTYPE:
+#ifdef GRAIN_FLUID
+            for(n = 0; n < pc; n++)
+                P[offset + n].Grain_Type = *fp++;
+#endif
+            break;
             
         case IO_Z:			/* Gas and star metallicity */
 #ifdef METALS
@@ -922,6 +929,9 @@ void read_file(char *fname, int readTask, int lastTask)
 #if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM) 
 		   && blocknr != IO_CHIMES_ABUNDANCES 
 #endif 
+#ifdef GRAIN_FLUID
+           && blocknr != IO_GRAINTYPE
+#endif
                    )
 #if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
                     if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_SHEET_ORIENTATION))
