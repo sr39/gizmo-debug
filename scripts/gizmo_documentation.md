@@ -1025,6 +1025,8 @@ These flags enable explicit turbulent 'stirring' of the simulation volume, as in
 
 **TURB\_DRIVING**: This activates a module, based closely on the original GADGET results shared by Andreas Bauer, to include a turbulent driving routine. It assumes a periodic box (BOX\_PERIODIC on), which is then stirred as in Schmidt 2008, Federrath 2010, Price 2010: a small range of modes (which range set in the parameterfile) are driven in Fourier space as an Ornstein-Uhlenbeck process, with the compressive part of the acceleration optionally projected out via a Helmholtz decomposition in Fourier space so that the driving is purely incompressible/solenoidal (most appropriate for sub-sonic turbulence). The parameters of the driving are set in the parameterfile as described below. Users of this module should cite Bauer and Springel 2012, MNRAS, 423, 3102, as described above.
 
+Note that in most driven turbulence experiments, it is common to 'force' the gas to lie along an exact adiabatic equation-of-state (a single adiabat or entropic function), so any energy of e.g. shocks and kinetic dissipation is immediately removed (if this or some cooling physics is not enabled, the turbulent driving will gradually 'heat up' the box, decreasing the mach number). This is accomplished as described above by turning on `EOS_ENFORCE_ADIABAT` in the Config file. For example, for a truly isothermal test, with isothermal sound speed equal to unity, you can simply set `EOS_ENFORCE_ADIABAT=1` and `EOS_GAMMA=1.0001` (this is slightly larger than unity, so the temperature is re-set nearly as if `EOS_GAMMA=1` but various unphysical divergences that arise if GAMMA-1=0 will be avoided). 
+
 **TURB\_DRIVING\_SPECTRUMGRID**: This activates on-the-fly calculation of the turbulent velocity, vorticity, density, and smoothed-velocity power spectra; the power spectra are calculated over a range of modes and dumped to files titled "powerspec\_X\_NNN.txt" where NNN is the file number and X denotes the quantity the power spectrum is taken of (e.g. velocity, smoothed velocity, etc). The columns in these outputs are (1) k (Fourier mode number), (2) power per mode at k, (3) number of modes in the discrete interval in k, and (4) total discrete power over all modes at that k. To convert to a 'normal' power spectrum, and get e.g. the power per log-interval in k, take column (2) times the cube of column (1). The value to which you set TURB\_DRIVING\_SPECTRUMGRID determines the grid linear size (in each dimension) to which the quantities will be projected in taking the power spectrum. Users of this module should cite Bauer and Springel 2012, MNRAS, 423, 3102, as described above.
 
 
@@ -2554,7 +2556,6 @@ These parameters control the sub-grid models for super-massive black holes, enab
     ST_AmplFac     1.0      % multiplies turb amplitudes
     ST_SpectForm   2        % driving pwr-spec: 0=Ek~const; 1=sharp-peak at kc; 2=Ek~k^(-5/3); 3=Ek~k^-2
     ST_Seed        42       % random number seed for modes (so you can reproduce it)
-    IsoSoundSpeed  1.0      % initializes gas sound speed in box to this value
     TimeBetTurbSpectrum 0.5 % time (code) between evaluations of turb pwrspec
 
 These parameters control the optional module for stirred/driven turbulence (set by TURB\_DRIVING), for large-eddy simulations (driven turbulent boxes and the like). They are based on the module written by Andreas Bauer. The above parameters will reproduce their sub-sonic (Mach 0.3) test; for a super-sonic test (Mach 8-9), use ST\_decay=0.05, ST\_energy=7.5, ST\_DtFreq=0.005, ST\_Kmax=18.85, ST\_SpectForm=1, TimeBetTurbSpectrum=0.05.
@@ -2575,9 +2576,9 @@ These parameters control the optional module for stirred/driven turbulence (set 
 
 **ST\_Seed**: Random number generator seed for the modes. Given here so you can reproduce the results.
 
-**IsoSoundSpeed**: Sets the initial isothermal sound speed of the simulations. For a truly 'isothermal' test, set EOS_GAMMA=1.001, and the temperatures will be re-set as if EOS_GAMMA=1 but various unphysical divergences will be avoided. Otherwise this sets the sound speed at the mean density of the box, which will be re-set each timestep to correspond to the chosen ideal gas EOS. 
-
 **TimeBetTurbSpectrum**: If TURB\_DRIVING\_SPECTRUMGRID is set, this determines the time interval at which the power spectra are saved.
+
+Reminder, for a truly 'isothermal' test with sound speed unity, set `EOS_ENFORCE_ADIABAT=1` and `EOS_GAMMA=1.001`, and the temperatures will be re-set as if `EOS_GAMMA=1` but various unphysical divergences will be avoided (see notes for the `TURB_DRIVING` module above).
 
 
 

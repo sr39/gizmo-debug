@@ -263,8 +263,8 @@
         {
             Riemann_vec.R.rho -= dt_half * local.Density * local.Gradients.Velocity[k][k];
             Riemann_vec.L.rho -= dt_half * SphP[j].Density * SphP[j].Gradients.Velocity[k][k];
-            Riemann_vec.R.p -= dt_half * GAMMA * Pressure_i * local.Gradients.Velocity[k][k];
-            Riemann_vec.L.p -= dt_half * GAMMA * Pressure_j * SphP[j].Gradients.Velocity[k][k];
+            Riemann_vec.R.p -= dt_half * GAMMA(j) * Pressure_i * local.Gradients.Velocity[k][k];
+            Riemann_vec.L.p -= dt_half * GAMMA(j) * Pressure_j * SphP[j].Gradients.Velocity[k][k];
             double dv_l_half = -dt_half * local.Gradients.Pressure[k] / local.Density;
             double dv_r_half = -dt_half * SphP[j].Gradients.Pressure[k] / SphP[j].Density;
             Riemann_vec.R.v[k] += 0.5 * (dv_l_half - dv_r_half);

@@ -245,11 +245,7 @@ void drift_particle(int i, integertime time1)
 #endif
             drift_sph_extra_physics(i, time0, time1, dt_entr);
 
-        
             SphP[i].Pressure = get_pressure(i);
-#if defined(EOS_ENFORCE_ADIABAT)
-            SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
-#endif
         }
     
     /* check for reflecting boundaries: if so, do the reflection! */
