@@ -288,7 +288,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 SphP[i].DtPhi = (1./3.) * (SphP[i].Phi*All.cf_a3inv) * P[i].Particle_DivVel*All.cf_a2inv; // cf_a3inv from mass-based phi-fluxes
 #endif
 #endif
-                if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
+                if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*(GAMMA(i)-1) * SphP[i].InternalEnergyPred * All.cf_hubble_a;
                 dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick; /* gravity term not included here, as it makes this unstable */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 SphP[i].dMass = SphP[i].DtMass = 0;
@@ -445,9 +445,6 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #endif
         
         SphP[i].Pressure = get_pressure(i);
-#if defined(EOS_ENFORCE_ADIABAT)
-        SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
-#endif
     }
 }
 

@@ -1,12 +1,13 @@
-#define GAMMA_G1 ((GAMMA-1.0)/(2.0*GAMMA))
-#define GAMMA_G2 ((GAMMA+1.0)/(2.0*GAMMA))
-#define GAMMA_G3 ((2.0*GAMMA/(GAMMA-1.0)))
-#define GAMMA_G4 (2.0/(GAMMA-1.0))
-#define GAMMA_G5 (2.0/(GAMMA+1.0))
-#define GAMMA_G6 ((GAMMA-1.0)/(GAMMA+1.0))
-#define GAMMA_G7 (0.5*(GAMMA-1.0))
-#define GAMMA_G8 (1.0/GAMMA)
-#define GAMMA_G9 (GAMMA-1.0)
+#define GAMMA_G0 (GAMMA_DEFAULT)
+#define GAMMA_G1 ((GAMMA_G0-1.0)/(2.0*GAMMA_G0))
+#define GAMMA_G2 ((GAMMA_G0+1.0)/(2.0*GAMMA_G0))
+#define GAMMA_G3 ((2.0*GAMMA_G0/(GAMMA_G0-1.0)))
+#define GAMMA_G4 (2.0/(GAMMA_G0-1.0))
+#define GAMMA_G5 (2.0/(GAMMA_G0+1.0))
+#define GAMMA_G6 ((GAMMA_G0-1.0)/(GAMMA_G0+1.0))
+#define GAMMA_G7 (0.5*(GAMMA_G0-1.0))
+#define GAMMA_G8 (1.0/GAMMA_G0)
+#define GAMMA_G9 (GAMMA_G0-1.0)
 
 #define TOL_ITER 1.e-6
 #define NMAX_ITER 1000
@@ -323,10 +324,10 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
     }
 #ifndef EOS_GENERAL
     /* here we haven't reconstructed the sound speeds and internal energies explicitly, so need to do it from pressure, density */
-    Riemann_vec.L.cs = sqrt(GAMMA * Riemann_vec.L.p / Riemann_vec.L.rho);
-    Riemann_vec.R.cs = sqrt(GAMMA * Riemann_vec.R.p / Riemann_vec.R.rho);
-    Riemann_vec.L.u  = Riemann_vec.L.p / (GAMMA_MINUS1 * Riemann_vec.L.rho);
-    Riemann_vec.R.u  = Riemann_vec.R.p / (GAMMA_MINUS1 * Riemann_vec.R.rho);
+    Riemann_vec.L.cs = sqrt(GAMMA_G0 * Riemann_vec.L.p / Riemann_vec.L.rho);
+    Riemann_vec.R.cs = sqrt(GAMMA_G0 * Riemann_vec.R.p / Riemann_vec.R.rho);
+    Riemann_vec.L.u  = Riemann_vec.L.p / (GAMMA_G9 * Riemann_vec.L.rho);
+    Riemann_vec.R.u  = Riemann_vec.R.p / (GAMMA_G9 * Riemann_vec.R.rho);
 #endif
     
 #ifdef MAGNETIC
@@ -535,7 +536,7 @@ void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, stru
             double v_line_roe = vx_roe*n_unit[0] + vy_roe*n_unit[1] + vz_roe*n_unit[2];
 #ifndef EOS_GENERAL
             double h_roe  = (sqrt_rho_L*h_L  + sqrt_rho_R*h_R) * sqrt_rho_inv;
-            double cs_roe = sqrt(DMAX(1.e-30, GAMMA_MINUS1*(h_roe - 0.5*(vx_roe*vx_roe+vy_roe*vy_roe+vz_roe*vz_roe))));
+            double cs_roe = sqrt(DMAX(1.e-30, GAMMA_G9*(h_roe - 0.5*(vx_roe*vx_roe+vy_roe*vy_roe+vz_roe*vz_roe))));
 #else
             double cs_roe = (sqrt_rho_L*cs_L  + sqrt_rho_R*cs_R) * sqrt_rho_inv;
 #endif
@@ -1131,7 +1132,7 @@ void convert_face_to_flux(struct Riemann_outputs *Riemann_out, double n_unit[3])
     }
     v_line -= v_frame;
     h *= 0.5 * rho; /* h is the kinetic energy density */
-    h += (GAMMA/GAMMA_MINUS1) * P; /* now h is the enthalpy */
+    h += (GAMMA_G0/GAMMA_G9) * P; /* now h is the enthalpy */
     /* now we just compute the standard fluxes for a given face state */
     Riemann_out->Fluxes.p = h * v_line;
     Riemann_out->Fluxes.rho = rho * v_line;

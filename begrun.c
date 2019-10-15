@@ -431,10 +431,10 @@ void set_units(void)
   double meanweight;
 
   All.UnitTime_in_s = All.UnitLength_in_cm / All.UnitVelocity_in_cm_per_s;
-  All.UnitTime_in_Megayears = All.UnitTime_in_s / SEC_PER_MEGAYEAR;
+  All.UnitTime_in_Megayears = All.UnitTime_in_s / (1.0e6*SEC_PER_YEAR);
 
   if(All.GravityConstantInternal == 0)
-    All.G = GRAVITY / pow(All.UnitLength_in_cm, 3) * All.UnitMass_in_g * pow(All.UnitTime_in_s, 2);
+    All.G = GRAVITY_G / pow(All.UnitLength_in_cm, 3) * All.UnitMass_in_g * pow(All.UnitTime_in_s, 2);
   else
     All.G = All.GravityConstantInternal;
 #ifdef GR_TABULATED_COSMOLOGY_G
@@ -452,7 +452,7 @@ void set_units(void)
     
   /* convert some physical input parameters to internal units */
 
-  All.Hubble_H0_CodeUnits = HUBBLE * All.UnitTime_in_s;
+  All.Hubble_H0_CodeUnits = HUBBLE_CGS * All.UnitTime_in_s;
 
   if(ThisTask == 0)
     {
@@ -472,9 +472,7 @@ void set_units(void)
     }
 
   meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC);	/* note: assuming NEUTRAL GAS */
-
-  All.MinEgySpec = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.MinGasTemp;
-  All.MinEgySpec *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
+  All.MinEgySpec = All.MinGasTemp / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
 
 #if defined(GALSF)
   /* for historical reasons, we need to convert to "All.MaxSfrTimescale", defined as the SF timescale in code units at the critical physical
@@ -486,15 +484,6 @@ void set_units(void)
 #endif
 
 
-#define cm (All.HubbleParam/All.UnitLength_in_cm)
-#define g  (All.HubbleParam/All.UnitMass_in_g)
-#define s  (All.HubbleParam/All.UnitTime_in_s)
-#define erg (g*cm*cm/(s*s))
-#define keV (1.602e-9*erg)
-#define deg 1.0
-#define m_p (PROTONMASS * g)
-#define k_B (BOLTZMANN * erg / deg)
-
     
 #ifdef DM_FUZZY
     /* For Schroedinger equation: this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass. This is the key variable used throughout */
@@ -503,35 +492,24 @@ void set_units(void)
     
 
 #if defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII)
-    /* Note: Because we replace \nabla(T) in the conduction equation with
-     * \nable(u), our conduction coefficient is not the usual kappa, but
-     * rather kappa*(gamma-1)*mu/kB. We therefore need to multiply with
-     * another factor of (meanweight_ion / k_B * GAMMA_MINUS1).
-     */
-    double coefficient;
-    double meanweight_ion = m_p * 4.0 / (8 - 5 * (1 - HYDROGEN_MASSFRAC)); /* assuming full ionization */
-    coefficient = meanweight_ion / k_B * GAMMA_MINUS1;
-    
+    /* Note: Because we replace \nabla(T) in the conduction equation with \nabla(u), our conduction coefficient is not the usual kappa, but
+     * rather kappa*(gamma-1)*mu/kB. We therefore need to multiply with another factor of (meanweight_ion / k_B * (gamma-1)) */
+    double meanweight_ion =  4.0 / (8 - 5 * (1 - HYDROGEN_MASSFRAC)); /* mean weight in code units, assuming full ionization */
+    double u_to_temp = meanweight_ion * (GAMMA_DEFAULT-1.) * U_TO_TEMP_UNITS; /* for full ionization, assume gas has a monatomic ideal eos gamma=5/3 */
     /* Kappa_Spitzer definition taken from Zakamska & Narayan 2003 ( ApJ 582:162-169, Eq. (5) ) */
     double coulomb_log = 37.8; // Sarazin value (recommendation from PIC calculations) //
-    coefficient *= (1.84e-5 / coulomb_log * pow(meanweight_ion / k_B * GAMMA_MINUS1, 2.5) * erg / (s * deg * cm));
-    coefficient /= All.HubbleParam; // We also need one factor of 'h' to convert between internal units and cgs //
-    
+    double coefficient = (1.84e-5/coulomb_log) * pow(u_to_temp,3.5) * ((All.UnitTime_in_s*All.UnitTime_in_s*All.UnitTime_in_s) / (All.UnitLength_in_cm*All.UnitMass_in_g * All.HubbleParam*All.HubbleParam)); // ok, this multiplied by the specific energy (u_code)^(3/2) gives the diffusity of u_code, as needed (density term is included in said diffusivity)
 #ifdef CONDUCTION_SPITZER
     All.ConductionCoeff *= coefficient;
 #endif
 #ifdef VISCOSITY_BRAGINSKII
-    All.ShearViscosityCoeff *= 0.636396 * coefficient * sqrt(ELECTRONMASS / (PROTONMASS * 4.0 / (8 - 5 * (1 - HYDROGEN_MASSFRAC))));
-    // the viscosity coefficient eta is identical in these units up to the order-unity constant, and multiplied by sqrt[m_electron/m_ion] //
-    All.BulkViscosityCoeff = 0;
-    // no bulk viscosity in the Braginskii-Spitzer formulation //
+    All.ShearViscosityCoeff *= coefficient * 0.636396*sqrt(ELECTRONMASS/(PROTONMASS*meanweight_ion)); // the viscosity coefficient eta is identical in these units up to the order-unity constant, and multiplied by sqrt[m_electron/m_ion] //
+    All.BulkViscosityCoeff = 0; // no bulk viscosity in the Braginskii-Spitzer formulation //
 #endif
-    
     /* factor used for determining saturation */
-    All.ElectronFreePathFactor = 8 * pow(3.0, 1.5) * pow(GAMMA_MINUS1, 2) / pow(3 + 5 * HYDROGEN_MASSFRAC, 2)
+    All.ElectronFreePathFactor = 8 * pow(3.0, 1.5) * pow((GAMMA_DEFAULT-1), 2) / pow(3 + 5 * HYDROGEN_MASSFRAC, 2)
         / (1 + HYDROGEN_MASSFRAC) / sqrt(M_PI) / coulomb_log * pow(PROTONMASS, 3) / pow(ELECTRONCHARGE, 4)
-        / (All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam)
-        * pow(All.UnitPressure_in_cgs / All.UnitDensity_in_cgs, 2);
+        / (All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) * pow(All.UnitPressure_in_cgs / All.UnitDensity_in_cgs, 2);
 
   /* If the above value is multiplied with u^2/rho in code units (with rho being the physical density), then
    * one gets the electron mean free path in centimeters. Since we want to compare this with another length
@@ -1692,10 +1670,6 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.TimeBetTurbSpectrum;
         id[nt++] = REAL;
 #endif
-        
-        strcpy(tag[nt], "IsoSoundSpeed");  // initializes gas sound speed in box to this value
-        addr[nt] = &All.IsoSoundSpeed;
-        id[nt++] = REAL;
         
         strcpy(tag[nt], "ST_decay"); // decay time for driving-mode phase correlations
         addr[nt] = &All.StDecay;

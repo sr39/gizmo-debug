@@ -103,7 +103,7 @@
         if(fabs(diffusion_wt) > 0)
         {
             // enforce a flux limiter for stability (to prevent overshoot) //
-            double CR_egy_i = local.CosmicRayPressure*V_i / GAMMA_COSMICRAY_MINUS1; // (E_cr = Volume * (Pressure/(GAMMA_CR-1))) - this is physical units //
+            double CR_egy_i = local.CosmicRayPressure*V_i / GAMMA_COSMICRAY_MINUS1; // (E_cr = Volume * (Pressure/GAMMA_COSMICRAY_MINUS1)) - this is physical units //
             double CR_egy_j = CosmicRayPressure_j*V_j / GAMMA_COSMICRAY_MINUS1;
             double prefac_duij = 0.25, flux_multiplier = 1;
             if((local.CosmicRayDiffusionCoeff<0)||(SphP[j].CosmicRayDiffusionCoeff<0)) {prefac_duij = 0.05;}
@@ -144,7 +144,6 @@
         //c_light = 2.*All.cf_afac3*kernel.vsig;
         reducedcM1 = DMIN(COSMIC_RAYS_M1, reducedcM1/sqrt(3.0));
         double c_light = DMAX(2.*All.cf_afac3*kernel.vsig, reducedcM1);    
-        //double c_light = DMAX( 2.*All.cf_afac3*kernel.vsig , DMIN(COSMIC_RAYS_M1 , kappa_ij/DMIN(Particle_Size_i,L_eff_j)));// * (C/All.UnitVelocity_in_cm_per_s);
         double v_eff_light = DMIN(c_light , kappa_ij / L_eff_j); // physical
         double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + v_eff_light; // physical
         double hll_corr = 1. / (1. + 1.5 * c_light * DMAX(L_eff_j/kappa_j , Particle_Size_i/kappa_i)); // all physical units

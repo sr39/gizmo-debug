@@ -7,11 +7,11 @@
 #include "../allvars.h"
 #include "../proto.h"
 
-/* Routines for gas equation-of-state terms (collects things like calculation of gas pressure)
+/*! Routines for gas equation-of-state terms (collects things like calculation of gas pressure)
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
-/* this pair of functions: 'return_user_desired_target_density' and 'return_user_desired_target_pressure' should be used
+/*! this pair of functions: 'return_user_desired_target_density' and 'return_user_desired_target_pressure' should be used
  together with 'HYDRO_GENERATE_TARGET_MESH'. This will attempt to move the mesh and mass
  towards the 'target' pressure profile. Use this to build your ICs.
  The 'desired' pressure and density as a function of particle properties (most commonly, position) should be provided in the function below */
@@ -38,15 +38,15 @@ double return_user_desired_target_pressure(int i)
 
 
 
-
 /* return the pressure of particle i */
 double get_pressure(int i)
 {
-    MyFloat press = GAMMA_MINUS1 * SphP[i].InternalEnergyPred * Particle_density_for_energy_i(i); /* ideal gas EOS (will get over-written it more complex EOS assumed) */
+    double gamma_eos_index = GAMMA(i); /* get effective adiabatic index */
+    MyFloat press = (gamma_eos_index-1) * SphP[i].InternalEnergyPred * Particle_density_for_energy_i(i); /* ideal gas EOS (will get over-written it more complex EOS assumed) */
     
 #ifdef GALSF_EFFECTIVE_EQS
     /* modify pressure to 'interpolate' between effective EOS and isothermal, with the Springel & Hernquist 2003 'effective' EOS */
-    if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh) {press = All.FactorForSofterEQS * press + (1 - All.FactorForSofterEQS) * All.cf_afac1 * GAMMA_MINUS1 * SphP[i].Density * All.InitGasU;}
+    if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh) {press = All.FactorForSofterEQS * press + (1 - All.FactorForSofterEQS) * All.cf_afac1 * (gamma_eos_index-1) * SphP[i].Density * All.InitGasU;}
 #endif
     
     
@@ -72,7 +72,11 @@ double get_pressure(int i)
 #endif
     
 #ifdef EOS_ENFORCE_ADIABAT
-    press = EOS_ENFORCE_ADIABAT * pow(SphP[i].Density, GAMMA);
+    press = EOS_ENFORCE_ADIABAT * pow(SphP[i].Density, gamma_eos_index);
+#ifdef TURB_DRIVING
+    SphP[i].EgyDiss += (SphP[i].InternalEnergy - press / (SphP[i].Density * (gamma_eos_index-1.))); /* save the change in energy imprinted by this enforced equation of state here */
+#endif
+    SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (SphP[i].Density * (gamma_eos_index-1.)); /* reset internal energy: particles live -exactly- along this relation */
 #endif
 
 #ifdef EOS_GMC_BAROTROPIC // barytropic EOS calibrated to Masunaga & Inutsuka 2000, eq. 4 in Federrath 2014 Apj 790. Reasonable over the range of densitites relevant to some small-scale star formation problems
@@ -95,9 +99,9 @@ double get_pressure(int i)
     /* we will also compute the CR contribution to the effective soundspeed here */
     if((P[i].Mass > 0) && (SphP[i].Density>0) && (SphP[i].CosmicRayEnergyPred > 0))
     {
-        SphP[i].SoundSpeed = sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred + GAMMA_COSMICRAY*GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred / P[i].Mass);
+        SphP[i].SoundSpeed = sqrt(gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred + GAMMA_COSMICRAY*GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred / P[i].Mass);
     } else {
-        SphP[i].SoundSpeed = sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred);
+        SphP[i].SoundSpeed = sqrt(gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred);
     }
 #ifdef COSMIC_RAYS_ALFVEN
     press += (GAMMA_ALFVEN_CRS-1) * SphP[i].Density * (SphP[i].CosmicRayAlfvenEnergy[0]+SphP[i].CosmicRayAlfvenEnergy[1]);
@@ -112,20 +116,40 @@ double get_pressure(int i)
     /* standard finite-volume formulation of this (note there is some geometric ambiguity about whether there should be a "pi" in the equation below, but this 
         can be completely folded into the (already arbitrary) definition of NJeans, so we just use the latter parameter */
     double NJeans = 4; // set so that resolution = lambda_Jeans/NJeans -- fragmentation with Jeans/Toomre scales below this will be artificially suppressed now
-    double xJeans = (NJeans * NJeans / GAMMA) * All.G * h_eff*h_eff * SphP[i].Density * SphP[i].Density * All.cf_afac1/All.cf_atime;
+    double xJeans = (NJeans * NJeans / gamma_eos_index) * All.G * h_eff*h_eff * SphP[i].Density * SphP[i].Density * All.cf_afac1/All.cf_atime;
     if(xJeans>press) press=xJeans;
-    SphP[i].SoundSpeed = sqrt(GAMMA * press / Particle_density_for_energy_i(i));
+    SphP[i].SoundSpeed = sqrt(gamma_eos_index * press / Particle_density_for_energy_i(i));
 #endif
     
     
 #if defined(HYDRO_GENERATE_TARGET_MESH)
     press = return_user_desired_target_pressure(i) * (SphP[i].Density / return_user_desired_target_density(i)); // define pressure by reference to 'desired' fluid quantities //
-    SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = return_user_desired_target_pressure(i) / (GAMMA_MINUS1 * SphP[i].Density);
+    SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = return_user_desired_target_pressure(i) / ((gamma_eos_index-1) * SphP[i].Density);
 #endif
     
     return press;
 }
 
+
+
+/*! this function allows the user to specify an arbitrarily complex adiabatic index. note that for pure adiabatic evolution, one can simply set the pressure to obey some barytropic equation-of-state and use EOS_GENERAL to tell the code to deal with it appropriately.
+      but for more general functionality, we want this index here to be appropriately variable. */
+static inline double gamma_eos(int i)
+{
+#if EOS_SUBSTELLAR_ISM
+    if(i>=0) {
+        if(P[i].Type==0) {
+            double T_eff_atomic = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred;
+            double nH_cgs = rho*All.cf_a3inv * ( All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam ) / PROTONMASS;
+            double T_transition=DMIN(8000.,nH_cgs), f_mol=1./(1. + T_eff_atomic*T_eff_atomic/(T_transition*T_transition));
+            double gamma_mol_atom = (29.-8./(2.-f_mol))/15.; // interpolates between 5/3 (fmol=0) and 7/5 (fmol=1)
+            gamma_mol_atom += (5./3.-gamma_mol_atom) / (1 + T_eff_atomic*T_eff_atomic/(40.*40.)); // interpolates back up to 5/3 when temps fall below ~30K [cant excite upper states]
+            return gamma_mol_atom;
+        }
+    }
+#endif
+    return GAMMA_DEFAULT; /* default to universal constant here */
+}
 
 
 
@@ -159,9 +183,18 @@ double INLINE_FUNC Particle_effective_soundspeed_i(int i)
 {
 #ifdef EOS_GENERAL
     return SphP[i].SoundSpeed;
-#endif
+#else
     /* if nothing above triggers, then we resort to good old-fashioned ideal gas */
-    return sqrt(GAMMA * SphP[i].Pressure / Particle_density_for_energy_i(i));
+    return sqrt(GAMMA(i) * SphP[i].Pressure / Particle_density_for_energy_i(i));
+#endif
+}
+
+
+/* returns the conversion factor to go -approximately- (for really quick estimation) in code units, from internal energy to soundspeed */
+double INLINE_FUNC convert_internalenergy_soundspeed2(int i, double u)
+{
+    double gamma_eos_touse = GAMMA(i);
+    return gamma_eos_touse * (gamma_eos_touse-1) * u;
 }
 
 
@@ -224,7 +257,7 @@ double Get_Gas_Ionized_Fraction(int i)
 double Get_CosmicRayStreamingVelocity(int i)
 {
     /* in the weak-field (high-beta) case, the streaming velocity is approximately the sound speed */
-    double v_streaming = sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred); // thermal ion sound speed //
+    double v_streaming = sqrt(convert_internalenergy_soundspeed2(i,SphP[i].InternalEnergyPred)); // thermal ion sound speed //
 #ifdef MAGNETIC
     /* in the strong-field (low-beta) case, it's actually the Alfven velocity: interpolate between these */
     double vA_2 = 0.0; double cs_stream = v_streaming;
@@ -297,12 +330,12 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 #endif
     
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 5) /* streaming at fast MHD wavespeed */
-    v_streaming = sqrt(v_streaming*v_streaming + GAMMA*GAMMA_MINUS1*SphP[i].InternalEnergyPred);
+    v_streaming = sqrt(v_streaming*v_streaming + convert_internalenergy_soundspeed2(i,SphP[i].InternalEnergyPred));
     CR_kappa_streaming = GAMMA_COSMICRAY * v_streaming * CRPressureGradScaleLength;
 #endif
     
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 1) || (COSMIC_RAYS_DIFFUSION_MODEL == 2) || (COSMIC_RAYS_DIFFUSION_MODEL == 6) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* extrinsic turbulence OR streaming/diffusion at self-confinement equilibrium */
-    double EPSILON_SMALL=1.e-50, cs_thermal=sqrt(GAMMA*GAMMA_MINUS1*u0), B[3]={0}, Bmag=0, cos_Bgrad=0, dPmag=0, Bmag_Gauss=0, r_turb_driving=0; // internal energy,  thermal sound speed, B-field properties
+    double EPSILON_SMALL=1.e-50, cs_thermal=sqrt(convert_internalenergy_soundspeed2(i,u0)), B[3]={0}, Bmag=0, cos_Bgrad=0, dPmag=0, Bmag_Gauss=0, r_turb_driving=0; // internal energy,  thermal sound speed, B-field properties
     for(k=0;k<3;k++)
     {
         B[k]=SphP[i].BPred[k]*SphP[i].Density/P[i].Mass*All.cf_a2inv; Bmag+=B[k]*B[k]; // B magnitude in code units (physical)
@@ -316,7 +349,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
     vA_code /= sqrt(f_ion); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
-    double clight_code=C/All.UnitVelocity_in_cm_per_s, Omega_gyro=8987.34*(Bmag_Gauss/E_CRs_GeV_over_Z)*(All.UnitTime_in_s/All.HubbleParam), r_L=clight_code/Omega_gyro, kappa_0=r_L*clight_code, k_L=1./r_L; // gyro frequency of the CR population we're evolving, CR gyro radius, reference diffusivity
+    double clight_code=C_LIGHT_CODE, Omega_gyro=8987.34*(Bmag_Gauss/E_CRs_GeV_over_Z)*(All.UnitTime_in_s/All.HubbleParam), r_L=clight_code/Omega_gyro, kappa_0=r_L*clight_code, k_L=1./r_L; // gyro frequency of the CR population we're evolving, CR gyro radius, reference diffusivity
     double E_B=0.5*Bmag*Bmag*(P[i].Mass/(SphP[i].Density*All.cf_a3inv)), E_CR=SphP[i].CosmicRayEnergyPred, x_EB_ECR=(E_B+EPSILON_SMALL)/(E_CR+EPSILON_SMALL); // B-field energy (energy density times volume, for ratios with energies above), CR-energy, ratio
     
     int i1,i2; double v2_t=0,dv2_t=0,b2_t=0,db2_t=0,x_LL,M_A,h0,fturb_multiplier=1; // factor which will represent which cascade model we are going to use
@@ -418,12 +451,12 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     
 #ifndef COSMIC_RAYS_M1 /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
     // [all of this only applies if we are using the pure-diffusion description: the M1-type description should -not- use a limiter here, or negative kappa]
-    double diffusion_velocity_limit = 1.0 * C; /* maximum diffusion velocity (set <C if desired) */
+    double diffusion_velocity_limit = C_LIGHT_CODE; /* maximum diffusion velocity (set <c if desired) */
     double Lscale = DMIN(20.*Get_Particle_Size(i)*All.cf_atime , CRPressureGradScaleLength);
-    double kappa_diff_vel = SphP[i].CosmicRayDiffusionCoeff * GAMMA_COSMICRAY_MINUS1 / Lscale * All.UnitVelocity_in_cm_per_s;
+    double kappa_diff_vel = SphP[i].CosmicRayDiffusionCoeff * GAMMA_COSMICRAY_MINUS1 / Lscale;
     SphP[i].CosmicRayDiffusionCoeff *= 1 / (1 + kappa_diff_vel/diffusion_velocity_limit); /* caps maximum here */
 #ifdef GALSF /* for multi-physics problems, we suppress diffusion where it is irrelevant */
-    SphP[i].CosmicRayDiffusionCoeff *= 1 / (1 + kappa_diff_vel/(0.01 * C)); /* caps maximum here */
+    SphP[i].CosmicRayDiffusionCoeff *= 1 / (1 + kappa_diff_vel/(0.01*diffusion_velocity_limit)); /* caps maximum here */
     double P_cr_Ratio = Get_Particle_CosmicRayPressure(i) / (MIN_REAL_NUMBER + SphP[i].Pressure);
     double P_min = 1.0e-4; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
     P_min = 1.0e-6; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
@@ -447,8 +480,8 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     
 #if defined(COSMIC_RAYS_M1) && !defined(COSMIC_RAYS_ALFVEN)
     // this is the exact solution for the CR flux-update equation over a finite timestep dt: it needs to be solved this way [implicitly] as opposed to explicitly for dt because in the limit of dt_cr_dimless being large, the problem exactly approaches the diffusive solution
-    double DtCosmicRayFlux[3]={0}, flux[3]={0}, CR_veff[3]={0}, CR_vmag=0, q_cr = 0, cr_speed = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
-    cr_speed = DMAX( All.cf_afac3*SphP[i].MaxSignalVel , DMIN(COSMIC_RAYS_M1 , 10.*fabs(SphP[i].CosmicRayDiffusionCoeff)/(Get_Particle_Size(i)*All.cf_atime)));// * (C/All.UnitVelocity_in_cm_per_s);
+    double DtCosmicRayFlux[3]={0}, flux[3]={0}, CR_veff[3]={0}, CR_vmag=0, q_cr = 0, cr_speed = COSMIC_RAYS_M1;
+    cr_speed = DMAX( All.cf_afac3*SphP[i].MaxSignalVel , DMIN(COSMIC_RAYS_M1 , 10.*fabs(SphP[i].CosmicRayDiffusionCoeff)/(Get_Particle_Size(i)*All.cf_atime)));
     for(k=0;k<3;k++) {DtCosmicRayFlux[k] = -fabs(SphP[i].CosmicRayDiffusionCoeff) * (P[i].Mass/SphP[i].Density) * (SphP[i].Gradients.CosmicRayPressure[k]/GAMMA_COSMICRAY_MINUS1);}
 #ifdef MAGNETIC // do projection onto field lines
     double B0[3]={0}, Bmag2=0, DtCRDotBhat=0;
@@ -527,7 +560,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 
     // ok, the updates from [0] advection w gas, [1] fluxes, [2] adiabatic, [-] catastrophic (in cooling.c) are all set, just need exchange terms b/t CR and Alfven //
     double EPSILON_SMALL = 1.e-77; // want a very small number here 
-    double bhat[3], Bmag=0, Bmag_Gauss, clight_code=C/All.UnitVelocity_in_cm_per_s, Omega_gyro, eA[2], vA_code, vA2_c2, E_B, fac, flux_G, fac_Omega, flux[3], f_CR, f_CR_dot_B, cs_thermal, r_turb_driving, G_ion_neutral=0, G_turb_plus_linear_landau=0, G_nonlinear_landau_prefix=0;
+    double bhat[3], Bmag=0, Bmag_Gauss, clight_code=C_LIGHT_CODE, Omega_gyro, eA[2], vA_code, vA2_c2, E_B, fac, flux_G, fac_Omega, flux[3], f_CR, f_CR_dot_B, cs_thermal, r_turb_driving, G_ion_neutral=0, G_turb_plus_linear_landau=0, G_nonlinear_landau_prefix=0;
     double ne=0, f_ion=1, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, rho_cgs=rho*All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;
 #ifdef COOLING
     ne=SphP[i].Ne, temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
@@ -556,7 +589,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
     vA_code /= sqrt(f_ion); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
-    cs_thermal = sqrt(GAMMA*(GAMMA-1.) * u0); // thermal sound speed at appropriate drift-time [in code units, physical]
+    cs_thermal = sqrt(convert_internalenergy_soundspeed2(i,u0)); // thermal sound speed at appropriate drift-time [in code units, physical]
     vA2_c2 = vA_code*vA_code / (clight_code*clight_code); // Alfven speed vs c_light
     fac_Omega = (3.*M_PI/16.) * Omega_gyro * (1.+2.*vA2_c2); // factor which will be used heavily below
     /* for turbulent (anisotropic and linear landau) damping terms: need to know the turbulent driving scale: assume a cascade with a driving length equal to the pressure gradient scale length */
