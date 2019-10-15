@@ -9,7 +9,7 @@
 
 #SYSTYPE="Frontera"
 #SYSTYPE="Stampede2"
-SYSTYPE="Wheeler"
+#SYSTYPE="Wheeler"
 #SYSTYPE="MacBookPro"
 #SYSTYPE="Quest"
 #SYSTYPE="Quest-intel"
