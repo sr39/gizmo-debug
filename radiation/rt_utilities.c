@@ -417,9 +417,8 @@ double rt_kappa(int i, int k_freq)
     /* IR with dust opacity */
     if(k_freq==RT_FREQ_BIN_INFRARED)
     {
-        if(isnan(SphP[i].Dust_Temperature) || SphP[i].Dust_Temperature<=0) {SphP[i].Dust_Temperature=DMAX(10.,2.73/All.cf_atime);} // reset baseline
-        if(isnan(SphP[i].Radiation_Temperature) || SphP[i].Radiation_Temperature<=0) {SphP[i].Radiation_Temperature=DMAX(10.,2.73/All.cf_atime);} // reset baseline
-        //printf("%g %g\n",SphP[i].Dust_Temperature,SphP[i].Radiation_Temperature);
+        if(isnan(SphP[i].Dust_Temperature) || SphP[i].Dust_Temperature<=DMAX(10.,2.73/All.cf_atime)) {SphP[i].Dust_Temperature=DMAX(10.,2.73/All.cf_atime);} // reset baseline
+        if(isnan(SphP[i].Radiation_Temperature) || SphP[i].Radiation_Temperature<=DMAX(10.,2.73/All.cf_atime)) {SphP[i].Radiation_Temperature=DMAX(10.,2.73/All.cf_atime);} // reset baseline
         
         double T_dust_em = SphP[i].Dust_Temperature; // dust temperature in K //
         double Trad = SphP[i].Radiation_Temperature; // radiation temperature in K //
@@ -584,7 +583,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
     double Dust_Temperature_4 = All.UnitVelocity_in_cm_per_s * c_light * u_gamma / (4. * 5.67e-5); // estimated effective temperature of local rad field in equilibrium with dust emission //
     Dust_Temperature_4 /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
     SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
-    if(SphP[i].Dust_Temperature <= 0) {SphP[i].Dust_Temperature = DMAX(10.,2.73/All.cf_atime);} // dust temperature shouldn't be below CMB
+    if(SphP[i].Dust_Temperature <= DMAX(10.,2.73/All.cf_atime)) {SphP[i].Dust_Temperature = DMAX(10.,2.73/All.cf_atime);} // dust temperature shouldn't be below CMB
 #endif
     for(k_tmp=0; k_tmp<N_RT_FREQ_BINS; k_tmp++)
     {
@@ -624,7 +623,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                     SphP[i].Radiation_Temperature = (e0 + dE_fac) / (MIN_REAL_NUMBER + DMAX(0., e0 / SphP[i].Radiation_Temperature + dTE_fac));
                     SphP[i].Radiation_Temperature = DMIN(SphP[i].Radiation_Temperature, T_max);
                     a0 = -rt_absorption_rate(i,kf); // update absorption rate using the new radiation temperature //
-//printf(" Radiation: a0 %g e0 %g dE_fac %g dTE_fac %g dE_abs %g rfac %g \n",a0, e0, dE_fac, dTE_fac, dE_abs, rfac);
+printf(" Radiation: Trad %g Tdust %g a0 %g e0 %g dE_fac %g dTE_fac %g dE_abs %g rfac %g \n",SphP[i].Radiation_Temperature,SphP[i].Dust_Temperature, a0, e0, dE_fac, dTE_fac, dE_abs, rfac);
 //SphP[i].Radiation_Temperature=10;
                 }
                 double total_emission_rate = E_abs_tot + fabs(a0)*e0 + SphP[i].Je[kf]; // add the summed absorption as emissivity here //
@@ -637,7 +636,7 @@ total_de_dt = E_abs_tot + SphP[i].Je[kf] + SphP[i].Dt_E_gamma[kf];
                     Dust_Temperature_4 *= (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5); // convert to cgs
                     Dust_Temperature_4 /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
                     SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
-                    if(SphP[i].Dust_Temperature < T_cmb) {SphP[i].Dust_Temperature = T_cmb;} // dust temperature shouldn't be below CMB
+                    if(SphP[i].Dust_Temperature < DMAX(10.,2.73/All.cf_atime)) {SphP[i].Dust_Temperature = DMAX(10.,2.73/All.cf_atime);} // dust temperature shouldn't be below CMB
 //SphP[i].Dust_Temperature = 20;
                 }
                 if(mode==0) // only update temperatures on kick operations //
@@ -835,6 +834,11 @@ void rt_set_simple_inits(void)
                 int k_dir; for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++) {SphP[i].Intensity_Pred[k][k_dir] = SphP[i].Intensity[k][k_dir] = SphP[i].Dt_Intensity[k][k_dir] = 0;}
 #endif
             }
+      
+
+/*     double E_gamma_IR_pred = pow(SphP[i].Dust_Temperature,4.0)*(RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION)/ ((All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5))/ ((SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. / C_LIGHT_CODE_REDUCED));
+    SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]=E_gamma_IR_pred;
+       */
         }
     }
 }
