@@ -624,7 +624,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                     SphP[i].Radiation_Temperature = (e0 + dE_fac) / (MIN_REAL_NUMBER + DMAX(0., e0 / SphP[i].Radiation_Temperature + dTE_fac));
                     SphP[i].Radiation_Temperature = DMIN(SphP[i].Radiation_Temperature, T_max);
                     a0 = -rt_absorption_rate(i,kf); // update absorption rate using the new radiation temperature //
-printf(" Radiation: a0 %g e0 %g dE_fac %g dTE_fac %g dE_abs %g rfac %g \n",a0, e0, dE_fac, dTE_fac, dE_abs, rfac);
+//printf(" Radiation: a0 %g e0 %g dE_fac %g dTE_fac %g dE_abs %g rfac %g \n",a0, e0, dE_fac, dTE_fac, dE_abs, rfac);
 //SphP[i].Radiation_Temperature=10;
                 }
                 double total_emission_rate = E_abs_tot + fabs(a0)*e0 + SphP[i].Je[kf]; // add the summed absorption as emissivity here //
