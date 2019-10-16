@@ -281,8 +281,7 @@ void do_the_cooling_for_particle(int i)
     SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] += 0*P[i].Mass*(SphP[i].DustCoolingRate-SphP[i].DustHeatingRate)*ratefact*(dtime*All.UnitTime_in_s / All.HubbleParam) / (All.UnitPressure_in_cgs/All.UnitDensity_in_cgs);
     if (SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]<MIN_REAL_NUMBER){SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]=MIN_REAL_NUMBER;}
     
-    double c_light = (C / All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION;
-    double Dust_Temperature_4 = SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. / c_light); // flux units
+    double Dust_Temperature_4 = SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. / C_LIGHT_CODE_REDUCED); // flux units
     Dust_Temperature_4 *= (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5); // convert to cgs
     Dust_Temperature_4 /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
     double Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
@@ -1226,8 +1225,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     double E_gamma_IR_pred=SphP[target].E_gamma[RT_FREQ_BIN_INFRARED] + 0*P[target].Mass*(SphP[target].DustCoolingRate-SphP[target].DustHeatingRate)*ratefact*(dtime*All.UnitTime_in_s / All.HubbleParam) / (All.UnitPressure_in_cgs/All.UnitDensity_in_cgs);
     if (E_gamma_IR_pred<MIN_REAL_NUMBER){E_gamma_IR_pred=MIN_REAL_NUMBER;}
     
-    double c_light = (C / All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION;
-    double Dust_Temperature_4 = E_gamma_IR_pred * (SphP[target].Density*All.cf_a3inv/P[target].Mass) / (4. / c_light); // flux units
+
+    double Dust_Temperature_4 = E_gamma_IR_pred * (SphP[target].Density*All.cf_a3inv/P[target].Mass) / (4. / C_LIGHT_CODE_REDUCED); // flux units
     Dust_Temperature_4 *= (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5); // convert to cgs
     Dust_Temperature_4 /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
     double Dust_Temperature_pred = sqrt(sqrt(Dust_Temperature_4));
