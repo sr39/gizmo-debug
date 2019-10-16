@@ -735,7 +735,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #endif
 
-
+#ifdef EOS_SUBSTELLAR_ISM
+#define EOS_GAMMA_VARIABLE
+#endif
 
 #if defined(EOS_GAMMA_VARIABLE)
 #define GAMMA(i) (gamma_eos(i)) /*! use an actual function! */
