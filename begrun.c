@@ -1015,7 +1015,7 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.Vertical_Grain_Accel_Angle;
         id[nt++] = REAL;
 #endif
-
+#if !defined(PIC_MHD) || defined(GRAIN_FLUID_AND_PIC_BOTH_DEFINED)
         strcpy(tag[nt],"Grain_Internal_Density");
         addr[nt] = &All.Grain_Internal_Density;
         id[nt++] = REAL;
@@ -1031,18 +1031,15 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt],"Grain_Size_Spectrum_Powerlaw");
         addr[nt] = &All.Grain_Size_Spectrum_Powerlaw;
         id[nt++] = REAL;
-
-#ifdef GRAIN_CR
-        strcpy(tag[nt],"Grain_CR_Charge_to_Mass_Ratio");
-        addr[nt] = &All.Grain_CR_Charge_to_Mass_Ratio;
-        id[nt++] = REAL;
-
-        strcpy(tag[nt],"Grain_CR_Reduced_Speed_of_Light");
-        addr[nt] = &All.Grain_CR_Reduced_Speed_of_Light;
-        id[nt++] = REAL;
 #endif
 #endif
-	
+
+#ifdef PIC_MHD
+        strcpy(tag[nt],"PIC_Charge_to_Mass_Ratio");
+        addr[nt] = &All.PIC_Charge_to_Mass_Ratio;
+        id[nt++] = REAL;
+#endif
+
 #if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         strcpy(tag[nt],"InitMetallicity");
         addr[nt] = &All.InitMetallicityinSolar;
@@ -2109,12 +2106,16 @@ void read_parameter_file(char *fname)
     All.CritPhysDensity = 0.0; /* this will be calculated by the code below */
 #endif
     All.TypeOfOpeningCriterion = 1;
-    /*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
+    /* determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
      should only be changed if you -really- know what you're doing! */    
     
 #if defined(MAGNETIC) || defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(BH_WIND_SPAWN)
-    if(All.CourantFac > 0.2) {All.CourantFac = 0.2;} //
+    if(All.CourantFac > 0.2) {All.CourantFac = 0.2;}
     /* (PFH) safety factor needed for MHD calc, because people keep using the same CFac as hydro! */
+#endif
+    
+#if defined(PIC_MHD) && !defined(GRAIN_FLUID_AND_PIC_BOTH_DEFINED)
+    All.Grain_Internal_Density=1; All.Grain_Size_Min=1; All.Grain_Size_Max=1; All.Grain_Size_Spectrum_Powerlaw=1; /* in this case these are never used, so we treat them as dummy variables */
 #endif
 
     /* now we're going to do a bunch of checks */

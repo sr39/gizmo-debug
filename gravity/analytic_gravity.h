@@ -291,8 +291,9 @@ void GravAccel_StaticNFW()
         dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y; dp[2] -= boxHalf_Z;
 #endif
         double r2=dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2], r=sqrt(r2), x=r/Rs, cfac=log(1+NFW_C)-NFW_C/(1+NFW_C);
-        double m = NFW_M200/cfac * (log(1+x)-x/(1+x));
-        for(k=0;k<3;k++) {P[i].GravAccel[k] += -All.G * m * dp[k]/(r*r*r);}
+        if(r>0) {
+            double mfac = (log(1+x)-x/(1+x)) / (x*x); if(x<=0.04) {mfac=0.5-2.*x/3.+0.75*x*x;} /* expression works well for larger x, small-x leads to potential numerical errors */
+            for(k=0;k<3;k++) {P[i].GravAccel[k] += -All.G * mfac * NFW_M200/(cfac*Rs*Rs) * (dp[k]/r);}}
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) //
 }
 

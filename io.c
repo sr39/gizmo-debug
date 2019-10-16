@@ -548,11 +548,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_GRAINTYPE:      /* grain type */
-#ifdef GRAIN_FLUID
+#if defined(PIC_MHD)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = P[pindex].Grain_Type;
+                    *fp++ = P[pindex].Grain_SubType;
                     n++;
                 }
 #endif
@@ -2539,24 +2539,14 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             break;
              
         case IO_GRAINSIZE:
-            nngb = 0;
-            for(i = 0; i < 6; i++)
-            {
-                if(i == 0) typelist[i] = 0;
-                if(i == 4) typelist[i] = 0;
-                nngb += header.npart[i];
-            }
+            nngb=0;
+            for(i=0;i<6;i++) {if((1 << i) & (GRAIN_PTYPES)) {nngb+=header.npart[i];} else {typelist[i]=0;}}
             return nngb;
             break;
 
         case IO_GRAINTYPE:
-            nngb = 0;
-            for(i = 0; i < 6; i++)
-            {
-                if(i == 0) typelist[i] = 0;
-                if(i == 4) typelist[i] = 0;
-                nngb += header.npart[i];
-            }
+            nngb=0;
+            for(i=0;i<6;i++) {if((1 << i) & (GRAIN_PTYPES)) {nngb+=header.npart[i];} else {typelist[i]=0;}}
             return nngb;
             break;
 
@@ -2581,16 +2571,12 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             break;
             
         case IO_HSMS:
-            for(i = 0; i < 6; i++)
-                if(i != 4)
-                    typelist[i] = 0;
+            for(i = 0; i < 6; i++) {if(i != 4) {typelist[i] = 0;}}
             return nstars;
             break;
             
         case IO_Z:
-            for(i = 0; i < 6; i++)
-                if(i != 0 && i != 4)
-                    typelist[i] = 0;
+            for(i = 0; i < 6; i++) {if(i != 0 && i != 4) {typelist[i] = 0;}}
             return ngas + nstars;
             break;
 
@@ -2788,7 +2774,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_GRAINTYPE:
-#ifdef GRAIN_FLUID
+#ifdef PIC_MHD
             return 1;
 #else
             return 0;
@@ -3964,7 +3950,7 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             strcpy(buf, "GrainSize");
             break;
         case IO_GRAINTYPE:
-            strcpy(buf, "GrainType");
+            strcpy(buf, "PICParticleType");
             break;
         case IO_HSMS:
             strcpy(buf, "StellarSmoothingLength");
