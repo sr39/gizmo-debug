@@ -150,8 +150,8 @@ void read_ic(char *fname)
         All.MassTable[4] = 0;
     }
 #endif
-    
-    
+
+    double meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC);
     u_init = All.InitGasTemp / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
 
     if(All.InitGasTemp > 1.0e4)	/* assuming FULL ionization */

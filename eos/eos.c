@@ -36,6 +36,45 @@ double return_user_desired_target_pressure(int i)
      */
 }
 
+#ifdef EOS_SUBSTELLAR_ISM
+/* Sigmoid ("turn-on") function (1 + x/(1+x^2))/2, interpolates between 0 as x->-infty and 1 as x->infty. Useful for cheaply doing smooth fits of e.g. EOS where different thermo processes turn on at certain temps */
+double sigmoid(double x){
+    return 0.5 * (1 + x/sqrt(1 + x*x));
+}
+#endif
+
+/*! this function allows the user to specify an arbitrarily complex adiabatic index. note that for pure adiabatic evolution, one can simply set the pressure to obey some barytropic equation-of-state and use EOS_GENERAL to tell the code to deal with it appropriately.
+      but for more general functionality, we want this index here to be appropriately variable. */
+double gamma_eos(int i)
+{
+#ifdef EOS_SUBSTELLAR_ISM
+    if(i>=0) {
+        if(P[i].Type==0) {
+            double T_eff_atomic = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred;
+            double nH_cgs = SphP[i].Density*All.cf_a3inv * ( All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam ) / PROTONMASS;
+            double T_transition=DMIN(8000.,nH_cgs), f_mol=1./(1. + T_eff_atomic*T_eff_atomic/(T_transition*T_transition));
+            double gamma_mol = 5./3;
+            double logT = log10(T_eff_atomic);
+            /* double gamma_mol_atom = (29.-8./(2.-f_mol))/15.; // interpolates between 5/3 (fmol=0) and 7/5 (fmol=1) */
+            /* gamma_mol_atom += (5./3.-gamma_mol_atom) / (1 + T_eff_atomic*T_eff_atomic/(40.*40.)); // interpolates back up to 5/3 when temps fall below ~30K [cant excite upper states] */
+            /* return gamma_mol_atom; */
+            
+            /* We take a detailed fit from Vaidya et al. A&A 580, A110 (2015) for n_H ~ 10^7, which accounts for collisional dissociation at 2000K and ionization at 10^4K,
+               and take the fmol-weighted average with 5./3 at the end to interpolate between atomic/not self-shielding and molecular/self-shielding. Gamma should technically 
+               really come from calculating the species number-weighted specific heats, but fmol is very approximate so this should be OK */
+            gamma_mol -= 3.81374640e-01 * sigmoid(5.946*(logT-1.248)); // going down from 5./3 at 10K to the dip at ~1.2
+            gamma_mol += 2.20724233e-01 * sigmoid(6.176*(logT-1.889)); // peak at ~ 80K
+            gamma_mol -= 6.79222672e-02 * sigmoid(1.026e+01*(logT-2.235)); // plateau at ~1.4
+            gamma_mol -= 4.18671231e-01 * sigmoid(7.714*(logT-3.134)); // collisional dissociation, down to ~1.1
+            gamma_mol += 6.59888854e-01/(1 + (logT - 4.277)*(logT - 4.277)/0.176); // peak at ~5./3 for atomic H after dissoc but before ionization
+            gamma_mol += 0.6472439052 * sigmoid(9.887e+01*(logT-5.077)); // ionization at 10^4K (note this happens at logT ~ 5 because we're just adopting a simple conversion factor from u to T
+            return gamma_mol*f_mol + (1-f_mol)*5./3;
+        }
+    }
+#endif
+    return GAMMA_DEFAULT; /* default to universal constant here */
+}
+
 
 
 /* return the pressure of particle i */
@@ -43,7 +82,9 @@ double get_pressure(int i)
 {
     double gamma_eos_index = GAMMA(i); /* get effective adiabatic index */
     MyFloat press = (gamma_eos_index-1) * SphP[i].InternalEnergyPred * Particle_density_for_energy_i(i); /* ideal gas EOS (will get over-written it more complex EOS assumed) */
-    
+#ifdef EOS_GENERAL
+    SphP[i].SoundSpeed = sqrt(gamma_eos_index * press / Particle_density_for_energy_i(i));
+#endif    
 #ifdef GALSF_EFFECTIVE_EQS
     /* modify pressure to 'interpolate' between effective EOS and isothermal, with the Springel & Hernquist 2003 'effective' EOS */
     if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh) {press = All.FactorForSofterEQS * press + (1 - All.FactorForSofterEQS) * All.cf_afac1 * (gamma_eos_index-1) * SphP[i].Density * All.InitGasU;}
@@ -132,27 +173,6 @@ double get_pressure(int i)
 #endif
     
     return press;
-}
-
-
-
-/*! this function allows the user to specify an arbitrarily complex adiabatic index. note that for pure adiabatic evolution, one can simply set the pressure to obey some barytropic equation-of-state and use EOS_GENERAL to tell the code to deal with it appropriately.
-      but for more general functionality, we want this index here to be appropriately variable. */
-static inline double gamma_eos(int i)
-{
-#if EOS_SUBSTELLAR_ISM
-    if(i>=0) {
-        if(P[i].Type==0) {
-            double T_eff_atomic = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred;
-            double nH_cgs = rho*All.cf_a3inv * ( All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam ) / PROTONMASS;
-            double T_transition=DMIN(8000.,nH_cgs), f_mol=1./(1. + T_eff_atomic*T_eff_atomic/(T_transition*T_transition));
-            double gamma_mol_atom = (29.-8./(2.-f_mol))/15.; // interpolates between 5/3 (fmol=0) and 7/5 (fmol=1)
-            gamma_mol_atom += (5./3.-gamma_mol_atom) / (1 + T_eff_atomic*T_eff_atomic/(40.*40.)); // interpolates back up to 5/3 when temps fall below ~30K [cant excite upper states]
-            return gamma_mol_atom;
-        }
-    }
-#endif
-    return GAMMA_DEFAULT; /* default to universal constant here */
 }
 
 

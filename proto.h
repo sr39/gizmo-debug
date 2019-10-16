@@ -49,8 +49,10 @@ double ref_mass_factor(int i);
 void merge_particles_ij(int i, int j);
 //void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
 void split_particle_i(int i, int n_particles_split, int i_nearest); 
-static inline double gamma_eos(int i);
-
+double gamma_eos(int i);
+#ifdef EOS_SUBSTELLAR_ISM
+double sigmoid(double x);
+#endif
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);
 #ifdef HERMITE_INTEGRATION
