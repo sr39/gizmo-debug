@@ -194,6 +194,19 @@
 #if defined(GRAIN_COLLISIONS)
 #define DM_SIDM 8 /* use the SIDM module to handle scattering of otherwise-collisionless particles against each other -- set to Particle Type=3 here */
 #endif
+#if defined(PIC_MHD)
+#ifdef GRAIN_FLUID
+#define GRAIN_FLUID_AND_PIC_BOTH_DEFINED /* keyword used later to know what we need to read in */
+#else
+#define GRAIN_FLUID
+#endif
+#ifndef GRAIN_LORENTZFORCE
+#define GRAIN_LORENTZFORCE
+#endif
+#ifndef GRAIN_BACKREACTION
+#define GRAIN_BACKREACTION
+#endif
+#endif
 
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY) || defined(AGS_FACE_CALCULATION_IS_ACTIVE) || defined(DM_SIDM)
 #define AGS_HSML_CALCULATION_IS_ACTIVE
@@ -1921,6 +1934,7 @@ extern struct global_data_all_processes
     
 
 #ifdef GRAIN_FLUID
+#define GRAIN_PTYPES 8 /* default to allowed particle type for grains == 3, only, but can make this a more extended list as desired */
 #ifdef GRAIN_RDI_TESTPROBLEM
 #if(NUMDIMS==3)
 #define GRAV_DIRECTION_RDI 2
@@ -1937,10 +1951,9 @@ extern struct global_data_all_processes
     double Grain_Size_Min;
     double Grain_Size_Max;
     double Grain_Size_Spectrum_Powerlaw;
-#ifdef GRAIN_CR
-    double Grain_CR_Charge_to_Mass_Ratio;
-    double Grain_CR_Reduced_Speed_of_Light;
 #endif
+#ifdef PIC_MHD
+    double PIC_Charge_to_Mass_Ratio;
 #endif
     
 #ifdef COSMIC_RAYS
@@ -2296,17 +2309,19 @@ extern ALIGN(32) struct particle_data
 #if defined(GRAIN_FLUID)
     MyFloat Grain_Size;
     MyFloat Gas_Density;
-    short int Grain_Type;
     MyFloat Gas_InternalEnergy;
     MyFloat Gas_Velocity[3];
-#if defined(GRAIN_BACKREACTION) || defined(GRAIN_CR)
+#if defined(GRAIN_BACKREACTION)
     MyFloat Grain_DeltaMomentum[3];
 #endif
-#if defined(GRAIN_LORENTZFORCE) || defined(GRAIN_CR)
+#if defined(GRAIN_LORENTZFORCE)
     MyFloat Gas_B[3];
 #endif
 #endif
-    
+#if defined(PIC_MHD)
+    short int Grain_SubType;
+#endif
+
 #if defined(BLACK_HOLES)
     MyIDType SwallowID;
     int IndexMapToTempStruc;   /*!< allows for mapping to BlackholeTempInfo struc */

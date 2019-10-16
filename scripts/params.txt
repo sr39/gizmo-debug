@@ -143,9 +143,6 @@ Grain_Internal_Density      1.0     % internal/material density of grains in g/c
 Grain_Size_Min              1.e-6   % minimum grain size in cm
 Grain_Size_Max              1.e-4   % maximum grain size in cm
 Grain_Size_Spectrum_Powerlaw  0.5   % power-law distribution of grain sizes (dm/dlnr~r^x)
-%-------------- parameters for hybrid MHD-PIC cosmic rays (GRAIN_CR on)
-Grain_CR_Charge_to_Mass_Ratio   1.     % cosmic ray particle charge to mass ratio
-Grain_CR_Reduced_Speed_of_Light 100.   % reduced speed of light for relativistic Lorentz factor
 %-------------- parameters for grain-grain collisions/scattering/sticking/shattering (GRAIN_COLLISONS on)
 Grain_InteractionRenormalization 1     % coefficient to re-normalize cross-section (otherwise hard-sphere assumed; default=1)
 Grain_InteractionVelocityScale 0       % velocity [code units]: if>0, cross-section scales ~1/(1+(v/v0)^4) above this "v0"
