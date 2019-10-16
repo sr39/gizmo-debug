@@ -278,15 +278,16 @@ void do_the_cooling_for_particle(int i)
     double nHcgs = HYDROGEN_MASSFRAC * rho_cgs / PROTONMASS;	/* hydrogen number dens in cgs units */
     double ratefact = nHcgs * nHcgs / rho_cgs;
     /* Using du = ratefact * LambdaNet * (dt*All.UnitTime_in_s / All.HubbleParam)* All.UnitDensity_in_cgs / All.UnitPressure_in_cgs */
-    SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] += 0*P[i].Mass*(SphP[i].DustCoolingRate-SphP[i].DustHeatingRate)*ratefact*(dtime*All.UnitTime_in_s / All.HubbleParam) / (All.UnitPressure_in_cgs/All.UnitDensity_in_cgs);
+    //SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] += P[i].Mass*(SphP[i].CoolingRate-SphP[i].HeatingRate)*ratefact*(dtime*All.UnitTime_in_s / All.HubbleParam) / (All.UnitPressure_in_cgs/All.UnitDensity_in_cgs);
+    SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] += P[i].Mass*(SphP[i].DustCoolingRate-SphP[i].DustHeatingRate)*ratefact*(dtime*All.UnitTime_in_s / All.HubbleParam) / (All.UnitPressure_in_cgs/All.UnitDensity_in_cgs);
     if (SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]<MIN_REAL_NUMBER){SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]=MIN_REAL_NUMBER;}
     
     double Dust_Temperature_4 = SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. / C_LIGHT_CODE_REDUCED); // flux units
     Dust_Temperature_4 *= (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5); // convert to cgs
     Dust_Temperature_4 /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
-    double Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
+    double Dust_Temperature_pred = sqrt(sqrt(Dust_Temperature_4));
     
-    //printf("i %d dt %g Gas density %g Gas temp %g  Rad temp %g Dust temp %g Predicted Dust temp %g DustCoolingRate %g DustHeatingRate %g CoolingRate %g HeatingRate %g NetHeatingRateQ %g \n",i,dtime, nHcgs, temp, SphP[i].Radiation_Temperature, SphP[i].Dust_Temperature,Dust_Temperature, SphP[i].DustCoolingRate, SphP[i].DustHeatingRate, SphP[i].CoolingRate, SphP[i].HeatingRate, SphP[i].NetHeatingRateQ);
+    printf("i %d dt %g Gas density %g Gas temp %g  Rad temp %g Dust temp %g Predicted Dust temp %g DustCoolingRate %g DustHeatingRate %g CoolingRate %g HeatingRate %g NetHeatingRateQ %g \n",i,dtime, nHcgs, temp, SphP[i].Radiation_Temperature, SphP[i].Dust_Temperature,Dust_Temperature_pred, SphP[i].DustCoolingRate, SphP[i].DustHeatingRate, SphP[i].CoolingRate, SphP[i].HeatingRate, SphP[i].NetHeatingRateQ);
     
 #endif
         
@@ -885,6 +886,38 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     LambdaMol=0; LambdaMetal=0; LambdaCmptn=0; NH_SS_z=NH_SS;
     if(logT <= Tmin) {logT = Tmin + 0.5 * deltaT;}	/* floor at Tmin */
     if(!isfinite(rho)) {return 0;} 
+    
+
+
+#if defined(RT_INFRARED)
+    /*Set the dust temperature*/
+    /*We should put all emission (cooling) into the IR band and take the dust heating from it*/
+    double dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval;
+    double dtime = dt / All.cf_hubble_a; /*  the actual time-step */
+    double rho_cgs=(SphP[target].Density * All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam);
+    //double nHcgs = HYDROGEN_MASSFRAC * rho_cgs / PROTONMASS;	/* hydrogen number dens in cgs units */
+    double ratefact = nHcgs * nHcgs / rho_cgs;
+    /* Using du = ratefact * LambdaNet * (dt*All.UnitTime_in_s / All.HubbleParam)* All.UnitDensity_in_cgs / All.UnitPressure_in_cgs */
+    double E_gamma_IR_pred=SphP[target].E_gamma[RT_FREQ_BIN_INFRARED] + P[target].Mass*(SphP[target].DustCoolingRate-SphP[target].DustHeatingRate)*ratefact*(dtime*All.UnitTime_in_s / All.HubbleParam) / (All.UnitPressure_in_cgs/All.UnitDensity_in_cgs);
+    //double E_gamma_IR_pred=SphP[target].E_gamma[RT_FREQ_BIN_INFRARED] + P[target].Mass*(SphP[target].CoolingRate-SphP[target].HeatingRate)*ratefact*(dtime*All.UnitTime_in_s / All.HubbleParam) / (All.UnitPressure_in_cgs/All.UnitDensity_in_cgs);
+    if (E_gamma_IR_pred<MIN_REAL_NUMBER){E_gamma_IR_pred=MIN_REAL_NUMBER;}
+    
+
+    double Dust_Temperature_4 = E_gamma_IR_pred * (SphP[target].Density*All.cf_a3inv/P[target].Mass) / (4. / C_LIGHT_CODE_REDUCED); // flux units
+    Dust_Temperature_4 *= (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5); // convert to cgs
+    Dust_Temperature_4 /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
+    double Dust_Temperature_pred = sqrt(sqrt(Dust_Temperature_4));
+    if (Dust_Temperature_pred<DMAX(10.,2.73/All.cf_atime)){Dust_Temperature_pred=DMAX(10.,2.73/All.cf_atime);}
+    double safetyfact=1.1; //maximum relative change in one iteration
+    double Tdust_high=SphP[target].Dust_Temperature*safetyfact; double Tdust_low=SphP[target].Dust_Temperature/safetyfact;
+    if (Dust_Temperature_pred>Tdust_high){Dust_Temperature_pred=Tdust_high;}
+    else{if (Dust_Temperature_pred<Tdust_low){Dust_Temperature_pred=Tdust_low;}}
+    SphP[target].Dust_Temperature=(SphP[target].Dust_Temperature+Dust_Temperature_pred)/2.0; //limited to help convergence
+    
+    SphP[target].DustCoolingRate=0;
+    SphP[target].DustHeatingRate=0;
+
+#endif
 
 #ifdef COOL_METAL_LINES_BY_SPECIES
     double *Z;
@@ -1205,36 +1238,13 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     }
     
     
+Lambda=SphP[target].DustCoolingRate;
+Heat=SphP[target].DustHeatingRate;
+    
     double Q = Heat - Lambda;
 #if defined(OUTPUT_COOLRATE_DETAIL) || defined(RT_INFRARED)
     if (target>=0){SphP[target].CoolingRate = Lambda; SphP[target].HeatingRate = Heat;}
 #endif
-
-
-
-
-#if defined(RT_INFRARED)
-
-    /*We should put all emission (cooling) into the IR band and take the dust heating from it*/
-    double dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval;
-    double dtime = dt / All.cf_hubble_a; /*  the actual time-step */
-    double rho_cgs=(SphP[target].Density * All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam);
-    //double nHcgs = HYDROGEN_MASSFRAC * rho_cgs / PROTONMASS;	/* hydrogen number dens in cgs units */
-    double ratefact = nHcgs * nHcgs / rho_cgs;
-    /* Using du = ratefact * LambdaNet * (dt*All.UnitTime_in_s / All.HubbleParam)* All.UnitDensity_in_cgs / All.UnitPressure_in_cgs */
-    double E_gamma_IR_pred=SphP[target].E_gamma[RT_FREQ_BIN_INFRARED] + 0*P[target].Mass*(SphP[target].DustCoolingRate-SphP[target].DustHeatingRate)*ratefact*(dtime*All.UnitTime_in_s / All.HubbleParam) / (All.UnitPressure_in_cgs/All.UnitDensity_in_cgs);
-    if (E_gamma_IR_pred<MIN_REAL_NUMBER){E_gamma_IR_pred=MIN_REAL_NUMBER;}
-    
-
-    double Dust_Temperature_4 = E_gamma_IR_pred * (SphP[target].Density*All.cf_a3inv/P[target].Mass) / (4. / C_LIGHT_CODE_REDUCED); // flux units
-    Dust_Temperature_4 *= (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5); // convert to cgs
-    Dust_Temperature_4 /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
-    double Dust_Temperature_pred = sqrt(sqrt(Dust_Temperature_4));
-    if (Dust_Temperature_pred<DMAX(10.,2.73/All.cf_atime)){Dust_Temperature_pred=DMAX(10.,2.73/All.cf_atime);}
-    SphP[target].Dust_Temperature=sqrt(Dust_Temperature_pred*SphP[target].Dust_Temperature); //limited
-
-#endif
-
 
 #if defined(COOL_LOW_TEMPERATURES) && !defined(COOL_LOWTEMP_THIN_ONLY)
     /* if we are in the optically thick limit, we need to modify the cooling/heating rates according to the appropriate limits; 
