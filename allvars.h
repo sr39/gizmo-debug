@@ -2780,14 +2780,14 @@ extern struct sph_particle_data
 #endif
     
 #if (defined(OUTPUT_COOLRATE_DETAIL) || defined(RT_INFRARED)) && defined(COOLING)
-    MyFloat CoolingRate;
-    MyFloat HeatingRate;
-    MyFloat NetHeatingRateQ;
-    MyFloat HydroHeatingRate;
-    MyFloat MetalCoolingRate;
+    MyDouble CoolingRate;
+    MyDouble HeatingRate;
+    MyDouble NetHeatingRateQ;
+    MyDouble HydroHeatingRate;
+    MyDouble MetalCoolingRate;
 #if defined(RT_INFRARED)
-    MyFloat DustHeatingRate;
-    MyFloat DustCoolingRate;
+    MyDouble DustHeatingRate;
+    MyDouble DustCoolingRate;
 #endif
 #endif
     
