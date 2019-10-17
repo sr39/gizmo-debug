@@ -34,7 +34,7 @@ int density_isactive(int n)
     if(P[n].TimeBin < 0) return 0;
     
 #if defined(GRAIN_FLUID)
-    if((1 << P[i].Type) & (GRAIN_PTYPES)) {return 1;} /* any of the particle types flagged as a valid grain-type is active here */
+    if((1 << P[n].Type) & (GRAIN_PTYPES)) {return 1;} /* any of the particle types flagged as a valid grain-type is active here */
 #endif
     
 #if defined(RT_SOURCE_INJECTION)

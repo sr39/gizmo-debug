@@ -2538,6 +2538,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return nstars;
             break;
              
+#ifdef GRAIN_FLUID
         case IO_GRAINSIZE:
             nngb=0;
             for(i=0;i<6;i++) {if((1 << i) & (GRAIN_PTYPES)) {nngb+=header.npart[i];} else {typelist[i]=0;}}
@@ -2549,6 +2550,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             for(i=0;i<6;i++) {if((1 << i) & (GRAIN_PTYPES)) {nngb+=header.npart[i];} else {typelist[i]=0;}}
             return nngb;
             break;
+#endif
 
 
         case IO_IMF:

@@ -152,7 +152,7 @@ void read_ic(char *fname)
 #endif
     
     
-    u_init = All.InitGasTemp / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
+    u_init = All.InitGasTemp / ((GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
 
     if(All.InitGasTemp > 1.0e4)	/* assuming FULL ionization */
         molecular_weight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));
