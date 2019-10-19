@@ -329,55 +329,56 @@ void init(void)
 #endif
         
 #ifdef GRAIN_FLUID
-        if(RestartFlag == 0)
+        if((RestartFlag == 0) && ((1 << P[i].Type) & (GRAIN_PTYPES)))
         {
+            int grain_subtype = 1; P[i].Grain_Size = 0; /* default assumption about particulate sub-type for operations below */
+#if defined(PIC_MHD)
+            grain_subtype = P[i].Grain_SubType; /* check if the 'grains' are really PIC elements */
+#endif
             /* Change grain mass to change the distribution of sizes.  Grain_Size_Spectrum_Powerlaw parameter sets d\mu/dln(R_d) ~ R_d^Grain_Size_Spectrum_Powerlaw */
-            P[i].Grain_Size = All.Grain_Size_Min * exp( gsl_rng_uniform(random_generator) * log(All.Grain_Size_Max/All.Grain_Size_Min) );
-            if(P[i].Type==3) {if(All.Grain_Size_Max > All.Grain_Size_Min*1.0001 && fabs(All.Grain_Size_Spectrum_Powerlaw) != 0) {P[i].Mass *= (All.Grain_Size_Spectrum_Powerlaw/(pow(All.Grain_Size_Max/All.Grain_Size_Min,All.Grain_Size_Spectrum_Powerlaw)-1.)) * pow(P[i].Grain_Size/All.Grain_Size_Min,All.Grain_Size_Spectrum_Powerlaw) * log(All.Grain_Size_Max/All.Grain_Size_Min);}}
-
-
-#ifdef GRAIN_RDI_TESTPROBLEM
-	    if(P[i].Type == 3) /* initialize various quantities for test problems from parameters set in the ICs */
-	    {
-		P[i].Mass *= All.Dust_to_Gas_Mass_Ratio;
-		{ 	
-			double tS0 = 0.626657 * P[i].Grain_Size * sqrt(GAMMA_DEFAULT); /* stopping time [Epstein] for driftvel->0 */
-            double a0 = tS0 * All.Vertical_Grain_Accel / (1.+All.Dust_to_Gas_Mass_Ratio); /* acc * tS0 / (1+mu) */
+            if(grain_subtype <= 2)
+            {
+                P[i].Grain_Size = All.Grain_Size_Min * exp( gsl_rng_uniform(random_generator) * log(All.Grain_Size_Max/All.Grain_Size_Min) );
+                if(All.Grain_Size_Max > All.Grain_Size_Min*1.0001 && fabs(All.Grain_Size_Spectrum_Powerlaw) != 0) {
+                    P[i].Mass *= (All.Grain_Size_Spectrum_Powerlaw/(pow(All.Grain_Size_Max/All.Grain_Size_Min,All.Grain_Size_Spectrum_Powerlaw)-1.)) *
+                    pow(P[i].Grain_Size/All.Grain_Size_Min,All.Grain_Size_Spectrum_Powerlaw) * log(All.Grain_Size_Max/All.Grain_Size_Min);}
+#ifdef GRAIN_RDI_TESTPROBLEM /* initialize various quantities for test problems from parameters set in the ICs */
+                P[i].Mass *= All.Dust_to_Gas_Mass_Ratio;
+                double tS0 = 0.626657 * P[i].Grain_Size * sqrt(GAMMA_DEFAULT); /* stopping time [Epstein] for driftvel->0 */
+                double a0 = tS0 * All.Vertical_Grain_Accel / (1.+All.Dust_to_Gas_Mass_Ratio); /* acc * tS0 / (1+mu) */
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
-			a0 *= All.Grain_Size_Max / P[i].Grain_Size;
+                a0 *= All.Grain_Size_Max / P[i].Grain_Size;
 #endif
-            double ct = cos(All.Vertical_Grain_Accel_Angle * M_PI/180.), st = sin(All.Vertical_Grain_Accel_Angle * M_PI/180.); /* relevant angles */
-			int k; double agamma=0.220893; // 9pi/128 //
-			double tau2=0, ct2=0, w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma)); // exact solution if no Lorentz forces and Epstein drag //
+                double ct = cos(All.Vertical_Grain_Accel_Angle * M_PI/180.), st = sin(All.Vertical_Grain_Accel_Angle * M_PI/180.); /* relevant angles */
+                int k; double agamma=0.220893; // 9pi/128 //
+                double tau2=0, ct2=0, w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma)); // exact solution if no Lorentz forces and Epstein drag //
 #ifdef GRAIN_LORENTZFORCE
-			double tL_i = All.Grain_Charge_Parameter/All.Grain_Size_Max * pow(All.Grain_Size_Max/P[i].Grain_Size,2) * All.BiniZ; // 1/Lorentz in code units
-            ct2=ct*ct; double tau2_0=pow(tS0*tL_i,2), f_tau_guess2=0; // variables for below //
-			for(k=0;k<20;k++)
-			{
-			   tau2 = tau2_0 / (1. + agamma*w0*w0); // guess tau [including velocity dependence] //
-			   f_tau_guess2 = (1.+tau2*ct2) / (1.+tau2); // what the projection factor (reduction in w from projection) would be //
-			   w0 = sqrt((sqrt(1.+4.*agamma*a0*a0*f_tau_guess2)-1.)/(2.*agamma)); // re-calculate w0 with this // 
-			}
+                double tL_i = All.Grain_Charge_Parameter/All.Grain_Size_Max * pow(All.Grain_Size_Max/P[i].Grain_Size,2) * All.BiniZ; // 1/Lorentz in code units
+                ct2=ct*ct; double tau2_0=pow(tS0*tL_i,2), f_tau_guess2=0; // variables for below //
+                for(k=0;k<20;k++)
+                {
+                   tau2 = tau2_0 / (1. + agamma*w0*w0); // guess tau [including velocity dependence] //
+                   f_tau_guess2 = (1.+tau2*ct2) / (1.+tau2); // what the projection factor (reduction in w from projection) would be //
+                   w0 = sqrt((sqrt(1.+4.*agamma*a0*a0*f_tau_guess2)-1.)/(2.*agamma)); // re-calculate w0 with this //
+                }
 #endif
-		w0 /= sqrt((1.+tau2)*(1.+tau2*ct2)); // ensures normalization to unity with convention below //
-        int non_gdir=1; 
-        if(GRAV_DIRECTION_RDI==1) {non_gdir=2;}
-		P[i].Vel[0] = w0*st; P[i].Vel[non_gdir] = w0*sqrt(tau2)*st; P[i].Vel[GRAV_DIRECTION_RDI] = w0*(1.+tau2)*ct;
-        a0 = tS0 * All.Vertical_Gravity_Strength / (1.+All.Dust_to_Gas_Mass_Ratio); w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma));
-        P[i].Vel[GRAV_DIRECTION_RDI] -= w0;
-		}
-	    }	    
-#endif
-
+                w0 /= sqrt((1.+tau2)*(1.+tau2*ct2)); // ensures normalization to unity with convention below //
+                int non_gdir=1;
+                if(GRAV_DIRECTION_RDI==1) {non_gdir=2;}
+                P[i].Vel[0] = w0*st; P[i].Vel[non_gdir] = w0*sqrt(tau2)*st; P[i].Vel[GRAV_DIRECTION_RDI] = w0*(1.+tau2)*ct;
+                a0 = tS0 * All.Vertical_Gravity_Strength / (1.+All.Dust_to_Gas_Mass_Ratio); w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma));
+                P[i].Vel[GRAV_DIRECTION_RDI] -= w0;
+#endif // closes rdi_testproblem
+            }
             P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
-#ifdef GRAIN_BACKREACTION
+#if defined(GRAIN_BACKREACTION)
             P[i].Grain_DeltaMomentum[0]=P[i].Grain_DeltaMomentum[1]=P[i].Grain_DeltaMomentum[2]=0;
 #endif
-#ifdef GRAIN_LORENTZFORCE
+#if defined(GRAIN_LORENTZFORCE)
             P[i].Gas_B[0]=P[i].Gas_B[1]=P[i].Gas_B[2]=0;
 #endif
-        }
-#endif
+        } // closes check on restartflag and particle type
+#endif // closes grain_fluid
         
         
         
@@ -1077,9 +1078,9 @@ void setup_smoothinglengths(void)
 #if defined(DO_DENSITY_AROUND_STAR_PARTICLES) || defined(GRAIN_FLUID)
         for(i = 0; i < NumPart; i++)
 #else
-            for(i = 0; i < N_gas; i++)
+        for(i = 0; i < N_gas; i++)
 #endif
-            {
+        {
                 no = Father[i];
                 
                 while(10 * All.DesNumNgb * P[i].Mass > Nodes[no].u.d.mass)
@@ -1133,8 +1134,7 @@ void setup_smoothinglengths(void)
     if(RestartFlag == 0 || RestartFlag == 2)
     {
         for(i = 0; i < NumPart; i++)
-            if(P[i].Type > 0)
-                PPP[i].Hsml = All.SofteningTable[P[i].Type];
+            if(P[i].Type > 0) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}
     }
 #endif
  

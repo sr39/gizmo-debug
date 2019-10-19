@@ -115,7 +115,6 @@ void compute_additional_forces_for_all_particles(void)
 #endif
 #ifdef GRAIN_FLUID
     apply_grain_dragforce(); /* if we are solving a coupled set of grains via aerodynamic drag, this is where their acceleration should be calculated */
-    if(ThisTask == 0) {printf("grain aerodynamic force evaluation done.\n");}
 #endif
 }
 
