@@ -1253,7 +1253,7 @@ void process_wake_ups(void)
         
 	    binold = P[i].TimeBin;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-            if(P[i].Type != 5)
+            if(P[i].Type != 5) // TimeBinActive doesn't necessarily get updated in time when a new star needs to get awakened
 #endif            
 	    if(TimeBinActive[binold])                
 		continue;
