@@ -417,8 +417,8 @@ double rt_kappa(int i, int k_freq)
     /* IR with dust opacity */
     if(k_freq==RT_FREQ_BIN_INFRARED)
     {
-        if(isnan(SphP[i].Dust_Temperature) || SphP[i].Dust_Temperature<=DMAX(10.,2.73/All.cf_atime)) {SphP[i].Dust_Temperature=DMAX(10.,2.73/All.cf_atime);} // reset baseline
-        if(isnan(SphP[i].Radiation_Temperature) || SphP[i].Radiation_Temperature<=DMAX(10.,2.73/All.cf_atime)) {SphP[i].Radiation_Temperature=DMAX(10.,2.73/All.cf_atime);} // reset baseline
+        if(isnan(SphP[i].Dust_Temperature) || SphP[i].Dust_Temperature<=DMAX(All.MinGasTemp,2.73/All.cf_atime)) {SphP[i].Dust_Temperature=DMAX(All.MinGasTemp,2.73/All.cf_atime);} // reset baseline
+        if(isnan(SphP[i].Radiation_Temperature) || SphP[i].Radiation_Temperature<=DMAX(All.MinGasTemp,2.73/All.cf_atime)) {SphP[i].Radiation_Temperature=DMAX(All.MinGasTemp,2.73/All.cf_atime);} // reset baseline
         
         double T_dust_em = SphP[i].Dust_Temperature; // dust temperature in K //
         double Trad = SphP[i].Radiation_Temperature; // radiation temperature in K //
@@ -456,8 +456,6 @@ double rt_kappa(int i, int k_freq)
             kappa *= Zfac; // the above are all dust opacities, so they scale with metallicity
         }
         kappa += 0.35; // Thompson scattering
-        //printf("kappa %g \n",kappa);
-        //kappa=0;
         return kappa * fac; // convert units and return
     }
 #endif
@@ -583,7 +581,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
     double Dust_Temperature_4 = All.UnitVelocity_in_cm_per_s * c_light * u_gamma / (4. * 5.67e-5); // estimated effective temperature of local rad field in equilibrium with dust emission //
     Dust_Temperature_4 /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
     SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
-    if(SphP[i].Dust_Temperature <= DMAX(10.,2.73/All.cf_atime)) {SphP[i].Dust_Temperature = DMAX(10.,2.73/All.cf_atime);} // dust temperature shouldn't be below CMB
+    if(SphP[i].Dust_Temperature <= DMAX(All.MinGasTemp,2.73/All.cf_atime)) {SphP[i].Dust_Temperature = DMAX(All.MinGasTemp,2.73/All.cf_atime);} // dust temperature shouldn't be below CMB
 #endif
     for(k_tmp=0; k_tmp<N_RT_FREQ_BINS; k_tmp++)
     {
@@ -608,13 +606,11 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #ifdef RT_INFRARED
             if(kf == RT_FREQ_BIN_INFRARED)
             {
-            double T_cmb = 2.73 / All.cf_atime; // don't let dust or radiation temperatures drop below T_cmb //
                 if((mode==0) && (SphP[i].Dt_E_gamma[kf]!=0) && (dt_entr>0)) // only update temperatures on kick operations //
                 {
                     // advected radiation changes temperature of radiation field, before absorption //
-                    double dE_fac = SphP[i].Dt_E_gamma[kf] * dt_entr; // change in energy from advection
-//SphP[i].Dt_E_gamma_T_weighted_IR=0;
-                    double dTE_fac = SphP[i].Dt_E_gamma_T_weighted_IR * dt_entr; // T-weighted change from advection
+double dE_fac = 0*SphP[i].Dt_E_gamma[kf] * dt_entr; // change in energy from advection
+double dTE_fac = 0*SphP[i].Dt_E_gamma_T_weighted_IR * dt_entr; // T-weighted change from advection
                     double dE_abs = -e0 * (1. - exp(a0*dt_entr)); // change in energy from absorption
                     double rfac=1; if(dE_fac < -0.5*(e0+dE_abs)) {rfac=fabs(0.5*(e0+dE_abs))/fabs(dE_fac);} else {if(dE_fac > 0.5*e0) {rfac=0.5*e0/dE_fac;}}
                     dE_fac*=rfac; dTE_fac*=rfac; // limit temperature change from advection to prevent spurious divergences
@@ -623,21 +619,17 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                     SphP[i].Radiation_Temperature = (e0 + dE_fac) / (MIN_REAL_NUMBER + DMAX(0., e0 / SphP[i].Radiation_Temperature + dTE_fac));
                     SphP[i].Radiation_Temperature = DMIN(SphP[i].Radiation_Temperature, T_max);
                     a0 = -rt_absorption_rate(i,kf); // update absorption rate using the new radiation temperature //
-printf(" Radiation: Trad %g Tdust %g a0 %g e0 %g dE_fac %g dTE_fac %g dE_abs %g rfac %g \n",SphP[i].Radiation_Temperature,SphP[i].Dust_Temperature, a0, e0, dE_fac, dTE_fac, dE_abs, rfac);
-//SphP[i].Radiation_Temperature=10;
                 }
                 double total_emission_rate = E_abs_tot + fabs(a0)*e0 + SphP[i].Je[kf]; // add the summed absorption as emissivity here //
-//total_de_dt = total_emission_rate + SphP[i].Dt_E_gamma[kf];
-total_de_dt = E_abs_tot + SphP[i].Je[kf] + SphP[i].Dt_E_gamma[kf];
+                //total_de_dt = total_emission_rate + SphP[i].Dt_E_gamma[kf];
+                total_de_dt = E_abs_tot + SphP[i].Je[kf] + SphP[i].Dt_E_gamma[kf];
                 if(fabs(a0)>0)
                 {
-//printf(" Dust: total_emission_rate %g E_abs_tot %g  \n",total_emission_rate, E_abs_tot);
                     Dust_Temperature_4 = total_emission_rate * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. * (MIN_REAL_NUMBER + fabs(a0)) / c_light); // flux units
                     Dust_Temperature_4 *= (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5); // convert to cgs
                     Dust_Temperature_4 /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
                     SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
-                    if(SphP[i].Dust_Temperature < DMAX(10.,2.73/All.cf_atime)) {SphP[i].Dust_Temperature = DMAX(10.,2.73/All.cf_atime);} // dust temperature shouldn't be below CMB
-//SphP[i].Dust_Temperature = 20;
+                    if(SphP[i].Dust_Temperature < DMAX(All.MinGasTemp,2.73/All.cf_atime)) {SphP[i].Dust_Temperature = DMAX(All.MinGasTemp,2.73/All.cf_atime);} // dust temperature shouldn't be below CMB
                 }
                 if(mode==0) // only update temperatures on kick operations //
                 {
@@ -646,12 +638,8 @@ total_de_dt = E_abs_tot + SphP[i].Je[kf] + SphP[i].Dt_E_gamma[kf];
                     double T_max = DMAX(SphP[i].Radiation_Temperature , SphP[i].Dust_Temperature); // should not exceed either initial temperature //
                     SphP[i].Radiation_Temperature = (e0 + dE_abs + total_emission_rate*dt_entr) / (MIN_REAL_NUMBER + (e0 + dE_abs) / SphP[i].Radiation_Temperature + total_emission_rate*dt_entr / SphP[i].Dust_Temperature);
                     SphP[i].Radiation_Temperature = DMIN(SphP[i].Radiation_Temperature, T_max);
-//SphP[i].Radiation_Temperature=10;
                 }
-                if(SphP[i].Radiation_Temperature < T_cmb) {SphP[i].Radiation_Temperature = T_cmb;} // radiation temperature shouldn't be below CMB
-//if((SphP[i].Radiation_Temperature > 10) || (SphP[i].Dust_Temperature > 10)) {
-//    printf("Radiation_Temperature %g Dust_Temperature %g \n",SphP[i].Radiation_Temperature,SphP[i].Dust_Temperature);
-//}
+                if(SphP[i].Radiation_Temperature < DMAX(All.MinGasTemp,2.73/All.cf_atime)) {SphP[i].Radiation_Temperature = DMAX(All.MinGasTemp,2.73/All.cf_atime);} // radiation temperature shouldn't be below CMB
             }
 #endif
             
@@ -797,7 +785,7 @@ void rt_set_simple_inits(void)
         {
             int k;
 #ifdef RT_INFRARED
-            SphP[i].Dust_Temperature = DMAX(10.,2.73/All.cf_atime); // in K, floor = CMB temperature or 10K
+            SphP[i].Dust_Temperature = DMAX(All.MinGasTemp,2.73/All.cf_atime); // in K, floor = CMB temperature or 10K
             SphP[i].Radiation_Temperature = SphP[i].Dust_Temperature;
             SphP[i].Dt_E_gamma_T_weighted_IR = 0;
 #endif
