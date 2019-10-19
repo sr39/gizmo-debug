@@ -154,6 +154,7 @@ void read_ic(char *fname)
     double meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC);
     u_init = All.InitGasTemp / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
 
+
     if(All.InitGasTemp > 1.0e4)	/* assuming FULL ionization */
         molecular_weight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));
     else				/* assuming NEUTRAL GAS */
@@ -363,8 +364,13 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             
         case IO_GRAINSIZE:
 #ifdef GRAIN_FLUID
-            for(n = 0; n < pc; n++)
-                P[offset + n].Grain_Size = *fp++;
+            for(n = 0; n < pc; n++) {P[offset + n].Grain_Size = *fp++;}
+#endif
+            break;
+
+        case IO_GRAINTYPE:
+#if defined(PIC_MHD)
+            for(n = 0; n < pc; n++) {P[offset + n].Grain_SubType = *fp++;}
 #endif
             break;
             
@@ -897,7 +903,8 @@ void read_file(char *fname, int readTask, int lastTask)
         if(blockpresent(blocknr))
         {
                 /* blocks only for restartflag == 0 */
-                if(RestartFlag == 0 && blocknr > IO_U && blocknr != IO_BFLD
+                if(RestartFlag == 0 && blocknr > IO_U
+                   && blocknr != IO_BFLD
 #ifdef INPUT_READ_HSML
                    && blocknr != IO_HSML
 #endif
@@ -920,8 +927,11 @@ void read_file(char *fname, int readTask, int lastTask)
                    && blocknr != IO_SINKRAD
 #endif
 #if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM) 
-		   && blocknr != IO_CHIMES_ABUNDANCES 
+                   && blocknr != IO_CHIMES_ABUNDANCES
 #endif 
+#ifdef PIC_MHD
+                   && blocknr != IO_GRAINTYPE
+#endif
                    )
 #if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
                     if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_SHEET_ORIENTATION))

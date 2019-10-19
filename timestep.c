@@ -493,11 +493,11 @@ integertime get_timestep(int p,		/*!< particle index */
 
 
 #ifdef GRAIN_FLUID
-    if(P[p].Type > 0)
+    if((1 << P[p].Type) & (GRAIN_PTYPES))
     {
         csnd = convert_internalenergy_soundspeed2(p, P[p].Gas_InternalEnergy);
         int k; for(k=0;k<3;k++) {csnd += (P[p].Gas_Velocity[k]-P[p].Vel[k])*(P[p].Gas_Velocity[k]-P[p].Vel[k]);}
-#ifdef GRAIN_LORENTZFORCE
+#if defined(GRAIN_LORENTZFORCE)
         for(k=0;k<3;k++) {csnd += P[p].Gas_B[k]*P[p].Gas_B[k] / (2.0 * P[p].Gas_Density);}
 #endif
         csnd = sqrt(csnd);

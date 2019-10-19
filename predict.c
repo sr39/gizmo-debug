@@ -160,7 +160,7 @@ void drift_particle(int i, integertime time1)
     if(divv_fac < -divv_fac_max) divv_fac = -divv_fac_max;
     
 #ifdef GRAIN_FLUID
-    if(P[i].Type > 0)
+    if((1 << P[i].Type) & (GRAIN_PTYPES))
     {
         PPP[i].Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
         if(PPP[i].Hsml < All.MinHsml) {PPP[i].Hsml = All.MinHsml;}
