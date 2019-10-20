@@ -917,15 +917,12 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     
     
 #if defined(COOL_METAL_LINES_BY_SPECIES) && defined(COOL_LOW_TEMPERATURES)
-    double Tdust = 30.;
+    double Tdust = 30., LambdaDust = 0.; /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
     Tdust = 10.; // runs looking at colder clouds, use a colder default dust temp //
 #if defined(BH_COMPTON_HEATING)
     if(target >= 0) {Tdust = AGN_T_Compton;} // need to check target otherwise this is totally ill-defined //
 #endif
-#endif
-#ifdef RT_INFRARED
-    if(target >= 0) {Tdust = Estimate_Tdust(T, rho, n_elec_guess, target);} // special estimation here //
 #endif
 #endif
 
@@ -959,7 +956,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             /* (modified now to correct out tabulated ne so that calculated ne can be inserted; ni not used b/c it should vary species-to-species */
             Lambda += LambdaMetal;
 #if defined(OUTPUT_COOLRATE_DETAIL)
-            if(target>=0){SphP[target].MetalCoolingRate = LambdaMetal;}
+            if(target >= 0) {SphP[target].MetalCoolingRate = LambdaMetal;}
 #endif
         }
 #endif
@@ -970,17 +967,17 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             /* approx to cooling function for solar metallicity and nH=1 cm^(-3) -- want to do something
              much better, definitely, but for now use this just to get some idea of system with cooling to very low-temp */
             LambdaMol = 2.8958629e-26/(pow(T/125.21547,-4.9201887)+pow(T/1349.8649,-1.7287826)+pow(T/6450.0636,-0.30749082));//*nHcgs*nHcgs;
-            LambdaMol *= (1-shieldfac);
-	        LambdaMol *= 1./(1. + nHcgs/700.); // above the critical density, cooling rate suppressed by ~1/n; use critical density of CO[J(1-0)] as a proxy for this
-            double LambdaDust = 0;
+            LambdaMol *= (1-shieldfac) / (1. + nHcgs/700.); // above the critical density, cooling rate suppressed by ~1/n; use critical density of CO[J(1-0)] as a proxy for this
 #ifdef COOL_METAL_LINES_BY_SPECIES
-            LambdaMol *= (1+Z[0]/All.SolarAbundances[0])*(0.001 + 0.1*nHcgs/(1.0+nHcgs)
-                            + 0.09*nHcgs/(1.0+0.1*nHcgs)
+            LambdaMol *= (1+Z[0]/All.SolarAbundances[0])*(0.001 + 0.1*nHcgs/(1.0+nHcgs) + 0.09*nHcgs/(1.0+0.1*nHcgs)
                             + (Z[0]/All.SolarAbundances[0])*(Z[0]/All.SolarAbundances[0])/(1.0+nHcgs));
-            /* add dust cooling as well */
-            if(T > Tdust) {LambdaDust = 1.116e-32 * (T-Tdust)*sqrt(T)*(1.-0.8*exp(-75./T)) * (Z[0]/All.SolarAbundances[0]);}  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
+            LambdaDust = 1.116e-32 * (Tdust-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * (Z[0]/All.SolarAbundances[0]);  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
+#ifdef RT_INFRARED
+            if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, Z[0]/All.SolarAbundances[0], target);}
 #endif
-            Lambda += LambdaMol + LambdaDust;
+            if(LambdaDust<0) {Lambda -= LambdaDust;} /* add the -positive- Lambda-dust associated with cooling */
+#endif
+            Lambda += LambdaMol;
         }
 #endif
         
@@ -1090,10 +1087,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 
         
 #if defined(COOL_METAL_LINES_BY_SPECIES) && defined(COOL_LOW_TEMPERATURES)
-        /* Dust collisional heating */
-        double HeatDust = 0;
-        if(T < Tdust) {HeatDust = 1.116e-32 * (Tdust-T)*sqrt(T)*(1.-0.8*exp(-75./T)) * (Z[0]/All.SolarAbundances[0]);} // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
-        Heat += HeatDust;
+        if(LambdaDust>0) {Heat += LambdaDust;} /* Dust collisional heating (Tdust > Tgas) */
 #endif
 
         
