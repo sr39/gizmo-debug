@@ -50,9 +50,6 @@ void merge_particles_ij(int i, int j);
 //void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
 void split_particle_i(int i, int n_particles_split, int i_nearest); 
 double gamma_eos(int i);
-#ifdef EOS_SUBSTELLAR_ISM
-double sigmoid(double x);
-#endif
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);
 #ifdef HERMITE_INTEGRATION
@@ -117,6 +114,7 @@ static inline integertime TIMIN(integertime a, integertime b) { return (a < b) ?
 static inline double MINMOD(double a, double b) {return (a>0) ? ((b<0) ? 0 : DMIN(a,b)) : ((b>=0) ? 0 : DMAX(a,b));}
 /* special version of MINMOD below: a is always the "preferred" choice, b the stability-required one. here we allow overshoot, just not opposite signage */
 static inline double MINMOD_G(double a, double b) {return a;}
+static inline double sigmoid_sqrt(double x) {return 0.5*(1 + x/sqrt(1+x*x));} /* Sigmoid ("turn-on") function (1 + x/(1+x^2))/2, interpolates between 0 as x->-infty and 1 as x->infty. Useful for cheaply doing smooth fits of e.g. EOS where different thermo processes turn on at certain temps */
 
 
 #ifdef BOX_SHEARING

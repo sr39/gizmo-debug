@@ -377,8 +377,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #ifdef COOLING
 #define EOS_SUBSTELLAR_ISM
-#define EOS_GAMMA_VARIABLE
-#define EOS_GENERAL 
 #endif
 #ifdef SINGLE_STAR_FB_JETS
 #define JET_DIRECTION_FROM_KERNEL_AND_SINK //the direction of the jet is a mass weighted average of Jsink and Jgaskernel
@@ -753,7 +751,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #endif
 
-#ifdef EOS_SUBSTELLAR_ISM
+#if defined(EOS_SUBSTELLAR_ISM)
 #define EOS_GAMMA_VARIABLE
 #endif
 
