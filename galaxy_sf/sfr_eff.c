@@ -571,7 +571,6 @@ void star_formation_parent_routine(void)
                 if(nHcgs > 1e10) cs *= pow(nHcgs/1e10, 1./5); // if we're getting opacity-limited then we can set a smaller sink radius, since cs ~ n^1/5
 #endif
                 P[i].SinkRadius = DMAX(3 * P[i].Mass * All.G / (M_PI * cs * cs), All.ForceSoftening[5]); // volume-equivalent particle radius R= (3V/(4PI))^(1/3) at the density where M_Jeans = particle mass
-                SphP[i].wakeup = 1; NeedToWakeupParticles_local = 1;
 #endif	
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES

@@ -1244,7 +1244,7 @@ void process_wake_ups(void)
 	    if(!PPPZ[i].wakeup)
 		continue;
 	
-#if !(defined(AGS_HSML_CALCULATION_IS_ACTIVE) || defined(SINGLE_STAR_SINK_DYNAMICS))
+#if !defined(AGS_HSML_CALCULATION_IS_ACTIVE)
 	    if(P[i].Type != 0) {continue;} // only gas particles can be awakened
 #endif
         
@@ -1252,10 +1252,7 @@ void process_wake_ups(void)
 		continue;       
         
 	    binold = P[i].TimeBin;
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-            if(P[i].Type != 5) // TimeBinActive doesn't necessarily get updated in time when a new star needs to get awakened
-#endif            
-	    if(TimeBinActive[binold])                
+	    if(TimeBinActive[binold])
 		continue;
         
 	    bin = max_time_bin_active < binold ? max_time_bin_active : binold;
