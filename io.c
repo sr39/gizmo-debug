@@ -645,31 +645,31 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 
         case IO_CHIMES_NH:
 #ifdef CHIMES_NH_OUTPUT 
-	  for (n = 0; n < pc; pindex++) 
-	    if (P[pindex].Type == type) 
-	      {
+            for (n = 0; n < pc; pindex++)
+                if (P[pindex].Type == type)
+                {
 #ifdef CHIMES_SOBOLEV_SHIELDING 
 #ifdef COOL_METAL_LINES_BY_SPECIES  
-		*fp++ = (MyOutputFloat) (evaluate_NH(pindex, 1) * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * (1.0 - (P[pindex].Metallicity[0] + P[pindex].Metallicity[1])) / PROTONMASS); 
-#else 
-		*fp++ = (MyOutputFloat) (evaluate_NH(pindex, 1) * All.cf_a2inv * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * HYDROGEN_MASSFRAC / PROTONMASS); 
-#endif // COOL_MET_LINES_BY_SPECIES 
+                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1,pindex) * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * (1.0 - (P[pindex].Metallicity[0] + P[pindex].Metallicity[1])) / PROTONMASS);
+#else
+                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1,pindex) * All.cf_a2inv * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * HYDROGEN_MASSFRAC / PROTONMASS);
+#endif // COOL_MET_LINES_BY_SPECIES
 #endif // CHIMES_SOBOLEV_SHIELDING 
-		  n++;
-	      }
+                    n++;
+                }
 #endif // CHIMES_NH_OUTPUT 
-	  break;
+            break;
 
         case IO_CHIMES_STAR_SIGMA:
 #if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
-	  for (n = 0; n < pc; pindex++) 
-	    if (P[pindex].Type == type) 
-	      {
-		*fp++ = (MyOutputFloat) (evaluate_NH(pindex,0) * 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm));  // g cm^-2 
-		  n++;
-	      }
+            for (n = 0; n < pc; pindex++)
+                if (P[pindex].Type == type)
+                {
+                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,PPP[pindex].Hsml,P[pindex].DensAroundStar,PPP[pindex].NumNgb,0,pindex) * 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm));  // g cm^-2
+                    n++;
+                }
 #endif 
-	  break;
+            break;
 
         case IO_CHIMES_FLUX_G0: 
 #ifdef CHIMES_STELLAR_FLUXES  

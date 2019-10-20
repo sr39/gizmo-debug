@@ -53,7 +53,7 @@ void assign_imf_properties_from_starforming_gas(int i)
     
     /* now we need to record all the properties we care to save about the star-forming gas, for the sake of later use: */
     int j,k;
-    double NH = evaluate_NH(i,1);
+    double NH = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i);
     double dv2abs_tot = 0; /* calculate complete velocity dispersion (including hubble-flow correction) in physical units */
     for(j=0;j<3;j++)
     {
@@ -176,7 +176,7 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
     if(SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) /* require it be above the SF density threshold */
     if(P[i].Metallicity[0]/All.SolarAbundances[0] < 0.1) /* and below some metallicity */
     {
-        double GradRho = evaluate_NH(i,1) * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; /* this gives the Sobolev-estimated column density */
+        double GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; /* this gives the Sobolev-estimated column density */
         /* surface dens in g/cm^2; threshold for bound cluster formation in our experiments is ~2 g/cm^2 (10^4 M_sun/pc^2) */
         if (GradRho > 0.1)
         {
@@ -246,7 +246,7 @@ double get_starformation_rate(int i)
     
 #ifdef GALSF_SFR_MOLECULAR_CRITERION
     /* Krumholz & Gnedin fitting function for f_H2 as a function of local properties */
-    double tau_fmol = evaluate_NH(i,1);
+    double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i);
     tau_fmol *= (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]);
     if(tau_fmol>0) {
         tau_fmol *= 434.78 * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam;

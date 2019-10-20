@@ -443,23 +443,14 @@ double INLINE_FUNC Get_Particle_Expected_Area(double h)
 }
 
 
-/* return the estimated local column (physical units) from integrating the gradient in the density, or using non-local shielding from the gravity tree if TREECOL is on (separated here for convenience) */
-double evaluate_NH(int i, double include_h) 
-//double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h)
+/* return the estimated local column (physical units) from a local Sobolev approximation, or using the 'treecol' approximation from the gravity tree if the relevant config flag options are enabled */
+double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h, int target)
 {
-    double rho, numngb_ndim = P[i].NumNgb, hsml = P[i].Hsml;
-    double gradrho_mag;
-    double* gradrho = SphP[i].Gradients.Density;
-    
-    if(P[i].Type == 0) {rho = SphP[i].Density;}
-    else {rho = P[i].DensAroundStar;}
-
-    if(rho<=0)
+    double gradrho_mag=0; //double* gradrho = SphP[i].Gradients.Density; double rho=P[i].DensAroundStar, numngb_ndim = P[i].NumNgb, hsml = P[i].Hsml; if(P[i].Type==0) {rho=SphP[i].Density;}
+    if(rho>0)
     {
-        gradrho_mag = 0;
-    } else {
-#ifdef TREECOL
-        gradrho_mag = include_h * rho * hsml / numngb_ndim + P[i].SigmaEff;
+#ifdef RT_USE_TREECOL_FOR_NH
+        gradrho_mag = include_h * rho * hsml / numngb_ndim; if(target>0) {gradrho_mag += P[target].SigmaEff;}
 #else             
         gradrho_mag = sqrt(gradrho[0]*gradrho[0]+gradrho[1]*gradrho[1]+gradrho[2]*gradrho[2]);
         if(gradrho_mag > 0) {gradrho_mag = rho*rho/gradrho_mag;} else {gradrho_mag=0;}
