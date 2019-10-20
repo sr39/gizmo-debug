@@ -43,6 +43,11 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
 double get_mu(double T_guess, double rho, double *ne_guess, int target);
 #endif 
 double yhelium(int target);
+#ifdef RT_INFRARED
+double Estimate_E_gamma_IR(int target);
+double Tdust_from_Energy(double E, int target);
+double Estimate_Tdust(double T, double rho, double ne_guess, int target);
+#endif
 
 #ifdef COOL_GRACKLE
 void InitGrackle(void);

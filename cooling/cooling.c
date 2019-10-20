@@ -264,7 +264,6 @@ void do_the_cooling_for_particle(int i)
 #ifndef COOLING_OPERATOR_SPLIT
         SphP[i].DtInternalEnergy = 0;
 #endif
-        
        
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) 
         /* count off time which has passed since ionization 'clock' */
@@ -275,8 +274,28 @@ void do_the_cooling_for_particle(int i)
     } // closes if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0)) check
 }
 
+#ifdef RT_INFRARED
+/*Tries to estimate the dust temperature when it is coupled to the gas, assuming energy conservation between the gas and the dust( rad field), minimum at All.MinGasTemp or CMB*/
+double Estimate_Tdust(double T, double rho, double ne_guess, int target)
+{
+    double u = (BOLTZMANN/PROTONMASS) * T / ((GAMMA(target)-1) * get_mu(T, rho, &ne_guess, target) ) / (All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s);
+    double E_tot = P[target].Mass*SphP[target].InternalEnergy + SphP[target].E_gamma[RT_FREQ_BIN_INFRARED];
+    double E_dust_pred = E_tot-P[target].Mass * u;
+    double T_dust_pred = Tdust_from_Energy(E_dust_pred, target);
+    return T_dust_pred;
+}
 
-
+/*Calculates the dust temperature assuming E energy is in the IR energy bin, minimum at All.MinGasTemp or CMB*/
+double Tdust_from_Energy(double E, int target)
+{
+    double Tdust_4_pred = E * (SphP[target].Density*All.cf_a3inv/P[target].Mass) / (4. / C_LIGHT_CODE_REDUCED); // flux units
+    Tdust_4_pred *= (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5); // convert to cgs
+    Tdust_4_pred /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
+    double Tmin_4 = pow(DMAX(All.MinGasTemp,2.73/All.cf_atime),4.0);
+    double T_dust_pred = sqrt(sqrt(DMAX(Tmin_4,Tdust_4_pred)));
+    return T_dust_pred;
+}
+#endif
 
 
 
@@ -377,7 +396,12 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     /* crash condition */
     if(iter >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g target=%d \n",u_old,rho,dt,ne_guess,target); endrun(10);}
     double specific_energy_codeunits_toreturn = u * All.UnitDensity_in_cgs / All.UnitPressure_in_cgs;    /* in internal units */
-    
+#ifdef RT_INFRARED
+    /*Assume that the gas+dust(rad field) system is closed and energy is conserved during the cooling process. This means all gas emissions go to the IR bin.*/
+    SphP[target].E_gamma[RT_FREQ_BIN_INFRARED]-=(u-u_old)*All.UnitDensity_in_cgs / All.UnitPressure_in_cgs*P[target].Mass;
+    SphP[target].E_gamma_Pred[RT_FREQ_BIN_INFRARED]-=(u-u_old)*All.UnitDensity_in_cgs / All.UnitPressure_in_cgs*P[target].Mass;
+#endif
+
 #ifdef RT_CHEM_PHOTOION
     /* set variables used by RT routines; this must be set only -outside- of iteration, since this is the key chemistry update */
     double u_in=specific_energy_codeunits_toreturn, rho_in=SphP[target].Density*All.cf_a3inv, mu=1, temp, ne=SphP[target].Ne, nHI=SphP[target].HI, nHII=SphP[target].HII, nHeI=1, nHeII=0, nHeIII=0;
@@ -860,7 +884,21 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     LambdaMol=0; LambdaMetal=0; LambdaCmptn=0; NH_SS_z=NH_SS;
     if(logT <= Tmin) {logT = Tmin + 0.5 * deltaT;}	/* floor at Tmin */
     if(!isfinite(rho)) {return 0;} 
-
+    T = pow(10.0, logT);
+    
+#ifdef COOL_METAL_LINES_BY_SPECIES
+            double Tdust = 30.;
+#if defined(SINGLE_STAR_SINK_DYNAMICS)
+            Tdust = 10.;
+#if defined(BH_COMPTON_HEATING)
+            Tdust = AGN_T_Compton;
+#endif
+#endif
+#ifdef RT_INFRARED
+            //if(target >= 0) {Tdust = SphP[target].Dust_Temperature;}
+            if(target >= 0) {Tdust = Estimate_Tdust(T, rho, n_elec_guess, target);} 
+#endif
+#endif
 #ifdef COOL_METAL_LINES_BY_SPECIES
     double *Z;
     if(target>=0)
@@ -929,9 +967,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         cx_to_kappa = HYDROGEN_MASSFRAC / PROTONMASS * All.UnitMass_in_g / All.HubbleParam; // pre-factor for converting cross sections into opacities
     }
 #endif
-
     
-    T = pow(10.0, logT);
     if(logT < Tmax)
     {
         /* get ionization states for H and He with associated ionization, collision, recombination, and free-free heating/cooling */
@@ -948,7 +984,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             LambdaMetal *= n_elec;
             /* (modified now to correct out tabulated ne so that calculated ne can be inserted; ni not used b/c it should vary species-to-species */
             Lambda += LambdaMetal;
-#ifdef OUTPUT_COOLRATE_DETAIL
+#if defined(OUTPUT_COOLRATE_DETAIL)
             if(target>=0){SphP[target].MetalCoolingRate = LambdaMetal;}
 #endif
         }
@@ -968,16 +1004,6 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
                             + 0.09*nHcgs/(1.0+0.1*nHcgs)
                             + (Z[0]/All.SolarAbundances[0])*(Z[0]/All.SolarAbundances[0])/(1.0+nHcgs));
             /* add dust cooling as well */
-            double Tdust = 30.;
-#if defined(SINGLE_STAR_SINK_DYNAMICS)
-            Tdust = 10.;
-#if defined(BH_COMPTON_HEATING)
-            Tdust = AGN_T_Compton;
-#endif
-#endif
-#ifdef RT_INFRARED
-            if(target >= 0) {Tdust = SphP[target].Dust_Temperature;}
-#endif
             if(T > Tdust) {LambdaDust = 1.116e-32 * (T-Tdust)*sqrt(T)*(1.-0.8*exp(-75./T)) * (Z[0]/All.SolarAbundances[0]);}  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
 #endif
             Lambda += LambdaMol + LambdaDust;
@@ -1091,18 +1117,11 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         
 #if defined(COOL_METAL_LINES_BY_SPECIES) && defined(COOL_LOW_TEMPERATURES)
         /* Dust collisional heating */
-        double Tdust = 30.;
-#if defined(SINGLE_STAR_SINK_DYNAMICS)
-        Tdust = 10.;
-#if defined(BH_COMPTON_HEATING)
-        Tdust = AGN_T_Compton;
+        double HeatDust = 0;
+        if(T < Tdust) {HeatDust = 1.116e-32 * (Tdust-T)*sqrt(T)*(1.-0.8*exp(-75./T)) * (Z[0]/All.SolarAbundances[0]);} // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
+        Heat += HeatDust;
 #endif
-#endif
-#ifdef RT_INFRARED
-        if(target >= 0) {Tdust = SphP[target].Dust_Temperature;}
-#endif
-        if(T < Tdust) {Heat += 1.116e-32 * (Tdust-T)*sqrt(T)*(1.-0.8*exp(-75./T)) * (Z[0]/All.SolarAbundances[0]);} // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
-#endif
+
         
 #if defined(BH_COMPTON_HEATING) && !defined(SINGLE_STAR_SINK_DYNAMICS)
         /* Compton heating from AGN */
@@ -1170,12 +1189,14 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
       Lambda = LambdaFF + LambdaCmptn;
     }
     
+
+
+
     
     double Q = Heat - Lambda;
-#ifdef OUTPUT_COOLRATE_DETAIL
+#if defined(OUTPUT_COOLRATE_DETAIL)
     if (target>=0){SphP[target].CoolingRate = Lambda; SphP[target].HeatingRate = Heat;}
 #endif
-    
 
 #if defined(COOL_LOW_TEMPERATURES) && !defined(COOL_LOWTEMP_THIN_ONLY)
     /* if we are in the optically thick limit, we need to modify the cooling/heating rates according to the appropriate limits; 
@@ -1201,8 +1222,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
      */
     if( (nHcgs > 0.1) && (target >= 0) )  /* don't bother at very low densities, since youre not optically thick, and protect from target=-1 with GALSF_EFFECTIVE_EQS */
     {
-        double surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1);
-        surface_density *= All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; // converts to cgs
+        double surface_density = evaluate_NH(target,1);
+        surface_density *= 0.2 * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; // Convert surface density from code to cgs. 0.2 is a tuned factor so that we reproduce the (consistent) direct RHD results of Masunaga & Inutsuka 2000 and Vaytet+2017 when we run the exact same problem. Because this cooling approximation is fairly approximate and assumes a slab geometry, we have some freedom to put in a fudge factor.
         double effective_area = 2.3 * PROTONMASS / surface_density; // since cooling rate is ultimately per-particle, need a particle-weight here
         double kappa_eff; // effective kappa, accounting for metal abundance, temperature, and density //
         if(T < 1500.)
@@ -1226,7 +1247,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     }
 #endif
 
-#ifdef OUTPUT_COOLRATE_DETAIL
+#if defined(OUTPUT_COOLRATE_DETAIL)
     if (target>=0){SphP[target].NetHeatingRateQ = Q;}
 #endif
     
@@ -1235,7 +1256,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         in the semi-implicit solution determined here. this is more accurate when tcool << tdynamical */
     if(target >= 0) Q += SphP[target].DtInternalEnergy / nHcgs;
 
-#ifdef OUTPUT_COOLRATE_DETAIL
+#if defined(OUTPUT_COOLRATE_DETAIL)
     if (target>=0){SphP[target].HydroHeatingRate = SphP[target].DtInternalEnergy / nHcgs;}
 #endif
 
@@ -1777,8 +1798,9 @@ void selfshield_local_incident_uv_flux(void)
             {
                 SphP[i].RadFluxUV *= code_flux_to_physical; // convert to cgs
                 SphP[i].RadFluxEUV *= code_flux_to_physical; // convert to cgs
-                
-                GradRho = sigma_eff_0 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1); // in CGS 
+
+                GradRho = sigma_eff_0 * evaluate_NH(i,1); // in CGS
+
                 double tau_nuv = KAPPA_UV * GradRho * (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // optical depth: this part is attenuated by dust //
                 double tau_euv = 3.7e6 * GradRho; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas //
                 SphP[i].RadFluxUV *= exp(-tau_nuv); // attenuate
@@ -1878,8 +1900,8 @@ void chimes_update_gas_vars(int target)
 #endif 
   
 #ifdef CHIMES_SOBOLEV_SHIELDING 
-  double surface_density; 
-  surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1); 
+  double surface_density;
+  surface_density = evaluate_NH(target, 1);
   surface_density *= All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm; // converts to cgs
   ChimesGasVars[target].cell_size = shielding_length_factor * surface_density / rho_cgs; 
 #else 

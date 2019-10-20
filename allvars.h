@@ -372,6 +372,14 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #ifdef RT_INFRARED
 #define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
 #endif
+#if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY))
+#define TREECOL 6 
+#endif
+#ifdef COOLING
+#define EOS_SUBSTELLAR_ISM
+#define EOS_GAMMA_VARIABLE
+#define EOS_GENERAL 
+#endif
 #ifdef SINGLE_STAR_FB_JETS
 #define JET_DIRECTION_FROM_KERNEL_AND_SINK //the direction of the jet is a mass weighted average of Jsink and Jgaskernel
 #endif
@@ -745,7 +753,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #endif
 
-
+#ifdef EOS_SUBSTELLAR_ISM
+#define EOS_GAMMA_VARIABLE
+#endif
 
 #if defined(EOS_GAMMA_VARIABLE)
 #define GAMMA(i) (gamma_eos(i)) /*! use an actual function! */
@@ -2290,6 +2300,10 @@ extern ALIGN(32) struct particle_data
     MyFloat DensAroundStar;         /*!< gas density in the neighborhood of the collisionless particle (evaluated from neighbors) */
     MyFloat GradRho[3];             /*!< gas density gradient evaluated simply from the neighboring particles, for collisionless centers */
 #endif
+#ifdef TREECOL
+    MyFloat ColumnDensityBins[TREECOL];     /*!< angular bins for column density */
+    MyFloat SigmaEff;              /*!< effective column density -log(avg(exp(-sigma))) averaged over column density bins from the gravity tree (does not include the self-contribution) */
+#endif         
 #if defined(RT_SOURCE_INJECTION)
     MyFloat KernelSum_Around_RT_Source; /*!< kernel summation around sources for radiation injection (save so can be different from 'density') */
 #endif
@@ -2613,7 +2627,7 @@ extern struct sph_particle_data
 #endif
     
     MyFloat MaxSignalVel;           /*!< maximum signal velocity (needed for time-stepping) */
-    
+
 #ifdef GALSF_FB_FIRE_RT_UVHEATING 
     MyFloat RadFluxUV;              /*!< local UV field strength */
     MyFloat RadFluxEUV;             /*!< local (ionizing/hard) UV field strength */
@@ -2921,6 +2935,9 @@ extern struct gravdata_in
 extern struct gravdata_out
 {
     MyLongDouble Acc[3];
+#ifdef TREECOL
+    MyDouble ColumnDensityBins[TREECOL];
+#endif    
 #ifdef RT_OTVET
     MyLongDouble ET[N_RT_FREQ_BINS][6];
 #endif
@@ -3268,7 +3285,9 @@ extern ALIGN(32) struct NODE
 
   double GravCost;
   integertime Ti_current;
-
+#ifdef TREECOL
+  MyFloat gasmass;
+#endif    
 #ifdef RT_USE_GRAVTREE
   MyFloat stellar_lum[N_RT_FREQ_BINS]; /*!< luminosity in the node*/
 #ifdef CHIMES_STELLAR_FLUXES 

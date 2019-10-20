@@ -49,8 +49,10 @@ double ref_mass_factor(int i);
 void merge_particles_ij(int i, int j);
 //void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
 void split_particle_i(int i, int n_particles_split, int i_nearest); 
-static inline double gamma_eos(int i);
-
+double gamma_eos(int i);
+#ifdef EOS_SUBSTELLAR_ISM
+double sigmoid(double x);
+#endif
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);
 #ifdef HERMITE_INTEGRATION
@@ -468,7 +470,7 @@ void do_turb_driving_step_first_half(void);
 void do_turb_driving_step_second_half(void);
 #endif
 
-double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h);
+double evaluate_NH(int i, double include_h);
 
 
 #ifdef GALSF

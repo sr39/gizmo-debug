@@ -470,9 +470,13 @@ void set_units(void)
 
       printf("\n");
     }
-
-  meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC);	/* note: assuming NEUTRAL GAS */
+#ifdef COOL_LOW_TEMPERATURES
+  meanweight = 1. / ( HYDROGEN_MASSFRAC*0.5 + (1-HYDROGEN_MASSFRAC)/4. + 1./(16.+12.)); // ~2.4, assumes we're totes molecular at the temperature floor
+#else
+  meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC);/* note: assuming NEUTRAL GAS   */
+#endif
   All.MinEgySpec = All.MinGasTemp / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
+
 
 #if defined(GALSF)
   /* for historical reasons, we need to convert to "All.MaxSfrTimescale", defined as the SF timescale in code units at the critical physical
