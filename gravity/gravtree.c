@@ -367,8 +367,8 @@ void gravity_tree(void)
 #endif
 #endif // BH_CALC_DISTANCES
 
-#ifdef TREECOL
-                for(int kbin=0; kbin < TREECOL; kbin++) P[place].ColumnDensityBins[kbin] += GravDataOut[j].ColumnDensityBins[kbin];
+#ifdef RT_USE_TREECOL_FOR_NH
+                for(int kbin=0; kbin < RT_USE_TREECOL_FOR_NH; kbin++) P[place].ColumnDensityBins[kbin] += GravDataOut[j].ColumnDensityBins[kbin];
 #endif                
                 
 #ifdef RT_OTVET
@@ -500,13 +500,11 @@ void gravity_tree(void)
                 if(!isnan(trace) && (trace>0)) {for(k=0;k<6;k++) {SphP[i].ET[k_freq][k]/=trace;}} else {SphP[i].ET[k_freq][0]=SphP[i].ET[k_freq][1]=SphP[i].ET[k_freq][2]=1./3.; SphP[i].ET[k_freq][4]=SphP[i].ET[k_freq][5]=SphP[i].ET[k_freq][6]=0;}}}
 #endif
 
-#ifdef TREECOL  /* compute the effective column density that gives equivalent attenuation of a uniform background: -log(avg(exp(-sigma))) */
-        double sigma_eff=0, sigma_sum=0;
-        // first do a sum of the columns and express columns in units of that sum, so that we're plugging O(1) values into exp and avoid overflow when we have unfortunate units. Then we just multiply by the sum at the end.
-        int kbin;
-        for(kbin=0; kbin<TREECOL; kbin++) {sigma_sum += P[i].ColumnDensityBins[kbin];}
-        for(kbin=0; kbin<TREECOL; kbin++) {sigma_eff += exp(-P[i].ColumnDensityBins[kbin]/sigma_sum);}
-        P[i].SigmaEff = -log(sigma_eff/TREECOL) * sigma_sum;
+#ifdef RT_USE_TREECOL_FOR_NH  /* compute the effective column density that gives equivalent attenuation of a uniform background: -log(avg(exp(-sigma))) */
+        double sigma_eff=0, sigma_sum=0; int kbin; // first do a sum of the columns and express columns in units of that sum, so that we're plugging O(1) values into exp and avoid overflow when we have unfortunate units. Then we just multiply by the sum at the end.
+        for(kbin=0; kbin<RT_USE_TREECOL_FOR_NH; kbin++) {sigma_sum += P[i].ColumnDensityBins[kbin];}
+        for(kbin=0; kbin<RT_USE_TREECOL_FOR_NH; kbin++) {sigma_eff += exp(-P[i].ColumnDensityBins[kbin]/sigma_sum);}
+        P[i].SigmaEff = -log(sigma_eff/RT_USE_TREECOL_FOR_NH) * sigma_sum;
 #endif        
         
 #if !defined(BOX_PERIODIC) && !defined(PMGRID) /* some factors here in case we are trying to do comoving simulations in a non-periodic box (special use cases) */

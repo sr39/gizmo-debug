@@ -470,7 +470,7 @@ void do_turb_driving_step_first_half(void);
 void do_turb_driving_step_second_half(void);
 #endif
 
-double evaluate_NH(int i, double include_h);
+double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h, int target);
 
 
 #ifdef GALSF

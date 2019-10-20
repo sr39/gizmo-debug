@@ -1056,7 +1056,7 @@ void hydro_gradient_calc(void)
             /* now the gradients are calculated: below are simply useful operations on the results */
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
             /* this is here because for the models of BH growth and self-shielding of stars, we
-             need to calculate GradRho: we don't bother doing it in density.c if we're already calculating it here! */
+             need to calculate GradRho: we don't bother doing it in density.c if we're already calculating it here! but note, this is the -un-limited- gradient here */
             for(k=0;k<3;k++) {P[i].GradRho[k] = SphP[i].Gradients.Density[k];}
 #endif
             
