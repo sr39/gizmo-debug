@@ -609,8 +609,8 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 if((mode==0) && (SphP[i].Dt_E_gamma[kf]!=0) && (dt_entr>0)) // only update temperatures on kick operations //
                 {
                     // advected radiation changes temperature of radiation field, before absorption //
-double dE_fac = 0*SphP[i].Dt_E_gamma[kf] * dt_entr; // change in energy from advection
-double dTE_fac = 0*SphP[i].Dt_E_gamma_T_weighted_IR * dt_entr; // T-weighted change from advection
+                    double dE_fac = SphP[i].Dt_E_gamma[kf] * dt_entr; // change in energy from advection
+                    double dTE_fac = SphP[i].Dt_E_gamma_T_weighted_IR * dt_entr; // T-weighted change from advection
                     double dE_abs = -e0 * (1. - exp(a0*dt_entr)); // change in energy from absorption
                     double rfac=1; if(dE_fac < -0.5*(e0+dE_abs)) {rfac=fabs(0.5*(e0+dE_abs))/fabs(dE_fac);} else {if(dE_fac > 0.5*e0) {rfac=0.5*e0/dE_fac;}}
                     dE_fac*=rfac; dTE_fac*=rfac; // limit temperature change from advection to prevent spurious divergences
@@ -621,7 +621,6 @@ double dTE_fac = 0*SphP[i].Dt_E_gamma_T_weighted_IR * dt_entr; // T-weighted cha
                     a0 = -rt_absorption_rate(i,kf); // update absorption rate using the new radiation temperature //
                 }
                 double total_emission_rate = E_abs_tot + fabs(a0)*e0 + SphP[i].Je[kf]; // add the summed absorption as emissivity here //
-                //total_de_dt = total_emission_rate + SphP[i].Dt_E_gamma[kf];
                 total_de_dt = E_abs_tot + SphP[i].Je[kf] + SphP[i].Dt_E_gamma[kf];
                 if(fabs(a0)>0)
                 {
@@ -822,11 +821,6 @@ void rt_set_simple_inits(void)
                 int k_dir; for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++) {SphP[i].Intensity_Pred[k][k_dir] = SphP[i].Intensity[k][k_dir] = SphP[i].Dt_Intensity[k][k_dir] = 0;}
 #endif
             }
-      
-
-/*     double E_gamma_IR_pred = pow(SphP[i].Dust_Temperature,4.0)*(RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION)/ ((All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5))/ ((SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. / C_LIGHT_CODE_REDUCED));
-    SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]=E_gamma_IR_pred;
-       */
         }
     }
 }
