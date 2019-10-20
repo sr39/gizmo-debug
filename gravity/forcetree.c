@@ -579,12 +579,8 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef BH_PHOTONMOMENTUM
         MyFloat bh_lum,bh_lum_hR,bh_lum_grad[3];
         bh_lum=bh_lum_hR=bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-        MyFloat bh_lum_unitfactor = 1.0; //code units are good units
-#else
         MyFloat bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
 #endif
-#endif        
 #ifdef BH_CALC_DISTANCES
         MyFloat bh_mass=0;
         MyFloat bh_pos_times_mass[3]={0,0,0};   /* position of each black hole in the node times its mass; divide by total mass at the end to get COM */
@@ -840,7 +836,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-		    if(pa->Type == 5) if (PPP[p].Hsml > maxsoft) maxsoft = PPP[p].Hsml;
+                    if(pa->Type == 5) if (PPP[p].Hsml > maxsoft) maxsoft = PPP[p].Hsml;
 #endif
                 }
             }
@@ -1729,12 +1725,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
     
 #ifdef BH_PHOTONMOMENTUM
-    double mass_bhlum=0;
-	#ifdef SINGLE_STAR_SINK_DYNAMICS
-		MyFloat bh_lum_unitfactor = 1.0; //code units are good units
-	#else
-		MyFloat bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
-	#endif
+    double mass_bhlum=0, bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
     double incident_flux_uv=0;

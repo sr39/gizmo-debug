@@ -784,8 +784,7 @@ void hydro_final_operations_and_cleanup(void)
                 // use optically-thin flux: for optically thin cases this is better, but actually for thick cases, if optical depth is highly un-resolved, this is also better (see Appendices and discussion of Rosdahl et al. 2015)
                 double Fmag=0; for(k=0;k<3;k++) {Fmag+=SphP[i].Flux_Pred[k2][k]*SphP[i].Flux_Pred[k2][k];}
 #ifdef RT_INFRARED
-                if(k2==RT_FREQ_BIN_INFRARED)
-                    for(k=0;k<3;k++) {radacc[k] += slabfac * SphP[i].Kappa_RT[k2] * (SphP[i].Flux_Pred[k2][k] * SphP[i].Density/P[i].Mass) / C_LIGHT_CODE_REDUCED;}
+                if(k2==RT_FREQ_BIN_INFRARED) {for(k=0;k<3;k++) {radacc[k] += slabfac * SphP[i].Kappa_RT[k2] * (SphP[i].Flux_Pred[k2][k] * SphP[i].Density/P[i].Mass) / C_LIGHT_CODE_REDUCED;}}
                 else
 #endif
                 if(Fmag > 0)

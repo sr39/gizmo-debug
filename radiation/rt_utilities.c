@@ -167,14 +167,12 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
     }
 #endif
 
-#if defined(RT_INFRARED)
-    /* can add direct infrared sources, but default to no direct IR (just re-emitted light) */
+#if defined(RT_INFRARED) /* can add direct infrared sources, but default to no direct IR (just re-emitted light) */
     if((1 << P[i].Type) & (RT_SOURCES))
     {
         lum[RT_FREQ_BIN_INFRARED] = 0.0; //default to no direct IR (just re-emitted light)
 #if defined(TEST_RT_M1)
-        if(P[i].Type == 5) 
-            {lum[RT_FREQ_BIN_INFRARED] = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i);} //set the entire bolometric luminosity from the sink a
+        if(P[i].Type == 5) {lum[RT_FREQ_BIN_INFRARED] = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i);} //set the entire bolometric luminosity from the sink a
 #endif
     }
 #endif
@@ -415,10 +413,11 @@ double rt_kappa(int i, int k_freq)
 #endif
 #ifdef RT_INFRARED
     /* IR with dust opacity */
+    double T_min = get_min_allowed_dustIRrad_temperature();
     if(k_freq==RT_FREQ_BIN_INFRARED)
     {
-        if(isnan(SphP[i].Dust_Temperature) || SphP[i].Dust_Temperature<=DMAX(All.MinGasTemp,2.73/All.cf_atime)) {SphP[i].Dust_Temperature=DMAX(All.MinGasTemp,2.73/All.cf_atime);} // reset baseline
-        if(isnan(SphP[i].Radiation_Temperature) || SphP[i].Radiation_Temperature<=DMAX(All.MinGasTemp,2.73/All.cf_atime)) {SphP[i].Radiation_Temperature=DMAX(All.MinGasTemp,2.73/All.cf_atime);} // reset baseline
+        if(isnan(SphP[i].Dust_Temperature) || SphP[i].Dust_Temperature<=T_min) {SphP[i].Dust_Temperature=T_min;} // reset baseline
+        if(isnan(SphP[i].Radiation_Temperature) || SphP[i].Radiation_Temperature<=T_min) {SphP[i].Radiation_Temperature=T_min;} // reset baseline
         
         double T_dust_em = SphP[i].Dust_Temperature; // dust temperature in K //
         double Trad = SphP[i].Radiation_Temperature; // radiation temperature in K //
@@ -581,7 +580,8 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
     double Dust_Temperature_4 = All.UnitVelocity_in_cm_per_s * c_light * u_gamma / (4. * 5.67e-5); // estimated effective temperature of local rad field in equilibrium with dust emission //
     Dust_Temperature_4 /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
     SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
-    if(SphP[i].Dust_Temperature <= DMAX(All.MinGasTemp,2.73/All.cf_atime)) {SphP[i].Dust_Temperature = DMAX(All.MinGasTemp,2.73/All.cf_atime);} // dust temperature shouldn't be below CMB
+    double T_min = get_min_allowed_dustIRrad_temperature();
+    if(SphP[i].Dust_Temperature <= T_min) {SphP[i].Dust_Temperature = T_min;} // dust temperature shouldn't be below CMB
 #endif
     for(k_tmp=0; k_tmp<N_RT_FREQ_BINS; k_tmp++)
     {
@@ -603,7 +603,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             double total_de_dt = SphP[i].Je[kf] + SphP[i].Dt_E_gamma[kf];
 #endif
             
-#ifdef RT_INFRARED
+#ifdef RT_INFRARED ????
             if(kf == RT_FREQ_BIN_INFRARED)
             {
                 if((mode==0) && (SphP[i].Dt_E_gamma[kf]!=0) && (dt_entr>0)) // only update temperatures on kick operations //
@@ -629,7 +629,7 @@ double dTE_fac = 0*SphP[i].Dt_E_gamma_T_weighted_IR * dt_entr; // T-weighted cha
                     Dust_Temperature_4 *= (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5); // convert to cgs
                     Dust_Temperature_4 /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
                     SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
-                    if(SphP[i].Dust_Temperature < DMAX(All.MinGasTemp,2.73/All.cf_atime)) {SphP[i].Dust_Temperature = DMAX(All.MinGasTemp,2.73/All.cf_atime);} // dust temperature shouldn't be below CMB
+                    if(SphP[i].Dust_Temperature < T_min) {SphP[i].Dust_Temperature = T_min;} // dust temperature shouldn't be below CMB
                 }
                 if(mode==0) // only update temperatures on kick operations //
                 {
@@ -639,7 +639,7 @@ double dTE_fac = 0*SphP[i].Dt_E_gamma_T_weighted_IR * dt_entr; // T-weighted cha
                     SphP[i].Radiation_Temperature = (e0 + dE_abs + total_emission_rate*dt_entr) / (MIN_REAL_NUMBER + (e0 + dE_abs) / SphP[i].Radiation_Temperature + total_emission_rate*dt_entr / SphP[i].Dust_Temperature);
                     SphP[i].Radiation_Temperature = DMIN(SphP[i].Radiation_Temperature, T_max);
                 }
-                if(SphP[i].Radiation_Temperature < DMAX(All.MinGasTemp,2.73/All.cf_atime)) {SphP[i].Radiation_Temperature = DMAX(All.MinGasTemp,2.73/All.cf_atime);} // radiation temperature shouldn't be below CMB
+                if(SphP[i].Radiation_Temperature < T_min) {SphP[i].Radiation_Temperature = T_min;} // radiation temperature shouldn't be below CMB
             }
 #endif
             
@@ -785,7 +785,7 @@ void rt_set_simple_inits(void)
         {
             int k;
 #ifdef RT_INFRARED
-            SphP[i].Dust_Temperature = DMAX(All.MinGasTemp,2.73/All.cf_atime); // in K, floor = CMB temperature or 10K
+            SphP[i].Dust_Temperature = get_min_allowed_dustIRrad_temperature(); // in K, floor = CMB temperature or 10K
             SphP[i].Radiation_Temperature = SphP[i].Dust_Temperature;
             SphP[i].Dt_E_gamma_T_weighted_IR = 0;
 #endif

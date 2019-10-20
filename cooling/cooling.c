@@ -163,6 +163,7 @@ void chimes_cooling_parent_routine(void)
 }
 #endif // !(CHIMES) 
 
+
 /* subroutine which actually sends the particle data to the cooling routine and updates the entropies */
 void do_the_cooling_for_particle(int i)
 {
@@ -253,6 +254,12 @@ void do_the_cooling_for_particle(int i)
 #endif
         }
 #endif
+
+        
+#ifdef RT_INFRARED /* assume (for now) that all radiated/absorbed energy comes from the IR bin [not really correct, this should just be the dust term] */
+        SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] += -(unew-SphP[i].InternalEnergy) * P[i].Mass; /* energy gained by gas is lost here */
+        SphP[i].E_gamma_Pred[RT_FREQ_BIN_INFRARED] = SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]; /* updated drifted */
+#endif
         
         
 	/* InternalEnergy, InternalEnergyPred, Pressure, ne are now immediately updated; however, if COOLING_OPERATOR_SPLIT
@@ -274,28 +281,6 @@ void do_the_cooling_for_particle(int i)
     } // closes if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0)) check
 }
 
-#ifdef RT_INFRARED
-/*Tries to estimate the dust temperature when it is coupled to the gas, assuming energy conservation between the gas and the dust( rad field), minimum at All.MinGasTemp or CMB*/
-double Estimate_Tdust(double T, double rho, double ne_guess, int target)
-{
-    double u = (BOLTZMANN/PROTONMASS) * T / ((GAMMA(target)-1) * get_mu(T, rho, &ne_guess, target) ) / (All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s);
-    double E_tot = P[target].Mass*SphP[target].InternalEnergy + SphP[target].E_gamma[RT_FREQ_BIN_INFRARED];
-    double E_dust_pred = E_tot-P[target].Mass * u;
-    double T_dust_pred = Tdust_from_Energy(E_dust_pred, target);
-    return T_dust_pred;
-}
-
-/*Calculates the dust temperature assuming E energy is in the IR energy bin, minimum at All.MinGasTemp or CMB*/
-double Tdust_from_Energy(double E, int target)
-{
-    double Tdust_4_pred = E * (SphP[target].Density*All.cf_a3inv/P[target].Mass) / (4. / C_LIGHT_CODE_REDUCED); // flux units
-    Tdust_4_pred *= (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5); // convert to cgs
-    Tdust_4_pred /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
-    double Tmin_4 = pow(DMAX(All.MinGasTemp,2.73/All.cf_atime),4.0);
-    double T_dust_pred = sqrt(sqrt(DMAX(Tmin_4,Tdust_4_pred)));
-    return T_dust_pred;
-}
-#endif
 
 
 
@@ -396,11 +381,6 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     /* crash condition */
     if(iter >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g target=%d \n",u_old,rho,dt,ne_guess,target); endrun(10);}
     double specific_energy_codeunits_toreturn = u * All.UnitDensity_in_cgs / All.UnitPressure_in_cgs;    /* in internal units */
-#ifdef RT_INFRARED
-    /*Assume that the gas+dust(rad field) system is closed and energy is conserved during the cooling process. This means all gas emissions go to the IR bin.*/
-    SphP[target].E_gamma[RT_FREQ_BIN_INFRARED]-=(u-u_old)*All.UnitDensity_in_cgs / All.UnitPressure_in_cgs*P[target].Mass;
-    SphP[target].E_gamma_Pred[RT_FREQ_BIN_INFRARED]-=(u-u_old)*All.UnitDensity_in_cgs / All.UnitPressure_in_cgs*P[target].Mass;
-#endif
 
 #ifdef RT_CHEM_PHOTOION
     /* set variables used by RT routines; this must be set only -outside- of iteration, since this is the key chemistry update */
@@ -886,19 +866,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     if(!isfinite(rho)) {return 0;} 
     T = pow(10.0, logT);
     
-#ifdef COOL_METAL_LINES_BY_SPECIES
-            double Tdust = 30.;
-#if defined(SINGLE_STAR_SINK_DYNAMICS)
-            Tdust = 10.;
-#if defined(BH_COMPTON_HEATING)
-            Tdust = AGN_T_Compton;
-#endif
-#endif
-#ifdef RT_INFRARED
-            //if(target >= 0) {Tdust = SphP[target].Dust_Temperature;}
-            if(target >= 0) {Tdust = Estimate_Tdust(T, rho, n_elec_guess, target);} 
-#endif
-#endif
+    /* some blocks below to define useful variables before calculation of cooling rates: */
+    
 #ifdef COOL_METAL_LINES_BY_SPECIES
     double *Z;
     if(target>=0)
@@ -933,29 +902,34 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
     
 #ifdef BH_COMPTON_HEATING
-    double AGN_LambdaPre, AGN_T_Compton;
-    AGN_T_Compton = 2.0e7; /* approximate from Sazonov et al. */
-    if(target < 0) {
-        AGN_LambdaPre = 0;
-    } else {
-	#ifdef SINGLE_STAR_SINK_DYNAMICS
-		AGN_LambdaPre = SphP[target].RadFluxAGN *  All.UnitEnergy_in_cgs/All.UnitTime_in_s/(All.UnitLength_in_cm*All.UnitLength_in_cm); /* proper units */
-	#else
+    double AGN_LambdaPre = 0, AGN_T_Compton; AGN_T_Compton = 2.0e7; /* approximate from Sazonov et al. */
+    if(target >= 0)
+    {
 		AGN_LambdaPre = SphP[target].RadFluxAGN * (3.9/2.0) * All.UnitMass_in_g/(All.UnitLength_in_cm*All.UnitLength_in_cm)*All.HubbleParam*All.cf_a2inv; /* proper units */
-	#endif
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-        /* here we are hijacking this module to approximate dust heating/cooling */
-        /* assuming heating/cooling balance defines the target temperature: */
-        AGN_T_Compton = pow( 1.0e4 + AGN_LambdaPre / 5.67e-5 , 0.25); // (sigma*T^4 = Flux_incident)
-        if(AGN_T_Compton < Tmin) {AGN_T_Compton=Tmin;} 
-#else
-        /* now have incident flux, need to convert to relevant pre-factor for heating rate */
-        AGN_LambdaPre *= 6.652e-25; /* sigma_T for absorption */
-        AGN_LambdaPre *= (4.*1.381e-16)/(9.109e-28*2.998e10*2.998e10); /* times 4*k_B/(me*c^2) */
+#ifdef SINGLE_STAR_SINK_DYNAMICS /* here we are hijacking this module to approximate dust heating/cooling */
+        double Tmin_to_enforce = pow(10.0,Tmin); // use this as a mininum dust temperature, not for any physical reason but to prevent cooling below it
+        AGN_T_Compton = pow( Tmin_to_enforce*Tmin_to_enforce*Tmin_to_enforce*Tmin_to_enforce + AGN_LambdaPre / 5.67e-5 , 0.25); // (sigma*T^4 = Flux_incident), assuming heating/cooling balance defines the target temperature:
+#else /* now have incident flux, need to convert to relevant pre-factor for heating rate */
+        AGN_LambdaPre *= 4.488e-34; // =6.652e-25*(4.*1.381e-16)/(9.109e-28*2.998e10*2.998e10); /* sigma_T x 4*k_B/(me*c^2) */
 #endif
     }
 #endif
+    
+    
+#if defined(COOL_METAL_LINES_BY_SPECIES) && defined(COOL_LOW_TEMPERATURES)
+    double Tdust = 30.;
+#if defined(SINGLE_STAR_SINK_DYNAMICS)
+    Tdust = 10.; // runs looking at colder clouds, use a colder default dust temp //
+#if defined(BH_COMPTON_HEATING)
+    if(target >= 0) {Tdust = AGN_T_Compton;} // need to check target otherwise this is totally ill-defined //
+#endif
+#endif
+#ifdef RT_INFRARED
+    if(target >= 0) {Tdust = Estimate_Tdust(T, rho, n_elec_guess, target);} // special estimation here //
+#endif
+#endif
 
+    
 #if defined(RT_CHEM_PHOTOION) || defined(RT_PHOTOELECTRIC)
     double Sigma_particle = 0, abs_per_kappa_dt = 0, cx_to_kappa = 0;
     if(target >= 0)
