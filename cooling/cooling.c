@@ -973,7 +973,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
                             + (Z[0]/All.SolarAbundances[0])*(Z[0]/All.SolarAbundances[0])/(1.0+nHcgs));
             LambdaDust = 1.116e-32 * (Tdust-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * (Z[0]/All.SolarAbundances[0]);  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
 #ifdef RT_INFRARED
-            if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, Z[0]/All.SolarAbundances[0], target);}
+            if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, rho, &n_elec, target);} // call our specialized subroutine, because radiation and gas energy fields are co-evolving and tightly-coupled here //
 #endif
             if(LambdaDust<0) {Lambda -= LambdaDust;} /* add the -positive- Lambda-dust associated with cooling */
 #endif
@@ -1190,13 +1190,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
      */
     if( (nHcgs > 0.1) && (target >= 0) )  /* don't bother at very low densities, since youre not optically thick, and protect from target=-1 with GALSF_EFFECTIVE_EQS */
     {
-#ifdef DO_DENSITY_AROUND_STAR_PARTICLES /* use non-slope-limited gradient when possible */
-????        double surface_density = evaluate_NH_from_GradRho(P[target].GradRho,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target);
-#else
         double surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target);
-#endif
         surface_density *= All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; // converts to cgs
-????        //surface_density *= 0.2 * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; // Convert surface density from code to cgs. 0.2 is a tuned factor so that we reproduce the (consistent) direct RHD results of Masunaga & Inutsuka 2000 and Vaytet+2017 when we run the exact same problem. Because this cooling approximation is fairly approximate and assumes a slab geometry, we have some freedom to put in a fudge factor.
         double effective_area = 2.3 * PROTONMASS / surface_density; // since cooling rate is ultimately per-particle, need a particle-weight here
         double kappa_eff; // effective kappa, accounting for metal abundance, temperature, and density //
         if(T < 1500.)

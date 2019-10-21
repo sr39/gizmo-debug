@@ -501,7 +501,7 @@ double rt_absorption_rate(int i, int k_freq)
 #ifdef RADTRANSFER
 
 /***********************************************************************************************************/
-/* returns the photon diffusion coefficient = fluxlimiter * c_light / (kappa_opacity * density)  [physical units] */
+/* returns the photon diffusion coefficient = fluxlimiter * speed_of_light[reduced] / (kappa_opacity * density)  [physical units] */
 /***********************************************************************************************************/
 double rt_diffusion_coefficient(int i, int k_freq)
 {
@@ -525,8 +525,7 @@ void rt_eddington_update_calculation(int j)
         double flux_vol[3]; for(k=0;k<3;k++) {flux_vol[k] = SphP[j].Flux[k_freq][k] * V_j_inv;}
         fmag_j = 0; for(k=0;k<3;k++) {fmag_j += flux_vol[k]*flux_vol[k];}
         if(fmag_j <= 0) {fmag_j=0;} else {fmag_j=sqrt(fmag_j); for(k=0;k<3;k++) {n_flux_j[k]=flux_vol[k]/fmag_j;}}
-        double f_chifac = RT_SPEEDOFLIGHT_REDUCTION * fmag_j / (c_light * SphP[j].E_gamma[k_freq] * V_j_inv);
-        f_chifac = fmag_j / (1.e-37 + c_light * SphP[j].E_gamma[k_freq] * V_j_inv);
+        double f_chifac = fmag_j / (MIN_REAL_NUMBER + c_light * SphP[j].E_gamma[k_freq] * V_j_inv);
         if(f_chifac < 0) {f_chifac=0;}
         if(fmag_j <= 0) {f_chifac = 0;}
         // restrict values of f_chifac to physical range.  
@@ -573,12 +572,11 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #endif
 #ifdef RT_INFRARED
     double E_abs_tot = 0;/* energy absorbed in other bands is transfered to IR, by default: track it here */
-    double c_light = C_LIGHT_CODE_REDUCED;
+    double c_light = C_LIGHT_CODE, c_light_reduced = C_LIGHT_CODE_REDUCED;
     double E_gamma_tot = 0; // dust temperature defined by total radiation energy density //
     {int j; for(j=0;j<N_RT_FREQ_BINS;j++) {E_gamma_tot += SphP[i].E_gamma[j];}}
     double u_gamma = E_gamma_tot * (SphP[i].Density*All.cf_a3inv/P[i].Mass) * All.UnitPressure_in_cgs * All.HubbleParam*All.HubbleParam; // photon energy density in CGS //
     double Dust_Temperature_4 = All.UnitVelocity_in_cm_per_s * c_light * u_gamma / (4. * 5.67e-5); // estimated effective temperature of local rad field in equilibrium with dust emission //
-    Dust_Temperature_4 /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
     SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
     double T_min = get_min_allowed_dustIRrad_temperature();
     if(SphP[i].Dust_Temperature <= T_min) {SphP[i].Dust_Temperature = T_min;} // dust temperature shouldn't be below CMB
@@ -603,7 +601,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             double total_de_dt = SphP[i].Je[kf] + SphP[i].Dt_E_gamma[kf];
 #endif
             
-#ifdef RT_INFRARED ????
+#ifdef RT_INFRARED
             if(kf == RT_FREQ_BIN_INFRARED)
             {
                 if((mode==0) && (SphP[i].Dt_E_gamma[kf]!=0) && (dt_entr>0)) // only update temperatures on kick operations //
@@ -626,7 +624,6 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 {
                     Dust_Temperature_4 = total_emission_rate * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. * (MIN_REAL_NUMBER + fabs(a0)) / c_light); // flux units
                     Dust_Temperature_4 *= (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5); // convert to cgs
-                    Dust_Temperature_4 /= RT_SPEEDOFLIGHT_REDUCTION*RT_SPEEDOFLIGHT_REDUCTION;
                     SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
                     if(SphP[i].Dust_Temperature < T_min) {SphP[i].Dust_Temperature = T_min;} // dust temperature shouldn't be below CMB
                 }
@@ -664,7 +661,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             {
                 double radacc[3]={0}, rmag=0, L_particle = Get_Particle_Size(i)*All.cf_atime; // particle effective size/slab thickness
                 double Sigma_particle = P[i].Mass / (M_PI*L_particle*L_particle); // effective surface density through particle
-                double abs_per_kappa_dt = c_light * (SphP[i].Density*All.cf_a3inv) * dt_entr; // fractional absorption over timestep
+                double abs_per_kappa_dt = c_light_reduced * (SphP[i].Density*All.cf_a3inv) * dt_entr; // fractional absorption over timestep
                 double slabfac_rp = slab_averaging_function(SphP[i].Kappa_RT[kf]*Sigma_particle) * slab_averaging_function(SphP[i].Kappa_RT[kf]*abs_per_kappa_dt); // reduction factor for absorption over dt
                 int kx; for(kx=0;kx<3;kx++)
                 {
@@ -674,7 +671,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 if(rmag > 0)
                 {
                     rmag = sqrt(rmag); for(kx=0;kx<3;kx++) {radacc[kx] /= rmag;} // normalize
-                    double rmag_max = de_abs / (P[i].Mass * c_light); // limit magnitude to absorbed photon momentum
+                    double rmag_max = de_abs / (P[i].Mass * c_light_reduced); // limit magnitude to absorbed photon momentum
 #if defined(RT_DISABLE_R15_GRADIENTFIX)
                     if(rmag > rmag_max) {rmag=rmag_max;}
 #else
@@ -902,4 +899,50 @@ double slab_averaging_function(double x)
 }
 
 
+
+#ifdef RT_INFRARED
+
+/* return the minimum user-specified dust temperature. note there is nothing physical about this, just a convenience function since we enforce a minimum -gas- temperature */
+void get_min_allowed_dustIRrad_temperature(void)
+{
+#if defined(GALSF)
+    return DMAX(All.MinGasTemp, 2.73/All.cf_atime);
+#endif
+    return MIN_REAL_NUMBER;
+}
+
+/* return LambdaDust, the dust heating/cooling rate (>0 is heating, <0 is cooling) */
+double get_rt_ir_lambdadust_effective(double T, double rho, double *ne_guess, int target)
+{
+    double Tdust_0 = SphP[target].Dust_Temperature; // dust temperature estimate from previous loop over radiation operators
+    double LambdaDust_initial_guess = 1.116e-32 * (Tdust_0-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * (P[target].Metallicity[0]/All.SolarAbundances[0]); // guess value based on the -current- values of T, Tdust //
+        
+    double egy_therm = SphP[target].InternalEnergyPred*P[target].Mass; // true internal energy (before this cooling loop)
+    double egy_rad   = SphP[target].E_gamma_Pred[RT_FREQ_BIN_INFRARED]; // true radiation field energy (before this cooling loop)
+    double egy_tot = egy_rad + egy_therm; // true total energy [in code units]
+    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;    // effective hydrogen number dens in cgs units (just for normalization convention)
+    double volume = (P[target].Mass / (SphP[target].Density*All.cf_a3inv)); // particle volume in code units
+    double ratefact = (nHcgs*nHcgs) * volume / (All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam / (All.UnitTime_in_s/All.HubbleParam)); // conversion b/t Lambda and du used by code
+    double Erad_to_T4_fac = 1.32e14*(All.UnitPressure_in_cgs/All.HubbleParam) / volume; // conversion from absolute rad energy to T^4 units, used multiple places below
+    double Teff = get_mu(T, rho, ne_guess, target) * (GAMMA(target)-1.) * U_TO_TEMP_UNITS * (egy_tot / P[target].Mass); // convert from internal energy to temperature units for factor below
+
+    double xf, a = Teff*Teff*Teff*Teff / (Erad_to_T4_fac*egy_tot); // dimensionless factors needed to solve for the equilibrium Tdust-Tgas relation
+    if(a<0.2138) {xf=(1+19*a+132*a*a+418*a*a*a+580*a*a*a*a+243*a*a*a*a*a)/(1+20*a+148*a*a+508*a*a*a+796*a*a*a*a+432*a*a*a*a*a);} // eqm solution (power series approx)
+     else {double a0=pow(a,0.25); xf=(-704-1045*a0+128*a0*a0*a0*(39+32*a0*(4+7*a0+64*a0*a0*a0*(-1+8*a0*(-1+4*a0)))))/(8388608.*a*a*a0*a0);} // eqm solution (power series approx)
+
+    double L0_abs = fabs(LambdaDust_initial_guess); // absolute value of the initially-computed guess for the cooling/heating rate
+    double Edot0 = L0_abs * ratefact; // now this is an absolute Edot in code units
+    double efinal_minus_einitial = egy_tot*xf - egy_therm; // change in energy if we went all the way to equilibrium
+    double t_cooling_eff = fabs(efinal_minus_einitial) / Edot0; // effective cooling time at the initially-estimated rate here
+    double sign_term=1.; if(efinal_minus_einitial < 0.) {sign_term=-1.;} // sign of the cooling/heating (to keep for below)
+    double dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; // timestep being taken [code units]
+    double tau = dt/t_cooling_eff, xfac=(1.-exp(-tau))/tau; if(tau<0.05) {xfac=1.-0.5*tau+tau*tau/6.;} else {if(tau>20.) {xfac=1./tau;}} // correct rate to asymptote to equilibrium
+    double lambda_eff = sign_term * L0_abs * xfac; // final effective cooling/heating rate
+
+    SphP[target].Dust_Temperature = DMAX(pow(Erad_to_T4_fac*DMAX( 0., egy_rad - lambda_eff*ratefact*dt ), 0.25), get_min_allowed_dustIRrad_temperature()); // update dust temperature guess //
+    
+    return lambda_eff;
+}
+
+#endif
 
