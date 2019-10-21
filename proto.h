@@ -511,7 +511,7 @@ void apply_grain_dragforce(void);
 #endif
 
 #ifdef RT_INFRARED
-void get_min_allowed_dustIRrad_temperature(void);
+double get_min_allowed_dustIRrad_temperature(void);
 double get_rt_ir_lambdadust_effective(double T, double rho, double *ne_guess, int target);
 #endif
 
