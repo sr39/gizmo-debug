@@ -903,9 +903,9 @@ double slab_averaging_function(double x)
 #ifdef RT_INFRARED
 
 /* return the minimum user-specified dust temperature. note there is nothing physical about this, just a convenience function since we enforce a minimum -gas- temperature */
-void get_min_allowed_dustIRrad_temperature(void)
+double get_min_allowed_dustIRrad_temperature(void)
 {
-#if defined(GALSF)
+#if defined(GALSF) || defined(SINGLE_STAR_SINK_DYNAMICS)
     return DMAX(All.MinGasTemp, 2.73/All.cf_atime);
 #endif
     return MIN_REAL_NUMBER;
