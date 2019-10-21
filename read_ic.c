@@ -155,8 +155,10 @@ void read_ic(char *fname)
 
     if(All.InitGasTemp > 1.0e4)	/* assuming FULL ionization */
         molecular_weight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));
-    else				/* assuming NEUTRAL GAS */
+    else if (All.InitGasTemp > 1.0e3)    /* assuming NEUTRAL GAS */
         molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC);
+    else
+        molecular_weight =  1. / ( HYDROGEN_MASSFRAC*0.5 + (1-HYDROGEN_MASSFRAC)/4. + 1./(16.+12.)); // assume fully molecular
     
     u_init /= molecular_weight;
     
