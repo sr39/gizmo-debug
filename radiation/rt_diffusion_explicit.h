@@ -83,8 +83,7 @@ double c_light = C_LIGHT_CODE_REDUCED;
                 if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
                 cmag /= dt_hydrostep;
                 Fluxes_E_gamma[k_freq] += cmag;
-#ifdef RT_INFRARED
-                // define advected radiation temperature based on direction of net radiation flow //
+#ifdef RT_INFRARED // define advected radiation temperature based on direction of net radiation flow //
                 if(k_freq==RT_FREQ_BIN_INFRARED) {if(cmag > 0) {Fluxes_E_gamma_T_weighted_IR = cmag/(MIN_REAL_NUMBER+SphP[j].Radiation_Temperature);} else {Fluxes_E_gamma_T_weighted_IR = cmag/(MIN_REAL_NUMBER+local.Radiation_Temperature);}}
 #endif
             } // if(conduction_wt > 0)
@@ -181,8 +180,7 @@ double c_light = C_LIGHT_CODE_REDUCED;
                 if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
                 cmag /= dt_hydrostep;
                 Fluxes_E_gamma[k_freq] += cmag; // returned in physical units //
-#ifdef RT_INFRARED
-                // define advected radiation temperature based on direction of net radiation flow //
+#ifdef RT_INFRARED // define advected radiation temperature based on direction of net radiation flow //
                 if(k_freq==RT_FREQ_BIN_INFRARED) {if(cmag > 0) {Fluxes_E_gamma_T_weighted_IR = cmag/(MIN_REAL_NUMBER+SphP[j].Radiation_Temperature);} else {Fluxes_E_gamma_T_weighted_IR = cmag/(MIN_REAL_NUMBER+local.Radiation_Temperature);}}
 #endif
             } // cmag != 0
