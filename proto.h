@@ -510,6 +510,11 @@ void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i);
 void apply_grain_dragforce(void);
 #endif
 
+#ifdef RT_INFRARED
+void get_min_allowed_dustIRrad_temperature(void);
+double get_rt_ir_lambdadust_effective(double T, double rho, double *ne_guess, int target);
+#endif
+
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
 double particle_ionizing_luminosity_in_cgs(long i);
 #endif
