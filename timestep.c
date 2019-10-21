@@ -151,7 +151,7 @@ void find_timesteps(void)
 #else
         ti_step = get_timestep(i, &aphys, 0);
 #endif
-        
+
         /* make it a power 2 subdivision */
         ti_min = TIMEBASE;
         while(ti_min > ti_step)
@@ -980,6 +980,13 @@ integertime get_timestep(int p,		/*!< particle index */
 		double dt_gas = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest
 		if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas;}
 	    }
+            
+            if(P[p].StellarAge == All.Time){
+                // want a brand new sink to be on the lowest occupied timebin
+                long bin; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;}
+                double dt_min =  ((bin ? (((integertime) 1) << bin) : 0) * All.Timebase_interval / All.cf_hubble_a);
+                if(dt > dt_min && dt_min > 0) dt = 1.01 * dt_min;
+            }
 #endif
     } // if(P[p].Type == 5)
 
