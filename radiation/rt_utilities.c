@@ -356,11 +356,11 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 
 
 /***********************************************************************************************************/
-/* calculate the opacity for use in radiation transport operations [in physical code units = L^2/M] */
+/* calculate the opacity for use in radiation transport operations [in physical code units = L^2/M]. this should
+    be a total extinction opacity, i.e. kappa = kappa_scattering + kappa_absorption */
 /***********************************************************************************************************/
 double rt_kappa(int i, int k_freq)
-{    
-    
+{
 #ifdef RT_CHEM_PHOTOION
     /* opacity to ionizing radiation for Petkova & Springel bands. note rt_update_chemistry is where ionization is actually calculated */
     double nH_over_Density = HYDROGEN_MASSFRAC / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
@@ -374,12 +374,19 @@ double rt_kappa(int i, int k_freq)
     if(k_freq==RT_FREQ_BIN_H0)  {return kappa;}
 #endif
 
-
-#if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) || defined(RT_PHOTOELECTRIC) || defined (GALSF_FB_FIRE_RT_LONGRANGE) || defined(RT_NUV) || defined(RT_OPTICAL_NIR) || defined(RT_LYMAN_WERNER) || defined(RT_INFRARED)
+#if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) || defined(RT_PHOTOELECTRIC) || defined (GALSF_FB_FIRE_RT_LONGRANGE) || defined(RT_NUV) || defined(RT_OPTICAL_NIR) || defined(RT_LYMAN_WERNER) || defined(RT_INFRARED) || defined(RT_FREEFREE)
     double fac = All.UnitMass_in_g * All.HubbleParam / (All.UnitLength_in_cm * All.UnitLength_in_cm); /* units */
     double Zfac = 1.0; // assume solar metallicity 
 #ifdef METALS
     Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
+#endif
+#ifdef RT_FREEFREE /* pure (grey, non-relativistic) Thompson scattering opacity + free-free absorption opacity */
+    if(k_freq==RT_FREQ_BIN_FREEFREE)
+    {
+        double T_eff=0.59*(GAMMA(target)-1.)*U_TO_TEMP_UNITS*SphP[i].InternalEnergyPred, rho=SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam; // we're assuming fully-ionized gas with a simple equation-of-state here, nothing fancy, to get the temperature //
+        double kappa_abs = 1.e30*rho*pow(T_eff,-3.5);
+        return (0.35 + kappa_abs) * fac;
+    }
 #endif
 #ifdef RT_HARD_XRAY
     /* opacity comes from H+He (Thompson) + metal ions */
@@ -465,6 +472,54 @@ double rt_kappa(int i, int k_freq)
 }
 
 
+
+
+
+
+
+
+/***********************************************************************************************************/
+/* calculate absorbed fraction of opacity = 1-albedo = kappa_absorption / (kappa_scattering + kappa_absorption) needed for RT operations */
+/***********************************************************************************************************/
+double rt_absorb_frac_albedo(int i, int k_freq)
+{
+#ifdef RT_CHEM_PHOTOION
+    if(k_freq==RT_FREQ_BIN_H0)  {return 1.-1.e-6;} /* negligible scattering for ionizing radiation */
+#if defined(RT_CHEM_PHOTOION_HE) && defined(RT_PHOTOION_MULTIFREQUENCY)
+    if(k_freq==RT_FREQ_BIN_He0 || k_freq==RT_FREQ_BIN_He1 || k_freq==RT_FREQ_BIN_He2)  {return 1.-1.e-6;}
+#endif
+#endif
+
+#if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) || defined(RT_INFRARED) /* these have mixed opacities from dust(assume albedo=1/2), ionization(albedo=0), and Thompson (albedo=1) */
+    double fac=All.UnitMass_in_g * All.HubbleParam / (All.UnitLength_in_cm * All.UnitLength_in_cm); /* units */
+#ifdef METALS
+    Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
+#endif
+#ifdef RT_HARD_XRAY /* opacity comes from H+He (Thompson) + metal ions -- assume 0 scattering from ions, 1 from Thompson */
+    if(k_freq==RT_FREQ_BIN_HARD_XRAY) {return 1.-0.5*(0. + DMIN(1.,0.35*fac/rt_kappa(i,k_freq)));}
+#endif
+#ifdef RT_SOFT_XRAY /* opacity comes from H+He (Thompson) + metal ions -- assume 0 scattering from ions, 1 from Thompson */
+    if(k_freq==RT_FREQ_BIN_SOFT_XRAY) {return 1.-0.5*(0. + DMIN(1.,0.35*fac/rt_kappa(i,k_freq)));}
+#endif
+#ifdef RT_INFRARED /* opacity comes from Thompson + dust -- assume 0.5 scattering from dust, 1 from Thompson */
+    if(k_freq==RT_FREQ_BIN_INFRARED) {return 1.-0.5*(1. + DMIN(1.,0.35*fac/rt_kappa(i,k_freq)));}
+#endif
+#endif
+    
+#ifdef RT_FREEFREE
+    if(k_freq==RT_FREQ_BIN_FREEFREE)
+    {
+        double T_eff=0.59*(GAMMA(target)-1.)*U_TO_TEMP_UNITS*SphP[i].InternalEnergyPred, rho=SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam, kappa_abs = 1.e30*rho*pow(T_eff,-3.5);
+        return kappa_abs / (0.35 + kappa_abs);
+    }
+#endif
+    
+    return 0.5; /* default to assuming kappa_scattering = kappa_absorption (pretty reasonable for dust at most wavelengths) */
+}
+
+
+
+
 #endif // #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
 
 
@@ -491,7 +546,7 @@ double rt_kappa(int i, int k_freq)
 double rt_absorption_rate(int i, int k_freq)
 {
     /* should be equal to (c * Kappa_opacity * rho) */
-    return C_LIGHT_CODE_REDUCED * rt_kappa(i, k_freq) * SphP[i].Density*All.cf_a3inv;
+    return C_LIGHT_CODE_REDUCED * rt_absorb_frac_albedo(i, k_freq) * rt_kappa(i, k_freq) * SphP[i].Density*All.cf_a3inv;
 }
 #endif 
 
@@ -662,7 +717,8 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 double radacc[3]={0}, rmag=0, L_particle = Get_Particle_Size(i)*All.cf_atime; // particle effective size/slab thickness
                 double Sigma_particle = P[i].Mass / (M_PI*L_particle*L_particle); // effective surface density through particle
                 double abs_per_kappa_dt = c_light_reduced * (SphP[i].Density*All.cf_a3inv) * dt_entr; // fractional absorption over timestep
-                double slabfac_rp = slab_averaging_function(SphP[i].Kappa_RT[kf]*Sigma_particle) * slab_averaging_function(SphP[i].Kappa_RT[kf]*abs_per_kappa_dt); // reduction factor for absorption over dt
+                double f_kappa_abs = rt_absorb_frac_albedo(i,kf); // get albedo, we'll need this below
+                double slabfac_rp = slab_averaging_function(f_kappa_abs*SphP[i].Kappa_RT[kf]*Sigma_particle) * slab_averaging_function(f_kappa_abs*SphP[i].Kappa_RT[kf]*abs_per_kappa_dt); // reduction factor for absorption over dt
                 int kx; for(kx=0;kx<3;kx++)
                 {
                     radacc[kx] = -dt_entr * slabfac_rp * SphP[i].Lambda_FluxLim[kf] * SphP[i].Gradients.E_gamma_ET[kf][kx] / SphP[i].Density; // naive radiation-pressure calc for FLD methods
@@ -680,13 +736,11 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #endif
                     rmag = rmag_max;
 #endif
-                    double f_kappa_abs = 1;
-                    double f_kappa_scatter = 0;
                     double work_band = 0;
                     for(kx=0;kx<3;kx++)
                     {
                         double radacc_abs = f_kappa_abs * radacc[kx] * rmag;
-                        double radacc_scatter = f_kappa_scatter * radacc[kx] * rmag;
+                        double radacc_scatter = (1.-f_kappa_abs) * radacc[kx] * rmag;
                         double radacc_eff = radacc_abs + radacc_scatter;
                         if(mode==0)
                         {
@@ -884,6 +938,12 @@ void rt_init_intensity_directions(void)
 /***********************************************************************************************************/
 void rt_get_lum_gas(int target, double *je)
 {
+#ifdef RT_FREEFREE
+    int k = RT_FREQ_BIN_FREEFREE;
+    double t_eff = 0.59 * (GAMMA(target)-1.) * U_TO_TEMP_UNITS * SphP[target].InternalEnergyPred; // we're assuming fully-ionized gas with a simple equation-of-state here, nothing fancy, to get the temperature //
+    double flux_unit_fac = All.UnitEnergy_in_cgs / (All.UnitTime_in_s * (All.UnitLength_in_cm * All.UnitLength_in_cm)) * All.HubbleParam*All.HubbleParam; // needed for units conversion below //
+    je[k] = rt_absorb_frac_albedo(target,k) * rt_kappa(target,k) * P[target].Mass * ((4. * 5.67e-5) * t_eff*t_eff*t_eff*t_eff) / flux_unit_fac; // blackbody emissivity (Kirchoff's law): account for albedo [absorption opacity], and units //
+#endif
 }
 
 

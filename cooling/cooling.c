@@ -1105,11 +1105,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
 #ifdef RT_PHOTOELECTRIC
             double photoelec = SphP[target].E_gamma[RT_FREQ_BIN_PHOTOELECTRIC] * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * All.UnitPressure_in_cgs * All.HubbleParam*All.HubbleParam / 3.9e-14; // convert to Habing field //
-            if(photoelec > 0)
-            {
-                //photoelec *= slab_averaging_function(SphP[target].Kappa_RT[RT_FREQ_BIN_PHOTOELECTRIC] * Sigma_particle); // * slab_averaging_function(SphP[target].Kappa_RT[RT_FREQ_BIN_PHOTOELECTRIC] * abs_per_kappa_dt);
-                if(photoelec > 1.0e4) {photoelec = 1.e4;}
-            }
+            if(photoelec > 0) {if(photoelec > 1.0e4) {photoelec = 1.e4;}}
 #endif
             if(photoelec > 0)
             {

@@ -1404,7 +1404,7 @@ void hydro_gradient_calc(void)
                         if(R < Rmin) {R=Rmin;}
                         R /= (1.e-55 + All.cf_atime * SphP[i].Kappa_RT[k_freq] * (SphP[i].Density*All.cf_a3inv)); /* dimensionless (all in physical) */
                         /* now we can apply the actual slope-limiter function desired */
-                        R_ET = 1.*R;
+                        R_ET = 3.*R;
                         lambda = 3. * (2. + R_ET) / (6. + 3.*R_ET + R_ET*R_ET);
                         if(lambda < 1e-30) lambda = 1.e-30;
 #ifdef RT_OTVET

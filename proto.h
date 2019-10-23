@@ -719,6 +719,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum, double *chimes_
 int rt_get_source_luminosity(int i, double sigma_0, double *lum);
 #endif 
 double rt_kappa(int j, int k_freq);
+double rt_absorb_frac_albedo(int j, int k_freq);
 double rt_absorption_rate(int i, int k_freq);
 double rt_diffusion_coefficient(int i, int k_freq);
 void rt_eddington_update_calculation(int j);
