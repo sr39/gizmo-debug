@@ -522,13 +522,19 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
 
     double bin_dt = pow(10.0, binstart+(k+1)*log_bin_dt) - (k==0? 0.0 :pow(10.0, binstart + k*log_bin_dt));
 
-    if (star_age + dt > pow(10.0, binstart+(k+1)*log_bin_dt)){ // goes over multiple bins!!
-       double tstart = star_age;
+    if ((star_age + dt*0.5 > pow(10.0, binstart+(k+1)*log_bin_dt)) || 
+       ( star_age - 0.5*dt < pow(10.0, binstart+(k)*log_bin_dt))){ // goes over multiple bins!!
+       
+       if (star_age - 0.5*dt < pow(10.0, binstart+(k)*log_bin_dt)){
+         k = k - 1;
+       }
 
-       while ( tstart < star_age + dt){
+       double tstart = star_age - 0.5*dt;
+
+       while ( tstart < star_age + dt*0.5){
            // do fractional / full injection for each bin we cross:
            bin_dt      =   pow(10.0, binstart + (k+1)*log_bin_dt) - pow(10.0, binstart+k*log_bin_dt);
-           double tend =   DMIN(   pow(10.0,binstart+(k+1)*log_bin_dt),   star_age + dt);
+           double tend =   DMIN(   pow(10.0,binstart+(k+1)*log_bin_dt),   star_age + dt*0.5);
            in->yields[k+k_age_start] += ((tend - tstart) / bin_dt) * M_norm;
            tstart = tend;
            k++;
@@ -541,12 +547,20 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
 
 #else
    double bin_dt      =   All.AgeTracerTimeBins[k+1] - All.AgeTracerTimeBins[k];
-   if (star_age + dt > All.AgeTracerTimeBins[k+1] ){ // goes over multiple bins!!
-      double tstart = star_age;
-      while ( tstart < star_age + dt){
+   if ((star_age + 0.5*dt > All.AgeTracerTimeBins[k+1]) ||
+       (star_age - 0.5*dt < All.AgeTracerTimeBins[k])) { // goes over multiple bins!!
+
+      double tstart = star_age - 0.5*dt;
+
+      if (star_age - 0.5*dt < All.AgeTracerTimeBins[k]){
+        k = k - 1;
+        bin_dt = All.AgeTracerTimeBins[k+1]-All.AgeTracerTimeBins[k];
+      }
+
+      while ( tstart < star_age + dt*0.5){
           // do fractional here:
           bin_dt      =   All.AgeTracerTimeBins[k+1] - All.AgeTracerTimeBins[k];
-          double tend =   DMIN(   All.AgeTracerTimeBins[k+1],   star_age + dt);
+          double tend =   DMIN(   All.AgeTracerTimeBins[k+1],   star_age + dt*0.5);
           in->yields[k+k_age_start] += ((tend - tstart) / bin_dt) * M_norm;
           tstart = tend;
           k++;
