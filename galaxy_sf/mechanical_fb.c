@@ -482,10 +482,23 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* inject metals */
                 /* AJE: Make sure this works with age tracers. Particularly the normalization (massratio and metallicity scaling) */
                 for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}
+
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-                /* AJE make sure normalization is OK here - just plain ol' sum this*/
-                for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + wk*local.yields[k];}
+
+                
+                if (fb_loop_iteration == 3){ // add age tracers in taking yields to mean MASS 
+                    for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + pnorm*local.yields[k]/P[j].Mass;}
+
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_SURFACE_YIELDS
+                } else { // else:
+                    for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k]=(1.0-massratio_ejecta)*P[j].Metallicity[k]+massratio_ejecta*local.yields[k];}
 #endif
+                }
+
+                /* AJE make sure normalization is OK here - just plain ol' sum this*/
+//                for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + wk*local.yields[k];}
+#endif
+
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
                 if(fb_loop_iteration == 2) continue; // for r-process, nothing left here to bother coupling //
                 if(fb_loop_iteration == 3) continue; // for age tracers, nothing left here to bother coupling //
@@ -796,10 +809,25 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef METALS
                 /* inject metals */
                 for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}
+
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-                /* AJE make sure normalization is OK here - just plain ol' sum this*/
-                for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + pnorm*local.yields[k];}
+                  // keep age tracers as fraction (to make constant tracer-metallicity as stars loose mass)
+                  // so e.g. M_age_O = sum(age_bin_O_i * age_bin_i_tracer_amount) * particle_mass
+
+       	       	if (fb_loop_iteration == 3){ // add age tracers in taking yields to mean MASS
+                    for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + pnorm*local.yields[k]/P[j].Mass;}
+
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_SURFACE_YIELDS
+       	       	} else { // else:              
+       	       	    for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k]=(1.0-massratio_ejecta)*P[j].Metallicity[k]+massratio_ejecta*local.yields[k];}
 #endif
+                }
+
+//                  for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + pnorm*local.yields[k]/P[j].Mass;}
+//                /* AJE make sure normalization is OK here - just plain ol' sum this*/
+//                for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + pnorm*local.yields[k];}
+#endif
+
 
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
                 if(fb_loop_iteration == 2) continue; // for r-process, nothing left here to bother coupling //

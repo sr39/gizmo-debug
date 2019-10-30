@@ -571,11 +571,12 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
    }
 #endif // custom bins
 
+/*
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_SURFACE_YIELDS
-    /* Now (optionally) compute the return of surface yields. Since accumulation
-       of metals in stars, and thus surface abundance return, is non-linear
-       we cannot simply return some trivial factor times the current tracer
-       abundances. Must assume a mass loss rate model: */
+    // Now (optionally) compute the return of surface yields. Since accumulation
+    //   of metals in stars, and thus surface abundance return, is non-linear
+    //   we cannot simply return some trivial factor times the current tracer
+    //   abundances. Must assume a mass loss rate model:
    // To Do: change flag to integer parameter to switch between potential models
 
    //
@@ -619,6 +620,7 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
      P[i].Metallicity[k+k_age_start] *= (1.0-p);
    }
 #endif
+*/
 
 #endif // metals
     in->Msne = 1.0E-10 * SOLAR_MASS / All.UnitMass_in_g / All.HubbleParam; // small number just to be nonzero
@@ -675,8 +677,9 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
 #else
     // direct add in surface abundances without scaling to do better test
 #ifndef NO_SURFACE_ABUNDANCES
-    for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {yields[k]=yields[k] + P[i].Metallicity[k];}
-#endif    
+    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k] + P[i].Metallicity[k];}
+    for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){in->yields[k]=yields[k];} // since this isn't handled later
+#endif
 #endif
 
 
@@ -697,9 +700,9 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
     int k; if(P[i].MassReturn_ThisTimeStep<=0) {in->Msne=0; return;} // no event
 #ifdef METALS
     /* assume track initial metallicity; turn on COOL_METAL_LINES_BY_SPECIES for more detailed tracking of light elements */
-    double yields[NUM_METAL_SPECIES-NUM_AGE_TRACERS]={0.0};
+    double yields[NUM_METAL_SPECIES]={0.0};
 #ifndef NO_SURFACE_ABUNDANCES
-    for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {yields[k]=P[i].Metallicity[k];} // return surface abundances, to leading order //
+    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k];} // return surface abundances, to leading order //
 #endif
     if(NUM_METAL_SPECIES>=10)
     {
@@ -723,7 +726,7 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
     } else {
         yields[0]=0.032; for(k=1;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {yields[k]=0.0;}
     }
-    for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) in->yields[k]=yields[k];
+    for(k=0;k<NUM_METAL_SPECIES;k++) in->yields[k]=yields[k];
 #endif
     in->Msne = P[i].Mass * P[i].MassReturn_ThisTimeStep; // mass (in code units) returned
 #ifdef SINGLE_STAR_SINK_DYNAMICS
