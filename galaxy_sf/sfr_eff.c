@@ -288,14 +288,14 @@ double get_starformation_rate(int i)
     double cs_eff = Particle_effective_soundspeed_i(i);    
     double k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
     
-#ifdef SINGLE_STAR_SINK_FORMATION
-#if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) || defined(EOS_GMC_BAROTROPIC) // if we have to deal with optically-thick thermo
-    double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
-    if(nHcgs > 1e13) cs_eff=DMIN(cs_eff, 2e4/All.UnitVelocity_in_cm_per_s); //1.62e5/All.UnitVelocity_in_cm_per_s); // limiter to permit sink formation in simulations that really resolve the opacity limit and bog down when an optically-thick core forms. Modify this if you want to follow first collapse more/less - scale as c_s ~ n^(1/5)
-#endif
+#ifdef SINGLE_STAR_SINK_FORMATION    
 #ifdef MAGNETIC
     double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
     cs_eff = sqrt(cs_eff*cs_eff + bmag/SphP[i].Density);
+#endif
+#if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) || defined(EOS_GMC_BAROTROPIC) // if we have to deal with optically-thick thermo
+    double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
+    if(nHcgs > 1e13) { cs_eff = DMIN(cs_eff, 2e4/All.UnitVelocity_in_cm_per_s);}  //1.62e5/All.UnitVelocity_in_cm_per_s); // limiter to permit sink formation in simulations that really resolve the opacity limit and bog down when an optically-thick core forms. Modify this if you want to follow first collapse more/less - scale as c_s ~ n^(1/5) 
 #endif
     k_cs = M_PI * cs_eff / (Get_Particle_Size(i)*All.cf_atime);
 #endif

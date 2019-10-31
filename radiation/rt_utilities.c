@@ -461,7 +461,7 @@ double rt_kappa(int i, int k_freq)
             if(dx_excess > 0) {kappa *= exp(0.57*dx_excess);} // assumes kappa scales linearly with temperature (1/lambda) above maximum in fit; pretty good approximation //
             kappa *= Zfac; // the above are all dust opacities, so they scale with metallicity
         }
-        kappa += 0.35; // Thompson scattering
+        kappa += 0.35 * SphP[i].Ne; // Thompson scattering
         return kappa * fac; // convert units and return
     }
 #endif
@@ -847,8 +847,8 @@ void rt_set_simple_inits(void)
         {
             int k;
 #ifdef RT_INFRARED
-            SphP[i].Dust_Temperature = get_min_allowed_dustIRrad_temperature(); // in K, floor = CMB temperature or 10K
-            SphP[i].Radiation_Temperature = SphP[i].Dust_Temperature;
+            SphP[i].Dust_Temperature = All.InitGasTemp; //get_min_allowed_dustIRrad_temperature(); // in K, floor = CMB temperature or 10K
+            SphP[i].Radiation_Temperature = All.InitGasTemp; //SphP[i].Dust_Temperature;
             SphP[i].Dt_E_gamma_T_weighted_IR = 0;
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
@@ -869,6 +869,10 @@ void rt_set_simple_inits(void)
             for(k = 0; k < N_RT_FREQ_BINS; k++)
             {
                 SphP[i].E_gamma[k] = MIN_REAL_NUMBER;
+                if(k==RT_FREQ_BIN_INFRARED) {
+                    SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] = 5.67e-5 * 4 / (C_LIGHT * RT_SPEEDOFLIGHT_REDUCTION) * pow(All.InitGasTemp,4.) / All.UnitPressure_in_cgs * P[i].Mass / (SphP[i].Density*All.cf_a3inv);
+                }
+                SphP[i].E_gamma_Pred[RT_FREQ_BIN_INFRARED] = SphP[i].E_gamma[RT_FREQ_BIN_INFRARED];                
                 SphP[i].ET[k][0]=SphP[i].ET[k][1]=SphP[i].ET[k][2]=1./3.; SphP[i].ET[k][3]=SphP[i].ET[k][4]=SphP[i].ET[k][5]=0;
                 SphP[i].Je[k] = 0;
                 SphP[i].Kappa_RT[k] = rt_kappa(i,k);
