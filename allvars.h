@@ -368,7 +368,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1
 #endif
-#define RT_DISABLE_R15_GRADIENTFIX
 #ifdef RT_INFRARED
 #define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
 #endif

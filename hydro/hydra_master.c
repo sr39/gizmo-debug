@@ -772,40 +772,29 @@ void hydro_final_operations_and_cleanup(void)
 #ifdef RT_RAD_PRESSURE_FORCES
 #if defined(RT_EVOLVE_FLUX)
             /* calculate the radiation pressure force */
-            double radacc[3]; radacc[0]=radacc[1]=radacc[2]=0; int k2;
-            for(k2=0;k2<N_RT_FREQ_BINS;k2++)
+            double radacc[3],fluxcorr; radacc[0]=radacc[1]=radacc[2]=0;  int kfreq;
+            for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++)
             {
-                // want to average over volume (through-slab) and over time (over absorption): both give one 'slab_fac' below //
-                double slabfac = 1;// slab_averaging_function(SphP[i].Kappa_RT[k2]*Sigma_particle) * slab_averaging_function(SphP[i].Kappa_RT[k2]*abs_per_kappa_dt); // (actually dt average not appropriate if there is a source, dx average implicit -already- in averaging operation of Riemann problem //
-#ifdef RT_DISABLE_R15_GRADIENTFIX
-                // use actual flux -- appropriate for highly optically-thick, multiple scattering bands //
-                for(k=0;k<3;k++) {radacc[k] += slabfac * SphP[i].Kappa_RT[k2] * (SphP[i].Flux_Pred[k2][k] * SphP[i].Density/P[i].Mass) / C_LIGHT_CODE_REDUCED;}
-#else
-                // use optically-thin flux: for optically thin cases this is better, but actually for thick cases, if optical depth is highly un-resolved, this is also better (see Appendices and discussion of Rosdahl et al. 2015)
-                double Fmag=0; for(k=0;k<3;k++) {Fmag+=SphP[i].Flux_Pred[k2][k]*SphP[i].Flux_Pred[k2][k];}
-#ifdef RT_INFRARED
-                if(k2==RT_FREQ_BIN_INFRARED) {for(k=0;k<3;k++) {radacc[k] += slabfac * SphP[i].Kappa_RT[k2] * (SphP[i].Flux_Pred[k2][k] * SphP[i].Density/P[i].Mass) / C_LIGHT_CODE_REDUCED;}}
-                else
+                double vol_inv = SphP[i].Density*All.cf_a3inv/P[i].Mass, f_kappa_abs = rt_absorb_frac_albedo(i,kfreq), vel_i[3], vdot_h[3], flux_i[3], flux_mag=0, erad_i=0, flux_corr=1, word_band=0;
+                erad_i = SphP[i].E_gamma_Pred[kfreq] * vol_inv;
+                for(k=0;k<3;k++) {flux_i[k]=SphP[i].Flux_Pred[kfreq][k]*vol_inv; vel_i[k]=SphP[i].VelPred[k]/All.cf_atime; vdot_h[k]=vel_i[k]*erad_i*(1. + SphP[i].ET[kfreq][k]); flux_mag+=flux_i[k]*flux_i[k];}
+                vdot_h[0] += erad_i*(vel_i[1]*SphP[i].ET[kfreq][3] + vel_i[2]*SphP[i].ET[kfreq][5]); vdot_h[1] += erad_i*(vel_i[0]*SphP[i].ET[kfreq][3] + vel_i[2]*SphP[i].ET[kfreq][4]); vdot_h[2] += erad_i*(vel_i[0]*SphP[i].ET[kfreq][5] + vel_i[1]*SphP[i].ET[kfreq][4]);
+                double flux_thin = erad_i * C_LIGHT_CODE_REDUCED; if(flux_mag>0) {flux_mag=sqrt(flux_mag);} else {flux_mag=1.e-20*flux_thin;}
+                flux_corr = DMIN(1., flux_thin/flux_mag);
+#if defined(RT_ENABLE_R15_GRADIENTFIX)
+                flux_corr = flux_thin/flux_mag; // set to maximum (optically thin limit)
 #endif
-                if(Fmag > 0)
+                for(k=0;k<3;k++)
                 {
-                    Fmag = sqrt(Fmag);
-                    double Fthin = SphP[i].E_gamma[k2] * C_LIGHT_CODE_REDUCED;
-                    double F_eff = DMAX(Fthin , Fmag), work_band=0;
-                    double f_abs = rt_absorb_frac_albedo(i, k2); // get albedo
-                    for(k=0;k<3;k++)
-                    {
-                        double radacc_abs = (F_eff/Fmag) * slabfac * f_abs * SphP[i].Kappa_RT[k2] * (SphP[i].Flux_Pred[k2][k] * SphP[i].Density/P[i].Mass) / C_LIGHT_CODE_REDUCED;
-                        double radacc_scatter = (F_eff/Fmag) * slabfac * (1.-f_abs) * SphP[i].Kappa_RT[k2] * (SphP[i].Flux_Pred[k2][k] * SphP[i].Density/P[i].Mass) / C_LIGHT_CODE_REDUCED;
-                        radacc[k] += radacc_abs + radacc_scatter; // contribution to acceleration
-                        work_band += radacc_scatter * P[i].Vel[k]/All.cf_atime * P[i].Mass; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
-                    }
-                    SphP[i].Dt_E_gamma[k2] -= work_band;
+                    radacc[k] += (SphP[i].Kappa_RT[kfreq]/C_LIGHT_CODE_REDUCED) * (flux_corr*flux_i[k] - vdot_h[k]); // note these 'vdoth' terms shouldn't be included in FLD, since its really assuming the entire right-hand-side of the flux equation reaches equilibrium with the pressure tensor, which gives the expression in rt_utilities
+                    work_band += radacc[k] * vel_i[k] * P[i].Mass; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit -- note that we have to be careful about the RSOL factors here! //
                 }
-#endif
+                SphP[i].Dt_E_gamma[kfreq] += (2.*f_kappa_abs-1.)*work_band;
+                SphP[i].DtInternalEnergy -= 2.*f_kappa_abs*work_band;
+                
 //#elif defined(RT_EVOLVE_EDDINGTON_TENSOR)
                     /* // -- moved for OTVET+FLD to drift-kick operation to deal with limiters more accurately -- // */
-                    //radacc[k] += -slabfac * SphP[i].Lambda_FluxLim[k2] * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density; // no speed of light reduction multiplier here //
+                    //radacc[k] += -SphP[i].Lambda_FluxLim[kfreq] * SphP[i].Gradients.E_gamma_ET[kfreq][k] / SphP[i].Density; // no speed of light reduction multiplier here //
             }
             for(k=0;k<3;k++)
             {

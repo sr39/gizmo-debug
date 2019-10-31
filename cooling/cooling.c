@@ -257,8 +257,16 @@ void do_the_cooling_for_particle(int i)
 
         
 #ifdef RT_INFRARED /* assume (for now) that all radiated/absorbed energy comes from the IR bin [not really correct, this should just be the dust term] */
-        SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] += -(unew-SphP[i].InternalEnergy) * P[i].Mass; /* energy gained by gas is lost here */
+        double de_u = -(unew-SphP[i].InternalEnergy) * P[i].Mass; /* energy gained by gas needs to be subtracted from radiation */
+        if(de_u<=-0.99*SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]) {de_u=-0.99*SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]; unew=DMAX(0.01*SphP[i].InternalEnergy , SphP[i].InternalEnergy-de_u/P[i].Mass);}
+        SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] += de_u; /* energy gained by gas is lost here */
         SphP[i].E_gamma_Pred[RT_FREQ_BIN_INFRARED] = SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]; /* updated drifted */
+        double momfac = de_u / All.cf_atime; int kv; // add leading-order relativistic corrections here, accounting for gas motion in the addition/subtraction to the flux
+#if defined(RT_EVOLVE_FLUX)
+        for(kv=0;kv<3;kv++) {SphP[i].Flux[RT_FREQ_BIN_INFRARED][kv] += momfac*SphP[i].VelPred[kv]; SphP[i].Flux_Pred[RT_FREQ_BIN_INFRARED][kv] += momfac*SphP[i].VelPred[kv];}
+#endif
+        momfac = 1. - de_u / (P[i].Mass * C_LIGHT_CODE_REDUCED*C_LIGHT_CODE_REDUCED); // back-reaction on gas from emission
+        for(kv=0;kv<3;kv++) {P[i].Vel[kv] *= momfac; SphP[i].VelPred[kv] *= momfac;}
 #endif
         
         
