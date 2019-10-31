@@ -40,10 +40,7 @@
 /*! Structure for communication during the kernel computation. Holds data that is sent to other processors  */
 static struct INPUT_STRUCT_NAME
 {
-    MyDouble Pos[3];
-    MyFloat Hsml;
-    MyFloat KernelSum_Around_RT_Source;
-    MyFloat Luminosity[N_RT_FREQ_BINS];
+    MyDouble Pos[3]; MyFloat Hsml, KernelSum_Around_RT_Source, Luminosity[N_RT_FREQ_BINS], Vel[3];
     int NodeList[NODELISTLENGTH];
 }
 *DATAIN_NAME, *DATAGET_NAME;
@@ -66,11 +63,11 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 #else
     dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
+#if defined(RT_EVOLVE_FLUX)
+    for(k=0; k<3; k++) {if(P[i].Type==0) {in->Vel[k] = SphP[i].VelPred[k];} else {in->Vel[k] = P[i].Vel[k];}}
 #endif
-    for(k=0; k<N_RT_FREQ_BINS; k++)
-    {
-        if(P[i].Type==0 || active_check==0) {in->Luminosity[k]=0;} else {in->Luminosity[k] = lum[k] * dt;}
-    }
+#endif
+    for(k=0; k<N_RT_FREQ_BINS; k++) {if(P[i].Type==0 || active_check==0) {in->Luminosity[k]=0;} else {in->Luminosity[k] = lum[k] * dt;}}
 }
 
 
@@ -151,14 +148,13 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 #ifdef BOX_PERIODIC	/* find the closest image in the given box size  */
                 NEAREST_XYZ(dp[0],dp[1],dp[2],1);
 #endif
-                double r2=0; for(k=0;k<3;k++) {r2 += dp[k]*dp[k];}
+                double r2=0,r,c_light_eff; for(k=0;k<3;k++) {r2 += dp[k]*dp[k];}
                 if(r2<=0) continue; // same particle //
                 if(r2>=h2) continue; // outside kernel //
                 // calculate kernel quantities //
                 double wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;
+                r = sqrt(r2); c_light_eff = C_LIGHT_CODE_REDUCED;
 #if defined(RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION)
-                double r = sqrt(r2);
-                double c_light_eff = C_LIGHT_CODE_REDUCED;
                 double dv0 = -1. / (c_light_eff * r);
                 double lmax_0 = DMAX(local.Hsml, r);
 #ifdef RT_EVOLVE_INTENSITIES
@@ -199,8 +195,11 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     double dflux = dE * c_light_eff / angle_wt_Inu_sum;
                     for(kv=0;kv<N_RT_INTENSITY_BINS;kv++) {SphP[j].Intensity[k][kv] += dflux * angle_wt_Inu[N_RT_INTENSITY_BINS]; SphP[j].Intensity_Pred[k][kv] += dflux * angle_wt_Inu[N_RT_INTENSITY_BINS];}
 #endif
+#endif // local extinction-corrected version gets the 'full' thin flux above: more general formulation allows these to build up self-consistently, since we don't know what the flux 'should' be in fact
+#if defined(RT_EVOLVE_FLUX) // add relativistic corrections here, which should be there in general. however we will ignore [here] the 'back-reaction' term, since we're assuming the source is a star or something like that, where this would be negligible. gas self gain/loss is handled separately.
+                    for(kv=0;kv<3;kv++) {SphP[j].Flux[k][kv] += dE*local.Vel[kv]/All.cf_atime; SphP[j].Flux_Pred[k][kv] += dE*local.Vel[kv]/All.cf_atime;}
 #endif
-#else
+#else // end discrete injection clause
                     SphP[j].Je[k] += dE; // treat continuously
 #endif
                 }

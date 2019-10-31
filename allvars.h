@@ -368,7 +368,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1
 #endif
-#define RT_DISABLE_R15_GRADIENTFIX
 #ifdef RT_INFRARED
 #define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
 #endif
@@ -917,13 +916,21 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #define RT_FREQ_BIN_OPTICAL_NIR (RT_FREQ_BIN_NUV+1)
 #endif
 
+#ifndef RT_FREEFREE
+#define RT_FREQ_BIN_FREEFREE (RT_OPTICAL_NIR+0)
+#else
+#define RT_FREQ_BIN_FREEFREE (RT_OPTICAL_NIR+1)
+#endif
+
+
+
 
 /* be sure to add all new wavebands to these lists, or else we will run into problems */
 /* ALSO, the IR bin here should be the last bin: add additional bins ABOVE this line */
 #ifndef RT_INFRARED
-#define RT_FREQ_BIN_INFRARED (RT_FREQ_BIN_OPTICAL_NIR+0)
+#define RT_FREQ_BIN_INFRARED (RT_FREEFREE+0)
 #else
-#define RT_FREQ_BIN_INFRARED (RT_FREQ_BIN_OPTICAL_NIR+1)
+#define RT_FREQ_BIN_INFRARED (RT_FREEFREE+1)
 #endif
 
 #define N_RT_FREQ_BINS (RT_FREQ_BIN_INFRARED+1)
