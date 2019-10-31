@@ -1404,7 +1404,7 @@ void hydro_gradient_calc(void)
                         if(R < Rmin) {R=Rmin;}
                         R /= (1.e-55 + All.cf_atime * SphP[i].Kappa_RT[k_freq] * (SphP[i].Density*All.cf_a3inv)); /* dimensionless (all in physical) */
                         /* now we can apply the actual slope-limiter function desired */
-                        R_ET = 1.*R;
+                        R_ET = 3.*R;
                         lambda = 3. * (2. + R_ET) / (6. + 3.*R_ET + R_ET*R_ET);
                         if(lambda < 1e-30) lambda = 1.e-30;
 #ifdef RT_OTVET
@@ -1507,7 +1507,7 @@ void hydro_gradient_calc(void)
 #ifdef RT_EVOLVE_EDDINGTON_TENSOR
             for(k1=0;k1<N_RT_FREQ_BINS;k1++)
             {
-                //local_slopelimiter(SphP[i].Gradients.E_gamma_ET[k1],GasGradDataPasser[i].Maxima.E_gamma[k1],GasGradDataPasser[i].Minima.E_gamma[k1],a_limiter,h_lim,stol);
+                local_slopelimiter(SphP[i].Gradients.E_gamma_ET[k1],GasGradDataPasser[i].Maxima.E_gamma[k1],GasGradDataPasser[i].Minima.E_gamma[k1],a_limiter,h_lim,stol);
                 local_slopelimiter(GasGradDataPasser[i].Gradients_E_gamma[k1],GasGradDataPasser[i].Maxima.E_gamma[k1],GasGradDataPasser[i].Minima.E_gamma[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion));
             }
 #endif
