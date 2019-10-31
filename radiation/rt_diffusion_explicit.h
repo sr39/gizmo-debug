@@ -12,6 +12,9 @@
 /* --------------------------------------------------------------------------------- */
 double c_light = C_LIGHT_CODE_REDUCED;
 {
+#ifdef HYDRO_SPH
+    double v_frame[3]=0; for(k=0;k<3;k++) {v_frame[k]=0.5*(local.Vel[k]+SphP[j].VelPred[k])/All.cf_atime;} // variable to use below //
+#endif
 #if !defined(RT_EVOLVE_FLUX) /* this means we just solve the diffusion equation for the eddington tensor, done in the loop below */
     int k_freq;
     for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
@@ -74,6 +77,11 @@ double c_light = C_LIGHT_CODE_REDUCED;
 #ifndef FREEZE_HYDRO
             cmag *= R_flux;
 #endif
+            
+            // now we need to add the advective flux. note we do this after the limiters above, since those are designed for the diffusive terms, and this is simpler and more stable. we do this zeroth order (super-diffusive, but that's fine for our purposes)
+            double v_Area_dot_rt=0; for(k=0;k<3;k++) {v_Area_dot_rt += v_frame[k] * Face_Area_Vec[k];}
+            cmag += -v_Area_dot_rt * 0.5*(scalar_i+scalar_j) / 3.; // need to be careful with the sign here. since this is an oriented area and A points from j to i, need to flip the sign here. the 1/3 owes to the fact that this is really the --pressure-- term for FLD-like methods, the energy term is implicitly part of the flux already if we're actually doing this correctly //
+
             cmag *= dt_hydrostep; // all in physical units //
             if(fabs(cmag) > 0)
             {
@@ -159,7 +167,10 @@ double c_light = C_LIGHT_CODE_REDUCED;
             double q = 0.5 * c_hll * (kernel.r*All.cf_atime) / fabs(MIN_REAL_NUMBER + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q); // physical
             double renormerFAC = DMIN(1.,fabs(cos_theta_face_flux*cos_theta_face_flux * q * hll_corr));            
             
-            
+            // now we need to add the advective flux. note we do this after the limiters above, since those are designed for the diffusive terms, and this is simpler and more stable. we do this zeroth order (super-diffusive, but that's fine for our purposes)
+            double v_Area_dot_rt=0; for(k=0;k<3;k++) {v_Area_dot_rt += v_frame[k] * Face_Area_Vec[k];}
+            cmag += -v_Area_dot_rt * 0.5*(scalar_i+scalar_j); // need to be careful with the sign here. since this is an oriented area and A points from j to i, need to flip the sign here //
+
             /* flux-limiter to ensure flow is always down the local gradient [no 'uphill' flow] */
             double f_direct = -Face_Area_Norm * c_hll * d_scalar * renormerFAC; // simple HLL term for frame moving at 1/2 inter-particle velocity: here not limited [physical units] //
             double sign_c0 = f_direct*cmag;
@@ -198,6 +209,11 @@ double c_light = C_LIGHT_CODE_REDUCED;
                     if(thold_hll < hll_mult_dmin) {hll_mult_dmin = thold_hll;}
                 }
             }
+                        
+            // now we need to add the advective flux. note we do this after the limiters above, since those are designed for the diffusive terms, and this is simpler and more stable. we do this zeroth order (super-diffusive, but that's fine for our purposes)
+            double flux_dot_face=0; for(k=0;k<3;k++) {flux_dot_face += 0.5*(flux_i[k]+flux_j[k]) * Face_Area_Vec[k];} // order of operations needs care here. following through on the divergence theorem carefully, the transport follows v, with A dotted into flux here, rather than A.v or some other law
+            for(k=0;k<3;k++) {cmag_flux[k] += -v_frame[k] * flux_dot_face;} // need to be careful with the sign here. since this is an oriented area and A points from j to i, need to flip the sign here //
+            
             for(k=0;k<3;k++)
             {
                 double f_direct = -Face_Area_Norm * c_hll * (flux_i[k] - flux_j[k]); // [physical units]

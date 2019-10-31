@@ -621,7 +621,7 @@ void rt_eddington_update_calculation(int j)
 void rt_update_driftkick(int i, double dt_entr, int mode)
 {
 #if defined(RT_EVOLVE_NGAMMA) || defined(RT_EVOLVE_INTENSITIES)
-    int kf, k_tmp;
+    int kf, k_tmp; double total_erad_emission_minus_absorption = 0;
 #if defined(RT_EVOLVE_INTENSITIES)
     for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[i].E_gamma[kf]=0; for(k_tmp=0;k_tmp<N_RT_INTENSITY_BINS;k_tmp++) {SphP[i].E_gamma[kf]+=RT_INTENSITY_BINS_DOMEGA*SphP[i].Intensity[kf][k_tmp];}}
 #endif
@@ -709,6 +709,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             double ef = e0 * e_abs_0 + total_de_dt * dt_entr * slabfac; // gives exact solution for dE/dt = -E*abs + de , the 'reduction factor' appropriately suppresses the source term //
             if((ef < 0)||(isnan(ef))) {ef=0;}
             double de_abs = e0 + total_de_dt * dt_entr - ef; // energy removed by absorption alone
+            double de_emission_minus_absorption = (ef - (e0 + SphP[i].Dt_E_gamma[kf] * dt_entr)); // total change, relative to what we would get with just advection (positive = net energy increase in the gas)
             if((dt_entr <= 0) || (de_abs <= 0)) {de_abs = 0;}
             
 #if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_EVOLVE_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX)
@@ -727,31 +728,25 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 if(rmag > 0)
                 {
                     rmag = sqrt(rmag); for(kx=0;kx<3;kx++) {radacc[kx] /= rmag;} // normalize
-                    double rmag_max = de_abs / (P[i].Mass * c_light_reduced); // limit magnitude to absorbed photon momentum
-#if defined(RT_DISABLE_R15_GRADIENTFIX)
+                    double rmag_max = de_abs / (P[i].Mass * c_light_reduced * (MIN_REAL_NUMBER + f_kappa_abs)); // limit magnitude to absorbed photon momentum
                     if(rmag > rmag_max) {rmag=rmag_max;}
-#else
-#ifdef RT_INFRARED
-                    if(kf!=RT_FREQ_BIN_INFRARED || rmag > rmag_max)
-#endif
-                    rmag = rmag_max;
+#if defined(RT_ENABLE_R15_GRADIENTFIX)
+                    rmag = rmag_max; // set to maximum (optically thin limit)
 #endif
                     double work_band = 0;
                     for(kx=0;kx<3;kx++)
                     {
-                        double radacc_abs = f_kappa_abs * radacc[kx] * rmag;
-                        double radacc_scatter = (1.-f_kappa_abs) * radacc[kx] * rmag;
-                        double radacc_eff = radacc_abs + radacc_scatter;
+                        double radacc_eff = radacc[kx] * rmag, workfac = radacc_eff * P[i].Mass / All.cf_atime; // note we have to be careful with our RSOL factors here!
                         if(mode==0)
                         {
                             P[i].Vel[kx] += radacc_eff;
-                            work_band += radacc_scatter * P[i].Vel[k]/All.cf_atime * P[i].Mass; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
+                            work_band += P[i].Vel[k] * workfac; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
                         } else {
                             SphP[i].VelPred[kx] += radacc_eff;
-                            work_band += radacc_scatter * SphP[i].VelPred[k]/All.cf_atime * P[i].Mass; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
+                            work_band += SphP[i].VelPred[k] * workfac; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
                         }
                     }
-                    if(mode==0) {SphP[i].E_gamma[k2] -= work_band;} else {SphP[i].E_gamma_Pred[k2] -= work_band;}
+                    if(mode==0) {SphP[i].E_gamma[k2] -= work_band*(1.-2.*f_kappa_abs); SphP[i].InternalEnergy += -2.*f_kappa_abs*work_band;} else {SphP[i].E_gamma_Pred[k2] -= work_band*(1.-2.*f_kappa_abs); SphP[i].InternalEnergyPred += -2.*f_kappa_abs*work_band;}
                 }
             }
 #endif
@@ -795,22 +790,39 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #endif
 
 #if defined(RT_EVOLVE_FLUX)
-            int k_dir; double f_mag=0;
-            for(k_dir=0;k_dir<3;k_dir++)
+            int k_dir; double f_mag=0, rho=SphP[i].Density*All.cf_a3inv, e_mid=0.5*(e0+ef), vdot_h[3], vel_i[3], DeltaFluxEff[3]; // use energy density averaged over this update for the operation below
+            for(k_dir=0;k_dir<3;k_dir++) {if(mode==0) {vel_i[k_dir]=P[i].Vel[k_dir]/All.cf_atime;} else {vel_i[k_dir]=SphP[i].VelPred[k_dir]/All.cf_atime;}} // need gas velocity at this time
+            double teqm_inv=SphP[i].Kappa_RT[kf]*rho*C_LIGHT_CODE_REDUCED, etoflux=e_mid*teqm_inv; // physical code units of 1/time, defines characteristic timescale for coming to equilibrium flux. see notes for CR second-order module for details. //
+            for(k_dir=0;k_dir<3;k_dir++) {vdot_h[k_dir]=vel_i[k_dir]*etoflux*(1. + SphP[i].ET[kf][k_dir]);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term //
+            vdot_h[0]+=etoflux*(vel_i[1]*SphP[i].ET[kf][3]+vel_i[2]*SphP[i].ET[kf][5]); vdot_h[1]+=etoflux*(vel_i[0]*SphP[i].ET[kf][3]+vel_i[2]*SphP[i].ET[kf][4]); vdot_h[2]+=etoflux*(vel_i[0]*SphP[i].ET[kf][5]+vel_i[1]*SphP[i].ET[kf][4]);
+            for(k_dir=0;k_dir<3;k_dir++) {DeltaFluxEff[k_dir] = (SphP[i].Dt_Flux[kf][k_dir] + vdot_h[k_dir]) * dt_entr;} // add the term from the neighbor computation to this term
+            double tau=dt_entr*teqm_inv, f00=exp(-tau), f11=(1.-f00)/tau;
+            if(tau > 0)
             {
-                double flux_0; if(mode==0) {flux_0 = SphP[i].Flux[kf][k_dir];} else {flux_0 = SphP[i].Flux_Pred[kf][k_dir];}
-                double flux_f = flux_0 * e_abs_0 + SphP[i].Dt_Flux[kf][k_dir] * dt_entr * slabfac; // gives exact solution for dE/dt = -E*abs + de , the 'reduction factor' appropriately suppresses the source term //
-                if(mode==0) {SphP[i].Flux[kf][k_dir] = flux_f;} else {SphP[i].Flux_Pred[kf][k_dir] = flux_f;}
-                f_mag += flux_f*flux_f; // magnitude of flux vector
-            }
-            if(f_mag > 0) // limit the flux according the physical (optically thin) maximum //
-            {
-                f_mag=sqrt(f_mag); double fmag_max = 1.1 * C_LIGHT_CODE * ef; // maximum flux should be optically-thin limit: e_gamma/c: here allow some tolerance for numerical leapfrogging in timestepping. NOT the reduced RSOL here.
-                if(f_mag > fmag_max) {for(k_dir=0;k_dir<3;k_dir++) {if(mode==0) {SphP[i].Flux[kf][k_dir] *= fmag_max/f_mag;} else {SphP[i].Flux_Pred[kf][k_dir] *= fmag_max/f_mag;}}}
+                if(tau <= 0.04) {f11=1.-0.5*tau+tau*tau/6.;} // some limits to prevent small/large number problems here
+                if(!isfinite(f00)) {f00=0.; f11=1./tau;} // some limits to prevent small/large number problems here
+                if(tau >= 20.) {f00=DMAX(0.,DMIN(2.e-9,f00)); f11=(1.-f00)/tau;} // some limits to prevent small/large number problems here
+                for(k_dir=0;k_dir<3;k_dir++)
+                {
+                    double flux_0; if(mode==0) {flux_0 = SphP[i].Flux[kf][k_dir];} else {flux_0 = SphP[i].Flux_Pred[kf][k_dir];}
+                    flux_0 += vel_i[k_dir] * de_emission_minus_absorption; // add Lorentz term from net energy injected by absorption and re-emission
+                    double flux_f = flux_0 * f00 + DeltaFluxEff[k_dir] * f11; // exact solution for dE/dt = -E*abs + de , the 'reduction factor' appropriately suppresses the source term //
+                    if(mode==0) {SphP[i].Flux[kf][k_dir] = flux_f;} else {SphP[i].Flux_Pred[kf][k_dir] = flux_f;}
+                    f_mag += flux_f*flux_f; // magnitude of flux vector
+                }
+                if(f_mag > 0) // limit the flux according the physical (optically thin) maximum //
+                {
+                    f_mag=sqrt(f_mag); double fmag_max = 1.1 * C_LIGHT_CODE * ef; // maximum flux should be optically-thin limit: e_gamma/c: here allow some tolerance for numerical leapfrogging in timestepping. NOT the reduced RSOL here.
+                    if(f_mag > fmag_max) {for(k_dir=0;k_dir<3;k_dir++) {if(mode==0) {SphP[i].Flux[kf][k_dir] *= fmag_max/f_mag;} else {SphP[i].Flux_Pred[kf][k_dir] *= fmag_max/f_mag;}}}
+                }
             }
 #endif
-        }
-    }
+            total_erad_emission_minus_absorption += de_emission_minus_absorption; // add to cumulative sum for back-reaction to gas
+        } // clause for radiation angle [needed for evolving intensities]
+    } // loop over frequencies
+    
+    double mom_fac = 1. - total_erad_emission_minus_absorption / (P[i].Mass * C_LIGHT_CODE_REDUCED*C_LIGHT_CODE_REDUCED); // back-reaction on gas from emission
+    {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {if(mode==0) {P[i].Vel[k_dir] *= mom_fac;} else {SphP[i].VelPred[k_dir] *= mom_fac;}}}
     if(mode > 0) {rt_eddington_update_calculation(i);} /* update the eddington tensor (if we calculate it) as well */
 #endif
 }
