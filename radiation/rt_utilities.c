@@ -644,22 +644,23 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #endif
         {
             kf = k_tmp; // normal loop
-            double e0, a0 = -rt_absorption_rate(i,kf);
+            double e0, dt_e_gamma_band=0, total_de_dt=0, a0 = -rt_absorption_rate(i,kf);
 #if defined(RT_EVOLVE_INTENSITIES)
             if(mode==0) {e0 = RT_INTENSITY_BINS_DOMEGA*SphP[i].Intensity[kf][k_angle];} else {e0 = RT_INTENSITY_BINS_DOMEGA*SphP[i].Intensity_Pred[kf][k_angle];}
-            double total_de_dt = SphP[i].Je[kf] + RT_INTENSITY_BINS_DOMEGA*SphP[i].Dt_Intensity[kf][k_angle];
+            dt_e_gamma_band = RT_INTENSITY_BINS_DOMEGA*SphP[i].Dt_Intensity[kf][k_angle];
 #else
             if(mode==0) {e0 = SphP[i].E_gamma[kf];} else {e0 = SphP[i].E_gamma_Pred[kf];}
-            double total_de_dt = SphP[i].Je[kf] + SphP[i].Dt_E_gamma[kf];
+            dt_e_gamma_band = SphP[i].Dt_E_gamma[kf];
 #endif
-            
+            total_de_dt = SphP[i].Je[kf] + dt_e_gamma_band;
+
 #ifdef RT_INFRARED
             if(kf == RT_FREQ_BIN_INFRARED)
             {
-                if((mode==0) && (SphP[i].Dt_E_gamma[kf]!=0) && (dt_entr>0)) // only update temperatures on kick operations //
+                if((mode==0) && (dt_e_gamma_band!=0) && (dt_entr>0)) // only update temperatures on kick operations //
                 {
                     // advected radiation changes temperature of radiation field, before absorption //
-                    double dE_fac = SphP[i].Dt_E_gamma[kf] * dt_entr; // change in energy from advection
+                    double dE_fac = dt_e_gamma_band * dt_entr; // change in energy from advection
                     double dTE_fac = SphP[i].Dt_E_gamma_T_weighted_IR * dt_entr; // T-weighted change from advection
                     double dE_abs = -e0 * (1. - exp(a0*dt_entr)); // change in energy from absorption
                     double rfac=1; if(dE_fac < -0.5*(e0+dE_abs)) {rfac=fabs(0.5*(e0+dE_abs))/fabs(dE_fac);} else {if(dE_fac > 0.5*e0) {rfac=0.5*e0/dE_fac;}}
@@ -671,7 +672,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                     a0 = -rt_absorption_rate(i,kf); // update absorption rate using the new radiation temperature //
                 }
                 double total_emission_rate = E_abs_tot + fabs(a0)*e0 + SphP[i].Je[kf]; // add the summed absorption as emissivity here //
-                total_de_dt = E_abs_tot + SphP[i].Je[kf] + SphP[i].Dt_E_gamma[kf];
+                total_de_dt = E_abs_tot + SphP[i].Je[kf] + dt_e_gamma_band;
                 if(fabs(a0)>0)
                 {
                     Dust_Temperature_4 = total_emission_rate * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. * (MIN_REAL_NUMBER + fabs(a0)) / c_light_reduced); // flux units
@@ -706,7 +707,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             double ef = e0 * e_abs_0 + total_de_dt * dt_entr * slabfac; // gives exact solution for dE/dt = -E*abs + de , the 'reduction factor' appropriately suppresses the source term //
             if((ef < 0)||(isnan(ef))) {ef=0;}
             double de_abs = e0 + total_de_dt * dt_entr - ef; // energy removed by absorption alone
-            double de_emission_minus_absorption = (ef - (e0 + SphP[i].Dt_E_gamma[kf] * dt_entr)); // total change, relative to what we would get with just advection (positive = net energy increase in the gas)
+            double de_emission_minus_absorption = (ef - (e0 + dt_e_gamma_band * dt_entr)); // total change, relative to what we would get with just advection (positive = net energy increase in the gas)
             if((dt_entr <= 0) || (de_abs <= 0)) {de_abs = 0;}
             
 #if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_EVOLVE_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX)
@@ -866,14 +867,13 @@ void rt_set_simple_inits(void)
             for(k = 0; k < N_RT_FREQ_BINS; k++)
             {
                 SphP[i].E_gamma[k] = MIN_REAL_NUMBER;
-                if(k==RT_FREQ_BIN_INFRARED) {
-                    SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] = 5.67e-5 * 4 / (C_LIGHT * RT_SPEEDOFLIGHT_REDUCTION) * pow(All.InitGasTemp,4.) / All.UnitPressure_in_cgs * P[i].Mass / (SphP[i].Density*All.cf_a3inv);
-                }
-                SphP[i].E_gamma_Pred[RT_FREQ_BIN_INFRARED] = SphP[i].E_gamma[RT_FREQ_BIN_INFRARED];                
                 SphP[i].ET[k][0]=SphP[i].ET[k][1]=SphP[i].ET[k][2]=1./3.; SphP[i].ET[k][3]=SphP[i].ET[k][4]=SphP[i].ET[k][5]=0;
                 SphP[i].Je[k] = 0;
                 SphP[i].Kappa_RT[k] = rt_kappa(i,k);
                 SphP[i].Lambda_FluxLim[k] = 1;
+#ifdef RT_INFRARED
+                if(k==RT_FREQ_BIN_INFRARED) {SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] = 5.67e-5 * 4 / (C_LIGHT * RT_SPEEDOFLIGHT_REDUCTION) * pow(All.InitGasTemp,4.) / All.UnitPressure_in_cgs * P[i].Mass / (SphP[i].Density*All.cf_a3inv);}
+#endif
 #ifdef RT_EVOLVE_NGAMMA
                 SphP[i].E_gamma_Pred[k] = SphP[i].E_gamma[k];
                 SphP[i].Dt_E_gamma[k] = 0;
@@ -991,7 +991,11 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *ne_guess, in
     double LambdaDust_initial_guess = 1.116e-32 * (Tdust_0-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * (P[target].Metallicity[0]/All.SolarAbundances[0]); // guess value based on the -current- values of T, Tdust //
         
     double egy_therm = SphP[target].InternalEnergyPred*P[target].Mass; // true internal energy (before this cooling loop)
-    double egy_rad   = SphP[target].E_gamma_Pred[RT_FREQ_BIN_INFRARED]; // true radiation field energy (before this cooling loop)
+#ifdef RT_EVOLVE_NGAMMA
+    double egy_rad = SphP[target].E_gamma_Pred[RT_FREQ_BIN_INFRARED]; // true radiation field energy (before this cooling loop)
+#else
+    double egy_rad = SphP[target].E_gamma[RT_FREQ_BIN_INFRARED]; // true radiation field energy (before this cooling loop) [prev-kicked is drifted by intensities]
+#endif
     double egy_tot = egy_rad + egy_therm; // true total energy [in code units]
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;    // effective hydrogen number dens in cgs units (just for normalization convention)
     double volume = (P[target].Mass / (SphP[target].Density*All.cf_a3inv)); // particle volume in code units
