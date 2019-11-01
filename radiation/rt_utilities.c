@@ -383,7 +383,7 @@ double rt_kappa(int i, int k_freq)
 #ifdef RT_FREEFREE /* pure (grey, non-relativistic) Thompson scattering opacity + free-free absorption opacity */
     if(k_freq==RT_FREQ_BIN_FREEFREE)
     {
-        double T_eff=0.59*(GAMMA(target)-1.)*U_TO_TEMP_UNITS*SphP[i].InternalEnergyPred, rho=SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam; // we're assuming fully-ionized gas with a simple equation-of-state here, nothing fancy, to get the temperature //
+        double T_eff=0.59*(GAMMA(i)-1.)*U_TO_TEMP_UNITS*SphP[i].InternalEnergyPred, rho=SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam; // we're assuming fully-ionized gas with a simple equation-of-state here, nothing fancy, to get the temperature //
         double kappa_abs = 1.e30*rho*pow(T_eff,-3.5);
         return (0.35 + kappa_abs) * fac;
     }
@@ -492,9 +492,6 @@ double rt_absorb_frac_albedo(int i, int k_freq)
 
 #if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) || defined(RT_INFRARED) /* these have mixed opacities from dust(assume albedo=1/2), ionization(albedo=0), and Thompson (albedo=1) */
     double fac=All.UnitMass_in_g * All.HubbleParam / (All.UnitLength_in_cm * All.UnitLength_in_cm); /* units */
-#ifdef METALS
-    Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
-#endif
 #ifdef RT_HARD_XRAY /* opacity comes from H+He (Thompson) + metal ions -- assume 0 scattering from ions, 1 from Thompson */
     if(k_freq==RT_FREQ_BIN_HARD_XRAY) {return 1.-0.5*(0. + DMIN(1.,0.35*fac/rt_kappa(i,k_freq)));}
 #endif
@@ -502,14 +499,14 @@ double rt_absorb_frac_albedo(int i, int k_freq)
     if(k_freq==RT_FREQ_BIN_SOFT_XRAY) {return 1.-0.5*(0. + DMIN(1.,0.35*fac/rt_kappa(i,k_freq)));}
 #endif
 #ifdef RT_INFRARED /* opacity comes from Thompson + dust -- assume 0.5 scattering from dust, 1 from Thompson */
-    if(k_freq==RT_FREQ_BIN_INFRARED) {return 1.-0.5*(1. + DMIN(1.,0.35*fac/rt_kappa(i,k_freq)));}
+    if(k_freq==RT_FREQ_BIN_INFRARED) {return 1.-0.5*(1. + DMIN(1.,0.35*SphP[i].Ne*fac/rt_kappa(i,k_freq)));}
 #endif
 #endif
     
 #ifdef RT_FREEFREE
     if(k_freq==RT_FREQ_BIN_FREEFREE)
     {
-        double T_eff=0.59*(GAMMA(target)-1.)*U_TO_TEMP_UNITS*SphP[i].InternalEnergyPred, rho=SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam, kappa_abs = 1.e30*rho*pow(T_eff,-3.5);
+        double T_eff=0.59*(GAMMA(i)-1.)*U_TO_TEMP_UNITS*SphP[i].InternalEnergyPred, rho=SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam, kappa_abs = 1.e30*rho*pow(T_eff,-3.5);
         return kappa_abs / (0.35 + kappa_abs);
     }
 #endif
@@ -647,22 +644,23 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #endif
         {
             kf = k_tmp; // normal loop
-            double e0, a0 = -rt_absorption_rate(i,kf);
+            double e0, dt_e_gamma_band=0, total_de_dt=0, a0 = -rt_absorption_rate(i,kf);
 #if defined(RT_EVOLVE_INTENSITIES)
             if(mode==0) {e0 = RT_INTENSITY_BINS_DOMEGA*SphP[i].Intensity[kf][k_angle];} else {e0 = RT_INTENSITY_BINS_DOMEGA*SphP[i].Intensity_Pred[kf][k_angle];}
-            double total_de_dt = SphP[i].Je[kf] + RT_INTENSITY_BINS_DOMEGA*SphP[i].Dt_Intensity[kf][k_angle];
+            dt_e_gamma_band = RT_INTENSITY_BINS_DOMEGA*SphP[i].Dt_Intensity[kf][k_angle];
 #else
             if(mode==0) {e0 = SphP[i].E_gamma[kf];} else {e0 = SphP[i].E_gamma_Pred[kf];}
-            double total_de_dt = SphP[i].Je[kf] + SphP[i].Dt_E_gamma[kf];
+            dt_e_gamma_band = SphP[i].Dt_E_gamma[kf];
 #endif
-            
+            total_de_dt = SphP[i].Je[kf] + dt_e_gamma_band;
+
 #ifdef RT_INFRARED
             if(kf == RT_FREQ_BIN_INFRARED)
             {
-                if((mode==0) && (SphP[i].Dt_E_gamma[kf]!=0) && (dt_entr>0)) // only update temperatures on kick operations //
+                if((mode==0) && (dt_e_gamma_band!=0) && (dt_entr>0)) // only update temperatures on kick operations //
                 {
                     // advected radiation changes temperature of radiation field, before absorption //
-                    double dE_fac = SphP[i].Dt_E_gamma[kf] * dt_entr; // change in energy from advection
+                    double dE_fac = dt_e_gamma_band * dt_entr; // change in energy from advection
                     double dTE_fac = SphP[i].Dt_E_gamma_T_weighted_IR * dt_entr; // T-weighted change from advection
                     double dE_abs = -e0 * (1. - exp(a0*dt_entr)); // change in energy from absorption
                     double rfac=1; if(dE_fac < -0.5*(e0+dE_abs)) {rfac=fabs(0.5*(e0+dE_abs))/fabs(dE_fac);} else {if(dE_fac > 0.5*e0) {rfac=0.5*e0/dE_fac;}}
@@ -674,7 +672,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                     a0 = -rt_absorption_rate(i,kf); // update absorption rate using the new radiation temperature //
                 }
                 double total_emission_rate = E_abs_tot + fabs(a0)*e0 + SphP[i].Je[kf]; // add the summed absorption as emissivity here //
-                total_de_dt = E_abs_tot + SphP[i].Je[kf] + SphP[i].Dt_E_gamma[kf];
+                total_de_dt = E_abs_tot + SphP[i].Je[kf] + dt_e_gamma_band;
                 if(fabs(a0)>0)
                 {
                     Dust_Temperature_4 = total_emission_rate * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. * (MIN_REAL_NUMBER + fabs(a0)) / c_light_reduced); // flux units
@@ -709,7 +707,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             double ef = e0 * e_abs_0 + total_de_dt * dt_entr * slabfac; // gives exact solution for dE/dt = -E*abs + de , the 'reduction factor' appropriately suppresses the source term //
             if((ef < 0)||(isnan(ef))) {ef=0;}
             double de_abs = e0 + total_de_dt * dt_entr - ef; // energy removed by absorption alone
-            double de_emission_minus_absorption = (ef - (e0 + SphP[i].Dt_E_gamma[kf] * dt_entr)); // total change, relative to what we would get with just advection (positive = net energy increase in the gas)
+            double de_emission_minus_absorption = (ef - (e0 + dt_e_gamma_band * dt_entr)); // total change, relative to what we would get with just advection (positive = net energy increase in the gas)
             if((dt_entr <= 0) || (de_abs <= 0)) {de_abs = 0;}
             
 #if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_EVOLVE_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX)
@@ -740,13 +738,19 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                         if(mode==0)
                         {
                             P[i].Vel[kx] += radacc_eff;
-                            work_band += P[i].Vel[k] * workfac; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
+                            work_band += P[i].Vel[kx] * workfac; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
                         } else {
                             SphP[i].VelPred[kx] += radacc_eff;
-                            work_band += SphP[i].VelPred[k] * workfac; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
+                            work_band += SphP[i].VelPred[kx] * workfac; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
                         }
                     }
-                    if(mode==0) {SphP[i].E_gamma[k2] -= work_band*(1.-2.*f_kappa_abs); SphP[i].InternalEnergy += -2.*f_kappa_abs*work_band;} else {SphP[i].E_gamma_Pred[k2] -= work_band*(1.-2.*f_kappa_abs); SphP[i].InternalEnergyPred += -2.*f_kappa_abs*work_band;}
+                    double d_egy_rad = (2.*f_kappa_abs-1.)*work_band , d_egy_int = -2.*f_kappa_abs*work_band;
+                    if(mode==0) {SphP[i].InternalEnergy += d_egy_int;} else {SphP[i].InternalEnergyPred += d_egy_int;}
+#if defined(RT_EVOLVE_INTENSITIES)
+                    {int k_q; for(k_q=0;k_q<N_RT_INTENSITY_BINS;k_q++) {if(mode==0) {SphP[i].Intensity[kf][k_q]+=d_egy_rad/RT_INTENSITY_BINS_DOMEGA;} else {SphP[i].Intensity_Pred[kf][k_q]+=d_egy_rad/RT_INTENSITY_BINS_DOMEGA;}}}
+#else
+                    if(mode==0) {SphP[i].E_gamma[kf]+=d_egy_rad;} else {SphP[i].E_gamma_Pred[kf]+=d_egy_rad;}
+#endif
                 }
             }
 #endif
@@ -869,14 +873,13 @@ void rt_set_simple_inits(void)
             for(k = 0; k < N_RT_FREQ_BINS; k++)
             {
                 SphP[i].E_gamma[k] = MIN_REAL_NUMBER;
-                if(k==RT_FREQ_BIN_INFRARED) {
-                    SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] = 5.67e-5 * 4 / (C_LIGHT * RT_SPEEDOFLIGHT_REDUCTION) * pow(All.InitGasTemp,4.) / All.UnitPressure_in_cgs * P[i].Mass / (SphP[i].Density*All.cf_a3inv);
-                }
-                SphP[i].E_gamma_Pred[RT_FREQ_BIN_INFRARED] = SphP[i].E_gamma[RT_FREQ_BIN_INFRARED];                
                 SphP[i].ET[k][0]=SphP[i].ET[k][1]=SphP[i].ET[k][2]=1./3.; SphP[i].ET[k][3]=SphP[i].ET[k][4]=SphP[i].ET[k][5]=0;
                 SphP[i].Je[k] = 0;
                 SphP[i].Kappa_RT[k] = rt_kappa(i,k);
                 SphP[i].Lambda_FluxLim[k] = 1;
+#ifdef RT_INFRARED
+                if(k==RT_FREQ_BIN_INFRARED) {SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] = 5.67e-5 * 4 / (C_LIGHT * RT_SPEEDOFLIGHT_REDUCTION) * pow(All.InitGasTemp,4.) / All.UnitPressure_in_cgs * P[i].Mass / (SphP[i].Density*All.cf_a3inv);}
+#endif
 #ifdef RT_EVOLVE_NGAMMA
                 SphP[i].E_gamma_Pred[k] = SphP[i].E_gamma[k];
                 SphP[i].Dt_E_gamma[k] = 0;
@@ -994,7 +997,11 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *ne_guess, in
     double LambdaDust_initial_guess = 1.116e-32 * (Tdust_0-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * (P[target].Metallicity[0]/All.SolarAbundances[0]); // guess value based on the -current- values of T, Tdust //
         
     double egy_therm = SphP[target].InternalEnergyPred*P[target].Mass; // true internal energy (before this cooling loop)
-    double egy_rad   = SphP[target].E_gamma_Pred[RT_FREQ_BIN_INFRARED]; // true radiation field energy (before this cooling loop)
+#ifdef RT_EVOLVE_NGAMMA
+    double egy_rad = SphP[target].E_gamma_Pred[RT_FREQ_BIN_INFRARED]; // true radiation field energy (before this cooling loop)
+#else
+    double egy_rad = SphP[target].E_gamma[RT_FREQ_BIN_INFRARED]; // true radiation field energy (before this cooling loop) [prev-kicked is drifted by intensities]
+#endif
     double egy_tot = egy_rad + egy_therm; // true total energy [in code units]
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;    // effective hydrogen number dens in cgs units (just for normalization convention)
     double volume = (P[target].Mass / (SphP[target].Density*All.cf_a3inv)); // particle volume in code units

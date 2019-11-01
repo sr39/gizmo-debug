@@ -775,7 +775,7 @@ void hydro_final_operations_and_cleanup(void)
             double radacc[3],fluxcorr; radacc[0]=radacc[1]=radacc[2]=0;  int kfreq;
             for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++)
             {
-                double vol_inv = SphP[i].Density*All.cf_a3inv/P[i].Mass, f_kappa_abs = rt_absorb_frac_albedo(i,kfreq), vel_i[3], vdot_h[3], flux_i[3], flux_mag=0, erad_i=0, flux_corr=1, word_band=0;
+                double vol_inv = SphP[i].Density*All.cf_a3inv/P[i].Mass, f_kappa_abs = rt_absorb_frac_albedo(i,kfreq), vel_i[3], vdot_h[3], flux_i[3], flux_mag=0, erad_i=0, flux_corr=1, work_band=0;
                 erad_i = SphP[i].E_gamma_Pred[kfreq] * vol_inv;
                 for(k=0;k<3;k++) {flux_i[k]=SphP[i].Flux_Pred[kfreq][k]*vol_inv; vel_i[k]=SphP[i].VelPred[k]/All.cf_atime; vdot_h[k]=vel_i[k]*erad_i*(1. + SphP[i].ET[kfreq][k]); flux_mag+=flux_i[k]*flux_i[k];}
                 vdot_h[0] += erad_i*(vel_i[1]*SphP[i].ET[kfreq][3] + vel_i[2]*SphP[i].ET[kfreq][5]); vdot_h[1] += erad_i*(vel_i[0]*SphP[i].ET[kfreq][3] + vel_i[2]*SphP[i].ET[kfreq][4]); vdot_h[2] += erad_i*(vel_i[0]*SphP[i].ET[kfreq][5] + vel_i[1]*SphP[i].ET[kfreq][4]);
