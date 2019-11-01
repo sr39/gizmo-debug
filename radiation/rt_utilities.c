@@ -492,9 +492,6 @@ double rt_absorb_frac_albedo(int i, int k_freq)
 
 #if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) || defined(RT_INFRARED) /* these have mixed opacities from dust(assume albedo=1/2), ionization(albedo=0), and Thompson (albedo=1) */
     double fac=All.UnitMass_in_g * All.HubbleParam / (All.UnitLength_in_cm * All.UnitLength_in_cm); /* units */
-#ifdef METALS
-    Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
-#endif
 #ifdef RT_HARD_XRAY /* opacity comes from H+He (Thompson) + metal ions -- assume 0 scattering from ions, 1 from Thompson */
     if(k_freq==RT_FREQ_BIN_HARD_XRAY) {return 1.-0.5*(0. + DMIN(1.,0.35*fac/rt_kappa(i,k_freq)));}
 #endif
@@ -502,7 +499,7 @@ double rt_absorb_frac_albedo(int i, int k_freq)
     if(k_freq==RT_FREQ_BIN_SOFT_XRAY) {return 1.-0.5*(0. + DMIN(1.,0.35*fac/rt_kappa(i,k_freq)));}
 #endif
 #ifdef RT_INFRARED /* opacity comes from Thompson + dust -- assume 0.5 scattering from dust, 1 from Thompson */
-    if(k_freq==RT_FREQ_BIN_INFRARED) {return 1.-0.5*(1. + DMIN(1.,0.35*fac/rt_kappa(i,k_freq)));}
+    if(k_freq==RT_FREQ_BIN_INFRARED) {return 1.-0.5*(1. + DMIN(1.,0.35*SphP[i].Ne*fac/rt_kappa(i,k_freq)));}
 #endif
 #endif
     
