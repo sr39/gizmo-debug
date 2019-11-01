@@ -917,9 +917,9 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #endif
 
 #ifndef RT_FREEFREE
-#define RT_FREQ_BIN_FREEFREE (RT_OPTICAL_NIR+0)
+#define RT_FREQ_BIN_FREEFREE (RT_FREQ_BIN_OPTICAL_NIR+0)
 #else
-#define RT_FREQ_BIN_FREEFREE (RT_OPTICAL_NIR+1)
+#define RT_FREQ_BIN_FREEFREE (RT_FREQ_BIN_OPTICAL_NIR+1)
 #endif
 
 
@@ -928,9 +928,9 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 /* be sure to add all new wavebands to these lists, or else we will run into problems */
 /* ALSO, the IR bin here should be the last bin: add additional bins ABOVE this line */
 #ifndef RT_INFRARED
-#define RT_FREQ_BIN_INFRARED (RT_FREEFREE+0)
+#define RT_FREQ_BIN_INFRARED (RT_FREQ_BIN_FREEFREE+0)
 #else
-#define RT_FREQ_BIN_INFRARED (RT_FREEFREE+1)
+#define RT_FREQ_BIN_INFRARED (RT_FREQ_BIN_FREEFREE+1)
 #endif
 
 #define N_RT_FREQ_BINS (RT_FREQ_BIN_INFRARED+1)
