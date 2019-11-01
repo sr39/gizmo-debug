@@ -13,9 +13,9 @@
 double c_light = C_LIGHT_CODE_REDUCED;
 {
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
-    double v_frame[3]=0; for(k=0;k<3;k++) {v_frame[k]=0.5*(ParticleVel_j[k] + local.ParticleVel[k]);} // frame velocity, not fluid velocity, is what appears here
+    double v_frame[3]={0}; for(k=0;k<3;k++) {v_frame[k]=0.5*(ParticleVel_j[k] + local.ParticleVel[k]);} // frame velocity, not fluid velocity, is what appears here
 #else
-    double v_frame[3]=0; for(k=0;k<3;k++) {v_frame[k]=0.5*(local.Vel[k]+SphP[j].VelPred[k])/All.cf_atime;} // variable to use below //
+    double v_frame[3]={0}; for(k=0;k<3;k++) {v_frame[k]=0.5*(local.Vel[k]+SphP[j].VelPred[k])/All.cf_atime;} // variable to use below //
 #endif
 #if !defined(RT_EVOLVE_FLUX) /* this means we just solve the diffusion equation for the eddington tensor, done in the loop below */
     int k_freq;
