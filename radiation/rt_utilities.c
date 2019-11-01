@@ -737,13 +737,13 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                         if(mode==0)
                         {
                             P[i].Vel[kx] += radacc_eff;
-                            work_band += P[i].Vel[k] * workfac; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
+                            work_band += P[i].Vel[kx] * workfac; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
                         } else {
                             SphP[i].VelPred[kx] += radacc_eff;
-                            work_band += SphP[i].VelPred[k] * workfac; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
+                            work_band += SphP[i].VelPred[kx] * workfac; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
                         }
                     }
-                    if(mode==0) {SphP[i].E_gamma[k2] -= work_band*(1.-2.*f_kappa_abs); SphP[i].InternalEnergy += -2.*f_kappa_abs*work_band;} else {SphP[i].E_gamma_Pred[k2] -= work_band*(1.-2.*f_kappa_abs); SphP[i].InternalEnergyPred += -2.*f_kappa_abs*work_band;}
+                    if(mode==0) {SphP[i].E_gamma[kf] -= work_band*(1.-2.*f_kappa_abs); SphP[i].InternalEnergy += -2.*f_kappa_abs*work_band;} else {SphP[i].E_gamma_Pred[kf] -= work_band*(1.-2.*f_kappa_abs); SphP[i].InternalEnergyPred += -2.*f_kappa_abs*work_band;}
                 }
             }
 #endif
