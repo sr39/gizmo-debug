@@ -251,6 +251,9 @@ struct INPUT_STRUCT_NAME
 #ifdef RT_INFRARED
     MyDouble Radiation_Temperature;
 #endif
+#if defined(RT_EVOLVE_INTENSITIES)
+    MyDouble Intensity_Pred[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS];
+#endif
 #endif
     
 #ifdef TURB_DIFFUSION
@@ -337,14 +340,19 @@ struct OUTPUT_STRUCT_NAME
     MyDouble ChimesIonsYield[TOTSIZE]; 
 #endif 
     
+#if defined(RT_SOLVER_EXPLICIT)
 #if defined(RT_EVOLVE_ENERGY)
     MyFloat Dt_E_gamma[N_RT_FREQ_BINS];
-#if defined(RT_INFRARED)
-    MyFloat Dt_E_gamma_T_weighted_IR;
-#endif
 #endif
 #if defined(RT_EVOLVE_FLUX)
     MyFloat Dt_Flux[N_RT_FREQ_BINS][3];
+#endif
+#if defined(RT_INFRARED)
+    MyFloat Dt_E_gamma_T_weighted_IR;
+#endif
+#if defined(RT_EVOLVE_INTENSITIES)
+    MyFloat Dt_Intensity[N_RT_INTENSITY_BINS];
+#endif
 #endif
     
 #if defined(MAGNETIC)
@@ -464,10 +472,13 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
         in->Kappa_RT[k] = SphP[i].Kappa_RT[k];
         in->RT_DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
 #if defined(RT_EVOLVE_FLUX) || defined(HYDRO_SPH)
-        int k_dir; for(k_dir=0;k_dir<6;k_dir++) in->ET[k][k_dir] = SphP[i].ET[k][k_dir];
+        {int k_dir; for(k_dir=0;k_dir<6;k_dir++) in->ET[k][k_dir] = SphP[i].ET[k][k_dir];}
 #endif
 #ifdef RT_EVOLVE_FLUX
-        for(k_dir=0;k_dir<3;k_dir++) in->Flux[k][k_dir] = SphP[i].Flux_Pred[k][k_dir];
+        {int k_dir; for(k_dir=0;k_dir<3;k_dir++) in->Flux[k][k_dir] = SphP[i].Flux_Pred[k][k_dir];}
+#endif
+#if defined(RT_EVOLVE_INTENSITIES)
+        {int k_dir; for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++) {in->Intensity_Pred[k][k_dir] = SphP[i].Intensity_Pred[k][k_dir];}}
 #endif
     }
 #ifdef RT_INFRARED
@@ -579,16 +590,20 @@ static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int
       SphP[i].ChimesNIons[k] = DMAX(SphP[i].ChimesNIons[k] + out->ChimesIonsYield[k], 0.5 * SphP[i].ChimesNIons[k]); 
 #endif 
     
+#if defined(RT_SOLVER_EXPLICIT)
 #if defined(RT_EVOLVE_ENERGY)
     for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] += out->Dt_E_gamma[k];}
-#if defined(RT_INFRARED)
-    SphP[i].Dt_E_gamma_T_weighted_IR += out->Dt_E_gamma_T_weighted_IR;
-#endif
 #endif
 #if defined(RT_EVOLVE_FLUX)
     for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Flux[k][k_dir] += out->Dt_Flux[k][k_dir];}}
 #endif
-
+#if defined(RT_INFRARED)
+    SphP[i].Dt_E_gamma_T_weighted_IR += out->Dt_E_gamma_T_weighted_IR;
+#endif
+#if defined(RT_EVOLVE_INTENSITIES)
+    for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++) {SphP[i].Dt_Intensity[k][k_dir] += out->Dt_Intensity[k][k_dir];}}
+#endif
+#endif
     
 #if defined(MAGNETIC)
     /* can't just do DtB += out-> DtB, because for SPH methods, the induction equation is solved in the density loop; need to simply add it here */
@@ -907,14 +922,22 @@ void hydro_force_initial_operations_preloop(void)
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtMass = 0; SphP[i].dMass = 0; for(k=0;k<3;k++) SphP[i].GravWorkTerm[k] = 0;
 #endif
+#if defined(RT_SOLVER_EXPLICIT)
 #if defined(RT_EVOLVE_ENERGY)
             for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] = 0;}
-#if defined(RT_INFRARED)
-            SphP[i].Dt_E_gamma_T_weighted_IR = 0;
-#endif
 #endif
 #if defined(RT_EVOLVE_FLUX)
             for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Flux[k][k_dir] = 0;}}
+#endif
+#if defined(RT_INFRARED)
+            SphP[i].Dt_E_gamma_T_weighted_IR = 0;
+#endif
+#if defined(RT_EVOLVE_FLUX)
+            for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Flux[k][k_dir] = 0;}}
+#endif
+#if defined(RT_EVOLVE_INTENSITIES)
+            for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++) {SphP[i].Dt_Intensity[k][k_dir] = 0;}}
+#endif
 #endif
 #ifdef MAGNETIC
             SphP[i].divB = 0; for(k=0;k<3;k++) {SphP[i].Face_Area[k] = 0;}
