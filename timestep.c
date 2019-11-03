@@ -669,7 +669,7 @@ integertime get_timestep(int p,		/*!< particle index */
                 double dt_rad = 1.e10 * dt;
                 for(kf=0;kf<N_RT_FREQ_BINS;kf++)
                 {
-#if defined(RT_SOLVER_EXPLICIT) && !defined(RT_EVOLVE_FLUX) /* for explicit diffusion, we include the usual second-order diffusion timestep */
+#if defined(RT_SOLVER_EXPLICIT) && defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX) /* for explicit diffusion, we include the usual second-order diffusion timestep */
                     double gradETmag=0; for(k=0;k<3;k++) {gradETmag += SphP[p].Gradients.E_gamma_ET[kf][k]*SphP[p].Gradients.E_gamma_ET[kf][k];}
                     double L_ETgrad_inv = sqrt(gradETmag) / (1.e-37 + SphP[p].E_gamma[kf] * SphP[p].Density/P[p].Mass);
                     double L_RT_diffusion = DMAX(L_particle , 1./(L_ETgrad_inv + 1./L_particle)) * All.cf_atime;
@@ -689,10 +689,10 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 #endif
 #if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX) // here the acceleration isn't saved to RadAccel so we calculate that timestep constraint
-                    double gradErad=0; for(k=0;k<3;k++) {gradErad+=SphP[p].Gradients.E_gamma_ET[kfreq][k]*SphP[p].Gradients.E_gamma_ET[kfreq][k];}
-                    double radacc = (sqrt(gradErad) / SphP[i].Density) / All.cf_atime; // radiation acceleration for a timestep criterion
+                    double gradErad=0; for(k=0;k<3;k++) {gradErad+=SphP[p].Gradients.E_gamma_ET[kf][k]*SphP[p].Gradients.E_gamma_ET[kf][k];}
+                    double radacc = (sqrt(gradErad) / SphP[p].Density) / All.cf_atime; // radiation acceleration for a timestep criterion
 #ifdef RT_FLUXLIMITER
-                    radacc *= SphP[i].Lambda_FluxLim[kfreq]; // apply flux-limiter
+                    radacc *= SphP[p].Lambda_FluxLim[kf]; // apply flux-limiter
 #endif
                     if(gradErad > 0 && radacc > 0)
                     {

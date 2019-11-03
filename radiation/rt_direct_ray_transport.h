@@ -10,7 +10,7 @@
  */
 /* --------------------------------------------------------------------------------- */
 
-#ifdef RT_EVOLVE_INTENSITIES
+#if defined(RT_EVOLVE_INTENSITIES) && defined(CODE_IN_PROGRESS_DEBUG)
 if(local.Mass>0 && P[j].Mass>0 && dt_hydrostep>0 && Face_Area_Norm>0)
 {
     double c_light = C_LIGHT_CODE_REDUCED; // RSOL
