@@ -266,9 +266,6 @@
 #endif
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
 #else
-#if (defined(COOLING) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)) && !defined(FIRE_UNPROTECT_FROZEN)
-#define PROTECT_FROZEN_FIRE
-#endif
 #endif // FIRE_PHYSICS_DEFAULTS clauses
 
 #ifdef PROTECT_FROZEN_FIRE
