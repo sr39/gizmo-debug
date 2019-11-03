@@ -96,13 +96,6 @@
 */
 
 
-
-/* determine if we need to evolve the radiation fields in the hydro routine with the flag below */
-#if defined(RT_EVOLVE_NGAMMA)
-#define RT_EVOLVE_NGAMMA_IN_HYDRO
-#endif
-
-
 static double fac_mu, fac_vsic_fix;
 #ifdef MAGNETIC
 static double fac_magnetic_pressure;
@@ -224,7 +217,7 @@ struct INPUT_STRUCT_NAME
 #ifdef DOGRAD_SOUNDSPEED
         MyDouble SoundSpeed[3];
 #endif
-#if defined(RT_DIFFUSION_EXPLICIT) && defined(RT_EVOLVE_EDDINGTON_TENSOR)
+#if defined(RT_SOLVER_EXPLICIT) && defined(RT_COMPGRAD_EDDINGTON_TENSOR)
         MyDouble E_gamma_ET[N_RT_FREQ_BINS][3];
 #endif
     } Gradients;
@@ -245,7 +238,7 @@ struct INPUT_STRUCT_NAME
     MyDouble ChimesNIons[TOTSIZE]; 
 #endif 
     
-#ifdef RT_DIFFUSION_EXPLICIT
+#ifdef RT_SOLVER_EXPLICIT
     MyDouble E_gamma[N_RT_FREQ_BINS];
     MyDouble Kappa_RT[N_RT_FREQ_BINS];
     MyDouble RT_DiffusionCoeff[N_RT_FREQ_BINS];
@@ -344,7 +337,7 @@ struct OUTPUT_STRUCT_NAME
     MyDouble ChimesIonsYield[TOTSIZE]; 
 #endif 
     
-#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+#if defined(RT_EVOLVE_ENERGY)
     MyFloat Dt_E_gamma[N_RT_FREQ_BINS];
 #if defined(RT_INFRARED)
     MyFloat Dt_E_gamma_T_weighted_IR;
@@ -455,15 +448,19 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #ifdef DOGRAD_SOUNDSPEED
         in->Gradients.SoundSpeed[k] = SphP[i].Gradients.SoundSpeed[k];
 #endif
-#if defined(RT_DIFFUSION_EXPLICIT) && defined(RT_EVOLVE_EDDINGTON_TENSOR)
+#if defined(RT_SOLVER_EXPLICIT) && defined(RT_COMPGRAD_EDDINGTON_TENSOR)
         for(j=0;j<N_RT_FREQ_BINS;j++) {in->Gradients.E_gamma_ET[j][k] = SphP[i].Gradients.E_gamma_ET[j][k];}
 #endif
     }
 
-#ifdef RT_DIFFUSION_EXPLICIT
+#ifdef RT_SOLVER_EXPLICIT
     for(k=0;k<N_RT_FREQ_BINS;k++)
     {
+#ifdef RT_EVOLVE_ENERGY
         in->E_gamma[k] = SphP[i].E_gamma_Pred[k];
+#else
+        in->E_gamma[k] = SphP[i].E_gamma[k];
+#endif
         in->Kappa_RT[k] = SphP[i].Kappa_RT[k];
         in->RT_DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
 #if defined(RT_EVOLVE_FLUX) || defined(HYDRO_SPH)
@@ -582,7 +579,7 @@ static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int
       SphP[i].ChimesNIons[k] = DMAX(SphP[i].ChimesNIons[k] + out->ChimesIonsYield[k], 0.5 * SphP[i].ChimesNIons[k]); 
 #endif 
     
-#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+#if defined(RT_EVOLVE_ENERGY)
     for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] += out->Dt_E_gamma[k];}
 #if defined(RT_INFRARED)
     SphP[i].Dt_E_gamma_T_weighted_IR += out->Dt_E_gamma_T_weighted_IR;
@@ -769,15 +766,13 @@ void hydro_final_operations_and_cleanup(void)
             // = du/dlna -3*(gamma-1)*u ; then dlna/dt = H(z) =  All.cf_hubble_a //
             
             
-#ifdef RT_RAD_PRESSURE_FORCES
-#if defined(RT_EVOLVE_FLUX)
+#if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_EVOLVE_FLUX) //#elif defined(RT_COMPGRAD_EDDINGTON_TENSOR) /* // -- moved for OTVET+FLD to drift-kick operation to deal with limiters more accurately -- // */
             /* calculate the radiation pressure force */
             double radacc[3],fluxcorr; radacc[0]=radacc[1]=radacc[2]=0;  int kfreq;
             for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++)
             {
                 double vol_inv = SphP[i].Density*All.cf_a3inv/P[i].Mass, f_kappa_abs = rt_absorb_frac_albedo(i,kfreq), vel_i[3], vdot_h[3], flux_i[3], flux_mag=0, erad_i=0, flux_corr=1, work_band=0;
-                erad_i = SphP[i].E_gamma_Pred[kfreq] * vol_inv;
-                for(k=0;k<3;k++) {flux_i[k]=SphP[i].Flux_Pred[kfreq][k]*vol_inv; vel_i[k]=SphP[i].VelPred[k]/All.cf_atime; vdot_h[k]=vel_i[k]*erad_i*(1. + SphP[i].ET[kfreq][k]); flux_mag+=flux_i[k]*flux_i[k];}
+                erad_i = SphP[i].E_gamma_Pred[kfreq]*vol_inv; for(k=0;k<3;k++) {flux_i[k]=SphP[i].Flux_Pred[kfreq][k]*vol_inv; vel_i[k]=SphP[i].VelPred[k]/All.cf_atime; vdot_h[k]=vel_i[k]*erad_i*(1. + SphP[i].ET[kfreq][k]); flux_mag+=flux_i[k]*flux_i[k];}
                 vdot_h[0] += erad_i*(vel_i[1]*SphP[i].ET[kfreq][3] + vel_i[2]*SphP[i].ET[kfreq][5]); vdot_h[1] += erad_i*(vel_i[0]*SphP[i].ET[kfreq][3] + vel_i[2]*SphP[i].ET[kfreq][4]); vdot_h[2] += erad_i*(vel_i[0]*SphP[i].ET[kfreq][5] + vel_i[1]*SphP[i].ET[kfreq][4]);
                 double flux_thin = erad_i * C_LIGHT_CODE_REDUCED; if(flux_mag>0) {flux_mag=sqrt(flux_mag);} else {flux_mag=1.e-20*flux_thin;}
                 flux_corr = DMIN(1., flux_thin/flux_mag);
@@ -791,20 +786,15 @@ void hydro_final_operations_and_cleanup(void)
                 }
                 SphP[i].Dt_E_gamma[kfreq] += (2.*f_kappa_abs-1.)*work_band;
                 SphP[i].DtInternalEnergy -= 2.*f_kappa_abs*work_band;
-                
-//#elif defined(RT_EVOLVE_EDDINGTON_TENSOR)
-                    /* // -- moved for OTVET+FLD to drift-kick operation to deal with limiters more accurately -- // */
-                    //radacc[k] += -SphP[i].Lambda_FluxLim[kfreq] * SphP[i].Gradients.E_gamma_ET[kfreq][k] / SphP[i].Density; // no speed of light reduction multiplier here //
             }
             for(k=0;k<3;k++)
             {
 #ifdef RT_RAD_PRESSURE_OUTPUT
-                SphP[i].RadAccel[k] = radacc[k];
+                SphP[i].RadAccel[k] = radacc[k]; // physical units, as desired
 #else
-                SphP[i].HydroAccel[k] += radacc[k];
+                SphP[i].HydroAccel[k] += radacc[k]; // physical units, as desired
 #endif
             } 
-#endif
 #endif
 
             
@@ -917,7 +907,7 @@ void hydro_force_initial_operations_preloop(void)
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtMass = 0; SphP[i].dMass = 0; for(k=0;k<3;k++) SphP[i].GravWorkTerm[k] = 0;
 #endif
-#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+#if defined(RT_EVOLVE_ENERGY)
             for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] = 0;}
 #if defined(RT_INFRARED)
             SphP[i].Dt_E_gamma_T_weighted_IR = 0;
