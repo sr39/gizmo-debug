@@ -10,13 +10,20 @@
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 /* --------------------------------------------------------------------------------- */
-double c_light = C_LIGHT_CODE_REDUCED;
 {
+    // first define some variables needed regardless //
+    double c_light = C_LIGHT_CODE_REDUCED;
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
     double v_frame[3]={0}; for(k=0;k<3;k++) {v_frame[k]=0.5*(ParticleVel_j[k] + local.ParticleVel[k])/All.cf_atime;} // frame velocity, not fluid velocity, is what appears here
 #else
     double v_frame[3]={0}; for(k=0;k<3;k++) {v_frame[k]=0.5*(local.Vel[k]+SphP[j].VelPred[k])/All.cf_atime;} // variable to use below //
 #endif
+#if defined(RT_INFRARED)
+    double Fluxes_E_gamma_T_weighted_IR = 0;
+#endif
+    double Fluxes_E_gamma[N_RT_FREQ_BINS];
+    
+    
 #if !defined(RT_EVOLVE_FLUX) /* this means we just solve the diffusion equation for the eddington tensor, done in the loop below */
     int k_freq;
     for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
@@ -109,6 +116,7 @@ double c_light = C_LIGHT_CODE_REDUCED;
 
 
     int k_freq;
+    double Fluxes_Flux[N_RT_FREQ_BINS][3];
     double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + c_light; // physical units
     double V_i_phys = V_i / All.cf_a3inv;
     double V_j_phys = V_j / All.cf_a3inv;
