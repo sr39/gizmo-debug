@@ -107,13 +107,13 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
     double vcsa2_i = kernel.sound_i*kernel.sound_i + kernel.alfven2_i;
 #endif // MAGNETIC //
 
-#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+#if defined(RT_EVOLVE_ENERGY)
     double Fluxes_E_gamma[N_RT_FREQ_BINS];
     double tau_c_i[N_RT_FREQ_BINS];
     for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Kappa_RT[k]*local.Density*All.cf_a3inv;}
+#endif
 #ifdef RT_EVOLVE_FLUX
     double Fluxes_Flux[N_RT_FREQ_BINS][3];
-#endif
 #endif
 
     
@@ -171,9 +171,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
-#ifdef BOX_PERIODIC  /* find the closest image in the given box size  */
-                NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
-#endif
+                NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1); /* find the closest image in the given box size  */
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 kernel.h_j = PPP[j].Hsml;
                 
@@ -319,11 +317,11 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
         face_vel_i = face_vel_j = 0;
         for(k=0;k<3;k++) 
         {
-        face_vel_i += local.Vel[k] * kernel.dp[k] / (kernel.r * All.cf_atime); 
-        face_vel_j += SphP[j].VelPred[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
+            face_vel_i += local.Vel[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
+            face_vel_j += SphP[j].VelPred[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
         }
         // SPH: use the sph 'effective areas' oriented along the lines between particles and direct-difference gradients
-        Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density);
+        Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density) * All.cf_atime*All.cf_atime;
         for(k=0;k<3;k++) {Face_Area_Vec[k] = Face_Area_Norm * kernel.dp[k]/kernel.r;}
 #endif
 
@@ -378,7 +376,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #include "../galaxy_sf/cosmic_ray_diffusion.h"
 #endif
                 
-#ifdef RT_DIFFUSION_EXPLICIT
+#ifdef RT_SOLVER_EXPLICIT
 #if defined(RT_EVOLVE_INTENSITIES)
 #include "../radiation/rt_direct_ray_transport.h"
 #else

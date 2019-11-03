@@ -21,13 +21,14 @@
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
-#if defined(RT_RAD_PRESSURE_FORCES)
+#if defined(GALSF) && !defined(RT_INJECT_PHOTONS_DISCRETELY)
+#define RT_INJECT_PHOTONS_DISCRETELY // modules will not work correctly with differential timestepping with point sources without discrete injection
+#endif
+#if defined(RT_INJECT_PHOTONS_DISCRETELY) && defined(RT_RAD_PRESSURE_FORCES) && (defined(RT_ENABLE_R15_GRADIENTFIX) || defined(GALSF))
 #define RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION // adds correction for un-resolved extinction which cannot generate photon momentum with M1, FLD, OTVET, etc.
 #endif
 
-#if defined(GALSF) && !defined(RT_INJECT_PHOTONS_DISCRETELY)
-#define RT_INJECT_PHOTONS_DISCRETELY
-#endif
+
 
 #ifdef RT_SOURCE_INJECTION
 
@@ -145,9 +146,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 if(P[j].Type != 0) continue; // require a gas particle //
                 if(P[j].Mass <= 0) continue; // require the particle has mass //
                 double dp[3]; for(k=0; k<3; k++) {dp[k] = local.Pos[k] - P[j].Pos[k];}
-#ifdef BOX_PERIODIC	/* find the closest image in the given box size  */
-                NEAREST_XYZ(dp[0],dp[1],dp[2],1);
-#endif
+                NEAREST_XYZ(dp[0],dp[1],dp[2],1); /* find the closest image in the given box size  */
                 double r2=0,r,c_light_eff; for(k=0;k<3;k++) {r2 += dp[k]*dp[k];}
                 if(r2<=0) continue; // same particle //
                 if(r2>=h2) continue; // outside kernel //
@@ -155,7 +154,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 double wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;
                 r = sqrt(r2); c_light_eff = C_LIGHT_CODE_REDUCED;
 #if defined(RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION)
-                double dv0 = -1. / (c_light_eff * r);
+                double dv0 = -1. / (c_light_eff * r) * All.cf_atime;
                 double lmax_0 = DMAX(local.Hsml, r);
 #ifdef RT_EVOLVE_INTENSITIES
                 int kx; double angle_wt_Inu_sum=0, angle_wt_Inu[N_RT_INTENSITY_BINS];
@@ -176,7 +175,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     double dE = wk * local.Luminosity[k];
 #if defined(RT_INJECT_PHOTONS_DISCRETELY)
                     SphP[j].E_gamma[k] += dE;
-#ifdef RT_EVOLVE_NGAMMA
+#ifdef RT_EVOLVE_ENERGY
                     SphP[j].E_gamma_Pred[k] += dE; // dump discreetly (noisier, but works smoothly with large timebin hierarchy)
 #endif
 #if defined(RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION)

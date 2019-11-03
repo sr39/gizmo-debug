@@ -260,7 +260,7 @@ void do_the_cooling_for_particle(int i)
         double de_u = -(unew-SphP[i].InternalEnergy) * P[i].Mass; /* energy gained by gas needs to be subtracted from radiation */
         if(de_u<=-0.99*SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]) {de_u=-0.99*SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]; unew=DMAX(0.01*SphP[i].InternalEnergy , SphP[i].InternalEnergy-de_u/P[i].Mass);}
         SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] += de_u; /* energy gained by gas is lost here */
-#if defined(RT_EVOLVE_NGAMMA)
+#if defined(RT_EVOLVE_ENERGY)
         SphP[i].E_gamma_Pred[RT_FREQ_BIN_INFRARED] = SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]; /* updated drifted */
 #elif defined(RT_EVOLVE_INTENSITIES)
         int k_tmp; for(k_tmp=0;k_tmp<N_RT_INTENSITY_BINS;k_tmp++) {SphP[i].Intensity[RT_FREQ_BIN_INFRARED][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA; SphP[i].Intensity_Pred[RT_FREQ_BIN_INFRARED][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA;}
