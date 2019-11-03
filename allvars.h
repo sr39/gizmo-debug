@@ -512,12 +512,13 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 /* options for FIRE RT method */
 #if defined(GALSF_FB_FIRE_RT_LONGRANGE)
-#ifndef RT_LEBRON
 #define RT_LEBRON // this flag requires lebron for rhd
-#endif
 #endif
 #if defined(RT_LEBRON)
 #define RT_USE_GRAVTREE // use gravity tree for flux propagation
+#if !defined(GALSF_FB_FIRE_RT_LONGRANGE)
+#define RADTRANSFER // for cross-compatibility reasons, if the FIRE version is not on, need RADTRANSFER flag also enabled
+#endif
 #endif
 
 /* check whether we want to use the implicit solver [only usable for very special cases, not recommended] */
