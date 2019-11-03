@@ -161,10 +161,8 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 // pre-compute a set of weights based on the projection of the particle position along the radial direction for the radiation direction //
                 for(kx=0;kx<N_RT_INTENSITY_BINS;kx++)
                 {
-                    double cos_t=0; int kq; for(kq=0;kq<3;kq++) {cos_t+=dp[kq]*All.RT_Intensity_Direction[kx][kq];}
-                    cos_t *= -1/r;
-                    double wt_function = cos_t*cos_t*cos_t*cos_t;
-                    if(cos_t < 0) {wt_function=0;}
+                    double cos_t=0; int kq; for(kq=0;kq<3;kq++) {cos_t+=All.RT_Intensity_Direction[kx][kq]*dp[kq]/r;}
+                    double wt_function = cos_t*cos_t*cos_t*cos_t; if(cos_t < 0) {wt_function=0;}
                     angle_wt_Inu[kx] = wt_function; angle_wt_Inu_sum += angle_wt_Inu[kx];
                 }
 #endif
@@ -191,7 +189,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     for(kv=0;kv<3;kv++) {SphP[j].Flux[k][kv] += dflux*dp[kv]; SphP[j].Flux_Pred[k][kv] += dflux*dp[kv];}
 #endif
 #ifdef RT_EVOLVE_INTENSITIES
-                    double dflux = dE * c_light_eff / angle_wt_Inu_sum;
+                    double dflux = dE / angle_wt_Inu_sum;
                     for(kv=0;kv<N_RT_INTENSITY_BINS;kv++) {SphP[j].Intensity[k][kv] += dflux * angle_wt_Inu[N_RT_INTENSITY_BINS]; SphP[j].Intensity_Pred[k][kv] += dflux * angle_wt_Inu[N_RT_INTENSITY_BINS];}
 #endif
 #endif // local extinction-corrected version gets the 'full' thin flux above: more general formulation allows these to build up self-consistently, since we don't know what the flux 'should' be in fact

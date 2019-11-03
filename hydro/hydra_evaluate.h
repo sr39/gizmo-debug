@@ -107,15 +107,9 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
     double vcsa2_i = kernel.sound_i*kernel.sound_i + kernel.alfven2_i;
 #endif // MAGNETIC //
 
-#if defined(RT_EVOLVE_ENERGY)
-    double Fluxes_E_gamma[N_RT_FREQ_BINS];
-    double tau_c_i[N_RT_FREQ_BINS];
-    for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Kappa_RT[k]*local.Density*All.cf_a3inv;}
+#ifdef RT_SOLVER_EXPLICIT
+    double tau_c_i[N_RT_FREQ_BINS]; for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Kappa_RT[k]*local.Density*All.cf_a3inv;}
 #endif
-#ifdef RT_EVOLVE_FLUX
-    double Fluxes_Flux[N_RT_FREQ_BINS][3];
-#endif
-
     
     /* --------------------------------------------------------------------------------- */
     /* Now start the actual SPH computation for this particle */
@@ -261,9 +255,6 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif
 #ifdef TURB_DIFF_METALS
                 double mdot_estimated = 0;
-#endif
-#if defined(RT_INFRARED)
-                double Fluxes_E_gamma_T_weighted_IR = 0;
 #endif
                 
                 /* --------------------------------------------------------------------------------- */
