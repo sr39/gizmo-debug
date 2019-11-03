@@ -351,7 +351,7 @@ struct OUTPUT_STRUCT_NAME
     MyFloat Dt_E_gamma_T_weighted_IR;
 #endif
 #if defined(RT_EVOLVE_INTENSITIES)
-    MyFloat Dt_Intensity[N_RT_INTENSITY_BINS];
+    MyFloat Dt_Intensity[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS];
 #endif
 #endif
     
