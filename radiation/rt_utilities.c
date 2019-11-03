@@ -795,38 +795,38 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #if defined(RT_EVOLVE_INTENSITIES)
     for(kf=0;kf<N_RT_FREQ_BINS;kf++)
     {
-        int k,k_om,N_om=N_RT_INTENSITY_BINS; double rho=SphP[i].Density*All.cf_a3inv, ceff=C_LIGHT_CODE_REDUCED, teq_inv=SphP[i].Kappa_RT[kf]*rho*ceff, beta[3], f_a=rt_absorb_frac_albedo(i,kf), f_s=1.-f_a, b_dot_n[N_om]={0}, beta_2=0.;
+        int k,k_om; double rho=SphP[i].Density*All.cf_a3inv, ceff=C_LIGHT_CODE_REDUCED, teq_inv=SphP[i].Kappa_RT[kf]*rho*ceff, beta[3], f_a=rt_absorb_frac_albedo(i,kf), f_s=1.-f_a, b_dot_n[N_RT_INTENSITY_BINS]={0}, beta_2=0.;
         int n_iter = 1 + (int)(DMIN(DMAX(4. , dt_entr/teq_inv), 1000.)); // number of iterations to subcycle everything below //
-        double dt=dt_entr/n_iter, tau=dt*teq_inv, i0[N_om]={0}, invfourpi=1./(4.*M_PI), J, b_dot_H, b2_dot_K; int i_iter;
-        for(i_ter=0; i_iter<n_iter; i_iter++)
+        double dt=dt_entr/n_iter, tau=dt*teq_inv, i0[N_RT_INTENSITY_BINS]={0}, invfourpi=1./(4.*M_PI), J, b_dot_H, b2_dot_K; int i_iter;
+        for(i_iter=0; i_iter<n_iter; i_iter++)
         {
             double egy_0=0,flux_0[3]={0},egy_f=0,flux_f[3]={0}; // compute total change over sub-cycle, to update gas properties
             // load all the gas and intensity properties we need [all can change on the subcycle so some re-computing here]
-            for(k_om=0;k_om<N_om;k_om++) {if(mode==0) {i0[k_om] = RT_INTENSITY_BINS_DOMEGA*SphP[i].Intensity[kf][k_om];} else {i0[k_om] = RT_INTENSITY_BINS_DOMEGA*SphP[i].Intensity_Pred[kf][k_om];}}
+            for(k_om=0;k_om<N_RT_INTENSITY_BINS;k_om++) {if(mode==0) {i0[k_om] = RT_INTENSITY_BINS_DOMEGA*SphP[i].Intensity[kf][k_om];} else {i0[k_om] = RT_INTENSITY_BINS_DOMEGA*SphP[i].Intensity_Pred[kf][k_om];}}
             for(k=0;k<3;k++) {if(mode==0) {beta[k]=P[i].Vel[k]/(All.cf_atime*ceff);} else {beta[k]=SphP[i].VelPred[k]/(All.cf_atime*ceff);}} // need gas velocity at this time
-            for(k_om=0;k_om<N_om;k_om++) {b_dot_n[k_om]=0; for(k=0;k<3;k++) {b_dot_n[k_om]+=All.RT_Intensity_Direction[k_om][k]*beta[k];}}
+            for(k_om=0;k_om<N_RT_INTENSITY_BINS;k_om++) {b_dot_n[k_om]=0; for(k=0;k<3;k++) {b_dot_n[k_om]+=All.RT_Intensity_Direction[k_om][k]*beta[k];}}
             beta_2=0; for(k=0;k<3;k++) {beta_2+=beta[k]*beta[k];}
-            for(k_om=0;k_om<N_om;k_om++) {egy_0+=i0[k_om]; for(k=0;k<3;k++) {flux_0[k]+=All.RT_Intensity_Direction[k_om][k]*i0[k_om];}}
-            J=0,b_dot_H=0,b2_dot_K=0; for(k_om=0;k_om<N_om;k_om++) {J+=i0[k_om]*invfourpi; b_dot_H=b_dot_n[k_om]*i0[k_om]*invfourpi; b2_dot_K=b_dot_n[k_om]*b_dot_n[k_om]*i0[k_om]*invfourpi;}
+            for(k_om=0;k_om<N_RT_INTENSITY_BINS;k_om++) {egy_0+=i0[k_om]; for(k=0;k<3;k++) {flux_0[k]+=All.RT_Intensity_Direction[k_om][k]*i0[k_om];}}
+            J=0,b_dot_H=0,b2_dot_K=0; for(k_om=0;k_om<N_RT_INTENSITY_BINS;k_om++) {J+=i0[k_om]*invfourpi; b_dot_H=b_dot_n[k_om]*i0[k_om]*invfourpi; b2_dot_K=b_dot_n[k_om]*b_dot_n[k_om]*i0[k_om]*invfourpi;}
 
             // isotropic terms that change total energy in bin (part of the 'work term' for the photon momentum)
             double work = ((f_s-f_a)*(beta_2*J + b2_dot_K) - 2.*f_s*b_dot_H) * tau; // will be shared isotropically.
-            for(k_om=0;k_om<N_om;k_om++) {if((work>0) || (i0[k_om]<=0)) {i0[k_om]+=work;} else {i0[k_om]/=(1-work/i0[k_om]);}} // gaurantees linearized sum is still correct, and symmetric with positive changes, but can't get negative energies. shared isotropically.
+            for(k_om=0;k_om<N_RT_INTENSITY_BINS;k_om++) {if((work>0) || (i0[k_om]<=0)) {i0[k_om]+=work;} else {i0[k_om]/=(1-work/i0[k_om]);}} // gaurantees linearized sum is still correct, and symmetric with positive changes, but can't get negative energies. shared isotropically.
             
-            J=0; for(k_om=0;k_om<N_om;k_om++) {J+=i0[k_om]*invfourpi;} // prepare to calculate isotropic scattering term
-            for(k_om=0;k_om<N_om;k_om++) {i0[k_om] = J + (i0[k_om]-J)*exp(-f_s*tau);} // isotropic scattering conserving total energy over step
+            J=0; for(k_om=0;k_om<N_RT_INTENSITY_BINS;k_om++) {J+=i0[k_om]*invfourpi;} // prepare to calculate isotropic scattering term
+            for(k_om=0;k_om<N_RT_INTENSITY_BINS;k_om++) {i0[k_om] = J + (i0[k_om]-J)*exp(-f_s*tau);} // isotropic scattering conserving total energy over step
             
-            double fboost[N_om], fboost_avg=0, fboost_avg_p=0, fboost_avg_m=0; // calculate flux 'boost' terms
-            for(k_om=0;k_om<N_om;k_om++) {fboost[k_om] = 3.*b_dot_n[k_om] * ((de_emission_minus_absorption_saved[kf][k_om]/dt_entr) + (f_s*J + f_a*i0[k_om])); fboost_avg += fboost[k_om]/N_om;} // pre-calculate to get mean value, will divide out
-            for(k_om=0;k_om<N_om;k_om++) {work=(fboost[k_om]-fboost_avg)*tau; if((work>0) || (i0[k_om]<=0)) {fboost[k_om]=work; fboost_avg_p+=fboost[k_om];} else {fboost[k_om]=work/(1.-work/i0[k_om]); fboost_avg_m+=fboost[k_om];}} // zero total energy change at linear order ensured by subtracting out sum here; non-linearization ensures i0 cannot be negative, but does allow second-order dt work term to appear, that's ok for now
+            double fboost[N_RT_INTENSITY_BINS], fboost_avg=0, fboost_avg_p=0, fboost_avg_m=0; // calculate flux 'boost' terms
+            for(k_om=0;k_om<N_RT_INTENSITY_BINS;k_om++) {fboost[k_om] = 3.*b_dot_n[k_om] * ((de_emission_minus_absorption_saved[kf][k_om]/dt_entr) + (f_s*J + f_a*i0[k_om])); fboost_avg += fboost[k_om]/N_RT_INTENSITY_BINS;} // pre-calculate to get mean value, will divide out
+            for(k_om=0;k_om<N_RT_INTENSITY_BINS;k_om++) {work=(fboost[k_om]-fboost_avg)*tau; if((work>0) || (i0[k_om]<=0)) {fboost[k_om]=work; fboost_avg_p+=fboost[k_om];} else {fboost[k_om]=work/(1.-work/i0[k_om]); fboost_avg_m+=fboost[k_om];}} // zero total energy change at linear order ensured by subtracting out sum here; non-linearization ensures i0 cannot be negative, but does allow second-order dt work term to appear, that's ok for now
             if(fboost_avg_p>0 && fboost_avg_m<0) {double fc=-fboost_avg_m/fboost_avg_p; fboost_avg_m=(1.+fc)/(1.+fc*fc); fboost_avg_p=fc*fboost_avg_m;} else {fboost_avg_m=fboost_avg_p=0;} // // these re-weight to gaurantee the non-linear sum is identically zero while preserving positive-definite behavior
-            for(k_om=0;k_om<N_om;k_om++) {if(fboost[k_om]>0) {i0[k_om]+=fboost_avg_p*fboost[k_om];} else {i0[k_om]+=fboost_avg_m*fboost[k_om];}} // alright done!
+            for(k_om=0;k_om<N_RT_INTENSITY_BINS;k_om++) {if(fboost[k_om]>0) {i0[k_om]+=fboost_avg_p*fboost[k_om];} else {i0[k_om]+=fboost_avg_m*fboost[k_om];}} // alright done!
             
             // flux work term, allowed to both do work and be asymmetric so just need to ensure it retains positive-definite intensities
-            for(k_om=0;k_om<N_om;k_om++) {work=b_dot_n[k_om]*(f_a+f_s)*i0[k_om]; if((work>0) || (i0[k_om]<=0)) {i0[k_om]+=work;} else {i0[k_om]/=(1-work/i0[k_om]);}}
+            for(k_om=0;k_om<N_RT_INTENSITY_BINS;k_om++) {work=b_dot_n[k_om]*(f_a+f_s)*i0[k_om]; if((work>0) || (i0[k_om]<=0)) {i0[k_om]+=work;} else {i0[k_om]/=(1-work/i0[k_om]);}}
 
             // ok -now- calculate the net change in momentum and energy, for updating the gas quantities
-            for(k_om=0;k_om<N_om;k_om++) {egy_f+=i0[k_om]; for(k=0;k<3;k++) {flux_f[k]+=All.RT_Intensity_Direction[k_om][k]*i0[k_om];}}
+            for(k_om=0;k_om<N_RT_INTENSITY_BINS;k_om++) {egy_f+=i0[k_om]; for(k=0;k<3;k++) {flux_f[k]+=All.RT_Intensity_Direction[k_om][k]*i0[k_om];}}
             double dv_gas[3]={0}, ke_gas_0=0, ke_gas_f=0, v0g=0, u0=0;
             for(k=0;k<3;k++) {dv_gas[k] = -(flux_f[k]-flux_0[k])/(ceff*P[i].Mass); v0g=ceff*beta[k]; ke_gas_0+=(v0g*v0g); ke_gas_f+=(v0g+dv_gas[k])*(v0g+dv_gas[k]);} // note everything is volume-integrated, accounted for above, and we defined flux for convience without the c, so just one power of c here.
             double d_ke_gas = 0.5*(ke_gas_f - ke_gas_0)*P[i].Mass, de_gas=-(egy_f-egy_0), de_gas_internal=(de_gas-d_ke_gas)/P[i].Mass;
@@ -836,7 +836,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             // assign everything back to the appropriate variables after update
             for(k=0;k<3;k++) {if(mode==0) {P[i].Vel[k] += dv_gas[k]*All.cf_atime;} else {SphP[i].VelPred[k] += dv_gas[k]*All.cf_atime;}} // update gas velocities (radiation pressure forces here)
             if(mode==0) {SphP[i].InternalEnergy += de_gas_internal;} else {SphP[i].InternalEnergyPred += de_gas_internal;} // update gas internal energy (work terms, after subtracting kinetic energy changes)
-            for(k_om=0;k_om<N_om;k_om++) {if(mode==0) {SphP[i].Intensity[kf][k_om] = i0[k_om]/RT_INTENSITY_BINS_DOMEGA;} else {SphP[i].Intensity_Pred[kf][k_om] = i0[k_om]/RT_INTENSITY_BINS_DOMEGA;}} // update intensities (all of the above)
+            for(k_om=0;k_om<N_RT_INTENSITY_BINS;k_om++) {if(mode==0) {SphP[i].Intensity[kf][k_om] = i0[k_om]/RT_INTENSITY_BINS_DOMEGA;} else {SphP[i].Intensity_Pred[kf][k_om] = i0[k_om]/RT_INTENSITY_BINS_DOMEGA;}} // update intensities (all of the above)
         } // loop over iterations
     } // loop over frequencies
 #else
