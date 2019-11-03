@@ -141,7 +141,7 @@
 #endif
         
         for(k=0;k<3;k++) {n_unit[k] = Face_Area_Vec[k] / Face_Area_Norm;} /* define useful unit vector for below */
-#if defined(HYDRO_FACE_AREA_LIMITER) && (HYDRO_FIX_MESH_MOTION >= 5) && !defined(PROTECT_FROZEN_FIRE) 
+#if (defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)
         /* check if face area exceeds maximum geometric allowed limit (can occur when particles with -very- different
             Hsml interact at the edge of the kernel, limited to geometric max to prevent numerical instability */
         double Amax = Amax_i; // minimum of area "i" or area "j": this is "i"
