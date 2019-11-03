@@ -668,11 +668,11 @@ double calculate_face_area_for_cartesian_mesh(double *dp, double rinv, double l_
 #if (NUMDIMS==1)
     Face_Area_Norm = 1; Face_Area_Vec[0] = Face_Area_Norm * dp[0]/fabs(dp[0]);
 #elif (NUMDIMS==2)
-    if(fabs(dp[0]) > fabs(dp[1])) {Face_Area_Vec[0] = Face_Area_Norm = DMAX(0,l_side-fabs(dp[1])) * dp[0]/fabs(dp[0]);} else {Face_Area_Vec[1] = Face_Area_Norm = DMAX(0,l_side-fabs(dp[0])) * dp[1]/fabs(dp[1]);}
+    if(fabs(dp[0]) > fabs(dp[1])) {Face_Area_Vec[0] = Face_Area_Norm = DMAX(0,l_side-fabs(dp[1])) * dp[0]/fabs(dp[0]) * All.cf_atime;} else {Face_Area_Vec[1] = Face_Area_Norm = DMAX(0,l_side-fabs(dp[0])) * dp[1]/fabs(dp[1]) * All.cf_atime;}
 #else
     double dp_abs[3]; int k,kdir; for(k=0;k<3;k++) {dp_abs[k] = fabs(dp[k]);}
     if((dp_abs[0]>=dp_abs[1])&&(dp_abs[0]>=dp_abs[2])) {kdir=0;} else if ((dp_abs[1]>=dp_abs[0])&&(dp_abs[1]>=dp_abs[2])) {kdir=1;} else {kdir=2;}
-    Face_Area_Norm=1; for(k=0;k<3;k++) {if(k!=kdir) {Face_Area_Norm *= DMAX(0,l_side-dp_abs[k]);}}
+    Face_Area_Norm=1; for(k=0;k<3;k++) {if(k!=kdir) {Face_Area_Norm *= DMAX(0,l_side-dp_abs[k]) * All.cf_atime*All.cf_atime;}}
     Face_Area_Vec[kdir] = Face_Area_Norm * dp[kdir]/fabs(dp[kdir]);
 #endif
     return fabs(Face_Area_Norm);

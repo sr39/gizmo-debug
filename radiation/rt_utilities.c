@@ -47,42 +47,8 @@ extern pthread_mutex_t mutex_partnodedrift;
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
 
-#ifdef CHIMES_STELLAR_FLUXES  
-/* The following routines are fitting functions that are used to 
- * obtain the luminosities in the 6-13.6 eV energy band (i.e. G0) 
- * and the >13.6 eV band (i.e. H-ionising), which will be used 
- * by CHIMES. These functions were fit to Starburst99 models 
- * that used the Geneva 2012/13 tracks with v=0.4 rotation 
- * and Z=0.014 metallicity. */ 
-
-double chimes_G0_luminosity(double stellar_age, double stellar_mass)
-{
-  // stellar_age in Myr. 
-  // stellar_mass (current, not initial) in Msol. 
-  // return value in Habing units * cm^2. 
-  double zeta = 6.5006802e29; 
-  if (stellar_age < 4.07) 
-    return stellar_mass * exp(89.67 + (0.172 * pow(stellar_age, 0.916))); 
-  else 
-    return stellar_mass * zeta * pow(1773082.52 / stellar_age, 1.667) * pow(1.0 + pow(stellar_age / 1773082.52, 28.164), 1.64824); 
-}
-
-double chimes_ion_luminosity(double stellar_age, double stellar_mass) 
-{
-  // stellar_age in Myr. 
-  // stellar_mass (current, not initial) in Msol. 
-  // return value in s^-1. 
-  double zeta = 3.2758118e21; 
-  if (stellar_age < 3.71) 
-    return stellar_mass * exp(107.21 + (0.111 * pow(stellar_age, 0.974))); 
-  else 
-    return stellar_mass * zeta * pow(688952.27 / stellar_age, 4.788) * pow(1.0 + pow(stellar_age / 688952.27, 1.124), -17017.50356); 
-}
-#endif 
-
-
 /***********************************************************************************************************/
-/* routine which returns the luminosity for the desired source particles, as a function of whatever the user desires, in the relevant bands */
+/* routine which returns the luminosity [total volume/mass integrated] for the desired source particles in physical code units (energy/time), as a function of whatever the user desires, in the relevant bands */
 /***********************************************************************************************************/
 #ifdef CHIMES_STELLAR_FLUXES  
 int rt_get_source_luminosity(int i, double sigma_0, double *lum, double *chimes_lum_G0, double *chimes_lum_ion)
@@ -355,8 +321,9 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 
 
 
+
 /***********************************************************************************************************/
-/* calculate the opacity for use in radiation transport operations [in physical code units = L^2/M]. this should
+/* calculate the opacity for use in radiation transport operations [in physical code units = Length^2/Mass]. this should
     be a total extinction opacity, i.e. kappa = kappa_scattering + kappa_absorption */
 /***********************************************************************************************************/
 double rt_kappa(int i, int k_freq)
@@ -475,9 +442,6 @@ double rt_kappa(int i, int k_freq)
 
 
 
-
-
-
 /***********************************************************************************************************/
 /* calculate absorbed fraction of opacity = 1-albedo = kappa_absorption / (kappa_scattering + kappa_absorption) needed for RT operations */
 /***********************************************************************************************************/
@@ -498,8 +462,8 @@ double rt_absorb_frac_albedo(int i, int k_freq)
 #ifdef RT_SOFT_XRAY /* opacity comes from H+He (Thompson) + metal ions -- assume 0 scattering from ions, 1 from Thompson */
     if(k_freq==RT_FREQ_BIN_SOFT_XRAY) {return 1.-0.5*(0. + DMIN(1.,0.35*fac/rt_kappa(i,k_freq)));}
 #endif
-#ifdef RT_INFRARED /* opacity comes from Thompson + dust -- assume 0.5 scattering from dust, 1 from Thompson */
-    if(k_freq==RT_FREQ_BIN_INFRARED) {return 1.-0.5*(1. + DMIN(1.,0.35*SphP[i].Ne*fac/rt_kappa(i,k_freq)));}
+#ifdef RT_INFRARED /* opacity comes from Thompson + dust -- assume 0.5/(1 + (Trad/725K)^(-2)) scattering from dust [Rayleigh, since we're in the long-wavelength limit by definition here], 1 from Thompson */
+    if(k_freq==RT_FREQ_BIN_INFRARED) {return (1.-0.5/(1.+((725.*725.)/(1.+SphP[i].Radiation_Temperature*SphP[i].Radiation_Temperature))))*(1.-DMIN(1.,0.35*SphP[i].Ne*fac/rt_kappa(i,k_freq)));}
 #endif
 #endif
     
@@ -557,7 +521,11 @@ double rt_absorption_rate(int i, int k_freq)
 /***********************************************************************************************************/
 double rt_diffusion_coefficient(int i, int k_freq)
 {
-    return SphP[i].Lambda_FluxLim[k_freq] * C_LIGHT_CODE_REDUCED / (1.e-45 + SphP[i].Kappa_RT[k_freq] * SphP[i].Density*All.cf_a3inv);
+    double coeff = C_LIGHT_CODE_REDUCED / (1.e-45 + SphP[i].Kappa_RT[k_freq] * SphP[i].Density*All.cf_a3inv);
+#ifdef RT_FLUXLIMITER
+    coeff *= SphP[i].Lambda_FluxLim[k_freq]; // apply flux-limiter
+#endif
+    return coeff;
 }
 
 
@@ -617,7 +585,7 @@ void rt_eddington_update_calculation(int j)
 /***********************************************************************************************************/
 void rt_update_driftkick(int i, double dt_entr, int mode)
 {
-#if defined(RT_EVOLVE_NGAMMA) || defined(RT_EVOLVE_INTENSITIES)
+#if defined(RT_EVOLVE_ENERGY) || defined(RT_EVOLVE_INTENSITIES)
     int kf, k_tmp; double total_erad_emission_minus_absorption = 0;
 #if defined(RT_EVOLVE_INTENSITIES)
     for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[i].E_gamma[kf]=0; for(k_tmp=0;k_tmp<N_RT_INTENSITY_BINS;k_tmp++) {SphP[i].E_gamma[kf]+=RT_INTENSITY_BINS_DOMEGA*SphP[i].Intensity[kf][k_tmp];}}
@@ -710,18 +678,22 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             double de_emission_minus_absorption = (ef - (e0 + dt_e_gamma_band * dt_entr)); // total change, relative to what we would get with just advection (positive = net energy increase in the gas)
             if((dt_entr <= 0) || (de_abs <= 0)) {de_abs = 0;}
             
-#if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_EVOLVE_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX)
+#if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX)
             // for OTVET/FLD methods, need to apply radiation pressure term here so can limit this b/c just based on a gradient which is not flux-limited [as in hydro operators] //
             {
-                double radacc[3]={0}, rmag=0, L_particle = Get_Particle_Size(i)*All.cf_atime; // particle effective size/slab thickness
+                double radacc[3]={0}, rmag=0, vel_i[3], L_particle = Get_Particle_Size(i)*All.cf_atime; // particle effective size/slab thickness
                 double Sigma_particle = P[i].Mass / (M_PI*L_particle*L_particle); // effective surface density through particle
                 double abs_per_kappa_dt = c_light_reduced * (SphP[i].Density*All.cf_a3inv) * dt_entr; // fractional absorption over timestep
                 double f_kappa_abs = rt_absorb_frac_albedo(i,kf); // get albedo, we'll need this below
                 double slabfac_rp = slab_averaging_function(f_kappa_abs*SphP[i].Kappa_RT[kf]*Sigma_particle) * slab_averaging_function(f_kappa_abs*SphP[i].Kappa_RT[kf]*abs_per_kappa_dt); // reduction factor for absorption over dt
                 int kx; for(kx=0;kx<3;kx++)
                 {
-                    radacc[kx] = -dt_entr * slabfac_rp * SphP[i].Lambda_FluxLim[kf] * SphP[i].Gradients.E_gamma_ET[kf][kx] / SphP[i].Density; // naive radiation-pressure calc for FLD methods
+                    radacc[kx] = -dt_entr * slabfac_rp * (SphP[i].Gradients.E_gamma_ET[kf][kx] / SphP[i].Density) / All.cf_atime; // naive radiation-pressure calc for FLD methods [physical units]
+#ifdef RT_FLUXLIMITER
+                    radacc[kx] *= SphP[i].Lambda_FluxLim[kf]; // apply flux-limiter
+#endif
                     rmag += radacc[kx]*radacc[kx]; // compute magnitude
+                    if(mode==0) {vel_i[kx]=P[i].Vel[kx]/All.cf_atime;} else {vel_i[kx]=SphP[i].VelPred[kx]/All.cf_atime;}
                 }
                 if(rmag > 0)
                 {
@@ -734,15 +706,9 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                     double work_band = 0;
                     for(kx=0;kx<3;kx++)
                     {
-                        double radacc_eff = radacc[kx] * rmag, workfac = radacc_eff * P[i].Mass / All.cf_atime; // note we have to be careful with our RSOL factors here!
-                        if(mode==0)
-                        {
-                            P[i].Vel[kx] += radacc_eff;
-                            work_band += P[i].Vel[kx] * workfac; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
-                        } else {
-                            SphP[i].VelPred[kx] += radacc_eff;
-                            work_band += SphP[i].VelPred[kx] * workfac; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
-                        }
+                        double radacc_eff = radacc[kx] * rmag; // re-normalize according to the criterion above
+                        work_band += vel_i[kx] * radacc_eff * P[i].Mass; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
+                        if(mode==0) {P[i].Vel[kx] += radacc_eff * All.cf_atime;} else {SphP[i].VelPred[kx] += radacc_eff * All.cf_atime;}
                     }
                     double d_egy_rad = (2.*f_kappa_abs-1.)*work_band , d_egy_int = -2.*f_kappa_abs*work_band;
                     if(mode==0) {SphP[i].InternalEnergy += d_egy_int;} else {SphP[i].InternalEnergyPred += d_egy_int;}
@@ -876,11 +842,13 @@ void rt_set_simple_inits(void)
                 SphP[i].ET[k][0]=SphP[i].ET[k][1]=SphP[i].ET[k][2]=1./3.; SphP[i].ET[k][3]=SphP[i].ET[k][4]=SphP[i].ET[k][5]=0;
                 SphP[i].Je[k] = 0;
                 SphP[i].Kappa_RT[k] = rt_kappa(i,k);
+#ifdef RT_FLUXLIMITER
                 SphP[i].Lambda_FluxLim[k] = 1;
+#endif
 #ifdef RT_INFRARED
                 if(k==RT_FREQ_BIN_INFRARED) {SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] = 5.67e-5 * 4 / (C_LIGHT * RT_SPEEDOFLIGHT_REDUCTION) * pow(All.InitGasTemp,4.) / All.UnitPressure_in_cgs * P[i].Mass / (SphP[i].Density*All.cf_a3inv);}
 #endif
-#ifdef RT_EVOLVE_NGAMMA
+#ifdef RT_EVOLVE_ENERGY
                 SphP[i].E_gamma_Pred[k] = SphP[i].E_gamma[k];
                 SphP[i].Dt_E_gamma[k] = 0;
 #endif
@@ -997,7 +965,7 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *ne_guess, in
     double LambdaDust_initial_guess = 1.116e-32 * (Tdust_0-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * (P[target].Metallicity[0]/All.SolarAbundances[0]); // guess value based on the -current- values of T, Tdust //
         
     double egy_therm = SphP[target].InternalEnergyPred*P[target].Mass; // true internal energy (before this cooling loop)
-#ifdef RT_EVOLVE_NGAMMA
+#ifdef RT_EVOLVE_ENERGY
     double egy_rad = SphP[target].E_gamma_Pred[RT_FREQ_BIN_INFRARED]; // true radiation field energy (before this cooling loop)
 #else
     double egy_rad = SphP[target].E_gamma[RT_FREQ_BIN_INFRARED]; // true radiation field energy (before this cooling loop) [prev-kicked is drifted by intensities]
@@ -1029,3 +997,40 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *ne_guess, in
 
 #endif
 
+
+
+
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+#ifdef CHIMES_STELLAR_FLUXES
+/* The following routines are fitting functions that are used to
+ * obtain the luminosities in the 6-13.6 eV energy band (i.e. G0)
+ * and the >13.6 eV band (i.e. H-ionising), which will be used
+ * by CHIMES. These functions were fit to Starburst99 models
+ * that used the Geneva 2012/13 tracks with v=0.4 rotation
+ * and Z=0.014 metallicity. */
+
+double chimes_G0_luminosity(double stellar_age, double stellar_mass)
+{
+  // stellar_age in Myr.
+  // stellar_mass (current, not initial) in Msol.
+  // return value in Habing units * cm^2.
+  double zeta = 6.5006802e29;
+  if (stellar_age < 4.07)
+    return stellar_mass * exp(89.67 + (0.172 * pow(stellar_age, 0.916)));
+  else
+    return stellar_mass * zeta * pow(1773082.52 / stellar_age, 1.667) * pow(1.0 + pow(stellar_age / 1773082.52, 28.164), 1.64824);
+}
+
+double chimes_ion_luminosity(double stellar_age, double stellar_mass)
+{
+  // stellar_age in Myr.
+  // stellar_mass (current, not initial) in Msol.
+  // return value in s^-1.
+  double zeta = 3.2758118e21;
+  if (stellar_age < 3.71)
+    return stellar_mass * exp(107.21 + (0.111 * pow(stellar_age, 0.974)));
+  else
+    return stellar_mass * zeta * pow(688952.27 / stellar_age, 4.788) * pow(1.0 + pow(stellar_age / 688952.27, 1.124), -17017.50356);
+}
+#endif
+#endif
