@@ -467,14 +467,14 @@ void Riemann_solver_KurganovTadmor_PWK(struct Input_vec_Riemann Riemann_vec, str
                             double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R)
 {
     /* estimate wave speed using the PWK 'switch' alpha */
-    double S_L, S_R, S_M, dv[3]={0}, dv2=0, dvL=0, delta_threshold, nu=0, alpha; int k;
+    double S_L, S_R, S_M, nu=0, alpha; int k;
 #if (SLOPE_LIMITER_TOLERANCE==0) || defined(HYDRO_FACE_AREA_LIMITER) || defined(HYDRO_RIEMANN_KT_UNLIMITED)
     alpha = 1; /* default to the more dissipative but smoother limiter function */
 #else
-    delta_threshold = 0.001 * 0.5*(Riemann_vec.L.rho+Riemann_vec.R.rho) * 0.5*(cs_L+cs_R); /* alpha is non-zero only if relative momentum is appreciable fraction of this value */
-    for(k=0;k<3;k++) {dv[k]=Riemann_vec.R.rho*Riemann_vec.R.v[k] - Riemann_vec.L.rho*Riemann_vec.L.v[k]; dv2+=dv[k]*dv[k];} /* calculate relative momentum */
-    dvL=fabs(Riemann_vec.R.rho*v_line_R-Riemann_vec.L.rho*v_line_L); /* difference along normal [switch here is designed to reduce diffusion in shear flows] */
-    alpha = dvL / sqrt(delta_threshold*delta_threshold + dv2*dv2); /* for either very weak velocity differences, or for almost entirely shear-flows, this cuts off the diffusivity */
+    double delta_threshold = 0.001 * 0.5*(Riemann_vec.L.rho+Riemann_vec.R.rho) * 0.5*(cs_L+cs_R); /* alpha is non-zero only if relative momentum is appreciable fraction of this value */
+    double dv2=0,dv[3]; for(k=0;k<3;k++) {dv[k]=Riemann_vec.R.rho*Riemann_vec.R.v[k] - Riemann_vec.L.rho*Riemann_vec.L.v[k]; dv2+=dv[k]*dv[k];} /* calculate relative momentum */
+    double dvL=fabs(Riemann_vec.R.rho*v_line_R-Riemann_vec.L.rho*v_line_L); /* difference along normal [switch here is designed to reduce diffusion in shear flows] */
+    alpha = dvL / sqrt(delta_threshold*delta_threshold + dv2); /* for either very weak velocity differences, or for almost entirely shear-flows, this cuts off the diffusivity */
 #endif
     S_L=alpha*cs_L; if(v_line_L>0) {S_L+=v_line_L;} else {S_L-=v_line_L;} /* fastest left-side wavespeed */
     S_R=alpha*cs_R; if(v_line_R>0) {S_R+=v_line_R;} else {S_R-=v_line_R;} /* fastest right-side wavespeed */
