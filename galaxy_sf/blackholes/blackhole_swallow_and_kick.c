@@ -52,7 +52,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
     for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k]; in->Vel[k]=P[i].Vel[k];} /* good example - always needed */
     in->Hsml = PPP[i].Hsml; in->Mass = P[i].Mass; in->BH_Mass = BPP(i).BH_Mass; in->ID = P[i].ID; in->Mdot = BPP(i).BH_Mdot;
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
+#if defined(BH_FOLLOW_ACCRETED_ANGMOM) && !defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
     for(k=0;k<3;k++) {in->Jgas_in_Kernel[k] = P[i].BH_Specific_AngMom[k];}
 #else
     for(k=0;k<3;k++) {in->Jgas_in_Kernel[k] = BlackholeTempInfo[j_tempinfo].Jgas_in_Kernel[k];}
