@@ -266,9 +266,6 @@
 #endif
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
 #else
-#if (defined(COOLING) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)) && !defined(FIRE_UNPROTECT_FROZEN)
-#define PROTECT_FROZEN_FIRE
-#endif
 #endif // FIRE_PHYSICS_DEFAULTS clauses
 
 #ifdef PROTECT_FROZEN_FIRE
@@ -792,6 +789,7 @@ int network_integrate( double temp, double rho, const double *x, double *dx, dou
 
 // compiler specific data alignment hints
 // XLC compiler
+/*
 #if defined(__xlC__)
 #define ALIGN(n) __attribute__((__aligned__(n)))
 // GNU compiler 
@@ -805,6 +803,8 @@ int network_integrate( double temp, double rho, const double *x, double *dx, dou
 #else
 #define ALIGN(n) 
 #endif
+ */
+#define ALIGN(n) // experimenting right now with removing this, as many compilers internal AVX optimizations appear to be doing marginally better, and can resolve crashes on some compilers
 
 
 #define ASSIGN_ADD(x,y,mode) (mode == 0 ? (x=y) : (x+=y))
