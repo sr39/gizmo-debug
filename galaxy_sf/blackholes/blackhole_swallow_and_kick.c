@@ -52,7 +52,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
     for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k]; in->Vel[k]=P[i].Vel[k];} /* good example - always needed */
     in->Hsml = PPP[i].Hsml; in->Mass = P[i].Mass; in->BH_Mass = BPP(i).BH_Mass; in->ID = P[i].ID; in->Mdot = BPP(i).BH_Mdot;
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-#if defined(BH_FOLLOW_ACCRETED_ANGMOM) && !defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
+#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
     for(k=0;k<3;k++) {in->Jgas_in_Kernel[k] = P[i].BH_Specific_AngMom[k];}
 #else
     for(k=0;k<3;k++) {in->Jgas_in_Kernel[k] = BlackholeTempInfo[j_tempinfo].Jgas_in_Kernel[k];}
@@ -430,7 +430,7 @@ void spawn_bh_wind_feedback(void)
 
         long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20;
 #ifdef SINGLE_STAR_FB_JETS
-        if((P[i].Type==5) && (P[i].BH_Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS) > 0.01)) // we're in the pre-collapse phase below 0.01msun, so don't launch jets (Offner 2009)
+        if((P[i].Type==5) && (P[i].BH_Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS) > 0.01) && (P[i].Mass > 7*All.MinMassForParticleMerger)) // we're in the pre-collapse phase below 0.01msun, so don't launch jets (Offner 2009)
 #endif        
         if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (P[i].Type==5))
         {
@@ -502,8 +502,10 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK //direction from the mass weighted average of the sink and the gas kernel angular momentum
     Jtot=0; for(k=0;k<3;k++) {Jtot+=P[i].Jgas_in_Kernel[k]*P[i].Jgas_in_Kernel[k];}
     if(Jtot>0) {Jtot=1/sqrt(Jtot); for(k=0;k<3;k++) {jz[k]=jz[k]*P[i].Mass + P[i].Jgas_in_Kernel[k]*Jtot*P[i].Mgas_in_Kernel;}}
+    Jtot=0; for(k=0;k<3;k++) {Jtot+=jz[k]*jz[k];}
+    Jtot = 1/sqrt(Jtot); for(k=0; k<3; k++) {jz[k] *= Jtot;}
 #endif
-    Jtot=jz[1]*jz[1]+jz[2]*jz[2]; if(Jtot>0) {Jtot=1/sqrt(Jtot); jy[1]=jz[2]*Jtot; jy[2]=-jz[1]*Jtot; for(k=0;k<3;k++) {jz[k]*=Jtot;}}
+    Jtot=jz[1]*jz[1]+jz[2]*jz[2]; if(Jtot>0) {Jtot=1/sqrt(Jtot); jy[1]=jz[2]*Jtot; jy[2]=-jz[1]*Jtot;}
     jx[0]=jz[1]*jy[2]-jz[2]*jy[1]; jx[1]=jz[2]*jy[0]-jz[0]*jy[2]; jx[2]=jz[0]*jy[1]-jz[1]*jy[0];
 #endif
     long bin, bin_0; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;} /* gives minimum active timebin of any particle */
