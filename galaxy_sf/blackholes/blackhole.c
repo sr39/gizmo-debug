@@ -774,8 +774,8 @@ void blackhole_final_operations(void)
             --> wind mass subtracted from P.Mass in blackhole_spawn_particle_wind_shell()  */        
         double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
 #ifdef SINGLE_STAR_FB_JETS
-        if(P[n].BH_Mass * All.UnitMass_in_g / (All.HubbleParam*SOLAR_MASS) < 0.01) dm_wind = 0; // no jets launched yet if <0.01msun
-#endif        
+        if((P[n].BH_Mass * All.UnitMass_in_g / (All.HubbleParam*SOLAR_MASS) < 0.01) || P[n].Mass < 7*All.MinMassForParticleMerger) dm_wind = 0; // no jets launched yet if <0.01msun or if we haven't accreted enough to get a reliable jet direction
+#endif
         if(dm_wind > P[n].Mass) {dm_wind = P[n].Mass;}
 #if defined(BH_ALPHADISK_ACCRETION)
         if(dm_wind > BPP(n).BH_Mass_AlphaDisk) {dm_wind = BPP(n).BH_Mass_AlphaDisk;}
