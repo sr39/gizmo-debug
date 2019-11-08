@@ -618,8 +618,14 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
         BPP(i).unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
         /* positions: uniformly sample unit sphere, and rotate into preferred coordinate system for use below */
-        double phi=2.*M_PI*get_random_number(j+1+ThisTask), cos_theta=1-0.133975*get_random_number(j+3+2*ThisTask); // first sample cos(theta) uniformly between 0 and 30deg
+#ifdef SINGLE_STAR_FB_JETS
+        // when doing jets we sample positions from a 30 degree cone. This helps to avoid disrupting the disk in less well-resolved runs
+        double phi=2.*M_PI*get_random_number(j+1+ThisTask), cos_theta=2*(get_random_number(j+3+2*ThisTask) - 0.5); // first sample cos(theta) uniformly between 0 and 30deg
         if(get_random_number(j+4+2*ThisTask) > 0.5) cos_theta = -cos_theta; // 50/50 chance of switching from north to south pole
+#else
+        // sample positions uniformly on the sphere
+        double phi=2.*M_PI*get_random_number(j+1+ThisTask), cos_theta=2.*(get_random_number(j+3+2*ThisTask)-0.5), sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
+#endif        
         double sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
         for(k=0;k<3;k++) {P[j].Pos[k]=P[i].Pos[k] + (sin_theta*cos_phi*jx[k] + sin_theta*sin_phi*jy[k] + cos_theta*jz[k])*d_r;} // actually lay down position (in code coordinates)
 
