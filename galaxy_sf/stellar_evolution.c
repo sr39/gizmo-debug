@@ -65,7 +65,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
             if(l_kh > lum_sol) {lum_sol = l_kh;} // if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
             // now, calculate accretion luminosity using protostellar radius
 #ifdef SINGLE_STAR_FB_JETS
-            double eps_protostar=All.BAL_f_accretion; //fraction of gas that does not get launched out with a jet 
+            double eps_protostar=All.BAL_f_accretion; // fraction of gas that does not get launched out with a jet 
 #else
             double eps_protostar=0.75; //default value, although 1.0 would be energy conserving
 #endif
