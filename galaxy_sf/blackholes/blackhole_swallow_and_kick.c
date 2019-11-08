@@ -620,7 +620,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         /* positions: uniformly sample unit sphere, and rotate into preferred coordinate system for use below */
 #ifdef SINGLE_STAR_FB_JETS
         // when doing jets we sample positions from a 30 degree cone. This helps to avoid disrupting the disk in less well-resolved runs
-        double phi=2.*M_PI*get_random_number(j+1+ThisTask), cos_theta=2*(get_random_number(j+3+2*ThisTask) - 0.5); // first sample cos(theta) uniformly between 0 and 30deg
+        double phi=2.*M_PI*get_random_number(j+1+ThisTask), cos_theta=1-0.133975*get_random_number(j+3+2*ThisTask); // first sample cos(theta) uniformly between 0 and 30deg
         if(get_random_number(j+4+2*ThisTask) > 0.5) cos_theta = -cos_theta; // 50/50 chance of switching from north to south pole
 #else
         // sample positions uniformly on the sphere
