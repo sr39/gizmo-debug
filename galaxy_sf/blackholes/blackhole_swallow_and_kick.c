@@ -430,7 +430,7 @@ void spawn_bh_wind_feedback(void)
 
         long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20;
 #ifdef SINGLE_STAR_FB_JETS
-        if((P[i].Type==5) && (P[i].BH_Mass * All.UnitMass_in_g / SOLARMASS > 0.01)) // we're in the pre-collapse phase below 0.01msun, so don't launch jets (Offner 2009)
+        if((P[i].Type==5) && (P[i].BH_Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS) > 0.01)) // we're in the pre-collapse phase below 0.01msun, so don't launch jets (Offner 2009)
 #endif        
         if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (P[i].Type==5))
         {
