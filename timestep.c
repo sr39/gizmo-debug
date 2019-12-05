@@ -977,8 +977,12 @@ integertime get_timestep(int p,		/*!< particle index */
 #if (ADAPTIVE_GRAVSOFT_FORALL & 32)
 		eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
 #endif		
-		double dt_gas = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest
-		if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas;}
+		double dt_ff = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest		
+		if(dt > dt_ff && dt_ff > 0) {dt = 1.01 * dt_ff;}
+		
+		double L_particle = Get_Particle_Size(p);
+		double dt_cour_sink = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / P[p].BH_SurroundingGasVel;
+		if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_ff;}
 	    }
             
             if(P[p].StellarAge == All.Time){
