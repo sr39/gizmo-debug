@@ -1517,11 +1517,11 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "TurbDynamicDiffFac");
       addr[nt] = &All.TurbDynamicDiffFac;
       id[nt++] = REAL;
-
+        /*
       strcpy(tag[nt], "TurbDynamicDiffIterations");
       addr[nt] = &All.TurbDynamicDiffIterations;
       id[nt++] = INT;
-
+         */
       strcpy(tag[nt], "TurbDynamicDiffSmoothing");
       addr[nt] = &All.TurbDynamicDiffSmoothing;
       id[nt++] = REAL;

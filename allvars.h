@@ -266,9 +266,6 @@
 #endif
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
 #else
-#if (defined(COOLING) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)) && !defined(FIRE_UNPROTECT_FROZEN)
-#define PROTECT_FROZEN_FIRE
-#endif
 #endif // FIRE_PHYSICS_DEFAULTS clauses
 
 #ifdef PROTECT_FROZEN_FIRE
@@ -377,9 +374,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #ifdef COOLING
 #define EOS_SUBSTELLAR_ISM
 #endif
-#ifdef SINGLE_STAR_FB_JETS
-#define JET_DIRECTION_FROM_KERNEL_AND_SINK //the direction of the jet is a mass weighted average of Jsink and Jgaskernel
-#endif
 #endif // SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE
 
 
@@ -433,7 +427,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 
 #ifdef SINGLE_STAR_FB_JETS
-#define BH_WIND_SPAWN (1) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
+#define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
 #endif
 
 #ifdef SINGLE_STAR_PROMOTION
@@ -507,76 +501,62 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 /* force 'master' flags to be enabled for the appropriate methods, if we have enabled something using those methods */
 
+
+/* ----- giant block of options for RHD modules ------ */
+
 /* options for FIRE RT method */
 #if defined(GALSF_FB_FIRE_RT_LONGRANGE)
-#ifndef RT_LEBRON
-#define RT_LEBRON
-#endif
+#define RT_LEBRON // this flag requires lebron for rhd
 #endif
 #if defined(RT_LEBRON)
-// use gravity tree for flux propagation
-#define RT_USE_GRAVTREE
+#define RT_USE_GRAVTREE // use gravity tree for flux propagation
+#if !defined(GALSF_FB_FIRE_RT_LONGRANGE)
+#define RADTRANSFER // for cross-compatibility reasons, if the FIRE version is not on, need RADTRANSFER flag also enabled
+#endif
 #endif
 
+/* check whether we want to use the implicit solver [only usable for very special cases, not recommended] */
+#if defined(RT_DIFFUSION_IMPLICIT) && (defined(RT_OTVET) || defined(RT_FLUXLIMITEDDIFFUSION)) // only modules the implicit solver works with
+#define RT_DIFFUSION_CG // use our implicit solver [will crash with any other modules, hence checking this before the others below]
+#endif
 
-/* options for FLD or OTVET or M1 modules */
-#if defined(RT_OTVET) || defined(RT_FLUXLIMITEDDIFFUSION) || defined(RT_M1)
-// RADTRANSFER is ON, obviously
+/* options for FLD or OTVET or M1 or Ray/Intensity modules */
+#if defined(RT_OTVET) || defined(RT_FLUXLIMITEDDIFFUSION) || defined(RT_M1) || defined(RT_LOCALRAYGRID)
 #ifndef RADTRANSFER
-#define RADTRANSFER
+#define RADTRANSFER // RADTRANSFER is ON, obviously
 #endif
-// need to solve a diffusion equation
-#ifndef RT_DIFFUSION
-#define RT_DIFFUSION
+#define RT_SOURCE_INJECTION // need source injection enabled to define emissivity
+#if !defined(RT_DIFFUSION_CG)
+#define RT_SOLVER_EXPLICIT // default to explicit solutions (much more accurate/flexible)
 #endif
-// need source injection enabled to define emissivity
-#define RT_SOURCE_INJECTION
-// default to explicit solutins. note, at the moment, M1 only works for explicit solutions
-#if !defined(RT_DIFFUSION_IMPLICIT) && !defined(RT_DIFFUSION_EXPLICIT)
-#define RT_DIFFUSION_EXPLICIT // default to explicit (more accurate) solver //
-#endif
-//
-#endif /* end of otvet or fld or m1 options */
+#endif /* end of options for our general RHD methods */
 
 /* OTVET-specific options [uses the gravity tree to calculate the Eddington tensor] */
 #if defined(RT_OTVET)
-// use gravity tree for Eddington tensor
-#define RT_USE_GRAVTREE
-// and be sure to track luminosity locations
+#define RT_USE_GRAVTREE // use gravity tree for Eddington tensor
 #ifndef RT_SEPARATELY_TRACK_LUMPOS
-#define RT_SEPARATELY_TRACK_LUMPOS
+#define RT_SEPARATELY_TRACK_LUMPOS // and be sure to track luminosity locations
 #endif
 #endif /* end of otvet-specific options */
 
-/* M1-specific options: need to evolve fluxes */
+/* M1-specific options [make sure to add the flux moment */
 #if defined(RT_M1)
-#define RT_EVOLVE_FLUX
+#define RT_EVOLVE_FLUX // evolve flux moment [not just energy moment assumed by FLD/OTVET]
 #endif
 
 /* options for direct/exact Jiang et al. method for direct evolution on an intensity grid */
 #if defined(RT_LOCALRAYGRID)
-#ifndef RADTRANSFER
-#define RADTRANSFER
-#endif
-#define RT_EVOLVE_INTENSITIES
-#define N_RT_INTENSITY_BINS (4*(RT_LOCALRAYGRID)*((RT_LOCALRAYGRID)+1))
-#define RT_INTENSITY_BINS_DOMEGA (4.*M_PI/((double)N_RT_INTENSITY_BINS))
-#define RT_SOURCE_INJECTION
+#define RT_EVOLVE_INTENSITIES // evolve the intensities explicitly
+#define N_RT_INTENSITY_BINS (4*(RT_LOCALRAYGRID)*((RT_LOCALRAYGRID)+1)) // define number of directional bins, used throughout
+#define RT_INTENSITY_BINS_DOMEGA (4.*M_PI/((double)N_RT_INTENSITY_BINS)) // normalization coefficient (for convenience defined here)
 #endif
 
-
-
-/* decide which diffusion method to use (for any diffusion-based method) */
-#if defined(RT_DIFFUSION) && !defined(RT_DIFFUSION_EXPLICIT)
-#define RT_DIFFUSION_CG
+/* check if we are -explicitly- evolving the radiation energy density [0th moment], in which case we need to carry time-derivatives of the field */
+#if defined(RT_SOLVER_EXPLICIT) && !defined(RT_EVOLVE_INTENSITIES) // only needed if we are -not- evolving intensities and -are- solving explicitly
+#define RT_EVOLVE_ENERGY
+#if !defined(RT_EVOLVE_FLUX) && !defined(RT_DISABLE_FLUXLIMITER) // evolving energy explicitly but not flux, flux-limiting is not disabled
+#define RT_FLUXLIMITER // default to include flux-limiter under these conditions
 #endif
-/* check if flux-limiting is disabled: it should be on by default with diffusion-based methods */
-#if (defined(RT_DIFFUSION)) && !defined(RT_DISABLE_FLUXLIMITER)
-#define RT_FLUXLIMITER
-#endif
-/* check if we are -explicitly- evolving the radiation field, in which case we need to carry time-derivatives of the field */
-#if defined(RT_DIFFUSION_EXPLICIT)
-#define RT_EVOLVE_NGAMMA
 #endif
 
 /* enable radiation pressure forces unless they have been explicitly disabled */
@@ -584,8 +564,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define RT_RAD_PRESSURE_FORCES
 #endif
 
-#if ((defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_FORCES) || defined(RT_DIFFUSION_EXPLICIT)) && !defined(RT_EVOLVE_FLUX)) && !defined(RT_EVOLVE_EDDINGTON_TENSOR)
-#define RT_EVOLVE_EDDINGTON_TENSOR
+/* check if we need to explicitly calculate gradients of the radiation pressure tensor for the diffusive step */
+#if ((defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_FORCES) || defined(RT_SOLVER_EXPLICIT)) && !defined(RT_EVOLVE_FLUX) && !defined(RT_EVOLVE_INTENSITIES)) && !defined(RT_COMPGRAD_EDDINGTON_TENSOR)
+#define RT_COMPGRAD_EDDINGTON_TENSOR
 #endif
 
 /* enable appropriate chemistry flags if we are using the photoionization modules */
@@ -597,7 +578,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #endif
 
-
+/* enable appropriate flags for X-ray sub-modules */
 #if defined(RT_XRAY)
 #if (RT_XRAY == 1)
 #define RT_SOFT_XRAY
@@ -610,7 +591,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define RT_HARD_XRAY
 #endif
 #endif
-
 
 /* default to speed-of-light equal to actual speed-of-light, and stars as photo-ionizing sources */
 #ifndef RT_SPEEDOFLIGHT_REDUCTION
@@ -629,6 +609,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define SELFGRAVITY_OFF // safely define SELFGRAVITY_OFF in this case, otherwise we act like there is gravity except in the final setting of accelerations
 #endif
 
+/* ----- end block of options for RHD modules ------ */
 
 
 #if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) 
@@ -805,6 +786,7 @@ int network_integrate( double temp, double rho, const double *x, double *dx, dou
 
 // compiler specific data alignment hints
 // XLC compiler
+/*
 #if defined(__xlC__)
 #define ALIGN(n) __attribute__((__aligned__(n)))
 // GNU compiler 
@@ -818,6 +800,8 @@ int network_integrate( double temp, double rho, const double *x, double *dx, dou
 #else
 #define ALIGN(n) 
 #endif
+ */
+#define ALIGN(n) // experimenting right now with removing this, as many compilers internal AVX optimizations appear to be doing marginally better, and can resolve crashes on some compilers
 
 
 #define ASSIGN_ADD(x,y,mode) (mode == 0 ? (x=y) : (x+=y))
@@ -2609,7 +2593,7 @@ extern struct sph_particle_data
 #ifdef COSMIC_RAYS
         MyDouble CosmicRayPressure[3];
 #endif
-#ifdef RT_EVOLVE_EDDINGTON_TENSOR
+#ifdef RT_COMPGRAD_EDDINGTON_TENSOR
         MyDouble E_gamma_ET[N_RT_FREQ_BINS][3];
 #endif
     } Gradients;
@@ -2747,7 +2731,9 @@ extern struct sph_particle_data
     MyFloat Je[N_RT_FREQ_BINS];         /*!< emissivity (includes sources like stars, as well as gas): units=E_gamma/time  */
     MyFloat E_gamma[N_RT_FREQ_BINS];    /*!< photon energy (integral of dE_gamma/dvol*dVol) associated with particle [for simple frequency bins, equivalent to photon number] */
     MyFloat Kappa_RT[N_RT_FREQ_BINS];   /*!< opacity [physical units ~ length^2 / mass]  */
+#ifdef RT_FLUXLIMITER
     MyFloat Lambda_FluxLim[N_RT_FREQ_BINS]; /*!< dimensionless flux-limiter (0<lambda<1) */
+#endif
 #ifdef RT_EVOLVE_INTENSITIES
     MyFloat Intensity[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]; /*!< intensity values along different directions, for each frequency */
     MyFloat Intensity_Pred[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]; /*!< predicted [drifted] values of intensities */
@@ -2758,7 +2744,7 @@ extern struct sph_particle_data
     MyFloat Flux_Pred[N_RT_FREQ_BINS][3];/*!< predicted photon energy flux density for drift operations (needed for adaptive timestepping) */
     MyFloat Dt_Flux[N_RT_FREQ_BINS][3]; /*!< time derivative of photon energy flux density */
 #endif
-#ifdef RT_EVOLVE_NGAMMA
+#ifdef RT_EVOLVE_ENERGY
     MyFloat E_gamma_Pred[N_RT_FREQ_BINS]; /*!< predicted E_gamma for drift operations (needed for adaptive timestepping) */
     MyFloat Dt_E_gamma[N_RT_FREQ_BINS]; /*!< time derivative of photon number in particle (used only with explicit solvers) */
 #endif
@@ -2848,7 +2834,7 @@ extern struct sph_particle_data
   MyDouble Norm_hat;
   MyDouble Dynamic_numerator;
   MyDouble Dynamic_denominator;
-#ifdef TURB_DIFF_DYNAMIC_ERROR
+#ifdef IO_TURB_DIFF_DYNAMIC_ERROR
   MyDouble TD_DynDiffCoeff_error;
   MyDouble TD_DynDiffCoeff_error_default;
 #endif
