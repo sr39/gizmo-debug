@@ -224,9 +224,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(P[j].Mass <= 0) continue; // require the particle has mass //
                 
                 for(k=0; k<3; k++) {kernel.dp[k] = local.Pos[k] - P[j].Pos[k];}
-#ifdef BOX_PERIODIC
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1); // find the closest image in the given box size  //
-#endif
                 r2=0; for(k=0;k<3;k++) {r2 += kernel.dp[k]*kernel.dp[k];}
                 if(r2<=0) continue; // same particle //
                 double h2j = PPP[j].Hsml * PPP[j].Hsml;
@@ -248,7 +246,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 wk = 0.5 * (1 - 1/sqrt(1 + sph_area / (M_PI*kernel.r*kernel.r))); // corresponding geometric weight //
 #ifdef FIRE1_SNE_COUPLING
                 if(u<1) {kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 0);} else {kernel.wk=kernel.dwk=0;}
-                wk = P[j].Mass * kernel.wk;
+                wk = (P[j].Mass/SphP[j].Density) * kernel.wk;
 #endif
                 if((wk <= 0)||(isnan(wk))) continue; // no point in going further, there's no physical weight here
                 double wk_vec[AREA_WEIGHTED_SUM_ELEMENTS] = {0};
@@ -530,9 +528,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(P[j].Type != 0) {continue;} // require a gas particle //
                 if(P[j].Mass <= 0) {continue;} // require the particle has mass //
                 for(k=0; k<3; k++) {kernel.dp[k] = local.Pos[k] - P[j].Pos[k];}
-#ifdef BOX_PERIODIC
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1); // find the closest image in the given box size  //
-#endif
                 r2=0; for(k=0;k<3;k++) {r2 += kernel.dp[k]*kernel.dp[k];}
                 if(r2<=0) continue; // same particle //
                 

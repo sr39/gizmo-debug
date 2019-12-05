@@ -10,13 +10,20 @@
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 /* --------------------------------------------------------------------------------- */
-double c_light = C_LIGHT_CODE_REDUCED;
 {
+    // first define some variables needed regardless //
+    double c_light = C_LIGHT_CODE_REDUCED;
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
-    double v_frame[3]={0}; for(k=0;k<3;k++) {v_frame[k]=0.5*(ParticleVel_j[k] + local.ParticleVel[k]);} // frame velocity, not fluid velocity, is what appears here
+    double v_frame[3]={0}; for(k=0;k<3;k++) {v_frame[k]=0.5*(ParticleVel_j[k] + local.ParticleVel[k])/All.cf_atime;} // frame velocity, not fluid velocity, is what appears here
 #else
     double v_frame[3]={0}; for(k=0;k<3;k++) {v_frame[k]=0.5*(local.Vel[k]+SphP[j].VelPred[k])/All.cf_atime;} // variable to use below //
 #endif
+#if defined(RT_INFRARED)
+    double Fluxes_E_gamma_T_weighted_IR = 0;
+#endif
+    double Fluxes_E_gamma[N_RT_FREQ_BINS];
+    
+    
 #if !defined(RT_EVOLVE_FLUX) /* this means we just solve the diffusion equation for the eddington tensor, done in the loop below */
     int k_freq;
     for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
@@ -81,10 +88,13 @@ double c_light = C_LIGHT_CODE_REDUCED;
 #endif
             
             // now we need to add the advective flux. note we do this after the limiters above, since those are designed for the diffusive terms, and this is simpler and more stable. we do this zeroth order (super-diffusive, but that's fine for our purposes)
-            double v_Area_dot_rt=0; for(k=0;k<3;k++) {v_Area_dot_rt += v_frame[k] * Face_Area_Vec[k];}
-            cmag += -v_Area_dot_rt * 0.5*(scalar_i+scalar_j) / 3.; // need to be careful with the sign here. since this is an oriented area and A points from j to i, need to flip the sign here. the 1/3 owes to the fact that this is really the --pressure-- term for FLD-like methods, the energy term is implicitly part of the flux already if we're actually doing this correctly //
+            double fluxlim_i=1, fluxlim_j=1, v_Area_dot_rt=0, scalar_ij_phys=0.5*(scalar_i+scalar_j)*All.cf_a3inv; for(k=0;k<3;k++) {v_Area_dot_rt += v_frame[k] * Face_Area_Vec[k];}
+#ifdef RT_FLUXLIMITER
+            fluxlim_i = local.RT_DiffusionCoeff[k_freq] * local.Density * local.Kappa_RT[k_freq] / C_LIGHT_CODE_REDUCED; fluxlim_j = SphP[j].Lambda_FluxLim[k_freq];
+#endif
+            cmag += -v_Area_dot_rt * scalar_ij_phys * ((4./3.)*(0.5*(fluxlim_i+fluxlim_j)) - 1.); // need to be careful with the sign here. since this is an oriented area and A points from j to i, need to flip the sign here. the 1/3 owes to the fact that this is really the --pressure-- term for FLD-like methods, the energy term is implicitly part of the flux already if we're actually doing this correctly //
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
-            for(k=0;k<3;k++) {cmag -= (v_frame[k]-0.5*(local.Vel[k]+SphP[j].VelPred[k])/All.cf_atime) * 0.5*(scalar_i+scalar_j) * Face_Area_Vec[k];}
+            for(k=0;k<3;k++) {cmag -= (v_frame[k]-0.5*(local.Vel[k]+SphP[j].VelPred[k])/All.cf_atime) * scalar_ij_phys * Face_Area_Vec[k];}
 #endif
 
             cmag *= dt_hydrostep; // all in physical units //
@@ -109,6 +119,7 @@ double c_light = C_LIGHT_CODE_REDUCED;
 
 
     int k_freq;
+    double Fluxes_Flux[N_RT_FREQ_BINS][3];
     double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + c_light; // physical units
     double V_i_phys = V_i / All.cf_a3inv;
     double V_j_phys = V_j / All.cf_a3inv;

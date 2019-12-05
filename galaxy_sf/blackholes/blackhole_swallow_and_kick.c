@@ -429,6 +429,9 @@ void spawn_bh_wind_feedback(void)
         //if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (n_particles_split<1) && (P[i].Type==5))
 
         long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20;
+#ifdef SINGLE_STAR_FB_JETS
+        if((P[i].Type==5) && (P[i].BH_Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS) > 0.01) && (P[i].Mass > 7*All.MinMassForParticleMerger)) // we're in the pre-collapse phase below 0.01msun, so don't launch jets (Offner 2009)
+#endif        
         if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (P[i].Type==5))
         {
             if(BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*All.BAL_wind_particle_mass)
@@ -450,14 +453,20 @@ void spawn_bh_wind_feedback(void)
         }
     }
     MPI_Allreduce(&n_particles_split, &MPI_n_particles_split, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    if(MPI_n_particles_split>0){TreeReconstructFlag = 1; if(ThisTask == 0) {printf(" ..BH-Spawn Event: %d particles spawned \n", MPI_n_particles_split);}}
+    if(MPI_n_particles_split>0){
+#ifndef SINGLE_STAR_FB_JETS
+      TreeReconstructFlag = 1; 
+#endif
+      if(ThisTask == 0) {printf(" ..BH-Spawn Event: %d particles spawned \n", MPI_n_particles_split);}
+    }
 
     /* rearrange_particle_sequence -must- be called immediately after this routine! */
     All.TotNumPart += (long long)MPI_n_particles_split;
     All.TotN_gas   += (long long)MPI_n_particles_split;
     Gas_split       = n_particles_split;                    // specific to the local processor //
-    
-    //rearrange_particle_sequence();
+#ifdef SINGLE_STAR_FB_JETS    
+    rearrange_particle_sequence();
+#endif
 }
 
 
@@ -467,11 +476,13 @@ void spawn_bh_wind_feedback(void)
 int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int num_already_spawned )
 {
     double total_mass_in_winds = BPP(i).unspawned_wind_mass;
-    int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass );
+    int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass ); /* if we set BH_WIND_SPAWN we presumably wanted to do this in an exactly-conservative manner, which means we want to have an even number here. */
+    if((((int)BH_WIND_SPAWN) % 2) == 0) {if(( n_particles_split % 2 ) != 0) {n_particles_split -= 1;}} /* n_particles_split was not even. we'll wait to spawn this last particle, to keep an even number, rather than do it right now and break momentum conservation */
     if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
-    int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1));
+    int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1)); if((n0max % 2) != 0) {n0max += 1;} // should ensure n0max is always an even number //
     if(n_particles_split > n0max) {n_particles_split = n0max;}
-
+    
+    
     /* here is where the details of the split are coded, the rest is bookkeeping */
     //double mass_of_new_particle = total_mass_in_winds / n_particles_split; /* don't do this, as can produce particles with extremely large masses; instead wait to spawn */
     double mass_of_new_particle = All.BAL_wind_particle_mass;
@@ -499,8 +510,10 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK //direction from the mass weighted average of the sink and the gas kernel angular momentum
     Jtot=0; for(k=0;k<3;k++) {Jtot+=P[i].Jgas_in_Kernel[k]*P[i].Jgas_in_Kernel[k];}
     if(Jtot>0) {Jtot=1/sqrt(Jtot); for(k=0;k<3;k++) {jz[k]=jz[k]*P[i].Mass + P[i].Jgas_in_Kernel[k]*Jtot*P[i].Mgas_in_Kernel;}}
+    Jtot=0; for(k=0;k<3;k++) {Jtot+=jz[k]*jz[k];}
+    if(Jtot>0) {Jtot=1/sqrt(Jtot); for(k=0;k<3;k++) {jz[k]*=Jtot;}}
 #endif
-    Jtot=jz[1]*jz[1]+jz[2]*jz[2]; if(Jtot>0) {Jtot=1/sqrt(Jtot); jy[1]=jz[2]*Jtot; jy[2]=-jz[1]*Jtot; for(k=0;k<3;k++) {jz[k]*=Jtot;}}
+    Jtot=jz[1]*jz[1]+jz[2]*jz[2]; if(Jtot>0) {Jtot=1/sqrt(Jtot); jy[1]=jz[2]*Jtot; jy[2]=-jz[1]*Jtot;}
     jx[0]=jz[1]*jy[2]-jz[2]*jy[1]; jx[1]=jz[2]*jy[0]-jz[0]*jy[2]; jx[2]=jz[0]*jy[1]-jz[1]*jy[0];
 #endif
     long bin, bin_0; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;} /* gives minimum active timebin of any particle */
@@ -510,6 +523,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     bin = bin_0; i0 = dummy_sph_i_to_clone; /* make this particle active on the minimum timestep, and order with respect to the cloned particle */
 #endif
 
+    double phi, cos_theta, sin_theta, sin_phi, cos_phi, jet_theta, veldir[3]; // random angles for initial positions, possibly to be reused
     
     /* create the  new particles to be added to the end of the particle list :
         i is the BH particle tag, j is the new "spawed" particle's location, dummy_sph_i_to_clone is a dummy SPH particle's tag to be used to init the wind particle */
@@ -586,7 +600,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         for(k=0;k<N_RT_FREQ_BINS;k++)
         {
             SphP[j].E_gamma[k] = 0;
-#if defined(RT_EVOLVE_NGAMMA)
+#if defined(RT_EVOLVE_ENERGY)
             SphP[j].E_gamma_Pred[k] = 0; SphP[j].Dt_E_gamma[k] = 0;
 #endif
         }
@@ -614,18 +628,33 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         P[i].Mass -= P[j].Mass; /* make sure the operation is mass conserving! */
 #endif
         BPP(i).unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
-        /* positions: uniformly sample unit sphere, and rotate into preferred coordinate system for use below */
-        double phi=2.*M_PI*get_random_number(j+1+ThisTask), cos_theta=2.*(get_random_number(j+3+2*ThisTask)-0.5), sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
-        for(k=0;k<3;k++) {P[j].Pos[k]=P[i].Pos[k] + (sin_theta*cos_phi*jx[k] + sin_theta*sin_phi*jy[k] + cos_theta*jz[k])*d_r;} // actually lay down position (in code coordinates)
-
-        /* velocities (determined by wind velocity) */
-        double veldir[3]; veldir[0]=sin_theta*cos_phi; veldir[1]=sin_theta*sin_phi; veldir[2]=cos_theta; // default to velocity pointed radially away from BH
-#if defined(BH_DEBUG_SPAWN_JET_TEST) || defined(SINGLE_STAR_FB_JETS) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK) || defined(BH_FB_COLLIMATED)
-        double theta0=0.01, thetamax=80.*(M_PI/180.); // "flattening parameter" and max opening angle of jet velocity distribution from Matzner & McKee 1999, sets the collimation of the jets
-        double jet_theta=atan(theta0*tan(get_random_number(j+7+5*ThisTask)*atan(sqrt(1+theta0*theta0)*tan(thetamax)/theta0))/sqrt(1+theta0*theta0)); // biased sampling to get collimation
-        if(cos_theta<0) {jet_theta=M_PI-jet_theta;} // determines 'up' or 'down' based on which hemisphere particle is in
-        veldir[0]=sin(jet_theta)*cos_phi; veldir[1]=sin(jet_theta)*sin_phi; veldir[2]=cos(jet_theta);//relative direction of velocity compared to BH_Specific_AngMom
+        
+        if((j - (NumPart + num_already_spawned) + 1) % 2) { // if we're an even number, generate a brand new random coord and velocity direction
+            /* positions: uniformly sample unit sphere, and rotate into preferred coordinate system for use below */
+#ifdef SINGLE_STAR_FB_JETS
+            // when doing jets we sample positions from a 30 degree cone. This helps to avoid disrupting the disk in less well-resolved runs
+            phi=2.*M_PI*get_random_number(j+1+ThisTask), cos_theta=1-0.133975*get_random_number(j+3+2*ThisTask); // first sample cos(theta) uniformly between 0 and 30deg
+            if(get_random_number(j+4+2*ThisTask) > 0.5) cos_theta = -cos_theta; // 50/50 chance of switching from north to south pole
+            sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
+#else
+            // sample positions uniformly on the sphere
+            phi=2.*M_PI*get_random_number(j+1+ThisTask), cos_theta=2.*(get_random_number(j+3+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
 #endif
+            
+            /* velocities (determined by wind velocity) */
+            veldir[0]=sin_theta*cos_phi; veldir[1]=sin_theta*sin_phi; veldir[2]=cos_theta; // default to velocity pointed radially away from BH
+#if defined(BH_DEBUG_SPAWN_JET_TEST) || defined(SINGLE_STAR_FB_JETS) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK) || defined(BH_FB_COLLIMATED)
+            double theta0=0.01, thetamax=30.*(M_PI/180.); // "flattening parameter" and max opening angle of jet velocity distribution from Matzner & McKee 1999, sets the collimation of the jets
+            double jet_theta=atan(theta0*tan(get_random_number(j+7+5*ThisTask)*atan(sqrt(1+theta0*theta0)*tan(thetamax)/theta0))/sqrt(1+theta0*theta0)); // biased sampling to get collimation
+            if(cos_theta<0) {jet_theta=M_PI-jet_theta;} // determines 'up' or 'down' based on which hemisphere particle is in
+            veldir[0]=sin(jet_theta)*cos_phi; veldir[1]=sin(jet_theta)*sin_phi; veldir[2]=cos(jet_theta);//relative direction of velocity compared to BH_Specific_AngMom
+#endif
+        } else { // just take the antipodal points for the coords and velocity we had before so we get exact conservation when spawning multiples of 2
+            cos_phi = -cos_phi;
+            cos_theta = -cos_theta;
+            sin_phi = -sin_phi;
+            veldir[0] = -veldir[0], veldir[1] = -veldir[1], veldir[2] = -veldir[2];
+        }
         double v_magnitude = All.BAL_v_outflow * All.cf_atime; // velocity of the jet
 #ifdef SINGLE_STAR_FB_JETS
         double R_star_solar_launch = 10; // without a better guess, assume fiducial protostellar radius of 10*Rsun, as in Federrath 2014
@@ -634,7 +663,12 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
         v_magnitude = sqrt(All.G * P[i].BH_Mass / (R_star_solar_launch * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
 #endif
-        for(k=0;k<3;k++) {P[j].Vel[k]=P[i].Vel[k] + (veldir[0]*jx[k]+veldir[1]*jy[k]+veldir[2]*jz[k])*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];}
+        
+        // actually lay down position and velocities using coordinate basis
+        for(k=0;k<3;k++) {
+            P[j].Pos[k]=P[i].Pos[k] + (sin_theta*cos_phi*jx[k] + sin_theta*sin_phi*jy[k] + cos_theta*jz[k])*d_r;
+            P[j].Vel[k]=P[i].Vel[k] + (veldir[0]*jx[k]+veldir[1]*jy[k]+veldir[2]*jz[k])*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];
+        }
         
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
