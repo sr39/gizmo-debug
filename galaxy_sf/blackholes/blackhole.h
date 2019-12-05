@@ -43,7 +43,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #ifdef BH_DYNFRICTION
     MyFloat DF_rms_vel, DF_mean_vel[3], DF_mmax_particles;
 #endif
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
     MyFloat BH_SurroundingGasVel[3];
 #endif
 #if (BH_GRAVACCRETION == 8)
