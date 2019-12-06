@@ -996,7 +996,7 @@ integertime get_timestep(int p,		/*!< particle index */
 		
 		double L_particle = Get_Particle_Size(p);
 		double dt_cour_sink = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / P[p].BH_SurroundingGasVel;
-		if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_ff;}
+		if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
 	    }
             
             if(P[p].StellarAge == All.Time){
