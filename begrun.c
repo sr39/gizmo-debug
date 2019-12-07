@@ -404,7 +404,7 @@ void begrun(void)
 #ifdef RT_CHEM_PHOTOION
     rt_get_sigma();
 #endif
-    if(RestartFlag == 0) {rt_set_simple_inits();}
+    rt_set_simple_inits(RestartFlag);
 #endif
 
     
