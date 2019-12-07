@@ -79,7 +79,7 @@ MyFloat Jgas_in_Kernel[3], Jstar_in_Kernel[3], Jalt_in_Kernel[3]; // mass/angula
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat GradRho_in_Kernel[3];
 #endif
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
     MyFloat BH_SurroundingGasVel[3];
 #endif
 #if (BH_GRAVACCRETION == 8)
@@ -120,7 +120,7 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     for(k=0;k<3;k++) {ASSIGN_ADD(BlackholeTempInfo[target].GradRho_in_Kernel[k],out->GradRho_in_Kernel[k],mode);}
 #endif
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
     for(k=0;k<3;k++) {ASSIGN_ADD(BlackholeTempInfo[target].BH_SurroundingGasVel[k],out->BH_SurroundingGasVel[k],mode);}
 #endif
 #if (BH_GRAVACCRETION == 8)
@@ -148,7 +148,7 @@ void bh_normalize_temp_info_struct_after_environment_loop(int i)
     if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
     {
         BlackholeTempInfo[i].BH_InternalEnergy /= BlackholeTempInfo[i].Mgas_in_Kernel;
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
         for(k=0;k<3;k++) {BlackholeTempInfo[i].BH_SurroundingGasVel[k] /= BlackholeTempInfo[i].Mgas_in_Kernel * All.cf_atime;}
 #endif
     }
@@ -261,7 +261,7 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
                         u=sqrt(u)/h_i; if(u<1) {kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,1);} else {wk=dwk=0;}
                         dwk /= u*h_i; for(k=0;k<3;k++) out.GradRho_in_Kernel[k] += wt * dwk * fabs(dP[k]);
 #endif
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
                         for(k=0;k<3;k++) {out.BH_SurroundingGasVel[k] += wt*dv[k];}
 #endif
 #if defined(BH_RETURN_ANGMOM_TO_GAS) /* We need a normalization factor for angular momentum feedback so we will go over all the neighbours */
