@@ -2341,6 +2341,7 @@ extern ALIGN(32) struct particle_data
 #ifdef SINGLE_STAR_SINK_DYNAMICS  
     MyFloat SwallowTime; /* freefall time of a particle onto a sink particle  */
     int BH_Ngb_Flag; /* Whether or not the gas live's in a sink's hydro stencil */
+    MyFloat BH_SurroundingGasVel; /* Relative speed of sink to surrounding gas  */
 #endif 
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
