@@ -730,7 +730,7 @@ void rt_source_injection(void);
 #endif
 
 #ifdef RADTRANSFER
-void rt_set_simple_inits(void);
+void rt_set_simple_inits(int RestartFlag);
 #if defined(RT_EVOLVE_INTENSITIES)
 void rt_init_intensity_directions(void);
 #endif
