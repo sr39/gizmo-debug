@@ -2,7 +2,7 @@
 
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * Volker Springel. The code has been modified
  * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (new variables,
  * and different naming conventions for some old variables)
  */
@@ -110,3 +110,7 @@
 #define TAG_CHIMESDATA 103
 #define TAG_ABUNDATA 104
 #endif
+
+#define TAG_MPI_GENERIC_COM_BUFFER_A 105
+#define TAG_MPI_GENERIC_COM_BUFFER_B 106
+

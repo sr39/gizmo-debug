@@ -15,9 +15,10 @@
  */
 /*
  * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
- *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org),
+ *   It was based on a similar file in GADGET3 by Volker Springel,
  *   but the physical modules for star formation and feedback have been
- *   replaced, and the algorithm is mostly new to GIZMO.
+ *   replaced, and the algorithm is mostly new to GIZMO. Many additional modules
+ *   added since, with significant contributions from Mike Grudic.
  */
 
 
@@ -52,7 +53,7 @@ void assign_imf_properties_from_starforming_gas(int i)
     
     /* now we need to record all the properties we care to save about the star-forming gas, for the sake of later use: */
     int j,k;
-    double NH = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1);
+    double NH = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i);
     double dv2abs_tot = 0; /* calculate complete velocity dispersion (including hubble-flow correction) in physical units */
     for(j=0;j<3;j++)
     {
@@ -158,11 +159,9 @@ void set_units_sfr(void)
     All.PhysDensThresh = All.CritPhysDensity * PROTONMASS / (HYDROGEN_MASSFRAC * All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam);
 #ifdef GALSF_EFFECTIVE_EQS
     double meanweight = 4 / (1 + 3 * HYDROGEN_MASSFRAC);	/* note: assuming NEUTRAL GAS */
-    All.EgySpecCold = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.TempClouds;
-    All.EgySpecCold *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
+    All.EgySpecCold = All.TempClouds / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
     meanweight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));	/* note: assuming FULL ionization */
-    All.EgySpecSN = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.TempSupernova;
-    All.EgySpecSN *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
+    All.EgySpecSN = All.TempSupernova / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
 #endif // GALSF_EFFECTIVE_EQS
 }
 
@@ -177,7 +176,7 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
     if(SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) /* require it be above the SF density threshold */
     if(P[i].Metallicity[0]/All.SolarAbundances[0] < 0.1) /* and below some metallicity */
     {
-        double GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1) * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; /* this gives the Sobolev-estimated column density */
+        double GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; /* this gives the Sobolev-estimated column density */
         /* surface dens in g/cm^2; threshold for bound cluster formation in our experiments is ~2 g/cm^2 (10^4 M_sun/pc^2) */
         if (GradRho > 0.1)
         {
@@ -203,8 +202,7 @@ double get_starformation_rate(int i)
     double factorEVP, egyhot, ne, tcool, x, cloudmass;
 #endif
 #ifdef GALSF_SUBGRID_WINDS
-    if(SphP[i].DelayTime > 0)
-    return 0;
+    if(SphP[i].DelayTime > 0) return 0;
 #endif
     
 #ifdef BH_WIND_SPAWN
@@ -248,7 +246,7 @@ double get_starformation_rate(int i)
     
 #ifdef GALSF_SFR_MOLECULAR_CRITERION
     /* Krumholz & Gnedin fitting function for f_H2 as a function of local properties */
-    double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1);
+    double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i);
     tau_fmol *= (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]);
     if(tau_fmol>0) {
         tau_fmol *= 434.78 * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam;
@@ -290,20 +288,16 @@ double get_starformation_rate(int i)
     double cs_eff = Particle_effective_soundspeed_i(i);    
     double k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
     
-#ifdef SINGLE_STAR_SINK_FORMATION
-#ifdef COOLING
-    double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
-    if(nHcgs > 1e13) cs_eff=DMIN(cs_eff, 1.62e5/All.UnitVelocity_in_cm_per_s); // limiter to permit sink formation in simulations that really resolve the opacity limit and bog down when an optically-thick core forms. Modify this if you want to follow first collapse more/less - scale as c_s ~ n^(1/5)
-    k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
-#endif
-    double press_grad_length = 0; for(k=0;k<3;k++) {press_grad_length += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
-    press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Pressure / (1.e-37 + sqrt(press_grad_length)));
-    k_cs = DMAX( k_cs , cs_eff / press_grad_length );
+#ifdef SINGLE_STAR_SINK_FORMATION    
 #ifdef MAGNETIC
     double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
-    double cs_b = sqrt(cs_eff*cs_eff + bmag/SphP[i].Density);
-    k_cs = cs_b / (Get_Particle_Size(i)*All.cf_atime);
+    cs_eff = sqrt(cs_eff*cs_eff + bmag/SphP[i].Density);
 #endif
+#if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) || defined(EOS_GMC_BAROTROPIC) // if we have to deal with optically-thick thermo
+    double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
+    if(nHcgs > 1e13) { cs_eff = DMIN(cs_eff, 2e4/All.UnitVelocity_in_cm_per_s);}  //1.62e5/All.UnitVelocity_in_cm_per_s); // limiter to permit sink formation in simulations that really resolve the opacity limit and bog down when an optically-thick core forms. Modify this if you want to follow first collapse more/less - scale as c_s ~ n^(1/5) 
+#endif
+    k_cs = M_PI * cs_eff / (Get_Particle_Size(i)*All.cf_atime);
 #endif
                                             
     dv2abs += 2.*k_cs*k_cs; // account for thermal pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
@@ -518,7 +512,7 @@ void star_formation_parent_routine(void)
 #endif
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
                 double bh_mu=2.0*get_random_number(P[i].ID+3)-1.0, bh_phi=2*M_PI*get_random_number(P[i].ID+4), bh_sin=sqrt(1-bh_mu*bh_mu);
-                double spin_prefac = All.G * P[i].BH_Mass / (C/All.UnitVelocity_in_cm_per_s); // assume initially maximally-spinning BH with random orientation
+                double spin_prefac = All.G * P[i].BH_Mass / C_LIGHT_CODE; // assume initially maximally-spinning BH with random orientation
                 P[i].BH_Specific_AngMom[0]=spin_prefac * bh_sin*cos(bh_phi); P[i].BH_Specific_AngMom[1]=spin_prefac * bh_sin*sin(bh_phi); P[i].BH_Specific_AngMom[2]=spin_prefac * bh_mu;
 #endif
 #ifdef BH_WIND_SPAWN
@@ -569,7 +563,15 @@ void star_formation_parent_routine(void)
                 P[i].BH_Mass = All.SeedBlackHoleMass; // if desired to make this appreciable fraction of particle mass, please do so in params file
                 TreeReconstructFlag = 1;
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-		P[i].SinkRadius = All.ForceSoftening[5]; //DMAX(pow(3 * P[i].Mass/ (All.PhysDensThresh * 4 * M_PI), 1./3) , All.ForceSoftening[5]); // want a sphere of equal volume to particle size at ncrit, R = (3V/(4 PI))^(1/3)
+                P[i].SinkRadius = All.ForceSoftening[5];
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+                double cs = 2e4 / All.UnitVelocity_in_cm_per_s;
+#if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) || defined(EOS_GMC_BAROTROPIC)
+                double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
+                if(nHcgs > 1e10) cs *= pow(nHcgs/1e10, 1./5); // if we're getting opacity-limited then we can set a smaller sink radius, since cs ~ n^1/5
+#endif
+                P[i].SinkRadius = DMAX(3 * P[i].Mass * All.G / (M_PI * cs * cs), All.ForceSoftening[5]); // volume-equivalent particle radius R= (3V/(4PI))^(1/3) at the density where M_Jeans = particle mass
+#endif	
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
                 P[i].min_bh_t_orbital=MAX_REAL_NUMBER; P[i].comp_dx[0]=P[i].comp_dx[1]=P[i].comp_dx[2]=P[i].comp_dv[0]=P[i].comp_dv[1]=P[i].comp_dv[2]=P[i].is_in_a_binary = 0;
@@ -582,7 +584,7 @@ void star_formation_parent_routine(void)
 #endif
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)		
                 double bh_mu=2.0*get_random_number(P[i].ID+3)-1.0, bh_phi=2*M_PI*get_random_number(P[i].ID+4), bh_sin=sqrt(1-bh_mu*bh_mu);
-                double spin_prefac = All.G * P[i].BH_Mass / (C/All.UnitVelocity_in_cm_per_s); // assume initially maximally-spinning BH with random orientation
+                double spin_prefac = All.G * P[i].BH_Mass / C_LIGHT_CODE; // assume initially maximally-spinning BH with random orientation
 #ifdef SLOPE2_SINKS
                 spin_prefac = sqrt(All.G * P[i].Mass * All.ForceSoftening[5]); // assume material is initially in a circular orbit at the resolution limit
 #endif
@@ -688,12 +690,7 @@ void star_formation_parent_routine(void)
   MPI_Allreduce(&num_bhformed, &tot_bhformed, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   if(tot_bhformed > 0)
   {
-      if(ThisTask==0)
-      {
-#ifndef IO_REDUCED_MODE
-      printf("BH/Sink formation: %d gas particles converted into BHs \n",tot_bhformed);
-#endif
-      }
+      printf("BH/Sink formation: %d gas particles converted into BHs\n",tot_bhformed);
       All.TotBHs += tot_bhformed;
   } // if(tot_bhformed > 0)
 #endif
@@ -702,13 +699,7 @@ void star_formation_parent_routine(void)
   MPI_Allreduce(&stars_converted, &tot_converted, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   if(tot_spawned > 0 || tot_converted > 0)
     {
-      if(ThisTask == 0)
-	{
-#ifndef IO_REDUCED_MODE
-	  printf("SFR: spawned %d stars, converted %d gas particles into stars\n",
-		 tot_spawned, tot_converted);
-#endif
-    }
+      if(ThisTask==0) printf("SFR: spawned %d stars, converted %d gas particles into stars\n", tot_spawned, tot_converted);
       All.TotNumPart += tot_spawned;
       All.TotN_gas -= tot_converted;
       NumPart += stars_spawned;
@@ -762,7 +753,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
     prob = 1 - exp(-p);
 #endif
     
-#if (GALSF_SUBGRID_WIND_SCALING == 1    
+#if (GALSF_SUBGRID_WIND_SCALING == 1)
        /* wind model where launching scales with halo/galaxy bulk properties (as in Romeel's simulations) */
     if(SphP[i].HostHaloMass > 0 && sm > 0)
     {
@@ -857,7 +848,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
 /* Routine to initialize quantities needed for the Spingel & Hernquist effective equation of state */
 void init_clouds(void)
 {
-  double A0, dens, tcool, ne, coolrate, egyhot, x, u4, meanweight;
+  double A0, dens, tcool, ne, coolrate, egyhot, x, u4, meanweight, gamma_minus1_eff;
   double tsfr, y, peff, fac, neff, egyeff, factorEVP, thresholdStarburst;
 #ifdef COOL_METAL_LINES_BY_SPECIES
   int k; double Z[NUM_METAL_SPECIES]; for(k=0;k<NUM_METAL_SPECIES;k++) Z[k]=0;
@@ -868,8 +859,7 @@ void init_clouds(void)
       A0 = All.FactorEVP;
       egyhot = All.EgySpecSN / A0;
       meanweight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));	/* note: assuming FULL ionization */
-      u4 = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * 1.0e4;
-      u4 *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
+      u4 = 1.0e4 / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
       dens = 1.0e6 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 
       if(All.ComovingIntegrationOn)
@@ -890,11 +880,11 @@ void init_clouds(void)
 
       if(ThisTask == 0)
 	{
-	  printf("\nA0= %g  \n", A0);
-	  printf("Computed: PhysDensThresh= %g  (int units)         %g h^2 cm^-3\n", All.PhysDensThresh,
+      printf("\n Springel-Hernquist EOS model: A0= %g  \n", A0);
+	  printf(" ..computed: PhysDensThresh= %g  (int units)         %g h^2 cm^-3\n", All.PhysDensThresh,
 		 All.PhysDensThresh / (PROTONMASS / HYDROGEN_MASSFRAC / All.UnitDensity_in_cgs));
-	  printf("EXPECTED FRACTION OF COLD GAS AT THRESHOLD = %g\n\n", x);
-	  printf("tcool=%g dens=%g egyhot=%g\n", tcool, dens, egyhot);
+	  printf(" ..expected fraction of cold gas at threshold = %g\n", x);
+	  printf(" ..tcool=%g dens=%g egyhot=%g\n", tcool, dens, egyhot);
 	}
 
       dens = All.PhysDensThresh * 10;
@@ -910,7 +900,8 @@ void init_clouds(void)
 	  y = tsfr / tcool * egyhot / (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold);
 	  x = 1 + 1 / (2 * y) - sqrt(1 / y + 1 / (4 * y * y));
 	  egyeff = egyhot * (1 - x) + All.EgySpecCold * x;
-	  peff = GAMMA_MINUS1 * dens * egyeff;
+      gamma_minus1_eff = (GAMMA_DEFAULT-1);
+	  peff = gamma_minus1_eff * dens * egyeff;
 	  fac = 1 / (log(dens * 1.025) - log(dens));
 	  dens *= 1.025;
 	  neff = -log(peff) * fac;
@@ -924,25 +915,19 @@ void init_clouds(void)
 	  y = tsfr / tcool * egyhot / (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold);
 	  x = 1 + 1 / (2 * y) - sqrt(1 / y + 1 / (4 * y * y));
 	  egyeff = egyhot * (1 - x) + All.EgySpecCold * x;
-	  peff = GAMMA_MINUS1 * dens * egyeff;
+	  peff = gamma_minus1_eff * dens * egyeff;
 	  neff += log(peff) * fac;
 	}
       while(neff > 4.0 / 3);
 
       thresholdStarburst = dens;
-#ifdef MODIFIEDBONDI
-      All.BlackHoleRefDensity = thresholdStarburst;
-      All.BlackHoleRefSoundspeed = sqrt(GAMMA * GAMMA_MINUS1 * egyeff);
-#endif
 
-#ifndef IO_REDUCED_MODE
       if(ThisTask == 0)
 	{
 	  printf("Run-away sets in for dens=%g\n", thresholdStarburst);
 	  printf("Dynamic range for quiescent star formation= %g\n", thresholdStarburst / All.PhysDensThresh);
 	  fflush(stdout);
 	}
-#endif
 
       if(All.ComovingIntegrationOn)
 	{

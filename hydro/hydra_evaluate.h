@@ -11,17 +11,17 @@
  */
 /* --------------------------------------------------------------------------------- */
 /* --------------------------------------------------------------------------------- */
-int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
+int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     int j, k, n, startnode, numngb, kernel_mode, listindex;
     double hinv_i,hinv3_i,hinv4_i,hinv_j,hinv3_j,hinv4_j,V_i,V_j,dt_hydrostep,r2,rinv,rinv_soft,u,Particle_Size_i;
     double v_hll,k_hll,b_hll; v_hll=k_hll=0,b_hll=1;
     struct kernel_hydra kernel;
-    struct hydrodata_in local;
-    struct hydrodata_out out;
+    struct INPUT_STRUCT_NAME local;
+    struct OUTPUT_STRUCT_NAME out;
     struct Conserved_var_Riemann Fluxes;
     listindex = 0;
-    memset(&out, 0, sizeof(struct hydrodata_out));
+    memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME));
     memset(&kernel, 0, sizeof(struct kernel_hydra));
     memset(&Fluxes, 0, sizeof(struct Conserved_var_Riemann));
 #ifndef HYDRO_SPH
@@ -44,11 +44,11 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 
     if(mode == 0)
     {
-        particle2in_hydra(&local, target); // this setup allows for all the fields we need to define (don't hard-code here)
+        particle2in_hydra(&local, target, loop_iteration); // this setup allows for all the fields we need to define (don't hard-code here)
     }
     else
     {
-        local = HydroDataGet[target]; // this setup allows for all the fields we need to define (don't hard-code here)
+        local = DATAGET_NAME[target]; // this setup allows for all the fields we need to define (don't hard-code here)
     }
     
     /* certain particles should never enter the loop: check for these */
@@ -107,15 +107,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double vcsa2_i = kernel.sound_i*kernel.sound_i + kernel.alfven2_i;
 #endif // MAGNETIC //
 
-#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
-    double Fluxes_E_gamma[N_RT_FREQ_BINS];
-    double tau_c_i[N_RT_FREQ_BINS];
-    for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Kappa_RT[k]*local.Density*All.cf_a3inv;}
-#ifdef RT_EVOLVE_FLUX
-    double Fluxes_Flux[N_RT_FREQ_BINS][3];
+#ifdef RT_SOLVER_EXPLICIT
+    double tau_c_i[N_RT_FREQ_BINS]; for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Kappa_RT[k]*local.Density*All.cf_a3inv;}
 #endif
-#endif
-
     
     /* --------------------------------------------------------------------------------- */
     /* Now start the actual SPH computation for this particle */
@@ -127,7 +121,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     else
     {
 #ifndef DONOTUSENODELIST
-        startnode = HydroDataGet[target].NodeList[0];
+        startnode = DATAGET_NAME[target].NodeList[0];
         startnode = Nodes[startnode].u.d.nextnode;	/* open it */
 #else
         startnode = All.MaxPart;	/* root node */
@@ -171,9 +165,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
-#ifdef BOX_PERIODIC  /* find the closest image in the given box size  */
-                NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
-#endif
+                NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1); /* find the closest image in the given box size  */
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 kernel.h_j = PPP[j].Hsml;
                 
@@ -264,9 +256,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef TURB_DIFF_METALS
                 double mdot_estimated = 0;
 #endif
-#if defined(RT_INFRARED)
-                double Fluxes_E_gamma_T_weighted_IR = 0;
-#endif
                 
                 /* --------------------------------------------------------------------------------- */
                 /* calculate the kernel functions (centered on both 'i' and 'j') */
@@ -319,11 +308,11 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
         face_vel_i = face_vel_j = 0;
         for(k=0;k<3;k++) 
         {
-        face_vel_i += local.Vel[k] * kernel.dp[k] / (kernel.r * All.cf_atime); 
-        face_vel_j += SphP[j].VelPred[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
+            face_vel_i += local.Vel[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
+            face_vel_j += SphP[j].VelPred[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
         }
         // SPH: use the sph 'effective areas' oriented along the lines between particles and direct-difference gradients
-        Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density);
+        Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density) * All.cf_atime*All.cf_atime;
         for(k=0;k<3;k++) {Face_Area_Vec[k] = Face_Area_Norm * kernel.dp[k]/kernel.r;}
 #endif
 
@@ -378,7 +367,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #include "../galaxy_sf/cosmic_ray_diffusion.h"
 #endif
                 
-#ifdef RT_DIFFUSION_EXPLICIT
+#ifdef RT_SOLVER_EXPLICIT
 #if defined(RT_EVOLVE_INTENSITIES)
 #include "../radiation/rt_direct_ray_transport.h"
 #else
@@ -506,9 +495,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef WAKEUP
                 if(!(TimeBinActive[P[j].TimeBin]))
                 {
-                    if(kernel.vsig > WAKEUP*SphP[j].MaxSignalVel) PPPZ[j].wakeup = 1;
+                    if(kernel.vsig > WAKEUP*SphP[j].MaxSignalVel) {PPPZ[j].wakeup = 1; NeedToWakeupParticles_local = 1;}
 #if (SLOPE_LIMITER_TOLERANCE <= 0)
-                    if(local.Timestep*WAKEUP < TimeStep_J) PPPZ[j].wakeup = 1;
+                    if(local.Timestep*WAKEUP < TimeStep_J) {PPPZ[j].wakeup = 1; NeedToWakeupParticles_local = 1;}
 #endif
                 }
 #endif
@@ -522,7 +511,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             listindex++;
             if(listindex < NODELISTLENGTH)
             {
-                startnode = HydroDataGet[target].NodeList[listindex];
+                startnode = DATAGET_NAME[target].NodeList[listindex];
                 if(startnode >= 0)
                     startnode = Nodes[startnode].u.d.nextnode;	/* open it */
             }
@@ -532,9 +521,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     
     /* Now collect the result at the right place */
     if(mode == 0)
-        out2particle_hydra(&out, target, 0);
+        out2particle_hydra(&out, target, 0, loop_iteration);
     else
-        HydroDataResult[target] = out;
+        DATARESULT_NAME[target] = out;
     
     return 0;
 }

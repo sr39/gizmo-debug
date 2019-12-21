@@ -4,11 +4,6 @@
 # system. Don't commit changes to this file unless you add support for
 # a new system.
 #
-###########
-#
-# This file was originally part of the GADGET3 code developed by
-#   Volker Springel (volker.springel@h-its.org). 
-#
 #############
 
 SYSTYPE="Illium"

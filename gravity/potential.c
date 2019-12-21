@@ -14,8 +14,8 @@
  */
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
- * slightly by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ * Volker Springel. The code has been modified
+ * significantly by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
 #if !defined(EVALPOTENTIAL) && (defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL))
@@ -39,29 +39,19 @@ void compute_potential(void)
   if(All.ComovingIntegrationOn)
     set_softenings();
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("Start computation of potential for all particles...\n");
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS("Start computation of potential for all particles...");
   CPU_Step[CPU_MISC] += measure_time();
 
 
   if(TreeReconstructFlag)
     {
-#ifndef IO_REDUCED_MODE
-      if(ThisTask == 0) printf("Tree construction.\n");
-#endif
+      PRINT_STATUS("Tree construction");
       CPU_Step[CPU_MISC] += measure_time();
       rearrange_particle_sequence();
       force_treebuild(NumPart, NULL);
       CPU_Step[CPU_TREEBUILD] += measure_time();
       TreeReconstructFlag = 0;
-#ifndef IO_REDUCED_MODE
-      if(ThisTask == 0) printf("Tree construction done.\n");
-#endif
+      PRINT_STATUS(" ..Tree construction done");
     }
 
 
@@ -73,12 +63,9 @@ void compute_potential(void)
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
 
-#ifndef SUBFIND_RESHUFFLE_AND_POTENTIAL
-  for(i = 0; i < NumPart; i++)
-    if(P[i].Ti_current != All.Ti_Current)
-      drift_particle(i, All.Ti_Current);
-#endif
-  i = 0;			/* beginn with this index */
+  for(i = 0; i < NumPart; i++) {if(P[i].Ti_current != All.Ti_Current) {drift_particle(i, All.Ti_Current);}}
+
+    i = 0;			/* begin with this index */
 
   do
     {
@@ -234,24 +221,17 @@ void compute_potential(void)
   myfree(DataIndexTable);
 
 #ifndef ADAPTIVE_GRAVSOFT_FORALL
-    /* add correction to exclude self-potential */
-    for(i = 0; i < NumPart; i++)
+    for(i = 0; i < NumPart; i++) /* add correction to exclude self-potential [actually well-defined with adaptive force softenings, so keep it there] */
     {
-        /* remove self-potential */
-        P[i].Potential += P[i].Mass / All.SofteningTable[P[i].Type];
-        
+        P[i].Potential += P[i].Mass / All.SofteningTable[P[i].Type]; /* remove self-potential */
 #ifdef BOX_PERIODIC
-        if(All.ComovingIntegrationOn)
-            P[i].Potential -= 2.8372975 * pow(P[i].Mass, 2.0 / 3) *
-            pow(All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);
+        if(All.ComovingIntegrationOn) {P[i].Potential -= 2.8372975 * pow(P[i].Mass, 2.0 / 3) * pow(All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);}
 #endif
     }
 #endif
 
   /* multiply with the gravitational constant */
-
-  for(i = 0; i < NumPart; i++)
-    P[i].Potential *= All.G;
+    for(i = 0; i < NumPart; i++) {P[i].Potential *= All.G;}
 
 
 #ifdef PMGRID
@@ -325,15 +305,7 @@ void compute_potential(void)
 	}
     }
 
-
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("potential done.\n");
-      fflush(stdout);
-    }
-#endif
-
+      PRINT_STATUS("potential done");
 #else
   for(i = 0; i < NumPart; i++)
     P[i].Potential = 0;

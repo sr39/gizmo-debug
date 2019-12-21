@@ -2351,16 +2351,16 @@ static network_var compute_screening(const struct network_rate *rate, network_va
   if(Gamma.v >= 0.3)
     {
       /* not only weak */
-      network_var C, b, tau;
+      network_var Cvar, b, tau;
 
-      C = n_ca(n_a(n_a(n_cm(Gamma_prime, 0.896434 * rate->z_tilde1),
+      Cvar = n_ca(n_a(n_a(n_cm(Gamma_prime, 0.896434 * rate->z_tilde1),
 		       n_cm(Gamma_prime14, -3.44740 * rate->z_tilde2)),
 		   n_cm(lGamma_prime, -0.5551)), rate->C_const);
       tau = n_cm(itemp13, rate->tau_fac);
       b = n_cm(n_d(Gamma, tau), 3.);
 
       /* note that there is an error in the coefficient of b^5 in the original paper */
-      H_s = n_a(C,
+      H_s = n_a(Cvar,
 		n_a(n_a(n_a(n_m(n_powi(b, 3),
 				n_cm(tau, -5. / (32. * 3.))),
 			    n_m(n_powi(b, 4),
@@ -2395,10 +2395,9 @@ static network_var compute_screening(const struct network_rate *rate, network_va
       network_var zero_var = { 0 };
 #if DEBUG > 3
       if(rate != &Be8_alpha_rate)
-	myprintf("warning H is %g for Z_1 = %d, Z_2 = %d\n", H.v, nd->nucdata[rate->input[0]].nz,
-		 nd->nucdata[rate->input[1]].nz);
+          PRINT_WARNING("warning H is %g for Z_1 = %d, Z_2 = %d\n", H.v, nd->nucdata[rate->input[0]].nz,nd->nucdata[rate->input[1]].nz);
       else
-	myprintf("warning H is %g for Be-8, He-4\n", H.v);
+          PRINT_WARNING("warning H is %g for Be-8, He-4\n", H.v);
 #endif /* DEBUG */
       H = zero_var;
     }

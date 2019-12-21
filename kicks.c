@@ -8,7 +8,7 @@
 
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * Volker Springel. The code has been modified
  * substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO 
  * (added energy/entropy switch, terms for explicit mass conservation in mass fluxes, 
  *  and updates to additional fluid variables as needed)
@@ -34,14 +34,14 @@ void do_first_halfstep_kick(void)
         apply_long_range_kick(tstart, tend);
     }
 #endif
-    
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME    
     /* as currently written with some revisions to MFV methods, should only update on active timesteps */
     for(i = 0; i < NumPart; i++)
     {
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME
         if((TimeBinActive[P[i].TimeBin]) || (P[i].Type==0)) /* active OR gas, need to check each timestep to ensure manifest conservation */
 #else
-        if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) /* 'full' kick for active particles */
+    {	    
 #endif
         {
             if(P[i].Mass > 0)
@@ -69,13 +69,13 @@ void do_second_halfstep_kick(void)
         apply_long_range_kick(tstart, tend);
     }
 #endif
-
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
     for(i = 0; i < NumPart; i++)
     {
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME
         if((TimeBinActive[P[i].TimeBin]) || (P[i].Type==0)) /* active OR gas, need to check each timestep to ensure manifest conservation */
 #else
-        if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) /* 'full' kick for active particles */
+    {
 #endif
         {
             if(P[i].Mass > 0)
@@ -112,30 +112,24 @@ int eligible_for_hermite(int i)
 void do_hermite_prediction(void)
 {
     int i,j; integertime ti_step, tstart=0, tend=0;
-    for(i = 0; i < NumPart; i++) {
-        /* 	if(HERMITE_INTEGRATION & (1<<P[i].Type)) */
-        /* #if defined(BLACK_HOLES) || defined(GALSF)	     */
-        /*         if(P[i].StellarAge < All.Time) // if we were literally born yesterday then we won't have the proper Old variables set */
-        /* #endif	     */
-        if(eligible_for_hermite(i)) { /* check if we're actually eligible */
-            if(TimeBinActive[P[i].TimeBin]) { /* 'full' kick for active particles */
-                if(P[i].Mass > 0) { /* skip massless particles scheduled for deletion */
-                    ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
-                    tstart = P[i].Ti_begstep;    /* beginning of step */
-                    tend = P[i].Ti_begstep + ti_step;    /* end of step */
-                    double dt_grav = (tend - tstart) * All.Timebase_interval;
-                    for(j=0; j<3; j++) {
-                        P[i].Pos[j] = P[i].OldPos[j] + dt_grav * (P[i].OldVel[j] + dt_grav/2 * (P[i].Hermite_OldAcc[j] + dt_grav/3 * P[i].OldJerk[j])) ;
-                        P[i].Vel[j] = P[i].OldVel[j] + dt_grav * (P[i].Hermite_OldAcc[j] + dt_grav/2 * P[i].OldJerk[j]);
-                    }}}}} // for(i = 0; i < NumPart; i++) //
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
+	if(eligible_for_hermite(i)) { /* check if we're actually eligible */	    
+	    if(P[i].Mass > 0) { /* skip massless particles scheduled for deletion */
+		ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
+		tstart = P[i].Ti_begstep;    /* beginning of step */
+		tend = P[i].Ti_begstep + ti_step;    /* end of step */
+		double dt_grav = (tend - tstart) * All.Timebase_interval;
+		for(j=0; j<3; j++) {
+		    P[i].Pos[j] = P[i].OldPos[j] + dt_grav * (P[i].OldVel[j] + dt_grav/2 * (P[i].Hermite_OldAcc[j] + dt_grav/3 * P[i].OldJerk[j])) ;
+		    P[i].Vel[j] = P[i].OldVel[j] + dt_grav * (P[i].Hermite_OldAcc[j] + dt_grav/2 * P[i].OldJerk[j]);
+		}}}} // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) 
 }
 
 void do_hermite_correction(void) // corrector step
 {
-    int i,j; integertime ti_step, tstart=0, tend=0;
-    for(i = 0; i < NumPart; i++) {
-        if(eligible_for_hermite(i)){
-            if(TimeBinActive[P[i].TimeBin]) { /* 'full' kick for active particles */
+    int i,j; integertime ti_step, tstart=0, tend=0;    
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {	
+	if(eligible_for_hermite(i)){
                 if(P[i].Mass > 0) {
                     ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
                     tstart = P[i].Ti_begstep;    /* beginning of step */
@@ -144,7 +138,7 @@ void do_hermite_correction(void) // corrector step
                     for(j=0; j<3; j++) {
                         P[i].Vel[j] = P[i].OldVel[j] + dt_grav * 0.5*(P[i].Hermite_OldAcc[j] + P[i].GravAccel[j]) + (P[i].OldJerk[j] - P[i].GravJerk[j]) * dt_grav * dt_grav/12;
                         P[i].Pos[j] = P[i].OldPos[j] + dt_grav * 0.5*(P[i].Vel[j] + P[i].OldVel[j]) + (P[i].Hermite_OldAcc[j] - P[i].GravAccel[j]) * dt_grav * dt_grav/12;
-                    }}}}} // for(i = 0; i < NumPart; i++) //
+		    }}}} //     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
 }
 #endif // HERMITE_INTEGRATION
 
@@ -294,7 +288,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 SphP[i].DtPhi = (1./3.) * (SphP[i].Phi*All.cf_a3inv) * P[i].Particle_DivVel*All.cf_a2inv; // cf_a3inv from mass-based phi-fluxes
 #endif
 #endif
-                if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
+                if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*(GAMMA(i)-1) * SphP[i].InternalEnergyPred * All.cf_hubble_a;
                 dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick; /* gravity term not included here, as it makes this unstable */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 SphP[i].dMass = SphP[i].DtMass = 0;
@@ -432,7 +426,7 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #endif
 #endif
         
-#if defined(RT_EVOLVE_NGAMMA)
+#if defined(RT_EVOLVE_ENERGY)
         for(kf=0;kf<N_RT_FREQ_BINS;kf++)
         {
             SphP[i].E_gamma_Pred[kf] = SphP[i].E_gamma[kf];
@@ -451,9 +445,6 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #endif
         
         SphP[i].Pressure = get_pressure(i);
-#ifdef EOS_ENFORCE_ADIABAT
-        SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
-#endif
     }
 }
 
@@ -487,16 +478,12 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
             double phi_max_tolerance = 10.0;
             if(phi_phys_abs > 1000. * phi_max_tolerance * vb_phy_abs)
             {
-                /* this indicates a serious problem! issue a warning and zero phi */
-#ifndef IO_REDUCED_MODE
-                printf("WARNING: MAJOR GROWTH IN PHI-FIELD: phi_phys_abs=%g vb_phy_abs=%g vsig_max=%g b_phys=%g particle_id_i=%d dtphi_code=%g Pressure=%g rho=%g x/y/z=%g/%g/%g vx/vy/vz=%g/%g/%g Bx/By/Bz=%g/%g/%g h=%g u=%g m=%g phi=%g bin=%d SigVel=%g a=%g \n",
-                       phi_phys_abs,vb_phy_abs,vsig_max,b_phys,i,SphP[i].DtPhi,
-                       SphP[i].Pressure,SphP[i].Density,P[i].Pos[0],P[i].Pos[1],P[i].Pos[2],
+                /* this can indicate a problem! issue a warning and zero phi */
+                if(phi_phys_abs > 1.0e6 * phi_max_tolerance * vb_phy_abs) {
+                    PRINT_WARNING("warning: significant growth detected in phi-field: phi_phys_abs=%g vb_phy_abs=%g vsig_max=%g b_phys=%g particle_id_i=%d dtphi_code=%g Pressure=%g rho=%g x/y/z=%g/%g/%g vx/vy/vz=%g/%g/%g Bx/By/Bz=%g/%g/%g h=%g u=%g m=%g phi=%g bin=%d SigVel=%g a=%g \n",
+                       phi_phys_abs,vb_phy_abs,vsig_max,b_phys,i,SphP[i].DtPhi,SphP[i].Pressure,SphP[i].Density,P[i].Pos[0],P[i].Pos[1],P[i].Pos[2],
                        P[i].Vel[0],P[i].Vel[1],P[i].Vel[2],SphP[i].B[0],SphP[i].B[1],SphP[i].B[2],
-                       PPP[i].Hsml,SphP[i].InternalEnergy,P[i].Mass,SphP[i].Phi,P[i].TimeBin,
-                       SphP[i].MaxSignalVel,All.cf_atime);
-                fflush(stdout);
-#endif
+                       PPP[i].Hsml,SphP[i].InternalEnergy,P[i].Mass,SphP[i].Phi,P[i].TimeBin,SphP[i].MaxSignalVel,All.cf_atime);}
                 SphP[i].PhiPred = SphP[i].Phi = SphP[i].DtPhi = 0;
             } else {
                 if(phi_phys_abs > phi_max_tolerance * vb_phy_abs)
@@ -512,18 +499,18 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
                 }
             }
         }
-        if(isnan(SphP[i].DtPhi)) {SphP[i].DtPhi=0;}
-        if(isnan(SphP[i].Phi)) {SphP[i].Phi=0;}
-        if(isnan(SphP[i].PhiPred)) {SphP[i].PhiPred=SphP[i].Phi;}
     } else {
         SphP[i].Phi = SphP[i].PhiPred = SphP[i].DtPhi = 0;
     }
     /* now apply the usual damping term */
     double t_damp = Get_Particle_PhiField_DampingTimeInv(i);
-    if((t_damp>0) && (!isnan(t_damp)))
+    if((t_damp>0) && (!isnan(t_damp)) && (dt_entr>0))
     {
         SphP[i].Phi *= exp( -dt_entr * t_damp );
     }
+    if(isnan(SphP[i].DtPhi)) {SphP[i].DtPhi=0;}
+    if(isnan(SphP[i].Phi)) {SphP[i].Phi=0;}
+    if(isnan(SphP[i].PhiPred)) {SphP[i].PhiPred=SphP[i].Phi;}
 #endif
 #endif
 #endif

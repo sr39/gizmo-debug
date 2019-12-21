@@ -41,7 +41,7 @@
 #define NUMBER_OF_GRADIENT_ITERATIONS 1
 #endif
 
-#if defined(RT_EVOLVE_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_NGAMMA)
+#if defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_ENERGY)
 #define E_gamma_Pred E_gamma
 #endif
 
@@ -57,6 +57,9 @@ extern pthread_mutex_t mutex_partnodedrift;
 #endif
 
 #define NV_MYSIGN(x) (( x > 0 ) - ( x < 0 ))
+
+void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
+void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
 
 /* define a common 'gradients' structure to hold
  everything we're going to take derivatives of */
@@ -74,7 +77,7 @@ struct Quantities_for_Gradients
 #if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
     MyDouble Metallicity[NUM_METAL_SPECIES];
 #endif
-#ifdef RT_EVOLVE_EDDINGTON_TENSOR
+#ifdef RT_COMPGRAD_EDDINGTON_TENSOR
     MyFloat E_gamma[N_RT_FREQ_BINS];
     MyFloat E_gamma_ET[N_RT_FREQ_BINS][6];
 #endif
@@ -207,7 +210,7 @@ static struct temporary_data_topass
     MyDouble PhiGrad[3];
 #endif
 #endif
-#ifdef RT_EVOLVE_EDDINGTON_TENSOR
+#ifdef RT_COMPGRAD_EDDINGTON_TENSOR
     MyFloat Gradients_E_gamma[N_RT_FREQ_BINS][3];
 #endif
 #ifdef TURB_DIFF_DYNAMIC
@@ -290,7 +293,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
         for(k = 0; k < NUM_METAL_SPECIES; k++)
             in->GQuant.Metallicity[k] = P[i].Metallicity[k];
 #endif
-#ifdef RT_EVOLVE_EDDINGTON_TENSOR
+#ifdef RT_COMPGRAD_EDDINGTON_TENSOR
         for(k = 0; k < N_RT_FREQ_BINS; k++) 
         {
         	in->GQuant.E_gamma[k] = SphP[i].E_gamma_Pred[k];
@@ -480,7 +483,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
         }
 #endif
 
-#ifdef RT_EVOLVE_EDDINGTON_TENSOR
+#ifdef RT_COMPGRAD_EDDINGTON_TENSOR
         for(j=0;j<N_RT_FREQ_BINS;j++)
         {
             MAX_ADD(GasGradDataPasser[i].Maxima.E_gamma[j],out->Maxima.E_gamma[j],mode);
@@ -558,7 +561,7 @@ void construct_gradient(double *grad, int i)
 
 void hydro_gradient_calc(void)
 {
-    int i, j, k, k1, ngrp, ndone, ndone_flag;
+    int i, j, k, k1, ndone, ndone_flag;
     int recvTask, place;
     double timeall = 0, timecomp1 = 0, timecomp2 = 0, timecommsumm1 = 0, timecommsumm2 = 0, timewait1 = 0, timewait2 = 0;
     double timecomp, timecomm, timewait, tstart, tend, t0, t1;
@@ -639,7 +642,7 @@ void hydro_gradient_calc(void)
 #if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
                 for(k2=0;k2<NUM_METAL_SPECIES;k2++) {SphP[i].Gradients.Metallicity[k2][k] = 0;}
 #endif
-#ifdef RT_EVOLVE_EDDINGTON_TENSOR
+#ifdef RT_COMPGRAD_EDDINGTON_TENSOR
                 for(k2=0;k2<N_RT_FREQ_BINS;k2++) {SphP[i].Gradients.E_gamma_ET[k2][k] = 0;}
 #endif
             }
@@ -667,37 +670,13 @@ void hydro_gradient_calc(void)
         NextParticle = FirstActiveParticle;	/* begin with this index */
         do
         {
-            
-            BufferFullFlag = 0;
-            Nexport = 0;
-            save_NextParticle = NextParticle;
-            
-            for(j = 0; j < NTask; j++)
-            {
-                Send_count[j] = 0;
-                Exportflag[j] = -1;
-            }
-            
-            /* do local particles and prepare export list */
-            tstart = my_second();
-            
+            BufferFullFlag = 0; Nexport = 0; save_NextParticle = NextParticle; tstart = my_second();
+            for(j = 0; j < NTask; j++) {Send_count[j] = 0; Exportflag[j] = -1;} /* do local particles and prepare export list */
 #ifdef PTHREADS_NUM_THREADS
-            pthread_t mythreads[PTHREADS_NUM_THREADS - 1];
-            int threadid[PTHREADS_NUM_THREADS - 1];
-            pthread_attr_t attr;
-            
-            pthread_attr_init(&attr);
-            pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-            pthread_mutex_init(&mutex_nexport, NULL);
-            pthread_mutex_init(&mutex_partnodedrift, NULL);
-            
-            TimerFlag = 0;
-            
-            for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
-            {
-                threadid[j] = j + 1;
-                pthread_create(&mythreads[j], &attr, GasGrad_evaluate_primary, &threadid[j]);
-            }
+            pthread_t mythreads[PTHREADS_NUM_THREADS - 1]; int threadid[PTHREADS_NUM_THREADS - 1]; pthread_attr_t attr;
+            pthread_attr_init(&attr); pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+            pthread_mutex_init(&mutex_nexport, NULL); pthread_mutex_init(&mutex_partnodedrift, NULL);
+            TimerFlag = 0; for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++) {threadid[j] = j + 1; pthread_create(&mythreads[j], &attr, GasGrad_evaluate_primary, &threadid[j]);}
 #endif
 #ifdef _OPENMP
 #pragma omp parallel
@@ -710,220 +689,169 @@ void hydro_gradient_calc(void)
 #endif
                 GasGrad_evaluate_primary(&mainthreadid, gradient_iteration);	/* do local particles and prepare export list */
             }
-            
 #ifdef PTHREADS_NUM_THREADS
-            for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
-                pthread_join(mythreads[j], NULL);
+            for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++) {pthread_join(mythreads[j], NULL);}
 #endif
+            tend = my_second(); timecomp1 += timediff(tstart, tend);
             
-            
-            tend = my_second();
-            timecomp1 += timediff(tstart, tend);
-            
-            if(BufferFullFlag)
+            if(BufferFullFlag) /* we've filled the buffer or reached the end of the list, prepare for communications */
             {
-                int last_nextparticle = NextParticle;
-                
-                NextParticle = save_NextParticle;
-                
+                int last_nextparticle = NextParticle; NextParticle = save_NextParticle; /* figure out where we are */
                 while(NextParticle >= 0)
                 {
-                    if(NextParticle == last_nextparticle)
-                        break;
-                    
-                    if(ProcessedFlag[NextParticle] != 1)
-                        break;
-                    
-                    ProcessedFlag[NextParticle] = 2;
-                    
-                    NextParticle = NextActiveParticle[NextParticle];
+                    if(NextParticle == last_nextparticle) {break;}
+                    if(ProcessedFlag[NextParticle] != 1) {break;}
+                    ProcessedFlag[NextParticle] = 2; NextParticle = NextActiveParticle[NextParticle];
                 }
+                if(NextParticle == save_NextParticle) {endrun(113308);} /* in this case, the buffer is too small to process even a single particle */
                 
-                if(NextParticle == save_NextParticle)
-                {
-                    /* in this case, the buffer is too small to process even a single particle */
-                    endrun(113308);
-                }
-                
-                int new_export = 0;
-                
+                int new_export = 0; /* actually calculate exports [so we can tell other tasks] */
                 for(j = 0, k = 0; j < Nexport; j++)
+                {
                     if(ProcessedFlag[DataIndexTable[j].Index] != 2)
                     {
-                        if(k < j + 1)
-                            k = j + 1;
-                        
+                        if(k < j + 1) {k = j + 1;}
                         for(; k < Nexport; k++)
                             if(ProcessedFlag[DataIndexTable[k].Index] == 2)
                             {
                                 int old_index = DataIndexTable[j].Index;
-                                
-                                DataIndexTable[j] = DataIndexTable[k];
-                                DataNodeList[j] = DataNodeList[k];
-                                DataIndexTable[j].IndexGet = j;
-                                new_export++;
-                                
-                                DataIndexTable[k].Index = old_index;
-                                k++;
+                                DataIndexTable[j] = DataIndexTable[k]; DataNodeList[j] = DataNodeList[k]; DataIndexTable[j].IndexGet = j; new_export++;
+                                DataIndexTable[k].Index = old_index; k++;
                                 break;
                             }
                     }
-                    else
-                        new_export++;
-                
-                Nexport = new_export;
-                
-            }
-            
-            n_exported += Nexport;
-            
-            for(j = 0; j < NTask; j++)
-                Send_count[j] = 0;
-            for(j = 0; j < Nexport; j++)
-                Send_count[DataIndexTable[j].Task]++;
-            
-            MYSORT_DATAINDEX(DataIndexTable, Nexport, sizeof(struct data_index), data_index_compare);
-            
-            tstart = my_second();
-            
-            MPI_Alltoall(Send_count, 1, MPI_INT, Recv_count, 1, MPI_INT, MPI_COMM_WORLD);
-            
-            tend = my_second();
-            timewait1 += timediff(tstart, tend);
-            
-            for(j = 0, Nimport = 0, Recv_offset[0] = 0, Send_offset[0] = 0; j < NTask; j++)
-            {
-                Nimport += Recv_count[j];
-                
-                if(j > 0)
-                {
-                    Send_offset[j] = Send_offset[j - 1] + Send_count[j - 1];
-                    Recv_offset[j] = Recv_offset[j - 1] + Recv_count[j - 1];
+                    else {new_export++;}
                 }
+                Nexport = new_export; /* counting exports... */
             }
+            n_exported += Nexport;
+            for(j = 0; j < NTask; j++) {Send_count[j] = 0;}
+            for(j = 0; j < Nexport; j++) {Send_count[DataIndexTable[j].Task]++;}
+            MYSORT_DATAINDEX(DataIndexTable, Nexport, sizeof(struct data_index), data_index_compare); /* construct export count tables */
+            tstart = my_second();
+            MPI_Alltoall(Send_count, 1, MPI_INT, Recv_count, 1, MPI_INT, MPI_COMM_WORLD); /* broadcast import/export counts */
+            tend = my_second(); timewait1 += timediff(tstart, tend);
             
-            GasGradDataGet = (struct GasGraddata_in *) mymalloc("GasGradDataGet", Nimport * sizeof(struct GasGraddata_in));
-            GasGradDataIn = (struct GasGraddata_in *) mymalloc("GasGradDataIn", Nexport * sizeof(struct GasGraddata_in));
-            
-            /* prepare particle data for export */
-            
-            for(j = 0; j < Nexport; j++)
+            for(j = 0, Send_offset[0] = 0; j < NTask; j++) {if(j > 0) {Send_offset[j] = Send_offset[j - 1] + Send_count[j - 1];}} /* calculate export table offsets */
+            GasGradDataIn = (struct GasGraddata_in *) mymalloc("GasGradDataIn", Nexport * sizeof(struct GasGraddata_in)); /* allocate memory for exports */
+            if(gradient_iteration==0) /* allocate memory for exports: here we have a different structure for the different iterations, which makes this especially complicated */
+            {
+                GasGradDataOut = (struct GasGraddata_out *) mymalloc("GasGradDataOut", Nexport * sizeof(struct GasGraddata_out));
+            } else {
+                GasGradDataOut_iter = (struct GasGraddata_out_iter *) mymalloc("GasGradDataOut_iter", Nexport * sizeof(struct GasGraddata_out_iter));
+            }
+            for(j = 0; j < Nexport; j++) /* prepare particle data for export [fill in the structures to be passed] */
             {
                 place = DataIndexTable[j].Index;
                 particle2in_GasGrad(&GasGradDataIn[j], place, gradient_iteration);
-                memcpy(GasGradDataIn[j].NodeList,
-                       DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
+                memcpy(GasGradDataIn[j].NodeList,DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
             }
             
-            /* exchange particle data */
-            tstart = my_second();
-            for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
+            /* ok now we have to figure out if there is enough memory to handle all the tasks sending us their data, and if not, break it into sub-chunks */
+            int N_chunks_for_import, ngrp_initial, ngrp;
+            for(ngrp_initial = 1; ngrp_initial < (1 << PTask); ngrp_initial += N_chunks_for_import) /* sub-chunking loop opener */
             {
-                recvTask = ThisTask ^ ngrp;
-                
-                if(recvTask < NTask)
-                {
-                    if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
+                N_chunks_for_import = (1 << PTask) - ngrp_initial;
+                do {
+                    int flag = 0, flagall; Nimport = 0;
+                    for(ngrp = ngrp_initial; ngrp < ngrp_initial + N_chunks_for_import; ngrp++)
                     {
-                        /* get the particles */
-                        MPI_Sendrecv(&GasGradDataIn[Send_offset[recvTask]],
-                                     Send_count[recvTask] * sizeof(struct GasGraddata_in), MPI_BYTE,
-                                     recvTask, TAG_GRADLOOP_A,
-                                     &GasGradDataGet[Recv_offset[recvTask]],
-                                     Recv_count[recvTask] * sizeof(struct GasGraddata_in), MPI_BYTE,
-                                     recvTask, TAG_GRADLOOP_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                        recvTask = ThisTask ^ ngrp;
+                        if(recvTask < NTask) {if(Recv_count[recvTask] > 0) {Nimport += Recv_count[recvTask];}}
+                    }
+                    size_t space_needed = Nimport * sizeof(struct GasGraddata_in) + Nimport * sizeof(struct GasGraddata_out) + 16384; /* extra bitflag is a padding, to avoid overflows */
+                    if(space_needed > FreeBytes) {flag = 1;}
+                    
+                    MPI_Allreduce(&flag, &flagall, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+                    if(flagall) {N_chunks_for_import /= 2;} else {break;}
+                } while(N_chunks_for_import > 0);
+                if(N_chunks_for_import == 0) {printf("Memory is insufficient for even one import-chunk: N_chunks_for_import=%d  ngrp_initial=%d  Nimport=%ld  FreeBytes=%lld , but we need to allocate=%lld \n",N_chunks_for_import, ngrp_initial, Nimport, (long long)FreeBytes,(long long)(Nimport * sizeof(struct GasGraddata_in) + Nimport * sizeof(struct GasGraddata_out) + 16384)); endrun(9999);}
+                if(ngrp_initial == 1 && N_chunks_for_import != ((1 << PTask) - ngrp_initial) && ThisTask == 0) PRINT_WARNING("Splitting import operation into sub-chunks as we are hitting memory limits (check this isn't imposing large communication cost)");
+                
+                /* now allocated the import and results buffers */
+                GasGradDataGet = (struct GasGraddata_in *) mymalloc("GasGradDataGet", Nimport * sizeof(struct GasGraddata_in));
+                if(gradient_iteration==0)
+                {
+                    GasGradDataResult = (struct GasGraddata_out *) mymalloc("GasGradDataResult", Nimport * sizeof(struct GasGraddata_out));
+                } else {
+                    GasGradDataResult_iter = (struct GasGraddata_out_iter *) mymalloc("GasGradDataResult_iter", Nimport * sizeof(struct GasGraddata_out_iter));
+                }
+                
+
+                tstart = my_second(); Nimport = 0; /* reset because this will be cycled below to calculate the recieve offsets (Recv_offset) */
+                for(ngrp = ngrp_initial; ngrp < ngrp_initial + N_chunks_for_import; ngrp++) /* exchange particle data */
+                {
+                    recvTask = ThisTask ^ ngrp;
+                    if(recvTask < NTask)
+                    {
+                        if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0) /* get the particles */
+                        {
+                            MPI_Sendrecv(&GasGradDataIn[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct GasGraddata_in), MPI_BYTE, recvTask, TAG_GRADLOOP_A,
+                                         &GasGradDataGet[Nimport], Recv_count[recvTask] * sizeof(struct GasGraddata_in), MPI_BYTE, recvTask, TAG_GRADLOOP_A,
+                                         MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                            Nimport += Recv_count[recvTask];
+                        }
                     }
                 }
-            }
-            tend = my_second();
-            timecommsumm1 += timediff(tstart, tend);
+                tend = my_second(); timecommsumm1 += timediff(tstart, tend);
             
-            myfree(GasGradDataIn);
-            if(gradient_iteration==0)
-            {
-                GasGradDataResult = (struct GasGraddata_out *) mymalloc("GasGradDataResult", Nimport * sizeof(struct GasGraddata_out));
-                GasGradDataOut = (struct GasGraddata_out *) mymalloc("GasGradDataOut", Nexport * sizeof(struct GasGraddata_out));
-                report_memory_usage(&HighMark_GasGrad, "GRADIENTS_LOOP");
-            } else {
-                GasGradDataResult_iter = (struct GasGraddata_out_iter *) mymalloc("GasGradDataResult_iter", Nimport * sizeof(struct GasGraddata_out_iter));
-                GasGradDataOut_iter = (struct GasGraddata_out_iter *) mymalloc("GasGradDataOut_iter", Nexport * sizeof(struct GasGraddata_out_iter));
-            }
-            
-            /* now do the particles that were sent to us */
-            tstart = my_second();
-            NextJ = 0;
-            
+                
+                
+                /* now do the particles that were sent to us */
+                tstart = my_second(); NextJ = 0;
 #ifdef PTHREADS_NUM_THREADS
-            for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
-                pthread_create(&mythreads[j], &attr, GasGrad_evaluate_secondary, &threadid[j]);
+                for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++) {pthread_create(&mythreads[j], &attr, GasGrad_evaluate_secondary, &threadid[j]);}
 #endif
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-            {
-#ifdef _OPENMP
-                int mainthreadid = omp_get_thread_num();
-#else
-                int mainthreadid = 0;
-#endif
-                GasGrad_evaluate_secondary(&mainthreadid, gradient_iteration);
-            }
-            
-#ifdef PTHREADS_NUM_THREADS
-            for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
-                pthread_join(mythreads[j], NULL);
-            
-            pthread_mutex_destroy(&mutex_partnodedrift);
-            pthread_mutex_destroy(&mutex_nexport);
-            pthread_attr_destroy(&attr);
-#endif
-            
-            tend = my_second();
-            timecomp2 += timediff(tstart, tend);
-            
-            if(NextParticle < 0)
-                ndone_flag = 1;
-            else
-                ndone_flag = 0;
-            
-            tstart = my_second();
-            MPI_Allreduce(&ndone_flag, &ndone, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-            tend = my_second();
-            timewait2 += timediff(tstart, tend);
-            
-            /* get the result */
-            tstart = my_second();
-            for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
-            {
-                recvTask = ThisTask ^ ngrp;
-                if(recvTask < NTask)
                 {
-                    if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
+#ifdef _OPENMP
+                    int mainthreadid = omp_get_thread_num();
+#else
+                    int mainthreadid = 0;
+#endif
+                    GasGrad_evaluate_secondary(&mainthreadid, gradient_iteration);
+                }
+#ifdef PTHREADS_NUM_THREADS
+                for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++) {pthread_join(mythreads[j], NULL);}
+                pthread_mutex_destroy(&mutex_partnodedrift);
+                pthread_mutex_destroy(&mutex_nexport);
+                pthread_attr_destroy(&attr);
+#endif
+                tend = my_second(); timecomp2 += timediff(tstart, tend);
+
+                
+                tstart = my_second(); Nimport = 0;
+                for(ngrp = ngrp_initial; ngrp < ngrp_initial + N_chunks_for_import; ngrp++) /* send the results for imported elements back to their host tasks */
+                {
+                    recvTask = ThisTask ^ ngrp;
+                    if(recvTask < NTask)
                     {
-                        /* send the results */
-                        if(gradient_iteration==0)
+                        if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
                         {
-                            MPI_Sendrecv(&GasGradDataResult[Recv_offset[recvTask]],
-                                         Recv_count[recvTask] * sizeof(struct GasGraddata_out),
-                                         MPI_BYTE, recvTask, TAG_GRADLOOP_B,
-                                         &GasGradDataOut[Send_offset[recvTask]],
-                                         Send_count[recvTask] * sizeof(struct GasGraddata_out),
-                                         MPI_BYTE, recvTask, TAG_GRADLOOP_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                        } else {
-                            MPI_Sendrecv(&GasGradDataResult_iter[Recv_offset[recvTask]],
-                                         Recv_count[recvTask] * sizeof(struct GasGraddata_out_iter),
-                                         MPI_BYTE, recvTask, TAG_GRADLOOP_C,
-                                         &GasGradDataOut_iter[Send_offset[recvTask]],
-                                         Send_count[recvTask] * sizeof(struct GasGraddata_out_iter),
-                                         MPI_BYTE, recvTask, TAG_GRADLOOP_C, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                            if(gradient_iteration==0) /* send the results */
+                            {
+                                MPI_Sendrecv(&GasGradDataResult[Nimport], Recv_count[recvTask] * sizeof(struct GasGraddata_out), MPI_BYTE, recvTask, TAG_GRADLOOP_B,
+                                             &GasGradDataOut[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct GasGraddata_out), MPI_BYTE, recvTask, TAG_GRADLOOP_B,
+                                             MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                            } else {
+                                MPI_Sendrecv(&GasGradDataResult_iter[Nimport], Recv_count[recvTask] * sizeof(struct GasGraddata_out_iter), MPI_BYTE, recvTask, TAG_GRADLOOP_C,
+                                             &GasGradDataOut_iter[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct GasGraddata_out_iter), MPI_BYTE, recvTask, TAG_GRADLOOP_C,
+                                             MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                            }
+                            Nimport += Recv_count[recvTask];
                         }
                     }
                 }
-            }
-            tend = my_second();
-            timecommsumm2 += timediff(tstart, tend);
-            
-            /* add the result to the local particles */
+                tend = my_second(); timecommsumm2 += timediff(tstart, tend);
+                if(gradient_iteration==0) {myfree(GasGradDataResult);} else {myfree(GasGradDataResult_iter);} /* free the structures used to send data back to tasks, its sent */
+                myfree(GasGradDataGet); /* free the structures used to send data back to tasks, its sent */
+                
+            } /* close the sub-chunking loop: for(ngrp_initial = 1; ngrp_initial < (1 << PTask); ngrp_initial += N_chunks_for_import) */
+
+
+            /* we have all our results back from the elements we exported: add the result to the local elements */
             tstart = my_second();
             for(j = 0; j < Nexport; j++)
             {
@@ -935,17 +863,14 @@ void hydro_gradient_calc(void)
                     out2particle_GasGrad_iter(&GasGradDataOut_iter[j], place, 1, gradient_iteration);
                 }
             }
-            tend = my_second();
-            timecomp1 += timediff(tstart, tend);
-            if(gradient_iteration==0)
-            {
-                myfree(GasGradDataOut);
-                myfree(GasGradDataResult);
-            } else {
-                myfree(GasGradDataOut_iter);
-                myfree(GasGradDataResult_iter);
-            }
-            myfree(GasGradDataGet);
+            tend = my_second(); timecomp1 += timediff(tstart, tend);
+            if(gradient_iteration==0) {myfree(GasGradDataOut);} else {myfree(GasGradDataOut_iter);} /* free the structures used to receive results, weve used it */
+            myfree(GasGradDataIn); /* free the structures used to prepare our initial export data, we're done here! */
+
+            if(NextParticle < 0) {ndone_flag = 1;} else {ndone_flag = 0;} /* figure out if we are done with the particular active set here */
+            tstart = my_second();
+            MPI_Allreduce(&ndone_flag, &ndone, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD); /* call an allreduce to figure out if all tasks are also done here, otherwise we need to iterate */
+            tend = my_second(); timewait2 += timediff(tstart, tend);
         }
         while(ndone < NTask);
         
@@ -1124,14 +1049,14 @@ void hydro_gradient_calc(void)
 #if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
             for(k=0;k<NUM_METAL_SPECIES;k++) {construct_gradient(SphP[i].Gradients.Metallicity[k],i);}
 #endif
-#ifdef RT_EVOLVE_EDDINGTON_TENSOR
+#ifdef RT_COMPGRAD_EDDINGTON_TENSOR
             for(k=0;k<N_RT_FREQ_BINS;k++) {construct_gradient(GasGradDataPasser[i].Gradients_E_gamma[k],i);}
 #endif
             
             /* now the gradients are calculated: below are simply useful operations on the results */
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
             /* this is here because for the models of BH growth and self-shielding of stars, we
-             need to calculate GradRho: we don't bother doing it in density.c if we're already calculating it here! */
+             need to calculate GradRho: we don't bother doing it in density.c if we're already calculating it here! but note, this is the -un-limited- gradient here */
             for(k=0;k<3;k++) {P[i].GradRho[k] = SphP[i].Gradients.Density[k];}
 #endif
             
@@ -1358,7 +1283,7 @@ void hydro_gradient_calc(void)
 		        double mean_molecular_weight = mu_meanwt;
 #else
 		        double mean_molecular_weight = 2.38; // molecular H2, +He with solar mass fractions and metals
-		        double temperature = GAMMA_MINUS1 / BOLTZMANN * (SphP[i].InternalEnergy*All.UnitPressure_in_cgs/All.UnitDensity_in_cgs) * (mean_molecular_weight*PROTONMASS);
+                double temperature = mean_molecular_weight * (1.4-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergy; // assume molecular eos with gamma=1.4
 #endif
 		        // define some variables we need below //
 		        double zeta_cr = 1.0e-17; // cosmic ray ionization rate (fixed as constant for non-CR runs)
@@ -1426,7 +1351,7 @@ void hydro_gradient_calc(void)
                 double nu_e = nu_ei + 6.21e-9*pow(temperature/100.,0.65)/m_neutral; // Pinto & Galli 2008 for latter (e-neutral)
                 double nu_i = (xe/xi)*nu_ei + 1.57e-9/(m_neutral+m_ion); // // Pandey & Wardle 2008 for former (e-ion), Pinto & Galli 2008 for latter (i-neutral)
                 // use the cross sections to determine the hall parameters and conductivities //
-                double beta_prefac = ELECTRONCHARGE * B_Gauss / (PROTONMASS * C * n_eff);
+                double beta_prefac = ELECTRONCHARGE * B_Gauss / (PROTONMASS * C_LIGHT * n_eff);
                 double beta_i = beta_prefac / (m_ion * nu_i); // standard beta factors (Hall parameters) 
                 double beta_e = beta_prefac / (ELECTRONMASS/PROTONMASS * nu_e);
                 double beta_g = beta_prefac / (m_grain * nu_g) * Z_grain;
@@ -1435,7 +1360,7 @@ void hydro_gradient_calc(void)
                 double sigma_H = -xe*be_inv + xi*bi_inv - xg*Z_grain*bg_inv; // hall conductivity
                 double sigma_P = xe*beta_e*be_inv + xi*beta_i*bi_inv + xg*Z_grain*beta_g*bg_inv; // pedersen conductivity
                 // now we can finally calculate the diffusivities // 
-                double eta_prefac = B_Gauss * C / (4 * M_PI * ELECTRONCHARGE * n_eff );
+                double eta_prefac = B_Gauss * C_LIGHT / (4 * M_PI * ELECTRONCHARGE * n_eff );
                 double eta_O = eta_prefac / sigma_O;
                 double sigma_perp2 = sigma_H*sigma_H + sigma_P*sigma_P;
                 double eta_H = eta_prefac * sigma_H / sigma_perp2;
@@ -1459,51 +1384,32 @@ void hydro_gradient_calc(void)
                 {
                     /* calculate the opacity */
                     SphP[i].Kappa_RT[k_freq] = rt_kappa(i, k_freq); // physical units //
-                    double lambda = 1;
-#if defined(RT_FLUXLIMITER) && defined(RT_EVOLVE_EDDINGTON_TENSOR)
+#if defined(RT_FLUXLIMITER) && defined(RT_COMPGRAD_EDDINGTON_TENSOR)
                     /* compute the flux-limiter for radiation transport: also convenient here to compute the relevant opacities for all particles */
+                    double lambda = 1;
                     if(SphP[i].E_gamma_Pred[k_freq] > 0)
                     {
-                        /* estimate: 1/gradient_length_scale */
-                        double R = sqrt(GasGradDataPasser[i].Gradients_E_gamma[k_freq][0] * GasGradDataPasser[i].Gradients_E_gamma[k_freq][0] +
-                                        GasGradDataPasser[i].Gradients_E_gamma[k_freq][1] * GasGradDataPasser[i].Gradients_E_gamma[k_freq][1] +
-                                        GasGradDataPasser[i].Gradients_E_gamma[k_freq][2] * GasGradDataPasser[i].Gradients_E_gamma[k_freq][2]) / (1.e-37 + SphP[i].E_gamma_Pred[k_freq] * SphP[i].Density/(1.e-37+P[i].Mass));
-
-                        /* use the maximum of the above or the gradient dotted into the full Eddington tensor, which we now have */
+                        /* 1/gradient length scale of grad.Prad */
                         double R_ET = sqrt(SphP[i].Gradients.E_gamma_ET[k_freq][0] * SphP[i].Gradients.E_gamma_ET[k_freq][0] +
                                            SphP[i].Gradients.E_gamma_ET[k_freq][1] * SphP[i].Gradients.E_gamma_ET[k_freq][1] +
                                            SphP[i].Gradients.E_gamma_ET[k_freq][2] * SphP[i].Gradients.E_gamma_ET[k_freq][2]) / (1.e-37 + SphP[i].E_gamma_Pred[k_freq] * SphP[i].Density/(1.e-37+P[i].Mass));
-                        R = R_ET; // testing; appears more accurate //
-                        R = DMAX(R,R_ET); // R_ET may always be less than R, though
-                        double Rmin = 1./(200.*Get_Particle_Size(i));
-                        if(R < Rmin) {R=Rmin;}
-                        R /= (1.e-37 + All.cf_atime * SphP[i].Kappa_RT[k_freq] * (SphP[i].Density*All.cf_a3inv)); /* dimensionless (all in physical) */
-                        /* now we can apply the actual slope-limiter function desired */
-                        R_ET = 1.*R;
-                        lambda = 3. * (2. + R_ET) / (6. + 3.*R_ET + R_ET*R_ET);
-                        if(lambda < 1e-30) lambda = 1.e-30;
-#ifdef RT_OTVET
-                        /* note that the OTVET eddington tensor is close to the correct value for the optically-thin limit. for the diffusion limit 
+                        R_ET = 3.*DMAX(R_ET , 1.e-6/Get_Particle_Size(i)) / (1.e-55 + All.cf_atime*SphP[i].Kappa_RT[k_freq]*(SphP[i].Density*All.cf_a3inv)); // limit to be > 0, divide by kappa-rho to get desired dimensionless ratio
+                        lambda = DMIN(1., DMAX( 3.*(2. + R_ET) / (6. + 3.*R_ET + R_ET*R_ET), MIN_REAL_NUMBER )); // slope-limiter
+#ifdef RT_OTVET         /* note that the OTVET eddington tensor is close to the correct value for the optically-thin limit. for the diffusion limit
                             it may be incorrect. we can therefore interpolate using an M1-like relation below, based on the gradients above (used 
-                            to determine which limit we are actually in */
-                        /* calculate ratio f=|Flux|/(c_eff*Energy_density_rad): f<<1 = diffusion limit, f~1 = free-streaming limit
-                            Here we can use the slope-limited f [f lower, so much more quickly our ET becomes isotropic], or 'pre-limit' R [less conservative, but may retain more information in some cases] */
-                        double f_flux_to_egy = DMIN(DMAX(R*(2.+R)/(6.+3.*R+R*R),0),1); // converges more slowly to optically thin limit (for R>>10)
-                        double chi = DMAX(1./3., DMIN(1. , (3. + 4.*f_flux_to_egy*f_flux_to_egy) / (5. + 2.*sqrt(4. - 3.*f_flux_to_egy*f_flux_to_egy))));
-                        /* note that, because of how our slope-limiter appears, we don't want to double-count the 1/3 factor for the
-                            diffusion limit (since whatever we come up with here will be multiplied by lambda in the relevant forces/etc: therefore 
-                            we need to multiply chifac_iso by a power of 3 (because this goes to I/3, but also when lambda->1/3) */
-						//chi=1./3.; // pure isotropic
-                        //chi=1.; // pure optically-thin // may be needed for RP problems
-                        double chifac_iso=3.*(1-chi)/2., chifac_ot=(3.*chi-1.)/2.;
+                            to determine which limit we are actually in: ratio f=|Flux|/(c_eff*Energy_density_rad): f<<1 = diffusion limit, f~1 = free-streaming limit: this is our slope-limiter above */
+                        double chi=DMAX(1./3.,DMIN(1.,(3.+4.*lambda*lambda)/(5.+2.*sqrt(4.-3.*lambda*lambda)))), chifac_iso=3.*(1-chi)/2., chifac_ot=(3.*chi-1.)/2.;
+                        for(k=0;k<3;k++) {SphP[i].Gradients.E_gamma_ET[k_freq][k] = chifac_ot*SphP[i].Gradients.E_gamma_ET[k_freq][k] + chifac_iso/3.*GasGradDataPasser[i].Gradients_E_gamma[k_freq][k];}
 #ifdef RT_DIFFUSION_CG
                         for(k=0;k<6;k++) {SphP[i].ET[k_freq][k] *= chifac_ot; if(k<3) {SphP[i].ET[k_freq][k] += chifac_iso/3.;}} // diagonal components // (this only makes sense if ET is freq-dependent) [note this will cause instability in the explicit methods; only use for CG where ET is explicitly called and this is done only on global timesteps]
 #endif
-                        for(k=0;k<3;k++) {SphP[i].Gradients.E_gamma_ET[k_freq][k] = chifac_ot*SphP[i].Gradients.E_gamma_ET[k_freq][k] + chifac_iso/3.*GasGradDataPasser[i].Gradients_E_gamma[k_freq][k];}
 #endif // ifdef otvet
+#ifdef RT_FLUXLIMITEDDIFFUSION /* this is simple because the Eddington tensor is always isotropic */
+                        for(k=0;k<3;k++) {SphP[i].Gradients.E_gamma_ET[k_freq][k] = GasGradDataPasser[i].Gradients_E_gamma[k_freq][k]/3.;}
+#endif
                     }
-#endif // ifdef fluxlimiter
                     SphP[i].Lambda_FluxLim[k_freq] = lambda;
+#endif // ifdef fluxlimiter
                 }
             }
 #endif // ifdef radtransfer
@@ -1576,10 +1482,10 @@ void hydro_gradient_calc(void)
             for(k1=0;k1<NUM_METAL_SPECIES;k1++)
                 local_slopelimiter(SphP[i].Gradients.Metallicity[k1],GasGradDataPasser[i].Maxima.Metallicity[k1],GasGradDataPasser[i].Minima.Metallicity[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion));
 #endif
-#ifdef RT_EVOLVE_EDDINGTON_TENSOR
+#ifdef RT_COMPGRAD_EDDINGTON_TENSOR
             for(k1=0;k1<N_RT_FREQ_BINS;k1++)
             {
-                //local_slopelimiter(SphP[i].Gradients.E_gamma_ET[k1],GasGradDataPasser[i].Maxima.E_gamma[k1],GasGradDataPasser[i].Minima.E_gamma[k1],a_limiter,h_lim,stol);
+                local_slopelimiter(SphP[i].Gradients.E_gamma_ET[k1],GasGradDataPasser[i].Maxima.E_gamma[k1],GasGradDataPasser[i].Minima.E_gamma[k1],a_limiter,h_lim,stol);
                 local_slopelimiter(GasGradDataPasser[i].Gradients_E_gamma[k1],GasGradDataPasser[i].Maxima.E_gamma[k1],GasGradDataPasser[i].Minima.E_gamma[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion));
             }
 #endif
@@ -1924,9 +1830,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
-#ifdef BOX_PERIODIC			/*  now find the closest image in the given box size  */
-                NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
-#endif
+                NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1); /*  now find the closest image in the given box size  */
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 double h_j = PPP[j].Hsml;
 #if !defined(HYDRO_SPH) && !defined(KERNEL_CRK_FACES)
@@ -1944,7 +1848,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if((r2 >= (hhat_i * hhat_i)) && (r2 >= (hhat_j * hhat_j))) continue;
                     double h_avg = 0.5 * (hhat_i + hhat_j), particle_distance = sqrt(r2);
                     kernel_hinv(h_avg, &hhatinv_i, &hhatinv3_i, &hhatinv4_i); u = DMIN(particle_distance * hhatinv_i, 1.0);
-                    kernel_main(u, hhatinv3_i, hhatinv4_i, &wkhat_i, &dwkhat_i, 0); /* wkhat is symmetric in this case W_{ij} = W_{ji} */
+                    if(u<1) {kernel_main(u, hhatinv3_i, hhatinv4_i, &wkhat_i, &dwkhat_i, 0);} else {wkhat_i=dwkhat_i=0;} /* wkhat is symmetric in this case W_{ij} = W_{ji} */
                     double mean_weight = wkhat_i * 0.5 * (SphP[j].Norm_hat + local.Norm_hat) / (local.Norm_hat * SphP[j].Norm_hat);
                     double weight_i = P[j].Mass * mean_weight, weight_j = local.Mass * mean_weight, Velocity_bar_diff[3];
                     if(particle_distance < h_avg) {
@@ -2239,7 +2143,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         if(swap_to_j) {MINMAX_CHECK(-dmetal[k],GasGradDataPasser[j].Minima.Metallicity[k],GasGradDataPasser[j].Maxima.Metallicity[k]);}
                     }
 #endif
-#ifdef RT_EVOLVE_EDDINGTON_TENSOR
+#ifdef RT_COMPGRAD_EDDINGTON_TENSOR
                     double dnET[N_RT_FREQ_BINS][6];
                     double dn[N_RT_FREQ_BINS];
                     double V_i_inv = 1/V_i, V_j_inv = SphP[j].Density/P[j].Mass;
@@ -2317,7 +2221,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
                             for(k2=0;k2<NUM_METAL_SPECIES;k2++) {out.Gradients[k].Metallicity[k2] += wk_xyz_i * dmetal[k2];}
 #endif
-#ifdef RT_EVOLVE_EDDINGTON_TENSOR
+#ifdef RT_COMPGRAD_EDDINGTON_TENSOR
                             for(k2=0;k2<N_RT_FREQ_BINS;k2++) 
                             {
                             	out.Gradients[k].E_gamma[k2] += wk_xyz_i * dn[k2];
@@ -2362,7 +2266,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
                             for(k2=0;k2<NUM_METAL_SPECIES;k2++) {SphP[j].Gradients.Metallicity[k2][k] += wk_xyz_j * dmetal[k2];}
 #endif
-#ifdef RT_EVOLVE_EDDINGTON_TENSOR
+#ifdef RT_COMPGRAD_EDDINGTON_TENSOR
                             for(k2=0;k2<N_RT_FREQ_BINS;k2++) 
                             {
                             	GasGradDataPasser[j].Gradients_E_gamma[k2][k] += wk_xyz_j * dn[k2];

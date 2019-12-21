@@ -15,7 +15,7 @@
  */
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * Volker Springel. The code has been modified
  * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (mostly to
  * write out new/modified quantities, as needed)
  */
@@ -136,11 +136,7 @@ void savepositions(int num)
         All.Ti_lastoutput = All.Ti_Current;
         
         CPU_Step[CPU_SNAPSHOT] += measure_time();
-        
-#ifdef SUBFIND_RESHUFFLE_CATALOGUE
-        endrun(0);
-#endif
-    }
+}
     
 #ifdef FOF
     if(RestartFlag != 4)
@@ -550,6 +546,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+
+        case IO_GRAINTYPE:      /* grain type */
+#if defined(PIC_MHD)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].Grain_SubType;
+                    n++;
+                }
+#endif
+            break;
             
             
         case IO_VSTURB_DISS:
@@ -638,31 +645,31 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 
         case IO_CHIMES_NH:
 #ifdef CHIMES_NH_OUTPUT 
-	  for (n = 0; n < pc; pindex++) 
-	    if (P[pindex].Type == type) 
-	      {
+            for (n = 0; n < pc; pindex++)
+                if (P[pindex].Type == type)
+                {
 #ifdef CHIMES_SOBOLEV_SHIELDING 
-#ifdef COOL_METAL_LINES_BY_SPECIES 
-		*fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1) * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * (1.0 - (P[pindex].Metallicity[0] + P[pindex].Metallicity[1])) / PROTONMASS); 
-#else 
-		*fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1) * All.cf_a2inv * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * HYDROGEN_MASSFRAC / PROTONMASS); 
-#endif // COOL_MET_LINES_BY_SPECIES 
+#ifdef COOL_METAL_LINES_BY_SPECIES  
+                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1,pindex) * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * (1.0 - (P[pindex].Metallicity[0] + P[pindex].Metallicity[1])) / PROTONMASS);
+#else
+                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1,pindex) * All.cf_a2inv * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * HYDROGEN_MASSFRAC / PROTONMASS);
+#endif // COOL_MET_LINES_BY_SPECIES
 #endif // CHIMES_SOBOLEV_SHIELDING 
-		  n++;
-	      }
+                    n++;
+                }
 #endif // CHIMES_NH_OUTPUT 
-	  break;
+            break;
 
         case IO_CHIMES_STAR_SIGMA:
 #if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
-	  for (n = 0; n < pc; pindex++) 
-	    if (P[pindex].Type == type) 
-	      {
-		*fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,PPP[pindex].Hsml,P[pindex].DensAroundStar,PPP[pindex].NumNgb,0) * 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm));  // g cm^-2 
-		  n++;
-	      }
+            for (n = 0; n < pc; pindex++)
+                if (P[pindex].Type == type)
+                {
+                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,PPP[pindex].Hsml,P[pindex].DensAroundStar,PPP[pindex].NumNgb,0,pindex) * 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm));  // g cm^-2
+                    n++;
+                }
 #endif 
-	  break;
+            break;
 
         case IO_CHIMES_FLUX_G0: 
 #ifdef CHIMES_STELLAR_FLUXES  
@@ -742,7 +749,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif // CHIMES
             
         case IO_POT:		/* gravitational potential */
-#if defined(OUTPUT_POTENTIAL)  || defined(SUBFIND_RESHUFFLE_AND_POTENTIAL)
+#if defined(OUTPUT_POTENTIAL)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1455,49 +1462,10 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
             
-        case IO_DMHSML:
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE) && defined(SUBFIND)
-            for(n = 0; n < pc; pindex++)
-                if(P[pindex].Type == type)
-                {
-                    *fp_single++ = P[pindex].DM_Hsml;
-                    n++;
-                }
-#endif
-            break;
-            
-        case IO_DMDENSITY:
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE) && defined(SUBFIND)
-            for(n = 0; n < pc; pindex++)
-                if(P[pindex].Type == type)
-                {
-                    *fp_single++ = P[pindex].u.DM_Density;
-                    n++;
-                }
-#endif
-            break;
-            
-        case IO_DMVELDISP:
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE) && defined(SUBFIND)
-            for(n = 0; n < pc; pindex++)
-                if(P[pindex].Type == type)
-                {
-                    *fp_single++ = P[pindex].v.DM_VelDisp;
-                    n++;
-                }
-#endif
-            break;
-            
-        case IO_DMHSML_V:
-            break;
-            
-        case IO_DMDENSITY_V:
-            break;
-            
         case IO_CHEM:
             break;
         case IO_AGS_SOFT:		/* Adaptive Gravitational Softening: softening */
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(AGS_OUTPUTGRAVSOFT)
+#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTGRAVSOFT)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1507,7 +1475,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
         case IO_AGS_RHO:        /* Adaptive Gravitational Softening: density */
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1517,7 +1485,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
         case IO_AGS_QPT:        /* quantum potential (Q) */
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1530,7 +1498,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
         case IO_AGS_PSI_RE:        /* real part of wavefunction */
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
 #if (DM_FUZZY > 0)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
@@ -1542,7 +1510,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
         case IO_AGS_PSI_IM:        /* imaginary part of wavefunction */
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
 #if (DM_FUZZY > 0)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
@@ -1554,7 +1522,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
         case IO_AGS_ZETA:		/* Adaptive Gravitational Softening: zeta */
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(AGS_OUTPUTZETA)
+#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTZETA)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1711,7 +1679,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
         break;
             
     case IO_DYNERROR:
-#ifdef TURB_DIFF_DYNAMIC_ERROR
+#ifdef IO_TURB_DIFF_DYNAMIC_ERROR
         for (n = 0; n < pc; pindex++) {
             if (P[pindex].Type == type) {
                 *fp++ = SphP[pindex].TD_DynDiffCoeff_error;
@@ -1722,7 +1690,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
         break;
 
     case IO_DYNERRORDEFAULT:
-#ifdef TURB_DIFF_DYNAMIC_ERROR
+#ifdef IO_TURB_DIFF_DYNAMIC_ERROR
         for (n = 0; n < pc; pindex++) {
             if (P[pindex].Type == type) {
                 *fp++ = SphP[pindex].TD_DynDiffCoeff_error_default;
@@ -1830,6 +1798,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_AGE:
         case IO_OSTAR:
         case IO_GRAINSIZE:
+        case IO_GRAINTYPE:
         case IO_DELAYTIME:
         case IO_HSMS:
         case IO_POT:
@@ -1898,15 +1867,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = sizeof(MyOutputFloat);
             break;
             
-            
-        case IO_DMHSML:
-        case IO_DMDENSITY:
-        case IO_DMVELDISP:
-        case IO_DMHSML_V:
-        case IO_DMDENSITY_V:
-            bytes_per_blockelement = sizeof(float);
-            break;
-
             
         case IO_IMF:
 #ifdef GALSF_SFR_IMF_VARIATION
@@ -2192,6 +2152,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_AGE:
         case IO_OSTAR:
         case IO_GRAINSIZE:
+        case IO_GRAINTYPE:
         case IO_DELAYTIME:
         case IO_HSMS:
         case IO_POT:
@@ -2231,11 +2192,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_EOSYE:
         case IO_PRESSURE:
         case IO_INIT_DENSITY:
-        case IO_DMHSML:
-        case IO_DMDENSITY:
-        case IO_DMVELDISP:
-        case IO_DMHSML_V:
-        case IO_DMDENSITY_V:
         case IO_AGS_SOFT:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
@@ -2582,16 +2538,19 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return nstars;
             break;
              
+#ifdef GRAIN_FLUID
         case IO_GRAINSIZE:
-            nngb = 0;
-            for(i = 0; i < 6; i++)
-            {
-                if(i == 0) typelist[i] = 0;
-                if(i == 4) typelist[i] = 0;
-                nngb += header.npart[i];
-            }
+            nngb=0;
+            for(i=0;i<6;i++) {if((1 << i) & (GRAIN_PTYPES)) {nngb+=header.npart[i];} else {typelist[i]=0;}}
             return nngb;
             break;
+
+        case IO_GRAINTYPE:
+            nngb=0;
+            for(i=0;i<6;i++) {if((1 << i) & (GRAIN_PTYPES)) {nngb+=header.npart[i];} else {typelist[i]=0;}}
+            return nngb;
+            break;
+#endif
 
 
         case IO_IMF:
@@ -2614,16 +2573,12 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             break;
             
         case IO_HSMS:
-            for(i = 0; i < 6; i++)
-                if(i != 4)
-                    typelist[i] = 0;
+            for(i = 0; i < 6; i++) {if(i != 4) {typelist[i] = 0;}}
             return nstars;
             break;
             
         case IO_Z:
-            for(i = 0; i < 6; i++)
-                if(i != 0 && i != 4)
-                    typelist[i] = 0;
+            for(i = 0; i < 6; i++) {if(i != 0 && i != 4) {typelist[i] = 0;}}
             return ngas + nstars;
             break;
 
@@ -2733,20 +2688,6 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return nsel;
             break;
             
-            
-        case IO_DMHSML:
-        case IO_DMDENSITY:
-        case IO_DMVELDISP:
-        case IO_DMHSML_V:
-        case IO_DMDENSITY_V:
-            for(i = 0; i < 6; i++)
-                if(((1 << i) & (FOF_PRIMARY_LINK_TYPES)))
-                    nsel += header.npart[i];
-                else
-                    typelist[i] = 0;
-            return nsel;
-            break;
-            
         case IO_MG_ACCEL:
             for(i = 2; i < 6; i++)
                 typelist[i] = 0;
@@ -2828,6 +2769,14 @@ int blockpresent(enum iofields blocknr)
 
         case IO_GRAINSIZE:
 #ifdef GRAIN_FLUID
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+
+        case IO_GRAINTYPE:
+#ifdef PIC_MHD
             return 1;
 #else
             return 0;
@@ -2967,7 +2916,7 @@ int blockpresent(enum iofields blocknr)
             break;
             
         case IO_POT:
-#if defined(OUTPUT_POTENTIAL) || defined(SUBFIND_RESHUFFLE_AND_POTENTIAL)
+#if defined(OUTPUT_POTENTIAL)
             return 1;
 #else
             return 0;
@@ -3345,27 +3294,12 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             
-        case IO_DMHSML:
-        case IO_DMDENSITY:
-        case IO_DMVELDISP:
-#if defined(SUBFIND_RESHUFFLE_CATALOGUE) && defined(SUBFIND)
-            return 1;
-#else
-            return 0;
-#endif
-            break;
-            
-        case IO_DMHSML_V:
-        case IO_DMDENSITY_V:
-            return 0;
-            break;
-            
         case IO_CHEM:
             return 0;
             break;
             
         case IO_AGS_SOFT:
-#if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(AGS_OUTPUTGRAVSOFT)
+#if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTGRAVSOFT)
             return 1;
 #else
             return 0;
@@ -3374,7 +3308,7 @@ int blockpresent(enum iofields blocknr)
 
         case IO_AGS_RHO:
         case IO_AGS_QPT:
-#if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+#if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
             return 1;
 #else
             return 0;
@@ -3383,7 +3317,7 @@ int blockpresent(enum iofields blocknr)
 
         case IO_AGS_PSI_RE:
         case IO_AGS_PSI_IM:
-#if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+#if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
 #if (DM_FUZZY > 0)
             return 1;
 #else
@@ -3395,7 +3329,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_AGS_ZETA:
-#if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(AGS_OUTPUTZETA)
+#if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTZETA)
             return 1;
 #else
             return 0;
@@ -3453,7 +3387,7 @@ int blockpresent(enum iofields blocknr)
 
     case IO_DYNERRORDEFAULT:
     case IO_DYNERROR:
-#ifdef TURB_DIFF_DYNAMIC_ERROR
+#ifdef IO_TURB_DIFF_DYNAMIC_ERROR
         return 1;
 #else
         return 0;
@@ -3566,6 +3500,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
             break;
         case IO_GRAINSIZE:
             strncpy(label, "GRSZ", 4);
+            break;
+        case IO_GRAINTYPE:
+            strncpy(label, "GRTP", 4);
             break;
         case IO_DELAYTIME:
             strncpy(label, "DETI", 4);
@@ -3794,21 +3731,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_EDDINGTON_TENSOR:
             strncpy(label, "ET", 4);
             break;
-        case IO_DMHSML:
-            strncpy(label, "DMHS", 4);
-            break;
-        case IO_DMDENSITY:
-            strncpy(label, "DMDE", 4);
-            break;
-        case IO_DMVELDISP:
-            strncpy(label, "DMVD", 4);
-            break;
-        case IO_DMHSML_V:
-            strncpy(label, "VDMH", 4);
-            break;
-        case IO_DMDENSITY_V:
-            strncpy(label, "VDMD", 4);
-            break;
         case IO_CHEM:
             strncpy(label, "CHEM", 4);
             break;
@@ -4029,6 +3951,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_GRAINSIZE:
             strcpy(buf, "GrainSize");
             break;
+        case IO_GRAINTYPE:
+            strcpy(buf, "PICParticleType");
+            break;
         case IO_HSMS:
             strcpy(buf, "StellarSmoothingLength");
             break;
@@ -4247,21 +4172,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_EDDINGTON_TENSOR:
             strcpy(buf, "EddingtonTensor");
             break;
-        case IO_DMHSML:
-            strcpy(buf, "DM Hsml");
-            break;
-        case IO_DMDENSITY:
-            strcpy(buf, "DM Density");
-            break;
-        case IO_DMVELDISP:
-            strcpy(buf, "DM Velocity Dispersion");
-            break;
-        case IO_DMHSML_V:
-            strcpy(buf, "DM Hsml Voronoi");
-            break;
-        case IO_DMDENSITY_V:
-            strcpy(buf, "DM Density Voronoi");
-            break;
         case IO_CHEM:
             strcpy(buf, "ChemicalAbundances");
             break;
@@ -4391,12 +4301,6 @@ void write_file(char *fname, int writeTask, int lastTask)
 #endif
     
 #define SKIP  {my_fwrite(&blksize,sizeof(int),1,fd);}
-    
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-    FILE *fd_pot = 0;
-    
-#define SKIP_POT  {my_fwrite(&blksize,sizeof(int),1,fd_pot);}
-#endif
     
     /* determine particle numbers of each type in file */
     
@@ -4532,19 +4436,6 @@ void write_file(char *fname, int writeTask, int lastTask)
             my_fwrite(&header, sizeof(header), 1, fd);
             SKIP;
         }
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-        char fname_pot[1000], *s_split_1, *s_split_2;
-        
-        s_split_1 = strtok(fname, ".");
-        s_split_2 = strtok(NULL, " ,");
-        
-        sprintf(fname_pot, "%s_pot.%s", s_split_1, s_split_2);
-        if(!(fd_pot = fopen(fname_pot, "w")))
-        {
-            printf("can't open file `%s' for writing pot_snapshot.\n", fname_pot);
-            endrun(1234);
-        }
-#endif
     }
     
     if((All.SnapFormat == 1 || All.SnapFormat == 2) && ThisTask == writeTask)
@@ -4667,14 +4558,7 @@ void write_file(char *fname, int writeTask, int lastTask)
                             SKIP;
                         }
                         blksize = npart * bytes_per_blockelement;
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-                        if(blocknr == IO_POT)
-                            SKIP_POT;
-                        if(blocknr != IO_POT)
-                            SKIP;
-#else
                         SKIP;
-#endif
                     }
                 }
                 
@@ -4798,14 +4682,7 @@ void write_file(char *fname, int writeTask, int lastTask)
                                     }
                                     else
                                     {
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-                                        if(blocknr == IO_POT)
-                                            my_fwrite(CommBuffer, bytes_per_blockelement, pc, fd_pot);
-                                        else
-                                            my_fwrite(CommBuffer, bytes_per_blockelement, pc, fd);
-#else
                                         my_fwrite(CommBuffer, bytes_per_blockelement, pc, fd);
-#endif
                                     }
                                 }
                                 
@@ -4831,14 +4708,7 @@ void write_file(char *fname, int writeTask, int lastTask)
                 {
                     if(All.SnapFormat == 1 || All.SnapFormat == 2)
                     {
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-                        if(blocknr == IO_POT)
-                            SKIP_POT;
-                        if(blocknr != IO_POT)
-                            SKIP;
-#else
                         SKIP;
-#endif
                     }
                 }
             }
@@ -4866,9 +4736,6 @@ void write_file(char *fname, int writeTask, int lastTask)
         {
             fclose(fd);
         }
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-        fclose(fd_pot);
-#endif
     }
 }
 
@@ -5045,8 +4912,7 @@ size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream)
     return nread;
 }
 
-/** This is so we don't have to preface every printf call with the if
- statement to only make it print once. */
+/** This is so we don't have to preface every printf call with the if statement to only make it print once. */
 void mpi_printf(const char *fmt, ...)
 {
     if(ThisTask == 0)
@@ -5054,14 +4920,11 @@ void mpi_printf(const char *fmt, ...)
         va_list l;
         va_start(l, fmt);
         vprintf(fmt, l);
-#ifndef IO_REDUCED_MODE
-        fflush(stdout);
-#endif
         va_end(l);
     }
 }
 
-#if defined(SUBFIND_READ_FOF) || defined(SUBFIND_RESHUFFLE_CATALOGUE)
+#if defined(IO_SUBFIND_READFOF_FROMIC)
 int io_compare_P_ID(const void *a, const void *b)
 {
     if(((struct particle_data *) a)->ID < (((struct particle_data *) b)->ID))

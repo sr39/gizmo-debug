@@ -38,7 +38,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 {
     double lum = 0;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-    double c_code = C / All.UnitVelocity_in_cm_per_s;
+    double c_code = C_LIGHT_CODE;
     double m_solar = mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
     /* if below the deuterium burning limit, just use the potential energy efficiency at the surface of a jupiter-density object */
     double rad_eff_protostar = 5.0e-7;
@@ -65,7 +65,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
             if(l_kh > lum_sol) {lum_sol = l_kh;} // if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
             // now, calculate accretion luminosity using protostellar radius
 #ifdef SINGLE_STAR_FB_JETS
-            double eps_protostar=All.BAL_f_accretion; //fraction of gas that does not get launched out with a jet
+            double eps_protostar=All.BAL_f_accretion; // fraction of gas that does not get launched out with a jet 
 #else
             double eps_protostar=0.75; //default value, although 1.0 would be energy conserving
 #endif
@@ -119,7 +119,7 @@ double particle_ionizing_luminosity_in_cgs(long i)
 #endif
     } // (P[i].Type != 5)
 #ifdef BH_HII_HEATING /* AGN template: light-to-mass ratio L(>13.6ev)/Mparticle in Lsun/Msun, above is dNion/dt = 5.5e54 s^-1 (Lbol/1e45 erg/s) */
-    if(P[i].Type == 5) {lm_ssp = 1.741e6 * bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i) / (P[i].Mass*All.UnitTime_in_Megayears/All.HubbleParam * (C / All.UnitVelocity_in_cm_per_s) * (C / All.UnitVelocity_in_cm_per_s));}
+    if(P[i].Type == 5) {lm_ssp = 1.741e6 * bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i) / (P[i].Mass*All.UnitTime_in_Megayears/All.HubbleParam*C_LIGHT_CODE*C_LIGHT_CODE);}
 #endif
     lm_ssp *= (1.95*P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // convert to luminosity from L/M
     if((lm_ssp <= 0) || (!isfinite(lm_ssp))) {lm_ssp=0;} // trap for negative values and nans (shouldnt happen)
@@ -140,7 +140,7 @@ double particle_ionizing_luminosity_in_cgs(long i)
     of the ejecta for the event[s] of interest. Mass [Msne] and velocity [SNe_v_ejecta] should
     be in code units. yields[k] should be defined for all metal species [k], and in dimensionless units
     (mass fraction of the ejecta in that species). */
-void particle2in_addFB_fromstars(struct addFBdata_in *in, int i, int fb_loop_iteration)
+void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int fb_loop_iteration)
 {
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
@@ -419,7 +419,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 
 
 
-void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
+void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i)
 {
 #ifdef GALSF_FB_FIRE_RPROCESS
     if(P[i].RProcessEvent_ThisTimeStep<=0) {in->Msne=0; return;} // no event
@@ -435,7 +435,6 @@ void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
     in->Msne = 0.01 * (double)P[i].RProcessEvent_ThisTimeStep / ((double)((All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS)); // mass ejected ~0.01*M_sun; only here for bookkeeping //
 #endif
 }
-
 
 
 
@@ -470,7 +469,7 @@ int binarySearch(const double * arr, const double x,
 #endif
 
 
-void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
+void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
 {
 
   in->Msne = 0.0;
@@ -631,7 +630,7 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
 
 
 
-void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
+void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
 {
     int k; if(P[i].SNe_ThisTimeStep<=0) {in->Msne=0; return;} // no event
     int SNeIaFlag=0; if(evaluate_stellar_age_Gyr(P[i].StellarAge) > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
@@ -695,7 +694,7 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
 
 
 
-void particle2in_addFB_winds(struct addFBdata_in *in, int i)
+void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
 {
     int k; if(P[i].MassReturn_ThisTimeStep<=0) {in->Msne=0; return;} // no event
 #ifdef METALS
@@ -736,7 +735,7 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
     /* calculate wind kinetic luminosity + internal energy (hot winds from O-stars, slow from AGB winds) */
     double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), E_wind_tscaling=0.0013;
     if(star_age <= 0.1) {E_wind_tscaling=0.0013 + 16.0/(1+pow(star_age/0.0025,1.4)+pow(star_age/0.01,5.0));} // stellar population age dependence of specific wind energy, in units of an effective internal energy/temperature
-    in->SNe_v_ejecta = sqrt(2.0 * (All.AGBGasEnergy * E_wind_tscaling * (3.0e7*(1.0/GAMMA_MINUS1)*(BOLTZMANN/PROTONMASS) * All.UnitMass_in_g/All.UnitEnergy_in_cgs))); // get the actual wind velocity (multiply specific energy by units, user-set normalization, and convert)
+    in->SNe_v_ejecta = sqrt(2.0 * (All.AGBGasEnergy * E_wind_tscaling * (3.0e7/((5./3.-1.)*U_TO_TEMP_UNITS)))); // get the actual wind velocity (multiply specific energy by units, user-set normalization, and convert)
 #endif
 }
 

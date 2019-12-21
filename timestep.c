@@ -12,10 +12,10 @@
  */
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * Volker Springel. The code has been modified
  * substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO; these 
  * modifications include the addition of various timestep criteria, the WAKEUP 
- * additions, and various changes of units and variable naming conventions throughout. 
+ * additions, and various changes of units and variable naming conventions throughout.
  */
 
 static double dt_displacement = 0;
@@ -88,19 +88,7 @@ void find_timesteps(void)
     
     if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin || dt_displacement == 0)
         find_dt_displacement_constraint(All.cf_hubble_a * All.cf_atime * All.cf_atime);
- 
-#ifdef BH_WIND_SPAWN
-    if(All.HighestActiveTimeBin >= All.HighestOccupiedTimeBin-5)
-    {
-        double local_max_u=0.0, global_max_u, global_max_t;
-        for(i = 0; i < NumPart; i++) {if(P[i].Type==0) {local_max_u = DMAX( local_max_u, SphP[i].InternalEnergy );}}
-        MPI_Allreduce(&local_max_u, &global_max_u, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-        double u_to_temp_fac = PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
-        global_max_t = global_max_u * u_to_temp_fac;
-        if(ThisTask==0)  printf("Global Maximum SphP.u = %g (Max Temperature = %g) \n", global_max_u, global_max_t);
-    }
-#endif
-    
+     
 #ifdef DIVBCLEANING_DEDNER
     /* need to calculate the global fastest wave speed to manage the damping terms stably */
     if((All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)||(All.FastestWaveSpeed == 0))
@@ -163,7 +151,7 @@ void find_timesteps(void)
 #else
         ti_step = get_timestep(i, &aphys, 0);
 #endif
-        
+
         /* make it a power 2 subdivision */
         ti_min = TIMEBASE;
         while(ti_min > ti_step)
@@ -355,7 +343,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 #if defined(TIDAL_TIMESTEP_CRITERION)
 #if defined(RT_USE_GRAVTREE)
-        if(P[p].Type>0) // strictly this is better for accuracy, but necessary???
+        if(P[p].Type>0) // strictly this is better for accuracy, but not necessary
 #endif
         ax = ay = az = 0.0; // we're getting our gravitational timestep criterion from the tidal tensor, but still want to do the accel criterion for other forces
 #endif
@@ -403,11 +391,10 @@ integertime get_timestep(int p,		/*!< particle index */
         
         ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / (dt * dt);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-        ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].AGS_Hsml,All.ForceSoftening[P[p].Type]) / (dt * dt);
+        ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * PPP[p].AGS_Hsml / (dt * dt);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-        if(P[p].Type==0)
-            ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / (dt * dt);
+        if(P[p].Type==0) {ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * PPP[p].Hsml / (dt * dt);}
 #endif
         *aphys = ac;
         return flag;
@@ -416,13 +403,10 @@ integertime get_timestep(int p,		/*!< particle index */
     dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / ac);
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-    dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * DMAX(PPP[p].AGS_Hsml,All.ForceSoftening[P[p].Type]) / ac);
+    dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * PPP[p].AGS_Hsml / ac);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-    if(P[p].Type == 0)
-    {
-        dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / ac);
-    }
+    if(P[p].Type == 0) {dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * PPP[p].Hsml / ac);}
 #endif
 
 #if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)
@@ -430,12 +414,11 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         if((All.ComovingIntegrationOn))
         {
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-            double ags_h = DMAX(PPP[p].AGS_Hsml , DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]));
-            ags_h = DMIN(ags_h, DMAX(100.*All.ForceSoftening[P[p].Type] , 10.*PPP[p].AGS_Hsml));
-#else
-            double ags_h = DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]);
+            double ags_h = DMAX(PPP[p].Hsml, All.ForceSoftening[P[p].Type]);
             ags_h = DMIN(ags_h, 10.*All.ForceSoftening[P[p].Type]);
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+            ags_h = DMAX(PPP[p].AGS_Hsml , DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]));
+            ags_h = DMIN(ags_h, DMAX(100.*All.ForceSoftening[P[p].Type] , 10.*PPP[p].AGS_Hsml));
 #endif
             dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * ags_h / ac);
         }
@@ -450,7 +433,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
     dt=DMIN(dt,dt_tidal);
 #endif
-
+    
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step, which gives superior conservation
     if(P[p].Type == 5)
     {
@@ -481,12 +464,11 @@ integertime get_timestep(int p,		/*!< particle index */
     }
 #endif // SINGLE_STAR_TIMESTEPPING
     
-    
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     /* make sure smoothing length of non-gas particles doesn't change too much in one timestep */
-    if(P[p].Type > 0)
+    if(((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FORALL)) && (P[p].Type > 0))
     {
-        double dt_divv = 0.3 / (MIN_REAL_NUMBER + All.cf_a2inv*fabs(P[p].Particle_DivVel)); // with new integration accuracy in gravtree, we may not need to be super-conservative here. old code used pre-factor 0.25 here, see if we can get away with the larger value which is standard for gas below
+        double dt_divv = 0.1 / (MIN_REAL_NUMBER + All.cf_a2inv*fabs(P[p].Particle_DivVel)); // with new integration accuracy in gravtree, we may not need to be super-conservative here. old code used pre-factor 0.25 here, see if we can get away with the larger value which is standard for gas below
         if(dt_divv < dt) {dt = dt_divv;}
         double dt_cour = 2. * All.CourantFac * (Get_Particle_Size_AGS(p)*All.cf_atime) / (MIN_REAL_NUMBER + 0.5*P[p].AGS_vsig*All.cf_afac3); // can be generous here, really the signal velocity isn't that important in the collisionless case, but it is important with some of the physics above //
 #if defined(CBE_INTEGRATOR)
@@ -511,11 +493,11 @@ integertime get_timestep(int p,		/*!< particle index */
 
 
 #ifdef GRAIN_FLUID
-    if(P[p].Type > 0)
+    if((1 << P[p].Type) & (GRAIN_PTYPES))
     {
-        csnd = GAMMA * GAMMA_MINUS1 * P[p].Gas_InternalEnergy;
+        csnd = convert_internalenergy_soundspeed2(p, P[p].Gas_InternalEnergy);
         int k; for(k=0;k<3;k++) {csnd += (P[p].Gas_Velocity[k]-P[p].Vel[k])*(P[p].Gas_Velocity[k]-P[p].Vel[k]);}
-#ifdef GRAIN_LORENTZFORCE
+#if defined(GRAIN_LORENTZFORCE)
         for(k=0;k<3;k++) {csnd += P[p].Gas_B[k]*P[p].Gas_B[k] / (2.0 * P[p].Gas_Density);}
 #endif
         csnd = sqrt(csnd);
@@ -661,7 +643,7 @@ integertime get_timestep(int p,		/*!< particle index */
                             if(crv > 0)
                             {
                                 crv = sqrt(crv) / SphP[p].CosmicRayEnergy;
-                                cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , fabs(SphP[p].CosmicRayDiffusionCoeff)/(Get_Particle_Size(p)*All.cf_atime)));// * (C/All.UnitVelocity_in_cm_per_s);
+                                cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , fabs(SphP[p].CosmicRayDiffusionCoeff)/(Get_Particle_Size(p)*All.cf_atime)));
 #ifdef COSMIC_RAYS_ALFVEN
                                 cr_speed = COSMIC_RAYS_ALFVEN;
 #endif
@@ -687,14 +669,16 @@ integertime get_timestep(int p,		/*!< particle index */
                 double dt_rad = 1.e10 * dt;
                 for(kf=0;kf<N_RT_FREQ_BINS;kf++)
                 {
-#if defined(RT_DIFFUSION_EXPLICIT) && !defined(RT_EVOLVE_FLUX) /* for explicit diffusion, we include the usual second-order diffusion timestep */
+#if defined(RT_SOLVER_EXPLICIT) && defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX) /* for explicit diffusion, we include the usual second-order diffusion timestep */
                     double gradETmag=0; for(k=0;k<3;k++) {gradETmag += SphP[p].Gradients.E_gamma_ET[kf][k]*SphP[p].Gradients.E_gamma_ET[kf][k];}
                     double L_ETgrad_inv = sqrt(gradETmag) / (1.e-37 + SphP[p].E_gamma[kf] * SphP[p].Density/P[p].Mass);
                     double L_RT_diffusion = DMAX(L_particle , 1./(L_ETgrad_inv + 1./L_particle)) * All.cf_atime;
                     double dt_rt_diffusion = dt_prefac_diffusion * L_RT_diffusion*L_RT_diffusion / (MIN_REAL_NUMBER + rt_diffusion_coefficient(p,kf));
                     double dt_advective = dt_rt_diffusion * DMAX(1,DMAX(L_particle , 1/(MIN_REAL_NUMBER + L_ETgrad_inv))*All.cf_atime / L_RT_diffusion);
+#ifdef RT_FLUXLIMITER
                     if(dt_advective > dt_rt_diffusion) {dt_rt_diffusion *= 1. + (1.-SphP[p].Lambda_FluxLim[kf]) * (dt_advective/dt_rt_diffusion-1.);}
                     if((SphP[p].Lambda_FluxLim[kf] <= 0)||(dt_rt_diffusion<=0)) {dt_rt_diffusion = 1.e9 * dt;}
+#endif
                     if((SphP[p].E_gamma[kf] <= MIN_REAL_NUMBER) || (SphP[p].E_gamma_Pred[kf] <= MIN_REAL_NUMBER)) {dt_rt_diffusion = dt_advective;}
 #ifdef SUPER_TIMESTEP_DIFFUSION
                     if(dt_rt_diffusion < dt_superstep_explicit) dt_superstep_explicit = dt_rt_diffusion; // explicit time-step
@@ -704,9 +688,21 @@ integertime get_timestep(int p,		/*!< particle index */
                     if(dt_rt_diffusion < dt_rad) dt_rad = dt_rt_diffusion; // normal explicit time-step
 #endif
 #endif
+#if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX) // here the acceleration isn't saved to RadAccel so we calculate that timestep constraint
+                    double gradErad=0; for(k=0;k<3;k++) {gradErad+=SphP[p].Gradients.E_gamma_ET[kf][k]*SphP[p].Gradients.E_gamma_ET[kf][k];}
+                    double radacc = (sqrt(gradErad) / SphP[p].Density) / All.cf_atime; // radiation acceleration for a timestep criterion
+#ifdef RT_FLUXLIMITER
+                    radacc *= SphP[p].Lambda_FluxLim[kf]; // apply flux-limiter
+#endif
+                    if(gradErad > 0 && radacc > 0)
+                    {
+                        double dt_radacc = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMIN(All.ForceSoftening[0], PPP[p].Hsml) / radacc);
+                        if(dt_radacc < dt_rad) {dt_rad = dt_radacc;}
+                    }
+#endif
                 }
                 /* even with a fully-implicit solver, we require a CFL-like criterion on timesteps (much larger steps allowed for stability, but not accuracy) */
-                dt_courant = All.CourantFac * (L_particle*All.cf_atime) / (RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s)); /* courant-type criterion, using the reduced speed of light */
+                dt_courant = All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED; /* courant-type criterion, using the reduced speed of light */
 #ifdef RT_M1
 #ifndef GALSF
                 dt_rad = dt_courant;
@@ -896,12 +892,26 @@ integertime get_timestep(int p,		/*!< particle index */
         } // closes if(P[p].Type == 0) [gas particle check] //
     
     
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
     /* Reduce time-step if this particle got interaction probabilities > 0.2 during the last time-step */
-    if(P[p].dt_step_sidm > 0)
+    if((1 << P[p].Type) & (DM_SIDM))
     {
-        double dt_sidm_physical = P[p].dt_step_sidm * All.Timebase_interval / All.cf_hubble_a;
-        if(dt_sidm_physical < dt) {dt = dt_sidm_physical;}
+        if(P[p].dt_step_sidm > 0)
+        {
+            double dt_sidm_physical = P[p].dt_step_sidm * All.Timebase_interval / All.cf_hubble_a;
+            if(dt_sidm_physical < dt) {dt = dt_sidm_physical;}
+        }
+        if(dt > 0)
+        {
+            double p_target = 0.2; // desired maximum probability per timestep
+            double dV[3]; for(k=0;k<3;k++) {dV[k]=P[p].AGS_vsig*All.cf_afac3*All.cf_atime/sqrt(3.);} // convert signal vel to velocity dispersion for estimating rates
+#ifdef GRAIN_COLLISIONS
+            double p_dt = prob_of_grain_interaction(return_grain_cross_section_per_unit_mass(p),P[p].Mass,0.,PPP[p].AGS_Hsml,dV,dt,p); // probability of interacting with another grain super-particle well within kernel, assuming same mass, H, and V~signalvel, for current timestep dt
+#else
+            double p_dt = prob_of_interaction(P[p].Mass,0.,PPP[p].AGS_Hsml,dV,dt); // probability of interacting with another DM particle well within kernel, assuming same mass, H, and V~signalvel, for current timestep dt
+#endif
+            if(p_dt > p_target) {dt = p_target;}
+        }
     }
 #endif
     
@@ -976,14 +986,25 @@ integertime get_timestep(int p,		/*!< particle index */
 #if defined(SINGLE_STAR_TIMESTEPPING)
 	    if(P[p].DensAroundStar > 0)
 	    {
-		    double eps = DMAX(KERNEL_CORE_SIZE*All.ForceSoftening[5], BPP(p).BH_dr_to_NearestGasNeighbor);
-		    if(eps < MAX_REAL_NUMBER) {eps = DMAX(Get_Particle_Size(p), eps);} else {eps = Get_Particle_Size(p);}
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-		    eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
+		double eps = DMAX(DMAX(BPP(p).SinkRadius, KERNEL_CORE_SIZE*All.ForceSoftening[5]), BPP(p).BH_dr_to_NearestGasNeighbor);
+		if(eps < MAX_REAL_NUMBER) {eps = DMAX(Get_Particle_Size(p), eps);} else {eps = Get_Particle_Size(p);}
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
+		eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
 #endif		
-		    double dt_gas = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest
-		    if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas;}
-		}
+		double dt_ff = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest		
+		if(dt > dt_ff && dt_ff > 0) {dt = 1.01 * dt_ff;}
+		
+		double L_particle = Get_Particle_Size(p);
+		double dt_cour_sink = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / P[p].BH_SurroundingGasVel;
+		if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
+	    }
+            
+            if(P[p].StellarAge == All.Time){
+                // want a brand new sink to be on the lowest occupied timebin
+                long bin; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;}
+                double dt_min =  ((bin ? (((integertime) 1) << bin) : 0) * All.Timebase_interval / All.cf_hubble_a);
+                if(dt > dt_min && dt_min > 0) dt = 1.01 * dt_min;
+            }
 #endif
     } // if(P[p].Type == 5)
 
@@ -1008,17 +1029,15 @@ integertime get_timestep(int p,		/*!< particle index */
     
     if((dt < All.MinSizeTimestep)||(((integertime) (dt / All.Timebase_interval)) <= 1))
     {
-#ifdef STOP_WHEN_BELOW_MINTIMESTEP
-        printf("warning: Timestep wants to be below the limit `MinSizeTimestep'\n");
-        
+        PRINT_WARNING("warning: Timestep wants to be below the limit `MinSizeTimestep'");
         if(P[p].Type == 0)
         {
 #ifndef LONGIDS
-            printf("Part-ID=%d  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
+            PRINT_WARNING("Part-ID=%d  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
              (int) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],
              PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type]);
 #else
-            printf("Part-ID=%llu  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
+            PRINT_WARNING("Part-ID=%llu  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
              (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],
              PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type]);
 #endif // ndef LONGIDS
@@ -1026,13 +1045,15 @@ integertime get_timestep(int p,		/*!< particle index */
         else // if(P[p].Type == 0)
         {
 #ifndef LONGIDS
-            printf("Part-ID=%d  dt=%g ac=%g xyz=(%g|%g|%g)\n", (int) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
+            PRINT_WARNING("Part-ID=%d  dt=%g ac=%g xyz=(%g|%g|%g)\n", (int) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
 #else
-            printf("Part-ID=%llu  dt=%g ac=%g xyz=(%g|%g|%g)\n", (MyIDType) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
+            PRINT_WARNING("Part-ID=%llu  dt=%g ac=%g xyz=(%g|%g|%g)\n", (MyIDType) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
 #endif // ndef LONGIDS
         }
-        fflush(stdout); fprintf(stderr, "\n @ fflush \n"); endrun(888);
-#endif // STOP_WHEN_BELOW_MINTIMESTEP
+        fflush(stdout); fprintf(stderr, "\n @ fflush \n");
+#ifdef STOP_WHEN_BELOW_MINTIMESTEP
+        endrun(888);
+#endif
         dt = All.MinSizeTimestep;
     }
     
@@ -1116,6 +1137,8 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
 #endif
 #endif
         
+        if(ThisTask == 0)
+            printf("Global displacement time constraint computation: \n");
         for(type = 0; type < 6; type++)
         {
             if(count_sum[type] > 0)
@@ -1145,7 +1168,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
 #endif
                 
                 if(ThisTask == 0)
-                    printf("type=%d  dmean=%g asmth=%g minmass=%g a=%g  sqrt(<p^2>)=%g  dlogmax=%g\n",
+                    printf(" ..type=%d  dmean=%g asmth=%g minmass=%g a=%g  sqrt(<p^2>)=%g  dlogmax=%g\n",
                            type, dmean, asmth, min_mass[type], All.Time, sqrt(v_sum[type] / count_sum[type]), dt);
                 
                 if(dt < dt_displacement)
@@ -1154,7 +1177,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
         }
         
         if(ThisTask == 0)
-            printf("displacement time constraint: %g  (%g)\n", dt_displacement, All.MaxSizeTimestep);
+            printf(" ..global displacement time constraint: %g  (All.MaxSizeTimestep=%g)\n", dt_displacement, All.MaxSizeTimestep);
     }
 }
 
@@ -1185,7 +1208,7 @@ int get_timestep_bin(integertime ti_step)
 
 #ifdef WAKEUP
 void process_wake_ups(void)
-{
+{   
     int i, n;
     integertime dt_bin, ti_next_for_bin, ti_next_kick, ti_next_kick_global;
     int max_time_bin_active;
@@ -1215,9 +1238,7 @@ void process_wake_ups(void)
     
     MPI_Allreduce(&ti_next_kick, &ti_next_kick_global, 1, MPI_TYPE_TIME, MPI_MIN, MPI_COMM_WORLD);
     
-#ifndef IO_REDUCED_MODE
-    if(ThisTask == 0) printf("predicting next timestep: %g\n", (ti_next_kick_global - All.Ti_Current) * All.Timebase_interval);
-#endif
+    PRINT_STATUS("Predicting next timestep: %g", (ti_next_kick_global - All.Ti_Current) * All.Timebase_interval);
     max_time_bin_active = 0;
     /* get the highest bin, that is active next time */
     for(n = 0; n < TIMEBINS; n++)
@@ -1239,84 +1260,88 @@ void process_wake_ups(void)
         }
     }
     n = 0;
+
+    MPI_Allreduce(&NeedToWakeupParticles_local, &NeedToWakeupParticles, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process processes wakeups then they all should, just in case a woke particle gets swapped to another process before we get here
     
-    for(i = 0; i < NumPart; i++)
-    {
-#if !defined(ADAPTIVE_GRAVSOFT_FORALL)
-        if(P[i].Type != 0) {continue;} // only gas particles can be awakened
+    if(NeedToWakeupParticles){
+	for(i = 0; i < NumPart; i++)
+	{
+	    if(!PPPZ[i].wakeup)
+		continue;
+	
+#if !defined(AGS_HSML_CALCULATION_IS_ACTIVE)
+	    if(P[i].Type != 0) {continue;} // only gas particles can be awakened
 #endif
         
-        if(P[i].Mass <= 0)
-            continue;
+	    if(P[i].Mass <= 0)
+		continue;       
         
-        if(!PPPZ[i].wakeup)
-            continue;
+	    binold = P[i].TimeBin;
+	    if(TimeBinActive[binold])
+		continue;
         
-        binold = P[i].TimeBin;
-        if(TimeBinActive[binold])
-            continue;
+	    bin = max_time_bin_active < binold ? max_time_bin_active : binold;
         
-        bin = max_time_bin_active < binold ? max_time_bin_active : binold;
-        
-        if(bin != binold)
-        {
-            integertime dt_0 = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
-            integertime tstart = P[i].Ti_begstep + dt_0;
-            integertime t_2 = P[i].Ti_current;
-            if(t_2 > tstart) {tstart = t_2;}
-            integertime tend = All.Ti_Current;
+	    if(bin != binold)
+	    {
+		integertime dt_0 = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
+		integertime tstart = P[i].Ti_begstep + dt_0;
+		integertime t_2 = P[i].Ti_current;
+		if(t_2 > tstart) {tstart = t_2;}
+		integertime tend = All.Ti_Current;
 
-            TimeBinCount[binold]--;
-            if(P[i].Type == 0)
-                TimeBinCountSph[binold]--;
+		TimeBinCount[binold]--;
+		if(P[i].Type == 0)
+		    TimeBinCountSph[binold]--;
             
-            prev = PrevInTimeBin[i];
-            next = NextInTimeBin[i];
+		prev = PrevInTimeBin[i];
+		next = NextInTimeBin[i];
             
-            if(FirstInTimeBin[binold] == i)
-                FirstInTimeBin[binold] = next;
-            if(LastInTimeBin[binold] == i)
-                LastInTimeBin[binold] = prev;
-            if(prev >= 0)
-                NextInTimeBin[prev] = next;
-            if(next >= 0)
-                PrevInTimeBin[next] = prev;
+		if(FirstInTimeBin[binold] == i)
+		    FirstInTimeBin[binold] = next;
+		if(LastInTimeBin[binold] == i)
+		    LastInTimeBin[binold] = prev;
+		if(prev >= 0)
+		    NextInTimeBin[prev] = next;
+		if(next >= 0)
+		    PrevInTimeBin[next] = prev;
             
-            if(TimeBinCount[bin] > 0)
-            {
-                PrevInTimeBin[i] = LastInTimeBin[bin];
-                NextInTimeBin[LastInTimeBin[bin]] = i;
-                NextInTimeBin[i] = -1;
-                LastInTimeBin[bin] = i;
-            }
-            else
-            {
-                FirstInTimeBin[bin] = LastInTimeBin[bin] = i;
-                PrevInTimeBin[i] = NextInTimeBin[i] = -1;
-            }
-            TimeBinCount[bin]++;
-            if(P[i].Type == 0)
-                TimeBinCountSph[bin]++;
+		if(TimeBinCount[bin] > 0)
+		{
+		    PrevInTimeBin[i] = LastInTimeBin[bin];
+		    NextInTimeBin[LastInTimeBin[bin]] = i;
+		    NextInTimeBin[i] = -1;
+		    LastInTimeBin[bin] = i;
+		}
+		else
+		{
+		    FirstInTimeBin[bin] = LastInTimeBin[bin] = i;
+		    PrevInTimeBin[i] = NextInTimeBin[i] = -1;
+		}
+		TimeBinCount[bin]++;
+		if(P[i].Type == 0)
+		    TimeBinCountSph[bin]++;
             
-            P[i].TimeBin = bin;
+		P[i].TimeBin = bin;
             
-            if(TimeBinActive[bin])
-                NumForceUpdate++;
+		if(TimeBinActive[bin])
+		    NumForceUpdate++;
                         
-            n++;
+		n++;
 
-            /* reverse part of the last second-half kick this particle received 
-                (to correct it back to its new active time) */
-            if(tend < tstart)
-            {
-                do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
-                set_predicted_sph_quantities_for_extra_physics(i);
-            }
-            P[i].Ti_begstep = All.Ti_Current;
-            P[i].dt_step = bin ? (((integertime) 1) << bin) : 0;
-            if(P[i].Ti_current < All.Ti_Current) {P[i].Ti_current=All.Ti_Current;}
+		/* reverse part of the last second-half kick this particle received 
+		   (to correct it back to its new active time) */
+		if(tend < tstart)
+		{
+		    do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
+		    set_predicted_sph_quantities_for_extra_physics(i);
+		}
+		P[i].Ti_begstep = All.Ti_Current;
+		P[i].dt_step = bin ? (((integertime) 1) << bin) : 0;
+		if(P[i].Ti_current < All.Ti_Current) {P[i].Ti_current=All.Ti_Current;}
             
-        }
+	    }
+	}
     }
     
     sumup_large_ints(1, &n, &ntot);
@@ -1324,5 +1349,7 @@ void process_wake_ups(void)
     {
         if(ntot > 0) {printf("%d%09d particles woken up.\n", (int) (ntot / 1000000000), (int) (ntot % 1000000000));}
     }
+    NeedToWakeupParticles = 0;
+    NeedToWakeupParticles_local = 0;
 }
 #endif

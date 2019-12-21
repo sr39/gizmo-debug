@@ -151,7 +151,7 @@ void GetPhotoIonTables(struct globalVariables *myGlobalVars, int N_Elements_in_B
 	  if (current_spectrum > myGlobalVars->N_spectra - 1) 
 	    {
 	      printf("ERROR: too many UV spectra specified in PhotoIon table list. Aborting. \n"); 
-	      exit(-1); 
+	      endrun(56275362);
 	    }
 	  sscanf(buffer, "%s", table_path);
 	  printf("Reading PhotoIon table: %s \n", table_path); 
@@ -161,13 +161,13 @@ void GetPhotoIonTables(struct globalVariables *myGlobalVars, int N_Elements_in_B
       if (current_spectrum < myGlobalVars->N_spectra)
 	{
 	  printf("ERROR: too few UV spectra specified in PhotoIon table list. Aborting. \n"); 
-	  exit(-1); 
+	  endrun(56275362);
 	}
     }
   else
     {
       printf("ERROR: PhotoIon table list %s not found. \n", myGlobalVars->PhotoIonTablePath);
-      exit(-1);
+      endrun(56275362);
     }
   
 
@@ -3194,8 +3194,7 @@ void initialise_gas_abundances(struct gasVariables *myGasVars, struct globalVari
     init_ion_state = myGlobalVars->InitIonState;
   else
     {
-      printf("WARNING: initialise_gas_abundances() mode not recognised. Assuming fully neutral\n");
-      fflush(stdout);
+      PRINT_WARNING("WARNING: initialise_gas_abundances() mode not recognised. Assuming fully neutral");
       init_ion_state = 0;
     }
 

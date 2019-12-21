@@ -26,22 +26,15 @@
 
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
- * slightly (re-arranged, consolidated, and added compute_stellar_feedback and 
- * the gradients loop) by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ * Volker Springel. The code has been modified (re-arranged, consolidated, and a number of additional
+ * sub-loops and other structures for e.g. feedback, gradients, neighbor operations on non-gas, etc,
+ * added) by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
 void compute_grav_accelerations(void)
 {
   CPU_Step[CPU_MISC] += measure_time();
-
-  if(ThisTask == 0)
-    {
-      printf("Start gravity force computation...\n");
-#ifndef IO_REDUCED_MODE
-      fflush(stdout);
-#endif
-    }
+  PRINT_STATUS("Start gravity force computation...");
 
 #ifdef PMGRID
   if(All.PM_Ti_endstep == All.Ti_Current)
@@ -53,18 +46,10 @@ void compute_grav_accelerations(void)
 
   gravity_tree();		/* computes gravity accel. */
 
-  /* For the first timestep, we redo it to allow usage of 
-   relative opening criterion for consistent accuracy */
-  if(All.TypeOfOpeningCriterion == 1 && All.Ti_Current == 0)
-    gravity_tree();
+  /* For the first timestep, we redo it to allow usage of relative opening criterion for consistent accuracy */
+  if(All.TypeOfOpeningCriterion == 1 && All.Ti_Current == 0) {gravity_tree();}
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("gravity force computation done.\n");
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS(" ..gravity force computation done");
 }
 
 
@@ -73,12 +58,9 @@ void compute_hydro_densities_and_forces(void)
 {
   if(All.TotN_gas > 0)
     {
-        if(ThisTask == 0) {printf("Start hydrodynamics computation...\n");}
-#ifndef IO_REDUCED_MODE
-        if(ThisTask == 0) {printf("Start density & tree-update computation...\n");}
-#endif
+        PRINT_STATUS("Start hydrodynamics computation...");
         density();		/* computes density, and pressure */
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
         ags_density();
 #endif
         force_update_hmax();	/* update kernel lengths in tree */
@@ -89,10 +71,9 @@ void compute_hydro_densities_and_forces(void)
          *  out before the hydrodynamical SPH forces are computed, i.e. after
          *  density().
          */
-        
-#ifndef IO_REDUCED_MODE
-        if(ThisTask == 0) {printf("density & tree-update computation done...\n");}
-#endif
+
+        PRINT_STATUS(" ..density & tree-update computation done...");
+
 #ifdef TURB_DIFF_DYNAMIC
         dynamic_diff_vel_calc(); /* This must be called between density and gradient calculations */
 #endif
@@ -104,21 +85,17 @@ void compute_hydro_densities_and_forces(void)
          and the local gradient calculation (GradRho) to
          properly self-shield the particles that had this calculated */
 #endif
-#ifndef IO_REDUCED_MODE
-        if(ThisTask == 0) {printf("gradient computation done.\n");}
-#endif
+        PRINT_STATUS(" ..gradient computation done.");
+
 #ifdef TURB_DIFF_DYNAMIC
         dynamic_diff_calc(); /* This MUST be called immediately following gradient calculations */
 #endif
-
         hydro_force();		/* adds hydrodynamical accelerations and computes du/dt  */
         compute_additional_forces_for_all_particles(); /* other accelerations that need to be computed are done here */
-#ifndef IO_REDUCED_MODE
-        if(ThisTask == 0) {printf("hydro force computation done.\n");}
-#endif
+        PRINT_STATUS(" ..hydro force computation done.");
 
     } else {
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
         ags_density(); // if there are no gas particles but ags-all is active, still need to enter this loop //
         force_update_hmax();    /* update kernel lengths in tree */
 #endif
@@ -133,12 +110,11 @@ void compute_additional_forces_for_all_particles(void)
 #ifdef DM_FUZZY
     DMGrad_gradient_calc();
 #endif
-#if defined(DM_FUZZY) || defined(DM_SIDM) || defined(CBE_INTEGRATOR)
+#if defined(DM_FUZZY) || defined(CBE_INTEGRATOR) || defined(DM_SIDM)
     AGSForce_calc();
 #endif
 #ifdef GRAIN_FLUID
     apply_grain_dragforce(); /* if we are solving a coupled set of grains via aerodynamic drag, this is where their acceleration should be calculated */
-    if(ThisTask == 0) {printf("grain aerodynamic force evaluation done.\n");}
 #endif
 }
 

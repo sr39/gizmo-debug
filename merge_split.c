@@ -127,7 +127,7 @@ void merge_and_split_particles(void)
             double h_search_max = 10. * All.ForceSoftening[P[i].Type];
             double h_search_min = 0.1 * All.ForceSoftening[P[i].Type];
             double h_guess; numngb_inbox=0; int NITER=0, NITER_MAX=30;
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
             h_guess = PPP[i].AGS_Hsml; if(h_guess > h_search_max) {h_search_max=h_guess;} if(h_guess < h_search_min) {h_search_min=h_guess;}
 #else
             h_guess = 5.0 * All.ForceSoftening[P[i].Type];
@@ -236,9 +236,7 @@ void merge_and_split_particles(void)
                         if((j>=0)&&(j!=i)&&(P[j].Type==P[i].Type) && (P[j].Mass > 0) && (Ptmp[j].flag == 0)) {
                             double dp[3]; int k; double r2=0;
                             for(k=0;k<3;k++) {dp[k]=P[i].Pos[k]-P[j].Pos[k];}
-#ifdef BOX_PERIODIC
                             NEAREST_XYZ(dp[0],dp[1],dp[2],1);
-#endif
                             for(k=0;k<3;k++) {r2+=dp[k]*dp[k];}
                             if(r2<threshold_val) {threshold_val=r2; target_for_merger=j;} // position-based //
                         }
@@ -290,9 +288,6 @@ void merge_and_split_particles(void)
         if(MPI_n_particles_merged > 0 || MPI_n_particles_split > 0)
         {
             printf("Particle split/merge check: %d particles merged, %d particles split (%d gas) \n", MPI_n_particles_merged,MPI_n_particles_split,MPI_n_particles_gas_split);
-#ifndef IO_REDUCED_MODE
-            fflush(stdout);
-#endif
         }
     }
     /* the reduction or increase of n_part by MPI_n_particles_merged will occur in rearrange_particle_sequence, which -must- be called immediately after this routine! */
@@ -332,9 +327,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
     cos_theta = 2.0*(get_random_number(i+3+2*ThisTask)-0.5); // random between 1 to -1 //
     double d_r = 0.25 * KERNEL_CORE_SIZE*PPP[i].Hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
     double dp[3], r_near=0; for(k = 0; k < 3; k++) {dp[k] =P[i].Pos[k] - P[i_nearest].Pos[k];}
-#ifdef BOX_PERIODIC 
     NEAREST_XYZ(dp[0],dp[1],dp[2],1);
-#endif
     for(k = 0; k < 3; k++) {r_near += dp[k]*dp[k];}
     r_near = 0.35 * sqrt(r_near); 
     d_r = DMIN(d_r , r_near); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
@@ -447,7 +440,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
         {
             int k_dir; k_dir=0;
             SphP[j].E_gamma[k] = mass_of_new_particle * SphP[i].E_gamma[k]; SphP[i].E_gamma[k] -= SphP[j].E_gamma[k];
-#if defined(RT_EVOLVE_NGAMMA)
+#if defined(RT_EVOLVE_ENERGY)
             SphP[j].E_gamma_Pred[k] = mass_of_new_particle * SphP[i].E_gamma_Pred[k]; SphP[i].E_gamma_Pred[k] -= SphP[j].E_gamma_Pred[k];
             SphP[j].Dt_E_gamma[k] = mass_of_new_particle * SphP[i].Dt_E_gamma[k]; SphP[i].Dt_E_gamma[k] -= SphP[j].Dt_E_gamma[k];
 #endif
@@ -522,10 +515,8 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
             // if(dp[2]==1) {dx=d_r; dy=0; dz=0;} else {dz = sqrt(dp[1]*dp[1] + dp[0]*dp[0]); dx = -d_r * dp[1]/dz; dy = d_r * dp[0]/dz; dz = 0.0;}
         }
 #endif
-#ifdef WAKEUP 
-        /* TO: rather conservative. But we want to update Density and Hsml after the particle masses were changed */
-        PPPZ[i].wakeup = 1;
-        PPPZ[j].wakeup = 1;
+#ifdef WAKEUP  /* TO: rather conservative. But we want to update Density and Hsml after the particle masses were changed */
+        PPPZ[i].wakeup = 1; PPPZ[j].wakeup = 1; NeedToWakeupParticles_local = 1;
 #endif
         
     } // closes special operations required only of gas particles
@@ -551,13 +542,6 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
     particle splitting */
 void merge_particles_ij(int i, int j)
 {
-#ifndef IO_REDUCED_MODE
-    if((P[i].Type != 0)||(P[j].Type != 0))
-    {
-        printf("Merging non-gas particle: ij=%d/%d ID=%d/%d type=%d/%d mass=%g/%g \n",i,j,P[i].ID,P[j].ID,P[i].Type,P[j].Type,P[i].Mass,P[j].Mass);
-        fflush(stdout);
-    }
-#endif
     int k;
     if(P[i].Mass <= 0)
     {
@@ -578,9 +562,7 @@ void merge_particles_ij(int i, int j)
     {
         double pos_new_xyz[3], dp[3];
         for(k=0;k<3;k++) {dp[k]=P[j].Pos[k]-P[i].Pos[k];}
-#ifdef BOX_PERIODIC
         NEAREST_XYZ(dp[0],dp[1],dp[2],-1);
-#endif
         for(k=0;k<3;k++) {pos_new_xyz[k] = P[i].Pos[k] + wt_j * dp[k];}
         
         double p_old_i[3],p_old_j[3];
@@ -625,7 +607,7 @@ void merge_particles_ij(int i, int j)
     if(P[i].TimeBin < P[j].TimeBin)
     {
 #ifdef WAKEUP
-        PPPZ[j].wakeup = 1;
+        PPPZ[j].wakeup = 1; NeedToWakeupParticles_local = 1;
 #endif
     }
     double dm_i=0,dm_j=0,de_i=0,de_j=0,dp_i[3],dp_j[3],dm_ij,de_ij,dp_ij[3];
@@ -662,9 +644,7 @@ void merge_particles_ij(int i, int j)
     /* for periodic boxes, we need to (arbitrarily) pick one position as our coordinate center. we pick i. then everything defined in 
         position differences relative to i. the final position will be appropriately box-wrapped after these operations are completed */
     for(k=0;k<3;k++) {dp[k]=P[j].Pos[k]-P[i].Pos[k];}
-#ifdef BOX_PERIODIC
     NEAREST_XYZ(dp[0],dp[1],dp[2],-1);
-#endif
     for(k=0;k<3;k++) {pos_new_xyz[k] = P[i].Pos[k] + wt_j * dp[k];}
 
     for(k=0;k<3;k++)
@@ -750,7 +730,7 @@ void merge_particles_ij(int i, int j)
         int k_dir;
         for(k_dir=0;k_dir<6;k_dir++) SphP[j].ET[k][k_dir] = wt_j*SphP[j].ET[k][k_dir] + wt_i*SphP[i].ET[k][k_dir];
         SphP[j].E_gamma[k] = SphP[j].E_gamma[k] + SphP[i].E_gamma[k]; /* this is a photon number, so its conserved (we simply add) */
-#if defined(RT_EVOLVE_NGAMMA)
+#if defined(RT_EVOLVE_ENERGY)
         SphP[j].E_gamma_Pred[k] = SphP[j].E_gamma_Pred[k] + SphP[i].E_gamma_Pred[k];
         SphP[j].Dt_E_gamma[k] = SphP[j].Dt_E_gamma[k] + SphP[i].Dt_E_gamma[k];
 #endif
@@ -964,16 +944,7 @@ void rearrange_particle_sequence(void)
     if(count_elim)
         flag = 1;
     
-    if(ThisTask == 0)
-    {
-        if(tot_elim > 0)
-        {
-        printf("Rearrange: Eliminated %d/%d gas/star particles and merged away %d black holes.\n", tot_gaselim, tot_elim - tot_gaselim - tot_bhelim, tot_bhelim);
-#ifndef IO_REDUCED_MODE
-        fflush(stdout);
-#endif
-        }
-    }
+    if(ThisTask == 0) {if(tot_elim > 0) {printf("Rearrange: Eliminated %d/%d gas/star particles and merged away %d black holes.\n", tot_gaselim, tot_elim - tot_gaselim - tot_bhelim, tot_bhelim);}}
     
     All.TotNumPart -= tot_elim;
     All.TotN_gas -= tot_gaselim;

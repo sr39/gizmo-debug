@@ -1,10 +1,7 @@
 %-------------------------------------------------------------------------
-%----  This file contains the input parameters needed at run-time for 
-%       simulations. It is based on and closely resembles the GADGET-3
-%       parameterfile (format of which and parsing routines written by 
-%       Volker Springel [volker.springel@h-its.org]). It has been updated
-%       with new naming conventions and additional variables as needed by 
-%       Phil Hopkins [phopkins@caltech.edu] for GIZMO.
+%----  This is an example parameter file like the included "params.txt"
+%       for GIZMO, but with the full set of CHIMES parameters added.
+%       See the CHIMES-specific readme for more details of the additions
 %-------------------------------------------------------------------------
 
 %----  Relevant files
@@ -171,9 +168,9 @@ InitStellarAge              0.001   % initial mean age (in Gyr; for stars in sim
 WindMomentumLoading         1.0     % fraction of photon momentum to couple
 %--- SneII Heating Model (GALSF_FB_SNE_HEATING) 
 SNeIIEnergyFrac             1.0     % fraction of mechanical energy to couple
-%--- HII region photo-heating model (GALSF_FB_HII_HEATING)  
+%--- HII region photo-heating model (GALSF_FB_FIRE_RT_HIIHEATING)  
 HIIRegion_fLum_Coupled      1.0     % fraction of ionizing photons allowed to see gas
-%--- long-range radiation pressure acceleration (GALSF_FB_RT_PHOTONMOMENTUM) 
+%--- long-range radiation pressure acceleration (GALSF_FB_FIRE_RT_LONGRANGE) 
 PhotonMomentum_Coupled_Fraction  1.0  % fraction of L to allow incident
 PhotonMomentum_fUV          0.0    % incident SED f(L) in UV (minimum scattering)
 PhotonMomentum_fOPT         0.0    % incident SED f(L) in optical/near-IR 
@@ -224,7 +221,6 @@ ST_SolWeight   1.0      % fractional wt of solenoidal modes (wt*curl + (1-wt)*di
 ST_AmplFac     1.0      % multiplies turb amplitudes
 ST_SpectForm   2        % driving pwr-spec: 0=Ek~const; 1=sharp-peak at kc; 2=Ek~k^(-5/3); 3=Ek~k^-2
 ST_Seed        42       % random number seed for modes (so you can reproduce it)
-IsoSoundSpeed  1.0      % initializes gas sound speed in box to this value
 TimeBetTurbSpectrum 0.5 % time (code units) between evaluations of turb pwrspec
 
 
@@ -250,7 +246,7 @@ relativeTolerance 	   1.0e-4   % Controls accuracy of thermo-chemistry integrati
 absoluteTolerance 	   1.0e-10  % Controls accuracy of chemistry integration. 
 thermalAbsoluteTolerance   1.0e-40  % Controls accuracy of temperature integration. 
 scale_metal_tolerances     0   % 0=fixed, 1=scaled 
-IncludeCarbon 		   1   % 0=excl C from chemistry network; 1=include it. 
+IncludeCarbon 		   1   % 0=exclude carbon from chemistry network; 1=include it. 
 IncludeNitrogen		   1   % NOTE: These IncludeXXX parameters also require 
 IncludeOxygen 		   1   % the METALS and COOL_METAL_LINES_BY_SPECIES Config flags, 
 IncludeNeon 		   1   % otherwise the metal abundances will be set to zero. 

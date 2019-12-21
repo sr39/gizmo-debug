@@ -11,10 +11,9 @@
 #    Even public modules have citations which must be included if the module is used for published work,
 #    these are all given in the User Guide.
 #
-# This file was originally part of the GADGET3 code developed by
-#   Volker Springel (volker.springel@h-its.org). The code has been modified
-#   substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO (to add new modules and clean
-#   up the naming conventions and changed many of them to match the new GIZMO conventions)
+# This file was originally part of the GADGET3 code developed by Volker Springel. It has been modified
+#   substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO (to add new modules, change
+#   naming conventions, restructure, add documention, and match GIZMO conventions)
 #
 ####################################################################################################
 
@@ -110,16 +109,17 @@
 #TURB_DIFF_METALS               # turbulent diffusion of metals (passive scalars); requires METALS
 #TURB_DIFF_ENERGY               # turbulent diffusion of internal energy (conduction with effective turbulent coefficients)
 #TURB_DIFF_VELOCITY             # turbulent diffusion of momentum (viscosity with effective turbulent coefficients)
+#TURB_DIFF_DYNAMIC              # replace Smagorinsky-style eddy diffusion with the 'dynamic localized Smagorinsky' model from Rennehan et al. (arXiv:1807.11509): cite that paper for all methods. more accurate but more complex and expensive.
 ## ----------------------------------------------------------------------------------------------------
 # --------------------------------------- Aerodynamic Particles
 # ----------------------------- This is developed by P. Hopkins, who requests that you inform him of planned projects with these modules
 # ------------------------------  because he is supervising several students using them as well, and there are some components still in active development.
 # ------------------------------  Users should cite: Hopkins & Lee 2016, MNRAS, 456, 4174, and Lee, Hopkins, & Squire 2017, MNRAS, 469, 3532, for the numerical methods (plus other papers cited below)
 #GRAIN_FLUID                    # aerodynamically-coupled grains (particle type 3 are grains); default is Epstein drag
-#GRAIN_EPSTEIN_STOKES=1         # uses the cross section for molecular hydrogen (times this number) to calculate Epstein-Stokes drag (will use calculate which applies and use appropriate value); if used with GRAIN_LORENTZFORCE, will also compute Coulomb drag
+#GRAIN_EPSTEIN_STOKES=1         # uses the cross section for molecular hydrogen (times this number) to calculate Epstein-Stokes drag; need to set GrainType=1 (will use calculate which applies and use appropriate value); if used with GRAIN_LORENTZFORCE and GrainType=2, will also compute Coulomb drag
 #GRAIN_BACKREACTION             # account for momentum of grains pushing back on gas (from drag terms); users should cite Moseley et al., 2018, arXiv:1810.08214.
-#GRAIN_LORENTZFORCE             # charged grains feel Lorentz forces (requires MAGNETIC); if used with GRAIN_EPSTEIN_STOKES flag, will also compute Coulomb drag (grain charges self-consistently computed from gas properties)
-#GRAIN_COLLISIONS               # model collisions between grains (super-particles; so this is stochastic) - framework is in place, but users need to implement specific physical models for collisions
+#GRAIN_LORENTZFORCE             # charged grains feel Lorentz forces (requires MAGNETIC); if used with GRAIN_EPSTEIN_STOKES flag, will also compute Coulomb drag (grain charges self-consistently computed from gas properties). Need to set GrainType=2.
+#GRAIN_COLLISIONS               # model collisions between grains (super-particles; so this is stochastic). Default = hard-sphere scattering, with options for inelastic or velocity-dependent terms. Approved users please cite papers above and Rocha et al., MNRAS 2013, 430, 81
 ## ----------------------------------------------------------------------------------------------------
 #---------------------------------------- Cosmic Rays
 #---------------------------------------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
@@ -156,8 +156,8 @@
 ## -----------------------------------------------------------------------------------------------------
 # ---------------------------------------- Adaptive Grav. Softening (including Lagrangian conservation terms!)
 #ADAPTIVE_GRAVSOFT_FORGAS       # allows variable softening length for gas particles (scaled with local inter-element separation), so gravity traces same density field seen by hydro
-#ADAPTIVE_GRAVSOFT_FORALL=100   # enable adaptive gravitational softening lengths for all particle types (ADAPTIVE_GRAVSOFT_FORGAS should be disabled). the softening is set to the distance
-                                # enclosing a neighbor number set in the parameter file. baryons search for other baryons, dm for dm, sidm for sidm, etc. If set to numerical value, the maximum softening is this times All.ForceSoftening[for appropriate particle type]. cite Hopkins et al., arXiv:1702.06148
+#ADAPTIVE_GRAVSOFT_FORALL=1+2   # enable adaptive gravitational softening lengths for designated particle types (ADAPTIVE_GRAVSOFT_FORGAS should be disabled). the softening is set to the distance
+                                # enclosing a neighbor number set in the parameter file. flag value = bitflag like PM_PLACEHIGHRESREGION, which determines which particle types are adaptive (others use fixed softening). cite Hopkins et al., arXiv:1702.06148
 ## -----------------------------------------------------------------------------------------------------
 #SELFGRAVITY_OFF                # turn off self-gravity (compatible with GRAVITY_ANALYTIC); setting NOGRAVITY gives identical functionality
 #GRAVITY_NOT_PERIODIC           # self-gravity is not periodic, even though the rest of the box is periodic
@@ -194,11 +194,21 @@
 ## ----------------------------------------------------------------------------------------------------
 # ------------------------------------- Friends-of-friends on-the-fly finder options (source in fof.c)
 # -----------------------------------------------------------------------------------------------------
-#FOF                                # enable FoF searching on-the-fly and outputs (set parameter LINKLENGTH=x to control LinkingLength; default=0.2)
-#FOF_PRIMARY_LINK_TYPES=2           # 2^type for the primary dark matter type
-#FOF_SECONDARY_LINK_TYPES=1+16+32   # 2^type for the types linked to nearest primaries
-#FOF_DENSITY_SPLIT_TYPES=1+2+16+32  # 2^type for whch the densities should be calculated seperately
-#FOF_GROUP_MIN_LEN=32               # default is 32
+#FOF                                # master switch: enable FoF searching on-the-fly and outputs (set parameter LINKLENGTH=x to control LinkingLength; default=0.2)
+#FOF_PRIMARY_LINK_TYPES=2           # bitflag: sum of 2^type for the primary type used to define initial FOF groups (use a common type to ensure 'start' in reasonable locations)
+#FOF_SECONDARY_LINK_TYPES=1+16+32   # bitflag: sum of 2^type for the seconary types which can be linked to nearest primaries (will be 'seen' when calculating group properties)
+#FOF_DENSITY_SPLIT_TYPES=1+2+16+32  # bitflag: sum of 2^type for which the densities should be calculated seperately (i.e. if 1+2+16+32, fof densities are separately calculated for types 0,1,4,5, and shared for types 2,3)
+#FOF_GROUP_MIN_SIZE=32              # minimum number of identified members required to qualify as a 'group': default is 32
+## ----------------------------------------------------------------------------------------------------
+# -------------------------------------  Subhalo on-the-fly finder options (uses "subfind" source code).
+## ----------------------------------------------------------------------------------------------------
+#SUBFIND                            # master switch to enable substructure-finding with the SubFind algorithm
+#SUBFIND_ADDIO_NUMOVERDEN=1         # for M200,R200-type properties, compute values within in this number of different overdensities (default=1=)
+#SUBFIND_ADDIO_VELDISP              # add the mass-weighted 1D velocity dispersions to properties computed in parent group[s], within the chosen overdensities
+#SUBFIND_ADDIO_BARYONS              # add gas mass, mass-weighted temperature, and x-ray luminosity (assuming ionized primoridal gas), and stellar masses, to properties computed in parent group[s], within the chosen overdensities
+## ----------------------------------------------------------------------------------------------------
+#SUBFIND_REMOVE_GAS_STRUCTURES      # delete (do not save) any structures which are entirely gas (or have fewer than target number of elements which are non-gas, with the rest in gas)
+#SUBFIND_SAVE_PARTICLEDATA          # save all particle positions,velocity,type,mass in subhalo file (in addition to IDs: this is highly redundant with snapshots, so makes subhalo info more like a snapshot)
 ####################################################################################################
 
 
@@ -260,8 +270,8 @@
 #SINGLE_STAR_SINK_FORMATION=(1+2+4+8+16+32) # form new sinks on the fly, criteria from bitflag: 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
 #SINGLE_STAR_ACCRETION=7        # sink accretion [details in BH info below]: 0-8: use BH_GRAVACCRETION=X, 9: BH_BONDI=0, 10:BH_BONDI=1, 11: BH_GRAVCAPTURE_GAS, 12: BH_GRAVCAPTURE_GAS modified with Bate-style FIXEDSINKRADIUS
 ## ----------------------------------------------------------------------------------------------------
-# ----- star (+planet) formation-specific modules (feedback, jets, radiation, protostellar evolution, etc)
-## ----------------------------------------------------------------------------------------------------
+#------ star (+planet) formation-specific modules (feedback, jets, radiation, protostellar evolution, etc)
+##-----------------------------------------------------------------------------------------------------
 #SINGLE_STAR_PROTOSTELLAR_EVOLUTION # sinks are assumed to be proto-stars and follow protostellar evolution tracks as they accrete to evolve radii+luminosities, determines proto-stellar feedback properties
 #SINGLE_STAR_FB_RT_HEATING      # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
 #SINGLE_STAR_FB_JETS            # kinematic jets from sinks: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow. for now cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840 (for algorithm, developed for black hole jets), though now using SPAWN algorithm developed by KY Su
@@ -315,7 +325,7 @@
 # -- mechanical (wind from accretion disk/BH with specified mass/momentum/energy-loading relative to accretion rate)
 #BH_WIND_CONTINUOUS=0           # gas in kernel given continuous wind flux (energy/momentum/etc). =0 for isotropic, =1 for collimated. cite Hopkins et al., 2016, MNRAS, 458, 816
 #BH_WIND_KICK=1                 # gas in kernel given stochastic 'kicks' at fixed velocity. (>0=isotropic, <0=collimated, absolute value sets momentum-loading in L/c units). cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840
-#BH_WIND_SPAWN=3                #-spawn virtual 'wind' particles to carry BH winds out [in development by Paul Torrey]. use requires permissions from P. Torrey and PFH (cite Torrey et al. 2019 if used: -strongly- recommend contacting P. Torrey and PFH before use, as this is not fully-debugged). value=min number spawned per spawn-step
+#BH_WIND_SPAWN=2                #-spawn virtual 'wind' particles to carry BH winds out [in development by Paul Torrey]. use requires permissions from P. Torrey and PFH (cite Torrey et al. 2019 if used: -strongly- recommend contacting P. Torrey and PFH before use, as this is not fully-debugged). value=min number spawned per spawn-step
 #--- radiative: [FIRE] these currently are built on the architecture of the FIRE stellar FB modules, and require some of those be active. their use therefore follows FIRE policies (see details above).
 #BH_COMPTON_HEATING             # enable Compton heating/cooling from BHs in cooling function (needs BH_PHOTONMOMENTUM). cite Hopkins et al., 2016, MNRAS, 458, 816
 #BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_FIRE_RT_HIIHEATING). cite Hopkins et al., arXiv:1702.06148
@@ -340,32 +350,34 @@
 # --------------------------------------------  these are now public, but if used, cite the appropriate paper[s] for their methods/implementation in GIZMO
 ############################################################################################################################
 # -------------------- methods for calculating photon propagation (one, and only one, of these MUST be on for RT). whatever method is used, you must cite the appropriate methods paper.
-#RT_LEBRON                              # RT solved using the ray-based LEBRON approximation (locally-extincted background radiation in optically-thin networks; default in the FIRE simulations). cite Hopkins et al. 2012, MNRAS, 421, 3488 and Hopkins et al. 2018, MNRAS, 480, 800 [former developed methods and presented tests, latter details all algorithmic aspects explicitly]
-#RT_M1                                  # RT solved using the moments-based 1st-order M1 approximation (solve fluxes and tensors with M1 closure; gives better shadowing; currently only compatible with explicit diffusion solver). cite Hopkins & Grudic, 2018, arXiv:1803.07573
-#RT_OTVET                               # RT solved using the moments-based 0th-order OTVET approximation (optically thin Eddington tensor, but interpolated to thick when appropriate). cite Hopkins & Grudic, 2018, arXiv:1803.07573
-#RT_FLUXLIMITEDDIFFUSION                # RT solved using the moments-based 0th-order flux-limited diffusion approximation (constant, always-isotropic Eddington tensor). cite Hopkins & Grudic, 2018, arXiv:1803.07573
-#RT_LOCALRAYGRID=1                      # RT solved using the exact method of Jiang et al. (each cell carries a mesh in phase space of the intensity directions, rays directly solved over the 6+1D direction-space-frequency-time mesh [value=number of polar angles per octant: N_rays=4*value*(value+1)]. this is still in development, DO NOT USE without contacting PFH
+#RT_FLUXLIMITEDDIFFUSION                # RT solved using moments-based 0th-order flux-limited diffusion approximation (constant, always-isotropic Eddington tensor). cite Hopkins & Grudic, 2018, arXiv:1803.07573
+#RT_M1                                  # RT solved using moments-based 1st-order M1 approximation (solve fluxes and tensors with M1 closure; gives better shadowing; currently only compatible with explicit diffusion solver). cite Hopkins & Grudic, 2018, arXiv:1803.07573
+#RT_OTVET                               # RT solved using moments-based 0th-order OTVET approximation (optically thin Eddington tensor, but interpolated to thick when appropriate). cite Hopkins & Grudic, 2018, arXiv:1803.07573
+#RT_LOCALRAYGRID=1                      # RT solved using exact method of Jiang et al. (each cell carries a mesh in phase space of the intensity directions, rays directly solved over the 6+1D direction-space-frequency-time mesh [value=number of polar angles per octant: N_rays=4*value*(value+1)]. this is still in development, DO NOT USE without contacting PFH
+#RT_LEBRON                              # RT solved using ray-based LEBRON approximation (locally-extincted background radiation in optically-thin networks; default in the FIRE simulations). cite Hopkins et al. 2012, MNRAS, 421, 3488 and Hopkins et al. 2018, MNRAS, 480, 800 [former developed methods and presented tests, latter details all algorithmic aspects explicitly]
 # -------------------- solvers (numerical) --------------------------------------------------------
 #RT_SPEEDOFLIGHT_REDUCTION=1            # set to a number <1 to use the 'reduced speed of light' approximation for photon propagation (C_eff=C_true*RT_SPEEDOFLIGHT_REDUCTION)
 #RT_DIFFUSION_IMPLICIT                  # solve the diffusion part of the RT equations (if needed) implicitly with Conjugate Gradient iteration (Petkova+Springel): less accurate and only works with some methods, but allows larger timesteps [otherwise more accurate explicit used]
 # -------------------- physics: wavelengths+coupled RT-chemistry networks (if any of these is used, cite Hopkins et al. 2018, MNRAS, 480, 800) -----------------------------------
-#RT_SOURCES=1+16+32                     # source list for ionizing photons given by bitflag (1=2^0=gas,16=2^4=new stars,32=2^5=BH)
+#RT_SOURCES=1+16+32                     # source types for radiation given by bitflag (1=2^0=gas,16=2^4=new stars,32=2^5=BH)
 #RT_XRAY=3                              # x-rays: 1=soft (0.5-2 keV), 2=hard (>2 keV), 3=soft+hard; used for Compton-heating
 #RT_CHEM_PHOTOION=2                     # ionizing photons: 1=H-only [single-band], 2=H+He [four-band]
-#RT_LYMAN_WERNER                        # specific lyman-werner [narrow H2 dissociating] band
+#RT_LYMAN_WERNER                        # lyman-werner [narrow H2 dissociating] band
 #RT_PHOTOELECTRIC                       # far-uv (8-13.6eV): track photo-electric heating photons + their dust interactions
 #RT_NUV                                 # near-UV: 1550-3600 Angstrom (where direct stellar emission dominates)
 #RT_OPTICAL_NIR                         # optical+near-ir: 3600 Angstrom-3 micron (where direct stellar emission dominates)
+#RT_FREEFREE                            # scattering from Thompson, absorption+emission from free-free, appropriate for fully-ionized plasma
 #RT_INFRARED                            # infrared: photons absorbed in other bands are down-graded to IR: IR radiation + dust + gas temperatures evolved independently
 # -------------------- radiation pressure options -------------------------------------------------
 #RT_DISABLE_RAD_PRESSURE                # turn off radiation pressure forces (included by default)
 #RT_RAD_PRESSURE_OUTPUT                 # print radiation pressure to file (requires some extra variables to save it)
-#RT_DISABLE_R15_GRADIENTFIX             # for moments [FLD/OTVET/M1]: turn off the Rosdahl+ 2015 approximate 'fix' (on by default) for gradients under-estimating flux when under-resolved by replacing it with E_nu*c
+#RT_ENABLE_R15_GRADIENTFIX              # for moments [FLD/OTVET/M1]: enable the Rosdahl+ 2015 approximate 'fix' (off by default) for gradients under-estimating flux when under-resolved by replacing it with E_nu*c
 ## ----------------------------------------------------------------------------------------------------
-# ----------- test-problem, deprecated, or de-bugging functions
+# ----------- alternative, test-problem, deprecated, or de-bugging functions
 ## ----------------------------------------------------------------------------------------------------
 #RT_SELFGRAVITY_OFF                     # turn off gravity: if using an RT method that needs the gravity tree (FIRE, OTVET), use this -instead- of SELFGRAVITY_OFF to safely turn off gravitational forces
-#RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR # when RT_DIFFUSION_CG is enabled, modifies the Eddington tensor to the fully anisotropic version (less stable CG iteration)
+#RT_USE_TREECOL_FOR_NH=6                # uses the TreeCol method to estimate effective optical depth using non-local information from the gravity tree; cite Clark, Glover & Klessen 2012 MNRAS 420 754. Value specifies the number of angular bins on the sky for ray-tracing column density.
+#RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR # when RT_DIFFUSION_IMPLICIT is enabled, modifies the Eddington tensor to the fully anisotropic version (less stable CG iteration)
 #RT_SEPARATELY_TRACK_LUMPOS             # keep luminosity vs. mass positions separate in tree. not compatible with Tree-PM mode, but it can be slightly more accurate and useful for debugging in tree-only mode with LEBRON or OTVET algorithms.
 #RT_DISABLE_FLUXLIMITER                 # removes the flux-limiter from the diffusion operations (default is to include it when using the relevant approximations)
 #RT_HYDROGEN_GAS_ONLY                   # sets hydrogen fraction to 1.0 (used for certain idealized chemistry calculations)
@@ -413,6 +425,9 @@
 #IO_DISABLE_HDF5                # disable HDF5 I/O support (for both reading/writing; use only if HDF5 not install-able)
 #IO_COMPRESS_HDF5     		    # write HDF5 in compressed form (will slow down snapshot I/O and may cause issues on old machines, but reduce snapshots 2x)
 #IO_SUPPRESS_TIMEBIN_STDOUT=10  # only prints timebin-list to log file if highest active timebin index is within N (value set) of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
+#IO_SUBFIND_IN_OLD_ASCII_FORMAT # write sub-find outputs in the old massive ascii-table format (unweildy and can cause lots of filesystem issues, but here for backwards compatibility)
+#IO_SUBFIND_READFOF_FROMIC      # try read already existing FOF files associated with a run instead of recomputing them: not de-bugged
+#IO_TURB_DIFF_DYNAMIC_ERROR     # save error terms from localized dynamic Smagorinsky model to snapshots
 ####################################################################################################
 
 
@@ -431,9 +446,11 @@
 # ----- Hydrodynamics
 #FREEZE_HYDRO                   # zeros all fluxes from RP and doesn't let particles move (for testing additional physics layers)
 #EOS_ENFORCE_ADIABAT=(1.0)      # if set, this forces gas to lie -exactly- along the adiabat P=EOS_ENFORCE_ADIABAT*(rho^GAMMA)
+#HYDRO_REPLACE_RIEMANN_KT       # replaces the hydro Riemann solver (HLLC) with a Kurganov-Tadmor flux derived in Panuelos, Wadsley, and Kevlahan, 2019. works with MFM/MFV/fixed-grid methods [-without- MHD active, but other modules are fine]. more diffusive, but smoother, and more stable convergence results
 #SLOPE_LIMITER_TOLERANCE=1      # sets the slope-limiters used. higher=more aggressive (less diffusive, but less stable). 1=default. 0=conservative. use on problems where sharp density contrasts in poor particle arrangement may cause errors. 2=same as AGGRESSIVE_SLOPE_LIMITERS below
 #AGGRESSIVE_SLOPE_LIMITERS      # use the original GIZMO paper (more aggressive) slope-limiters. more accurate for smooth problems, but
                                 # these can introduce numerical instability in problems with poorly-resolved large noise or density contrasts (e.g. multi-phase, self-gravitating flows)
+#HYDRO_RIEMANN_KT_UNLIMITED     # removes the limiter otherwise used to reduce dissipation in the Kurganov-Tadmor flux : more diffusive but smoother solutions
 #ENERGY_ENTROPY_SWITCH_IS_ACTIVE # enable energy-entropy switch as described in GIZMO methods paper. This can greatly improve performance on some problems where the
                                 # the flow is very cold and highly super-sonic. it can cause problems in multi-phase flows with strong cooling, though, and is not compatible with non-barytropic equations of state
 #FORCE_ENTROPIC_EOS_BELOW=(0.01) # set (manually) the alternative energy-entropy switch which is enabled by default in MFM/MFV: if relative velocities are below this threshold, it uses the entropic EOS
@@ -503,48 +520,16 @@
 #CHIMES                         #- enable CHIMES: cooling & chemistry package. Requires COOLING above. Also, requires COOL_METAL_LINES_BY_SPECIES to include metals.
 #CHIMES_HYDROGEN_ONLY           #- Hydrogen-only. This is ignored if METALS are also set.
 #CHIMES_SOBOLEV_SHIELDING       #- Enables local self-shielding over a Sobolev-like length scale
-#CHIMES_HII_REGIONS             #- Disables shielding withing HII region (requires FIRE modules for radiation transport/coupling: uses GALSF_FB_HII_HEATING, and permissions follow those modules)
+#CHIMES_HII_REGIONS             #- Disables shielding withing HII region (requires FIRE modules for radiation transport/coupling: uses GALSF_FB_FIRE_RT_HIIHEATING, and permissions follow those modules)
 #CHIMES_STELLAR_FLUXES          #- Couple UV fluxes from the luminosity tree to CHIMES (requires FIRE modules for radiation transport/coupling: use permissions follow those modules)
 #CHIMES_SFR_MOLECULAR_CRITERION #- As GALSF_SFR_MOLECULAR_CRITERION, but using the H2 fraction from CHIMES (requires appropriate star formation parent flags be set)
 #CHIMES_REDUCED_OUTPUT          #- Full CHIMES abundance array only output in some snapshots
 #CHIMES_NH_OUTPUT               #- Write out column densities of gas particles to snapshots
 #CHIMES_OUTPUT_DENS_AROUND_STAR #- Write out DensAroundStar
-#CHIMES_OUTPUT_DELAY_TIME_HII   #- Output DelayTimeHII. Requires CHIMES_HII_REGIONS or GALSF_FB_HII_HEATING (and corresponding flags/permissions set)
+#CHIMES_OUTPUT_DELAY_TIME_HII   #- Output DelayTimeHII. Requires CHIMES_HII_REGIONS or GALSF_FB_FIRE_RT_HIIHEATING (and corresponding flags/permissions set)
 #CHIMES_INITIALISE_IN_EQM       #- Initialise CHIMES abundances in equilibrium at the start of the simulation
 #CHIMES_TURB_DIFF_IONS          #- Turbulent diffusions of CHIMES abundances. Requires TURB_DIFF_METALS and TURB_DIFF_METALS_LOWORDER (see modules for metal diffusion above: use/citation policy follows those)
 #CHIMES_METAL_DEPLETION         #- Uses density-dependent metal depletion factors (Jenkins 2009, De Cia et al. 2016)
-####################################################################################################-
-
-
-
-####################################################################################################-
-#---------------------------------------- Subhalo on-the-fly finder options (needs "subfind" source code)
-#------------------ This is originally developed as part of GADGET-3 (SUBFIND) by V. Springel
-#------------------ Use of these modules follows the GADGET-3 permissions; if you are not sure, contact Volker
-####################################################################################################-
-#SUBFIND                            #- enables substructure finder
-#MAX_NGB_CHECK=3                    #- Max numbers of neighbours for sattlepoint detection (default = 2)
-#SAVE_MASS_TAB                      #- Saves the an additional array with the masses of the different components
-#SUBFIND_SAVE_PARTICLELISTS         #- Saves also phase-space and type variables parallel to IDs
-#SO_VEL_DISPERSIONS                 #- computes velocity dispersions for as part of FOF SO-properties
-#ONLY_PRODUCE_HSML_FILES            #- only carries out density estimate
-#SAVE_HSML_IN_IC_ORDER              #- will store the hsml-values in the order of the particles in the IC file
-#KEEP_HSML_AS_GUESS                 #- keep using hsml for gas particles in subfind_density
-#NO_GAS_CLOUDS                      #- Do not accept pure gaseous substructures
-#WRITE_SUB_IN_SNAP_FORMAT           #- Save subfind results in snap format
-#DUSTATT=11                         #- Includes dust attenuation into the luminosity calculation (using 11 radial bins)
-#OBSERVER_FRAME                     #- If defined, use CB07 Observer Frame Luminosities, otherwise CB07 Rest Frame Luminosities
-#SO_BAR_INFO                        #- Adds temperature, Lx, bfrac, etc to Groups
-#SUBFIND_COUNT_BIG_HALOS=1e4        #- Adds extra blocks for Halos with M_TopHat > SUBFIND_COUNT_BIG_HALOS
-#KD_CHOOSE_PSUBFIND_LIMIT           #- Increases the limit for the parallel subfind to the maximum possible
-#KD_ALTERNATIVE_GROUP_SORT          #- Alternative way to sort the Groups/SubGroupe before writing
-#SUBFIND_READ_FOF                   #-
-#SUBFIND_COLLECTIVE_STAGE1          #-
-#SUBFIND_COLLECTIVE_STAGE2          #-
-#SUBFIND_ALTERNATIVE_COLLECTIVE     #-
-#SUBFIND_RESHUFFLE_CATALOGUE        #-
-#SUBFIND_RESHUFFLE_AND_POTENTIAL    #- needs -DSUBFIND_RESHUFFLE_CATALOGUE and COMPUTE_POTENTIAL_ENERGY
-#SUBFIND_DENSITY_AND_POTENTIAL      #- only calculated density and potential and write them into snapshot
 ####################################################################################################-
 
 
@@ -560,6 +545,11 @@
 
 ####################################################################################################-
 #BH_DEBUG_SPAWN_JET_TEST        #- BH outflow/particle spawn in jet (currently testing/early-dev, doesn't work for general problems! units hardcoded!)
+####################################################################################################-
+
+####################################################################################################-
+#PIC_MHD                        #- hybrid MHD-PIC simulations for cosmic rays (particle type=3). need to set 'subtype'. in early testing.
+#PIC_SPEEDOFLIGHT_REDUCTION=1   #- factor to reduce the speed-of-light for mhd-pic simulations.
 ####################################################################################################-
 
 

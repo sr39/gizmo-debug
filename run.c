@@ -15,7 +15,7 @@
  */
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * Volker Springel. The code has been modified
  * in part (adding/removing calls, re-ordering some routines, and 
  * adding hooks to new elements such as particle splitting, as necessary)
  * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
@@ -71,7 +71,7 @@ void run(void)
 #endif	 
 #ifdef HERMITE_INTEGRATION	
         HermiteOnlyFlag = 1;
-        compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
+        gravity_tree();	/* re-compute gravitational accelerations for synchronous particles */
         HermiteOnlyFlag = 0;
 #endif        
         do_first_halfstep_kick();	/* half-step kick at beginning of timestep for synchronous particles */
@@ -136,7 +136,7 @@ void run(void)
 #ifdef HERMITE_INTEGRATION // we do a prediction step using the saved "old" pos, accel and jerk from the beginning of the timestep. Then we recompute accel and jerk and do the correction
         do_hermite_prediction();
         HermiteOnlyFlag = 1;
-        compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
+        gravity_tree();	/* re-compute gravitational accelerations for synchronous particles */
         HermiteOnlyFlag = 0;
         do_hermite_correction();
 #endif                		
@@ -144,9 +144,6 @@ void run(void)
 	
         /* Check whether we need to interrupt the run */
         int stopflag = 0;
-#ifdef IO_REDUCED_MODE
-        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
-#endif
         if(ThisTask == 0)
         {
             FILE *fd;
@@ -245,9 +242,6 @@ void calculate_non_standard_physics(void)
 #endif
     
 #if defined(TURB_DRIVING)
-#ifdef EOS_ENFORCE_ADIABAT
-    reset_turb_temp();
-#endif
 #if defined(TURB_DRIVING_SPECTRUMGRID)
     if(All.Time >= All.TimeNextTurbSpectrum)
     {
@@ -273,9 +267,7 @@ void calculate_non_standard_physics(void)
     /* use the CG method to solve the RT diffusion equation implicitly for all particles */
     if(Flag_FullStep) /* only do it for full timesteps */
     {
-#ifndef IO_REDUCED_MODE
-        if(ThisTask == 0) {printf("start CG iteration for radiative transfer (diffusion equation)...\n"); //fflush(stdout);}
-#endif
+        PRINT_STATUS("start CG iteration for radiative transfer (diffusion equation)...");
         All.Radiation_Ti_endstep = All.Ti_Current;
         double timeeach = 0, timeall = 0, tstart = 0, tend = 0;
         tstart = my_second();
@@ -358,9 +350,7 @@ void compute_statistics(void)
         compute_potential();
 #endif
 #endif
-#ifndef IO_REDUCED_MODE
         energy_statistics();	/* compute and output energy statistics */
-#endif
         All.TimeLastStatistics += All.TimeBetStatistics;
     }
 }
@@ -446,12 +436,7 @@ void find_next_sync_point_and_drift(void)
 #endif
 #endif
 
-
-#ifndef IO_REDUCED_MODE
-      mpi_printf("\n\n\nI found the last snapshot call...\n\n\n");
-#endif
         savepositions(All.SnapshotFileCount++);	/* write snapshot file */
-
       All.Ti_nextoutput = find_next_outputtime(All.Ti_nextoutput + 1);
     }
 
@@ -688,7 +673,7 @@ integertime find_next_outputtime(integertime ti_curr)
 	next = All.TimeBegin + ti_next * All.Timebase_interval;
 
       if(ThisTask == 0)
-	printf("\nSetting next time for snapshot file to Time_next= %g  (DumpFlag=%d)\n\n", next, DumpFlag);
+	printf("\nSetting next time for snapshot file to Time_next= %g  (DumpFlag=%d)\n", next, DumpFlag);
 
     }
 
@@ -801,7 +786,7 @@ void output_log_messages(void)
 #ifdef PMGRID
         if(All.PM_Ti_endstep == All.Ti_Current)
         {
-            printf("PM-Step. Total: %10llu  %10llu    Sum: %10llu\n", tot - tot_sph, tot_sph, tot);
+            printf("PM-Step. Total: %10llu  %10llu    Sum: %10llu\n\n", tot - tot_sph, tot_sph, tot);
 #ifndef IO_REDUCED_MODE
             fprintf(FdTimebin, "PM-Step. Total: %10llu  %10llu    Sum: %10llu\n", tot - tot_sph, tot_sph, tot);
 #endif
@@ -809,7 +794,7 @@ void output_log_messages(void)
         else
 #endif
         {
-            printf("Total active:   %10llu  %10llu    Sum: %10llu\n", tot - tot_sph, tot_sph, tot);
+            printf("Total active:   %10llu  %10llu    Sum: %10llu\n\n", tot - tot_sph, tot_sph, tot);
 #ifndef IO_REDUCED_MODE
             fprintf(FdTimebin, "Total active:   %10llu  %10llu    Sum: %10llu\n", tot - tot_sph, tot_sph, tot);
 #endif
@@ -903,7 +888,7 @@ void write_cpu_log(void)
 	      "   treewalk   %10.2f  %5.1f%%\n"
 	      "   treecomm   %10.2f  %5.1f%%\n"
 	      "   treeimbal  %10.2f  %5.1f%%\n"
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
 	      "adaptgrav     %10.2f  %5.1f%%\n"
 	      "   agsdensity %10.2f  %5.1f%%\n"
 	      "   agscomm    %10.2f  %5.1f%%\n"
@@ -921,9 +906,6 @@ void write_cpu_log(void)
         "   comm       %10.2f  %5.1f%%\n"
         "   wait       %10.2f  %5.1f%%\n"
         "   misc       %10.2f  %5.1f%%\n"
-#endif
-#ifdef DM_SIDM
-          "sidm_total    %10.2f  %5.1f%%\n"
 #endif
 	      "pmgrav        %10.2f  %5.1f%%\n"
 	      "hydro         %10.2f  %5.1f%%\n"
@@ -967,7 +949,7 @@ void write_cpu_log(void)
     All.CPU_Sum[CPU_TREEWALK1] + All.CPU_Sum[CPU_TREEWALK2], (All.CPU_Sum[CPU_TREEWALK1] + All.CPU_Sum[CPU_TREEWALK2]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_TREESEND] + All.CPU_Sum[CPU_TREERECV], (All.CPU_Sum[CPU_TREESEND] + All.CPU_Sum[CPU_TREERECV]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_TREEWAIT1] + All.CPU_Sum[CPU_TREEWAIT2], (All.CPU_Sum[CPU_TREEWAIT1] + All.CPU_Sum[CPU_TREEWAIT2]) / All.CPU_Sum[CPU_ALL] * 100,
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     All.CPU_Sum[CPU_AGSDENSCOMPUTE] + All.CPU_Sum[CPU_AGSDENSWAIT] + All.CPU_Sum[CPU_AGSDENSCOMM] + All.CPU_Sum[CPU_AGSDENSMISC],
               (All.CPU_Sum[CPU_AGSDENSCOMPUTE] + All.CPU_Sum[CPU_AGSDENSWAIT] + All.CPU_Sum[CPU_AGSDENSCOMM] + All.CPU_Sum[CPU_AGSDENSMISC]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_AGSDENSCOMPUTE], (All.CPU_Sum[CPU_AGSDENSCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
@@ -986,9 +968,6 @@ void write_cpu_log(void)
     All.CPU_Sum[CPU_IMPROVDIFFWAIT], (All.CPU_Sum[CPU_IMPROVDIFFWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_IMPROVDIFFCOMM], (All.CPU_Sum[CPU_IMPROVDIFFCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_IMPROVDIFFMISC], (All.CPU_Sum[CPU_IMPROVDIFFMISC]) / All.CPU_Sum[CPU_ALL] * 100,
-#endif
-#ifdef DM_SIDM
-    All.CPU_Sum[CPU_SIDMSCATTER], (All.CPU_Sum[CPU_SIDMSCATTER])/ All.CPU_Sum[CPU_ALL] * 100,
 #endif
     All.CPU_Sum[CPU_MESH], (All.CPU_Sum[CPU_MESH]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_DENSCOMPUTE] + All.CPU_Sum[CPU_DENSWAIT] + All.CPU_Sum[CPU_DENSCOMM] + All.CPU_Sum[CPU_DENSMISC]
@@ -1070,7 +1049,6 @@ void put_symbol(double t0, double t1, char c)
 
 
 
-#ifndef IO_REDUCED_MODE
 /*! This routine first calls a computation of various global
  * quantities of the particle distribution, and then writes some
  * statistics about the energies in the various particle components to
@@ -1078,6 +1056,7 @@ void put_symbol(double t0, double t1, char c)
  */
 void energy_statistics(void)
 {
+#ifndef IO_REDUCED_MODE
   compute_global_quantities_of_system();
 
   if(ThisTask == 0)
@@ -1097,8 +1076,8 @@ void energy_statistics(void)
       fprintf(FdEnergy," \n");
       fflush(FdEnergy);
     }
-}
 #endif
+}
 
 
 

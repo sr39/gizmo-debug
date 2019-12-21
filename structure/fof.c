@@ -16,16 +16,17 @@
  *  \brief parallel FoF group finder
  */
 /*
- * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). It is here in GIZMO 
- * as legacy code at the moment, and needs to be re-written or removed.
- */
+* This file was originally part of the GADGET3 code developed by Volker Springel.
+* It has been updated significantly by PFH for basic compatibility with GIZMO,
+* as well as code cleanups, and accommodating new GIZMO functionality for various
+* other operations. 
+*/
 
 
 #ifdef FOF
 #include "fof.h"
 #ifdef SUBFIND
-#include "subfind.h"
+#include "subfind/subfind.h"
 #endif
 
 
@@ -73,7 +74,7 @@ static int NgroupsExt, Nids;
 
 static int MyFOF_PRIMARY_LINK_TYPES;
 static int MyFOF_SECONDARY_LINK_TYPES;
-static int MyFOF_GROUP_MIN_LEN;
+static int MyFOF_GROUP_MIN_SIZE;
 
 static MyIDType *Head, *Len, *Next, *Tail, *MinID, *MinIDTask;
 static char *NonlocalFlag;
@@ -90,58 +91,17 @@ void fof_fof(int num)
   struct unbind_data *d;
   long long ndmtot;
 
-
-#ifdef SUBFIND_DENSITY_AND_POTENTIAL
-  if(ThisTask == 0)
-    printf("\nStarting SUBFIND_DENSITY_AND_POTENTIAL...\n");
-
-  subfind(num);
-  strcat(All.SnapshotFileBase, "_rho_and_pot");
-  savepositions(RestartSnapNum);
-  if(ThisTask == 0)
-    printf("\nSUBFIND_DENSITY_AND_POTENTIAL done.\n");
-  endrun(0);
-#endif
-
-#ifdef SUBFIND_READ_FOF
+#ifdef IO_SUBFIND_READFOF_FROMIC
   read_fof(num);
-#endif
-
-
-#ifdef SUBFIND_RESHUFFLE_CATALOGUE
-  force_treefree();
-
-  read_subfind_ids();
-
-  if(All.TotN_gas > 0)
-    {
-      if(ThisTask == 0)
-	printf("\nThe option SUBFIND_RESHUFFLE_CATALOGUE does not work with gas particles yet\n");
-      endrun(0);
-    }
-
-  t0 = my_second();
-  //  parallel_sort(P, NumPart, sizeof(struct particle_data), io_compare_P_GrNr_ID);
-  parallel_sort_special_P_GrNr_ID();
-  t1 = my_second();
-  if(ThisTask == 0)
-    printf("Ordering of particle-data took = %g sec\n", timediff(t0, t1));
-
-  strcat(All.SnapshotFileBase, "_subidorder");
-  savepositions(RestartSnapNum);
-  endrun(0);
 #endif
 
   MyFOF_PRIMARY_LINK_TYPES = FOF_PRIMARY_LINK_TYPES;
   MyFOF_SECONDARY_LINK_TYPES = FOF_SECONDARY_LINK_TYPES;
-  MyFOF_GROUP_MIN_LEN = FOF_GROUP_MIN_LEN;
+  MyFOF_GROUP_MIN_SIZE = FOF_GROUP_MIN_SIZE;
 
   if(ThisTask == 0)
     {
       printf("\nBegin to compute FoF group catalogues...  (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
-#ifndef IO_REDUCED_MODE
-        fflush(stdout);
-#endif
     }
 
   CPU_Step[CPU_MISC] += measure_time();
@@ -149,11 +109,6 @@ void fof_fof(int num)
   domain_Decomposition(1, 0, 0);
 
   force_treefree();
-
-#ifdef ONLY_PRODUCE_HSML_FILES
-  subfind(num);
-  endrun(0);
-#endif
 
   for(i = 0, ndm = 0, mass = 0; i < NumPart; i++)
     if(((1 << P[i].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
@@ -171,14 +126,7 @@ void fof_fof(int num)
 
   LinkL = LINKLENGTH * pow(masstot / ndmtot / rhodm, 1.0 / 3);
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("\nComoving linking length: %g    ", LinkL);
-      printf("(presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
-      fflush(stdout);
-    }
-#endif
+    PRINT_STATUS("Comoving linking length: %g : (presently allocated=%g MB) ",LinkL,AllocatedBytes / (1024.0 * 1024.0))
 
   FOF_PList =
     (struct fof_particle_list *) mymalloc("FOF_PList", NumPart *
@@ -294,7 +242,7 @@ void fof_fof(int num)
 
   if(ThisTask == 0)
     {
-      printf("\nTotal number of groups with at least %d particles: %d\n", MyFOF_GROUP_MIN_LEN, TotNgroups);
+      printf("\nTotal number of groups with at least %d particles: %d\n", MyFOF_GROUP_MIN_SIZE, TotNgroups);
       if(TotNgroups > 0)
 	{
 	  printf("Largest group has %d particles.\n", largestgroup);
@@ -305,25 +253,10 @@ void fof_fof(int num)
 
   t0 = my_second();
 
-#ifdef KD_ALTERNATIVE_GROUP_SORT
-  MaxNgroups = 2 * IMAX(NgroupsExt, TotNgroups / NTask + NTask);
-  Group =
-    (group_properties *) mymalloc("Group", sizeof(group_properties) *
-					 MaxNgroups);
-#else
-  Group =
-    (group_properties *) mymalloc("Group", sizeof(group_properties) *
+  Group = (group_properties *) mymalloc("Group", sizeof(group_properties) *
 					 IMAX(NgroupsExt, TotNgroups / NTask + 1));
-#endif
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("group properties are now allocated.. (presently allocated=%g MB)\n",
-	     AllocatedBytes / (1024.0 * 1024.0));
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS("group properties are now allocated.. (presently allocated=%g MB)",AllocatedBytes / (1024.0 * 1024.0));
     
   for(i = 0, start = 0; i < NgroupsExt; i++)
     {
@@ -388,14 +321,7 @@ void fof_fof(int num)
   myfree(FOF_GList);
   myfree(FOF_PList);
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("Finished computing FoF groups.  (presently allocated=%g MB)\n\n",
-	     AllocatedBytes / (1024.0 * 1024.0));
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS("Finished computing FoF groups.  (presently allocated=%g MB)", AllocatedBytes / (1024.0 * 1024.0));
 
   CPU_Step[CPU_FOF] += measure_time();
 
@@ -425,13 +351,7 @@ void fof_find_groups(void)
   char *FoFDataOut, *FoFDataResult, *MarkedFlag, *ChangedFlag;
   double t0, t1;
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("\nStart linking particles (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS("Start linking particles (presently allocated=%g MB)", AllocatedBytes / (1024.0 * 1024.0));
 
   /* allocate buffers to arrange communication */
 
@@ -471,20 +391,8 @@ void fof_find_groups(void)
   t1 = my_second();
 
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf
-	("links on local processor done (took %g sec).\nMarked=%d%09d out of the %d%09d primaries which are linked\n",
-	 timediff(t0, t1),
-	 (int) (totmarked / 1000000000), (int) (totmarked % 1000000000),
-	 (int) (totnpart / 1000000000), (int) (totnpart % 1000000000));
-
-      printf("\nlinking across processors (presently allocated=%g MB) \n",
-	     AllocatedBytes / (1024.0 * 1024.0));
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS("links on local processor done (took %g sec).\nMarked=%d%09d out of the %d%09d primaries which are linked",timediff(t0, t1),(int) (totmarked / 1000000000), (int) (totmarked % 1000000000),(int) (totnpart / 1000000000), (int) (totnpart % 1000000000));
+  PRINT_STATUS("\nlinking across processors (presently allocated=%g MB)",AllocatedBytes / (1024.0 * 1024.0));
     
   for(i = 0; i < NumPart; i++)
     {
@@ -646,15 +554,7 @@ void fof_find_groups(void)
 
       t1 = my_second();
 
-#ifndef IO_REDUCED_MODE
-      if(ThisTask == 0)
-	{
-	  printf("have done %d%09d cross links (processed %d%09d, took %g sec)\n",
-		 (int) (link_across_tot / 1000000000), (int) (link_across_tot % 1000000000),
-		 (int) (ntot / 1000000000), (int) (ntot % 1000000000), timediff(t0, t1));
-	  fflush(stdout);
-	}
-#endif
+	  PRINT_STATUS("have done %d%09d cross links (processed %d%09d, took %g sec)",(int) (link_across_tot / 1000000000), (int) (link_across_tot % 1000000000),(int) (ntot / 1000000000), (int) (ntot % 1000000000), timediff(t0, t1));
 
       /* let's check out which particles have changed their MinID */
       for(i = 0; i < NumPart; i++)
@@ -678,13 +578,7 @@ void fof_find_groups(void)
   myfree(DataIndexTable);
   myfree(Ngblist);
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("Local groups found.\n\n");
-      fflush(stdout);
-    }
-#endif
+PRINT_STATUS("Local groups found.");
 }
 
 
@@ -989,9 +883,9 @@ void fof_compile_catalogue(void)
   for(i = 0, Ngroups = 0, Nids = 0; i < NgroupsExt; i++)
     {
 #ifdef FOF_DENSITY_SPLIT_TYPES
-      if(FOF_GList[i].LocDMCount + FOF_GList[i].ExtDMCount < MyFOF_GROUP_MIN_LEN)
+      if(FOF_GList[i].LocDMCount + FOF_GList[i].ExtDMCount < MyFOF_GROUP_MIN_SIZE)
 #else
-      if(FOF_GList[i].LocCount + FOF_GList[i].ExtCount < MyFOF_GROUP_MIN_LEN)
+      if(FOF_GList[i].LocCount + FOF_GList[i].ExtCount < MyFOF_GROUP_MIN_SIZE)
 #endif
 	{
 	  FOF_GList[i] = FOF_GList[NgroupsExt - 1];
@@ -1241,13 +1135,7 @@ void fof_save_groups(int num)
   char buf[500];
   double t0, t1;
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("start global sorting of group catalogues\n");
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS("start global sorting of group catalogues");
     
   t0 = my_second();
 
@@ -1262,12 +1150,8 @@ void fof_save_groups(int num)
 #endif
     }
 
-#ifdef ALTERNATIVE_PSORT
-  fof_sort_FOF_GList_LocCountTaskDiffMinID(FOF_GList, NgroupsExt);
-#else
   parallel_sort(FOF_GList, NgroupsExt, sizeof(fof_group_list),
 		fof_compare_FOF_GList_LocCountTaskDiffMinID);
-#endif
 
   for(i = 0, ngr = 0; i < NgroupsExt; i++)
     {
@@ -1294,11 +1178,7 @@ void fof_save_groups(int num)
     }
 
   /* bring the group list back into the original order */
-#ifdef ALTERNATIVE_PSORT
-  fof_sort_FOF_GList_ExtCountMinID(FOF_GList, NgroupsExt);
-#else
   parallel_sort(FOF_GList, NgroupsExt, sizeof(fof_group_list), fof_compare_FOF_GList_ExtCountMinID);
-#endif
 
   /* Assign the group numbers to the group properties array */
   for(i = 0, start = 0; i < Ngroups; i++)
@@ -1313,11 +1193,7 @@ void fof_save_groups(int num)
     }
 
   /* sort the groups according to group-number */
-#ifdef ALTERNATIVE_PSORT
-  fof_sort_Group_GrNr(Group, Ngroups);
-#else
   parallel_sort(Group, Ngroups, sizeof(group_properties), fof_compare_Group_GrNr);
-#endif
 
   /* fill in the offset-values */
   for(i = 0, totlen = 0; i < Ngroups; i++)
@@ -1392,22 +1268,10 @@ void fof_save_groups(int num)
     }
 
   /* sort the particle IDs according to group-number */
-
-#ifdef ALTERNATIVE_PSORT
-  fof_sort_ID_list_GrNrID(ID_list, Nids);
-#else
   parallel_sort(ID_list, Nids, sizeof(fof_id_list), fof_compare_ID_list_GrNrID);
-#endif
 
   t1 = my_second();
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("Group catalogues globally sorted. took = %g sec\n", timediff(t0, t1));
-      printf("starting saving of group catalogue\n");
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS("Group catalogues globally sorted. took = %g sec. Started saving of group catalogue", timediff(t0, t1));
   t0 = my_second();
 
   if(ThisTask == 0)
@@ -1418,12 +1282,7 @@ void fof_save_groups(int num)
   MPI_Barrier(MPI_COMM_WORLD);
 
 
-  if(NTask < All.NumFilesWrittenInParallel)
-    {
-      printf
-	("Fatal error.\nNumber of processors must be a smaller or equal than `NumFilesWrittenInParallel'.\n");
-      endrun(241931);
-    }
+  if(NTask < All.NumFilesWrittenInParallel) {printf("Fatal error.\nNumber of processors must be a smaller or equal than `NumFilesWrittenInParallel'.\n"); endrun(241931);}
 
   nprocgroup = NTask / All.NumFilesWrittenInParallel;
   if((NTask % All.NumFilesWrittenInParallel))
@@ -1439,14 +1298,7 @@ void fof_save_groups(int num)
   myfree(ID_list);
 
   t1 = my_second();
-
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("Group catalogues saved. took = %g sec\n", timediff(t0, t1));
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS("Group catalogues saved. took = %g sec", timediff(t0, t1));
 }
 
 
@@ -1580,14 +1432,7 @@ void fof_find_nearest_dmparticle(void)
   int i, j, n, ntot, dummy;
   int ndone, ndone_flag, ngrp, recvTask, place, nexport, nimport, npleft, iter;
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("Start finding nearest dm-particle (presently allocated=%g MB)\n",
-	     AllocatedBytes / (1024.0 * 1024.0));
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS("Start finding nearest dm-particle (presently allocated=%g MB)",AllocatedBytes / (1024.0 * 1024.0));
   fof_nearest_distance = (float *) mymalloc("fof_nearest_distance", sizeof(float) * NumPart);
   fof_nearest_hsml = (float *) mymalloc("fof_nearest_hsml", sizeof(float) * NumPart);
 
@@ -1616,7 +1461,7 @@ void fof_find_nearest_dmparticle(void)
   /* we will repeat the whole thing for those particles where we didn't find enough neighbours */
   do
     {
-      i = 0;			/* beginn with this index */
+      i = 0;			/* begin with this index */
 
       do
 	{
@@ -1655,14 +1500,7 @@ void fof_find_nearest_dmparticle(void)
 	  FoFDataGet = (struct fofdata_in *) mymalloc("FoFDataGet", nimport * sizeof(struct fofdata_in));
 	  FoFDataIn = (struct fofdata_in *) mymalloc("FoFDataIn", nexport * sizeof(struct fofdata_in));
 
-#ifndef IO_REDUCED_MODE
-	  if(ThisTask == 0)
-	    {
-	      printf("still finding nearest... (presently allocated=%g MB)\n",
-		     AllocatedBytes / (1024.0 * 1024.0));
-	      fflush(stdout);
-	    }
-#endif
+      PRINT_STATUS("still finding nearest... (presently allocated=%g MB)",AllocatedBytes / (1024.0 * 1024.0));
 	  for(j = 0; j < nexport; j++)
 	    {
 	      place = DataIndexTable[j].Index;
@@ -1788,21 +1626,8 @@ void fof_find_nearest_dmparticle(void)
       if(ntot > 0)
 	{
 	  iter++;
-#ifndef IO_REDUCED_MODE
-	  if(iter > 0 && ThisTask == 0)
-#else
-          if(iter > 10 && ThisTask == 0)
-#endif
-	    {
-	      printf("fof-nearest iteration %d: need to repeat for %d particles.\n", iter, ntot);
-	      fflush(stdout);
-	    }
-	  if(iter > MAXITER)
-	    {
-	      printf("failed to converge in fof-nearest\n");
-	      fflush(stdout);
-	      endrun(1159);
-	    }
+	  if(iter > 10 && ThisTask == 0) {printf("fof-nearest iteration %d: need to repeat for %d particles.\n", iter, ntot); fflush(stdout);}
+	  if(iter > MAXITER) {printf("failed to converge in fof-nearest\n"); fflush(stdout); endrun(1159);}
 	}
     }
   while(ntot > 0);
@@ -1814,13 +1639,7 @@ void fof_find_nearest_dmparticle(void)
   myfree(fof_nearest_hsml);
   myfree(fof_nearest_distance);
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("done finding nearest dm-particle\n");
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS("done finding nearest dm-particle");
 }
 
 
@@ -1870,9 +1689,7 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
             dx = pos[0] - P[j].Pos[0];
             dy = pos[1] - P[j].Pos[1];
             dz = pos[2] - P[j].Pos[2];
-#ifdef BOX_PERIODIC
             NEAREST_XYZ(dx,dy,dz,1);
-#endif
             r2 = dx * dx + dy * dy + dz * dz;
             if(r2 < r2max && r2 < h * h)
 		{
@@ -2000,14 +1817,7 @@ void fof_make_black_holes(void)
     }
 
   MPI_Allreduce(&nimport, &ntot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("\nMaking %d new black hole particles\n\n", ntot);
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS("Making %d new black hole particles", ntot);
   All.TotBHs += ntot;
 
   for(n = 0; n < nimport; n++)
@@ -2399,7 +2209,7 @@ int fof_compare_ID_list_GrNrID(const void *a, const void *b)
 
 
 
-#ifdef SUBFIND_READ_FOF		/* read already existing FOF instead of recomputing it */
+#ifdef IO_SUBFIND_READFOF_FROMIC		/* read already existing FOF instead of recomputing it */
 
 void read_fof(int num)
 {
@@ -2414,16 +2224,7 @@ void read_fof(int num)
   int grnr, ngrp, sendTask, recvTask, imax1, imax2;
   int nprocgroup, masterTask, groupTask, nid_previous;
   int fof_compare_P_SubNr(const void *a, const void *b);
-
-
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("\nTrying to read preexisting FoF group catalogues...  (presently allocated=%g MB)\n",
-	     AllocatedBytes / (1024.0 * 1024.0));
-      fflush(stdout);
-    }
-#endif
+    PRINT_STATUS("Trying to read preexisting FoF group catalogues...  (presently allocated=%g MB)",AllocatedBytes / (1024.0 * 1024.0));
   domain_Decomposition(1, 0, 0);
 
   force_treefree();
@@ -2503,9 +2304,6 @@ void read_fof(int num)
 		}
 
 	      printf("reading '%s'\n", fname);
-#ifndef IO_REDUCED_MODE
-	      fflush(stdout);
-#endif
 	      my_fread(&ngroups, sizeof(int), 1, fd);
 	      my_fread(&TotNgroups, sizeof(int), 1, fd);
 	      my_fread(&nids, sizeof(int), 1, fd);
@@ -2588,11 +2386,6 @@ void read_fof(int num)
 		  printf("can't read file `%s`\n", fname);
 		  endrun(1184132);
 		}
-
-#ifndef IO_REDUCED_MODE
-	      printf("reading '%s'\n", fname);
-	      fflush(stdout);
-#endif
 	      my_fread(&ngroups, sizeof(int), 1, fd);
 	      my_fread(&TotNgroups, sizeof(int), 1, fd);
 	      my_fread(&nids, sizeof(int), 1, fd);
@@ -2676,7 +2469,7 @@ void read_fof(int num)
 
   else
     {
-      /* read routine can constinue in parallel */
+      /* read routine can continue in parallel */
 
       nprocgroup = NTask / All.NumFilesWrittenInParallel;
       if((NTask % All.NumFilesWrittenInParallel))
@@ -2693,10 +2486,6 @@ void read_fof(int num)
 		  printf("can't read file `%s`\n", fname);
 		  endrun(11831);
 		}
-#ifndef IO_REDUCED_MODE
-	      printf("reading '%s'\n", fname);
-	      fflush(stdout);
-#endif
 	      my_fread(&Ngroups, sizeof(int), 1, fd);
 	      my_fread(&TotNgroups, sizeof(int), 1, fd);
 	      my_fread(&Nids, sizeof(int), 1, fd);
@@ -2746,20 +2535,12 @@ void read_fof(int num)
 
 	      fclose(fd);
 
-#ifndef IO_REDUCED_MODE
-	      printf("reading '%s'\n", fname);
-	      fflush(stdout);
-#endif
 	      sprintf(fname, "%s/groups_%03d/%s_%03d.%d", All.OutputDir, num, "group_ids", num, ThisTask);
 	      if(!(fd = fopen(fname, "r")))
 		{
 		  printf("can't read file `%s`\n", fname);
 		  endrun(1184132);
 		}
-#ifndef IO_REDUCED_MODE
-	      printf("reading '%s'\n", fname);
-	      fflush(stdout);
-#endif
 	      my_fread(&Ngroups, sizeof(int), 1, fd);
 	      my_fread(&TotNgroups, sizeof(int), 1, fd);
 	      my_fread(&Nids, sizeof(int), 1, fd);
@@ -2981,6 +2762,6 @@ int fof_compare_P_SubNr(const void *a, const void *b)
   return 0;
 }
 
-#endif // SUBFIND_READ_FOF
+#endif // IO_SUBFIND_READFOF_FROMIC
 
 #endif /* of FOF */

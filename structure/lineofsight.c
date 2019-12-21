@@ -10,13 +10,17 @@
 #include "../allvars.h"
 #include "../proto.h"
 
-/* compute line-of-sight integrated quantities (for e.g. Lyman-alpha forest studies) */
+/*! compute line-of-sight integrated quantities (for e.g. Lyman-alpha forest studies) */
 
 /*
- * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). It is here in GIZMO
- * as legacy code at the moment, and needs to be re-written or removed.
+ * This file was originally part of the GADGET3 code developed by Volker Springel.
+ * It has been updated by PFH for basic compatibility with GIZMO.
  */
+
+#define  LYMAN_ALPHA      1215.6e-8    /* 1215.6 Angstroem */
+#define  LYMAN_ALPHA_HeII  303.8e-8    /* 303.8 Angstroem */
+#define  OSCILLATOR_STRENGTH       0.41615
+#define  OSCILLATOR_STRENGTH_HeII  0.41615
 
 
 #ifdef OUTPUT_LINEOFSIGHT
@@ -82,13 +86,7 @@ void lineofsight_output(void)
   next = find_next_lineofsighttime(All.Ti_nextlineofsight);
 
   ti = All.TimeBegin * exp(next * All.Timebase_interval);
-
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("Line of sight output! ThisTask=%d Time=%g  NextTime=%g\n", ThisTask, All.Time, ti);
-    }
-#endif
+  PRINT_STATUS("Line of sight output! ThisTask=%d Time=%g  NextTime=%g", ThisTask, All.Time, ti);
   H_a = hubble_function(All.Time);
   Wmax = All.Time * H_a * All.BoxSize;
 
@@ -453,12 +451,9 @@ void absorb_along_lines_of_sight(void)
 
       /*  to get things into cgs units */
       fac = 1 / pow(All.UnitLength_in_cm, 2);
-
       fac *= All.HubbleParam * All.HubbleParam;
-
       fac *= OSCILLATOR_STRENGTH * M_PI * LYMAN_ALPHA * sqrt(3 * THOMPSON / (8 * M_PI));	/* Ly-alpha cross section */
-
-      fac *= C / (All.Time * All.Time) / sqrt(M_PI);
+      fac *= C_LIGHT / (All.Time * All.Time) / sqrt(M_PI);
 
       /* Note: For HeII, the oscillator strength is equal to that of HI,
          and the Lyman-alpha wavelength is 4 times shorter */
@@ -494,7 +489,7 @@ void output_lines_of_sight(int num)
   if(!(fd = fopen(fname, "w")))
     {
       printf("can't open file `%s`\n", fname);
-      exit(1);
+      endrun(1);
     }
 
   dummy = PIXELS;
@@ -541,15 +536,11 @@ integertime find_next_lineofsighttime(integertime time0)
 
   u1 = (a1 - logTimeBegin) / (logTimeMax - logTimeBegin) * DRIFT_TABLE_LENGTH;
   i1 = (int) u1;
-  if(i1 >= DRIFT_TABLE_LENGTH)
-    i1 = DRIFT_TABLE_LENGTH - 1;
+  if(i1 >= DRIFT_TABLE_LENGTH) {i1 = DRIFT_TABLE_LENGTH - 1;}
 
-  if(i1 <= 1)
-    df1 = u1 * GravKickTable[0];
-  else
-    df1 = GravKickTable[i1 - 1] + (GravKickTable[i1] - GravKickTable[i1 - 1]) * (u1 - i1);
+  if(i1 <= 1) {df1 = u1 * GravKickTable[0];} else {df1 = GravKickTable[i1 - 1] + (GravKickTable[i1] - GravKickTable[i1 - 1]) * (u1 - i1);}
 
-  df2 = df1 + All.BoxSize / (C / All.UnitVelocity_in_cm_per_s);
+  df2 = df1 + All.BoxSize / (C_LIGHT / All.UnitVelocity_in_cm_per_s);
 
   i2 = DRIFT_TABLE_LENGTH - 1;
 

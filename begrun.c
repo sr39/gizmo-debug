@@ -30,8 +30,8 @@
 
 /*
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel (volker.springel@h-its.org). The code has been modified
- * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO. The modifications
+ * Volker Springel. The code has been modified
+ * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO. The modifications 
  * mostly center on added functionality for new modules, elimination of unnecessary
  * variables, implementing the DEVELOPER_MODE options, and re-organizing the read order
  * to allow easier manipulation on restarts.
@@ -61,8 +61,8 @@ void begrun(void)
       }
 #endif
 
-      printf("Size of particle structure       %d  [bytes]\n", (int) sizeof(struct particle_data));
-      printf("\nSize of sph particle structure   %d  [bytes]\n", (int) sizeof(struct sph_particle_data));
+      printf("\nSize of particle structure       %d  [bytes]\n", (int) sizeof(struct particle_data));
+      printf("Size of hydro-cell structure   %d  [bytes]\n\n", (int) sizeof(struct sph_particle_data));
 
     }
 
@@ -154,9 +154,6 @@ void begrun(void)
   if(RestartFlag != 3 && RestartFlag != 4)
 #endif
     long_range_init();
-#ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
-  long_range_init();
-#endif
 #endif
 
 #ifdef SUBFIND
@@ -184,7 +181,7 @@ void begrun(void)
     init_turb();
 #endif
 
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
     init_geofactor_table();
 #endif
 
@@ -330,7 +327,7 @@ void begrun(void)
 #endif
 
       All.MaxNumNgbDeviation = all.MaxNumNgbDeviation;
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
       /* Allow the tolerance over the number of neighbours to vary during the run:
        * If it was initially set to a very strict value, convergence in ngb-iteration may at some point fail */
       All.AGS_MaxNumNgbDeviation = all.AGS_MaxNumNgbDeviation;
@@ -418,7 +415,7 @@ void begrun(void)
 #ifdef RT_CHEM_PHOTOION
     rt_get_sigma();
 #endif
-    if(RestartFlag == 0) {rt_set_simple_inits();}
+    rt_set_simple_inits(RestartFlag);
 #endif
 
 
@@ -445,10 +442,10 @@ void set_units(void)
   double meanweight;
 
   All.UnitTime_in_s = All.UnitLength_in_cm / All.UnitVelocity_in_cm_per_s;
-  All.UnitTime_in_Megayears = All.UnitTime_in_s / SEC_PER_MEGAYEAR;
+  All.UnitTime_in_Megayears = All.UnitTime_in_s / (1.0e6*SEC_PER_YEAR);
 
   if(All.GravityConstantInternal == 0)
-    All.G = GRAVITY / pow(All.UnitLength_in_cm, 3) * All.UnitMass_in_g * pow(All.UnitTime_in_s, 2);
+    All.G = GRAVITY_G / pow(All.UnitLength_in_cm, 3) * All.UnitMass_in_g * pow(All.UnitTime_in_s, 2);
   else
     All.G = All.GravityConstantInternal;
 #ifdef GR_TABULATED_COSMOLOGY_G
@@ -466,7 +463,7 @@ void set_units(void)
 
   /* convert some physical input parameters to internal units */
 
-  All.Hubble_H0_CodeUnits = HUBBLE * All.UnitTime_in_s;
+  All.Hubble_H0_CodeUnits = HUBBLE_CGS * All.UnitTime_in_s;
 
   if(ThisTask == 0)
     {
@@ -484,30 +481,23 @@ void set_units(void)
 
       printf("\n");
     }
+    
+#ifdef COOL_LOW_TEMPERATURES
+    meanweight = 1. / ( HYDROGEN_MASSFRAC*0.5 + (1-HYDROGEN_MASSFRAC)/4. + 1./(16.+12.)); /* assumes fully-molecular if low-temp cooling enabled */
+#else
+    meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC); /* assumes fully-atomic otherwise */
+#endif
+    All.MinEgySpec = All.MinGasTemp / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
 
-  meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC);	/* note: assuming NEUTRAL GAS */
-
-  All.MinEgySpec = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.MinGasTemp;
-  All.MinEgySpec *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
 
 #if defined(GALSF)
   /* for historical reasons, we need to convert to "All.MaxSfrTimescale", defined as the SF timescale in code units at the critical physical
      density given above. use the dimensionless SfEffPerFreeFall (which has been read in) to calculate this. This must be done -BEFORE- calling set_units_sfr) */
 #ifndef GALSF_EFFECTIVE_EQS
-  All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity * meanweight * PROTONMASS / (All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam))));
+    All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity * meanweight * PROTONMASS / (All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam))));
 #endif
-  set_units_sfr();
+    set_units_sfr();
 #endif
-
-
-#define cm (All.HubbleParam/All.UnitLength_in_cm)
-#define g  (All.HubbleParam/All.UnitMass_in_g)
-#define s  (All.HubbleParam/All.UnitTime_in_s)
-#define erg (g*cm*cm/(s*s))
-#define keV (1.602e-9*erg)
-#define deg 1.0
-#define m_p (PROTONMASS * g)
-#define k_B (BOLTZMANN * erg / deg)
 
 
 #ifdef DM_FUZZY
@@ -517,35 +507,24 @@ void set_units(void)
 
 
 #if defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII)
-    /* Note: Because we replace \nabla(T) in the conduction equation with
-     * \nable(u), our conduction coefficient is not the usual kappa, but
-     * rather kappa*(gamma-1)*mu/kB. We therefore need to multiply with
-     * another factor of (meanweight_ion / k_B * GAMMA_MINUS1).
-     */
-    double coefficient;
-    double meanweight_ion = m_p * 4.0 / (8 - 5 * (1 - HYDROGEN_MASSFRAC)); /* assuming full ionization */
-    coefficient = meanweight_ion / k_B * GAMMA_MINUS1;
-
+    /* Note: Because we replace \nabla(T) in the conduction equation with \nabla(u), our conduction coefficient is not the usual kappa, but
+     * rather kappa*(gamma-1)*mu/kB. We therefore need to multiply with another factor of (meanweight_ion / k_B * (gamma-1)) */
+    double meanweight_ion =  4.0 / (8 - 5 * (1 - HYDROGEN_MASSFRAC)); /* mean weight in code units, assuming full ionization */
+    double u_to_temp = meanweight_ion * (GAMMA_DEFAULT-1.) * U_TO_TEMP_UNITS; /* for full ionization, assume gas has a monatomic ideal eos gamma=5/3 */
     /* Kappa_Spitzer definition taken from Zakamska & Narayan 2003 ( ApJ 582:162-169, Eq. (5) ) */
     double coulomb_log = 37.8; // Sarazin value (recommendation from PIC calculations) //
-    coefficient *= (1.84e-5 / coulomb_log * pow(meanweight_ion / k_B * GAMMA_MINUS1, 2.5) * erg / (s * deg * cm));
-    coefficient /= All.HubbleParam; // We also need one factor of 'h' to convert between internal units and cgs //
-
+    double coefficient = (1.84e-5/coulomb_log) * pow(u_to_temp,3.5) * ((All.UnitTime_in_s*All.UnitTime_in_s*All.UnitTime_in_s) / (All.UnitLength_in_cm*All.UnitMass_in_g * All.HubbleParam*All.HubbleParam)); // ok, this multiplied by the specific energy (u_code)^(3/2) gives the diffusity of u_code, as needed (density term is included in said diffusivity)
 #ifdef CONDUCTION_SPITZER
     All.ConductionCoeff *= coefficient;
 #endif
 #ifdef VISCOSITY_BRAGINSKII
-    All.ShearViscosityCoeff *= 0.636396 * coefficient * sqrt(ELECTRONMASS / (PROTONMASS * 4.0 / (8 - 5 * (1 - HYDROGEN_MASSFRAC))));
-    // the viscosity coefficient eta is identical in these units up to the order-unity constant, and multiplied by sqrt[m_electron/m_ion] //
-    All.BulkViscosityCoeff = 0;
-    // no bulk viscosity in the Braginskii-Spitzer formulation //
+    All.ShearViscosityCoeff *= coefficient * 0.636396*sqrt(ELECTRONMASS/(PROTONMASS*meanweight_ion)); // the viscosity coefficient eta is identical in these units up to the order-unity constant, and multiplied by sqrt[m_electron/m_ion] //
+    All.BulkViscosityCoeff = 0; // no bulk viscosity in the Braginskii-Spitzer formulation //
 #endif
-
     /* factor used for determining saturation */
-    All.ElectronFreePathFactor = 8 * pow(3.0, 1.5) * pow(GAMMA_MINUS1, 2) / pow(3 + 5 * HYDROGEN_MASSFRAC, 2)
+    All.ElectronFreePathFactor = 8 * pow(3.0, 1.5) * pow((GAMMA_DEFAULT-1), 2) / pow(3 + 5 * HYDROGEN_MASSFRAC, 2)
         / (1 + HYDROGEN_MASSFRAC) / sqrt(M_PI) / coulomb_log * pow(PROTONMASS, 3) / pow(ELECTRONCHARGE, 4)
-        / (All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam)
-        * pow(All.UnitPressure_in_cgs / All.UnitDensity_in_cgs, 2);
+        / (All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) * pow(All.UnitPressure_in_cgs / All.UnitDensity_in_cgs, 2);
 
   /* If the above value is multiplied with u^2/rho in code units (with rho being the physical density), then
    * one gets the electron mean free path in centimeters. Since we want to compare this with another length
@@ -577,22 +556,21 @@ void open_outputfiles(void)
   MPI_Barrier(MPI_COMM_WORLD);
 
 #ifdef BLACK_HOLES
-//#ifndef IO_REDUCED_MODE  DAA-IO: BH_OUTPUT_MOREINFO overrides IO_REDUCED_MODE
-#if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
-  /* Note: This is done by everyone */
+  /* Note: This is done by everyone, even if it might be empty */
   if(ThisTask == 0)
     {
       sprintf(buf, "%sblackhole_details", All.OutputDir);
       mkdir(buf, 02755);
     }
   MPI_Barrier(MPI_COMM_WORLD);
-
+#if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
   sprintf(buf, "%sblackhole_details/blackhole_details_%d.txt", All.OutputDir, ThisTask);
   if(!(FdBlackHolesDetails = fopen(buf, mode)))
     {
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
+#endif // no io-reduced, or more-info if
 #ifdef BH_OUTPUT_GASSWALLOW
   sprintf(buf, "%sblackhole_details/bhswallow_%d.txt", All.OutputDir, ThisTask);
   if(!(FdBhSwallowDetails = fopen(buf, mode)))
@@ -600,7 +578,7 @@ void open_outputfiles(void)
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
-#endif
+#endif // output-gas-swallow if
 #ifdef BH_OUTPUT_MOREINFO
   sprintf(buf, "%sblackhole_details/bhmergers_%d.txt", All.OutputDir, ThisTask);
   if(!(FdBhMergerDetails = fopen(buf, mode)))
@@ -615,10 +593,9 @@ void open_outputfiles(void)
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
-#endif
-#endif
-#endif
-#endif
+#endif // bh-wind-kick if
+#endif // bh-output-more-info if
+#endif // black-holes if
 
   if(ThisTask != 0)		/* only the root processors writes to the log files */
     return;
@@ -1053,7 +1030,7 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.Vertical_Grain_Accel_Angle;
         id[nt++] = REAL;
 #endif
-
+#if !defined(PIC_MHD) || defined(GRAIN_FLUID_AND_PIC_BOTH_DEFINED)
         strcpy(tag[nt],"Grain_Internal_Density");
         addr[nt] = &All.Grain_Internal_Density;
         id[nt++] = REAL;
@@ -1068,6 +1045,13 @@ void read_parameter_file(char *fname)
 
         strcpy(tag[nt],"Grain_Size_Spectrum_Powerlaw");
         addr[nt] = &All.Grain_Size_Spectrum_Powerlaw;
+        id[nt++] = REAL;
+#endif
+#endif
+
+#ifdef PIC_MHD
+        strcpy(tag[nt],"PIC_Charge_to_Mass_Ratio");
+        addr[nt] = &All.PIC_Charge_to_Mass_Ratio;
         id[nt++] = REAL;
 #endif
 
@@ -1152,6 +1136,23 @@ void read_parameter_file(char *fname)
 
 
 #ifdef DM_SIDM
+#ifdef GRAIN_COLLISIONS
+        strcpy(tag[nt], "Grain_InteractionRenormalization");
+        addr[nt] = &All.DM_InteractionCrossSection;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Grain_DissipationFactor");
+        addr[nt] = &All.DM_DissipationFactor;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Grain_KickPerCollision");
+        addr[nt] = &All.DM_KickPerCollision;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Grain_InteractionVelocityScale");
+        addr[nt] = &All.DM_InteractionVelocityScale;
+        id[nt++] = REAL;
+#else
         strcpy(tag[nt], "DM_InteractionCrossSection");
         addr[nt] = &All.DM_InteractionCrossSection;
         id[nt++] = REAL;
@@ -1164,17 +1165,12 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.DM_KickPerCollision;
         id[nt++] = REAL;
 
-        strcpy(tag[nt], "DM_InteractionVelocityDependence");
-        addr[nt] = &All.DM_InteractionVelocityDependence;
+        strcpy(tag[nt], "DM_InteractionVelocityScale");
+        addr[nt] = &All.DM_InteractionVelocityScale;
         id[nt++] = REAL;
 #endif
-
-
-#ifdef SUBFIND
-      strcpy(tag[nt], "ErrTolThetaSubfind");
-      addr[nt] = &All.ErrTolThetaSubfind;
-      id[nt++] = REAL;
 #endif
+        
 
         strcpy(tag[nt], "MinGasHsmlFractional");
         addr[nt] = &All.MinGasHsmlFractional;
@@ -1555,11 +1551,11 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "TurbDynamicDiffFac");
       addr[nt] = &All.TurbDynamicDiffFac;
       id[nt++] = REAL;
-
+        /*
       strcpy(tag[nt], "TurbDynamicDiffIterations");
       addr[nt] = &All.TurbDynamicDiffIterations;
       id[nt++] = INT;
-
+         */
       strcpy(tag[nt], "TurbDynamicDiffSmoothing");
       addr[nt] = &All.TurbDynamicDiffSmoothing;
       id[nt++] = REAL;
@@ -1695,7 +1691,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
         strcpy(tag[nt], "AGS_DesNumNgb");
         addr[nt] = &All.AGS_DesNumNgb;
         id[nt++] = REAL;
@@ -1987,10 +1983,9 @@ void read_parameter_file(char *fname)
                     else
                     {
 #ifdef ALLOWEXTRAPARAMS
-                        fprintf(stdout, "WARNING from file %s:   Tag '%s' ignored !\n", fname, buf1);
+                        fprintf(stdout, "Possible warning to be aware of from file %s:   Tag '%s' was specified, but it is being ignored -- make sure this is intended!\n", fname, buf1);
 #else
-                        fprintf(stdout, "Error in file %s:   Tag '%s' not allowed or multiple defined.\n",
-                                fname, buf1);
+                        fprintf(stdout, "Error in file %s:   Tag '%s' not allowed or multiple defined.\n", fname, buf1);
                         errorFlag = 1;
 #endif
                     }
@@ -2135,7 +2130,7 @@ void read_parameter_file(char *fname)
 #ifdef EOS_ELASTIC
     All.MaxNumNgbDeviation /= 5.0;
 #endif
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 640.;
 #ifdef GALSF
     All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 64.;
@@ -2158,12 +2153,16 @@ void read_parameter_file(char *fname)
     All.CritPhysDensity = 0.0; /* this will be calculated by the code below */
 #endif
     All.TypeOfOpeningCriterion = 1;
-    /*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
-     should only be changed if you -really- know what you're doing! */
-
+    /* determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
+     should only be changed if you -really- know what you're doing! */    
+    
 #if defined(MAGNETIC) || defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(BH_WIND_SPAWN)
-    if(All.CourantFac > 0.2) {All.CourantFac = 0.2;} //
+    if(All.CourantFac > 0.2) {All.CourantFac = 0.2;}
     /* (PFH) safety factor needed for MHD calc, because people keep using the same CFac as hydro! */
+#endif
+    
+#if defined(PIC_MHD) && !defined(GRAIN_FLUID_AND_PIC_BOTH_DEFINED)
+    All.Grain_Internal_Density=1; All.Grain_Size_Min=1; All.Grain_Size_Max=1; All.Grain_Size_Spectrum_Powerlaw=1; /* in this case these are never used, so we treat them as dummy variables */
 #endif
 
     /* now we're going to do a bunch of checks */
@@ -2264,7 +2263,7 @@ void read_parameter_file(char *fname)
             endrun(1);
         }
     }
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     if((All.AGS_MaxNumNgbDeviation<=0)||(All.AGS_MaxNumNgbDeviation>0.1*All.AGS_DesNumNgb))
     {
         if(ThisTask==0)
@@ -2463,7 +2462,7 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
   if(ThisTask == 0)
     {
       printf("\nAll.TimeMax has been changed in the parameterfile\n");
-      printf("Need to adjust integer timeline\n\n\n");
+      printf("Need to adjust integer timeline\n\n");
     }
 
   if(TimeMax_new < TimeMax_old)
