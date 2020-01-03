@@ -374,7 +374,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
 
                 
-                if (fb_loop_iteration == 3){ // add age tracers in taking yields to mean MASS 
+                if (loop_iteration == 3){ // add age tracers in taking yields to mean MASS 
                     for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + pnorm*local.yields[k]/P[j].Mass;}
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_SURFACE_YIELDS
@@ -388,8 +388,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-                if(fb_loop_iteration == 2) continue; // for r-process, nothing left here to bother coupling //
-                if(fb_loop_iteration == 3) continue; // for age tracers, nothing left here to bother coupling //
+                if(loop_iteration == 2) continue; // for r-process, nothing left here to bother coupling //
+                if(loop_iteration == 3) continue; // for age tracers, nothing left here to bother coupling //
 #endif
 #endif
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
