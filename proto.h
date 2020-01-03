@@ -503,7 +503,7 @@ void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt);
 void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i);
-void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i):
+void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i);
 #endif
 #endif
 
