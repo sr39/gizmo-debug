@@ -459,7 +459,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
         dt = DMIN(dt, dt_2body);
 #ifdef HERMITE_INTEGRATION
-        if(eligible_for_hermite(p)) dt *= 2; // gives 10^-6 energy error per orbit for a 0.9 eccentricity binary
+        if(eligible_for_hermite(p)) dt *= 1.4; // gives 10^-6 energy error per orbit for a 0.9 eccentricity binary
 #endif
     }
 #endif // SINGLE_STAR_TIMESTEPPING

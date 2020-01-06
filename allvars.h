@@ -352,9 +352,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define SINGLE_STAR_TIMESTEPPING 0
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
-#define BH_ACCRETE_NEARESTFIRST
+//#define BH_ACCRETE_NEARESTFIRST
 #define DEVELOPER_MODE
-#define IO_SUPPRESS_TIMEBIN_STDOUT 14 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
+#define IO_SUPPRESS_TIMEBIN_STDOUT 16 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define BH_OUTPUT_GASSWALLOW //save accretion histories
 #ifdef SLOPE2_SINKS //Slope2 sinks, this should give dN/dM~M^-2 in isoT sims
 #define BH_DEBUG_DISABLE_MERGERS
@@ -384,7 +384,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
 
 #if (SINGLE_STAR_SINK_FORMATION & 1) // figure out flags needed for the chosen sink formation model
-#define GALSF_SFR_VIRIAL_SF_CRITERION 2
+#define GALSF_SFR_VIRIAL_SF_CRITERION 4
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
 #ifndef SINGLE_STAR_FIND_BINARIES

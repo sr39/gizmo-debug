@@ -106,6 +106,10 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 {
     /* if pair is a gas particle make sure to account for its thermal pressure */
     double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
+/* #if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(MAGNETIC) */
+/*     double bmag=0; for(int k=0;k<3;k++) {bmag+=Get_Particle_BField(j,k)*Get_Particle_BField(j,k);} */
+/*     cs = sqrt(cs*cs + bmag/SphP[j].Density); */
+/* #endif */
 #if defined(COOLING) && defined(SINGLE_STAR_SINK_DYNAMICS)
     double nHcgs = HYDROGEN_MASSFRAC * (SphP[j].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
     if(nHcgs > 1e13 && cs > 0.1 * vrel) { // we're probably sitting at the bottom of a quasi-hydrostatic Larson core
