@@ -324,7 +324,7 @@ double get_starformation_rate(int i)
     gsl_vector *eval1 = gsl_vector_alloc (3);
     gsl_eigen_symm_workspace *v = gsl_eigen_symm_alloc (3);
     gsl_eigen_symm(&M.matrix, eval1,  v);
-    for(k=0; k<3; k++) if (gsl_vector_get(eval1,k) >= 0) rateOfSF = 0; // check each eigenvalue
+    if(SphP[i].Density*All.cf_a3inv < 1e4 * All.PhysDensThresh) {for(k=0; k<3; k++) if (gsl_vector_get(eval1,k) >= 0) rateOfSF = 0;} 
     gsl_eigen_symm_free (v);
     gsl_vector_free (eval1);
 #endif
