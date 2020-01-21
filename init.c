@@ -479,10 +479,10 @@ void init(void)
             {
                 BPP(i).BH_Mass = All.SeedBlackHoleMass;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-		BPP(i).BH_Mass = P[i].Mass;
+                BPP(i).BH_Mass = P[i].Mass;
 #endif
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-		BPP(i).SinkRadius = All.ForceSoftening[5];
+                BPP(i).SinkRadius = All.ForceSoftening[5];
 #endif			
 #ifdef BH_ALPHADISK_ACCRETION
                 BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
