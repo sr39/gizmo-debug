@@ -52,13 +52,13 @@ struct Reactions_Structure *all_reactions_root;
 struct Reactions_Structure *nonmolecular_reactions_root;
 double *dustG_arr; 
 double *H2_dissocJ_arr; 
-#ifdef OPENMP
+#ifdef _OPENMP
 struct All_rate_variables_structure **AllRates_omp; 
 struct Reactions_Structure **all_reactions_root_omp; 
 struct Reactions_Structure **nonmolecular_reactions_root_omp; 
 #endif 
 #ifdef CHIMES_METAL_DEPLETION 
-#ifdef OPENMP 
+#ifdef _OPENMP
 struct Chimes_depletion_data_structure ChimesDepletionData[OPENMP]; 
 #else 
 struct Chimes_depletion_data_structure ChimesDepletionData[1]; 
@@ -115,7 +115,7 @@ void chimes_cooling_parent_routine(void)
   if (ThisTask == 0) 
     printf("Doing chemistry and cooling with CHIMES. \n"); 
 
-#ifdef OPENMP 
+#ifdef _OPENMP
   /* Determine indices of active particles. */
   int N_active = 0; 
   int j; 
@@ -332,7 +332,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     
     /* Call CHIMES to evolve the chemistry and temperature over 
      * the hydro timestep. */ 
-#ifdef OPENMP 
+#ifdef _OPENMP
     int ThisThread = omp_get_thread_num(); 
     chimes_network(&(ChimesGasVars[target]), &ChimesGlobalVars, AllRates_omp[ThisThread], all_reactions_root_omp[ThisThread], nonmolecular_reactions_root_omp[ThisThread]); 
 #else 
@@ -1656,7 +1656,7 @@ void InitCool(void)
     else 
       init_chimes_parallel(&ChimesGlobalVars, &AllRates, &all_reactions_root, &nonmolecular_reactions_root, dustG_arr, H2_dissocJ_arr); 
 
-#ifdef OPENMP 
+#ifdef _OPENMP
     int i; 
     free_all_rates_structure(AllRates, &ChimesGlobalVars); 
     free_reactions_list(all_reactions_root); 
@@ -1927,7 +1927,7 @@ void chimes_update_element_abundances(int i)
   ChimesGasVars[i].metallicity = P[i].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129. 
 
 #ifdef CHIMES_METAL_DEPLETION 
-#ifdef OPENMP 
+#ifdef _OPENMP
   int ThisThread = omp_get_thread_num();
 #else 
   int ThisThread = 0; 
@@ -2014,22 +2014,16 @@ void chimes_init_depletion_data(void)
 				     {-0.615, -0.725, 0.69},  // Ge 
 				     {-0.166, -0.332, 0.684}}; // Kr 
   
-#ifdef OPENMP 
-  for (i = 0; i < OPENMP; i++) 
-    {
-#else 
-      i = 0; 
-#endif 
-      memcpy(ChimesDepletionData[i].SolarAbund, SolarAbund, DEPL_N_ELEM * sizeof(double)); 
-      memcpy(ChimesDepletionData[i].DeplPars, DeplPars, DEPL_N_ELEM * 3 * sizeof(double)); 
-      
-      // DustToGasSaturated is the dust to gas ratio when 
-      // F_star = 1.0, i.e. at maximum depletion onto grains. 
-      ChimesDepletionData[i].DustToGasSaturated = 5.9688e-03; 
-
-#ifdef OPENMP 
-    }
-#endif 
+        i = 0;
+#ifdef _OPENMP
+        for (i = 0; i < OPENMP; i++)
+#endif
+        {
+            memcpy(ChimesDepletionData[i].SolarAbund, SolarAbund, DEPL_N_ELEM * sizeof(double));
+            memcpy(ChimesDepletionData[i].DeplPars, DeplPars, DEPL_N_ELEM * 3 * sizeof(double));
+            // DustToGasSaturated is the dust to gas ratio when F_star = 1.0, i.e. at maximum depletion onto grains.
+            ChimesDepletionData[i].DustToGasSaturated = 5.9688e-03;
+        }
 }
 
 /* Computes the linear fits as in Jenkins (2009) 
