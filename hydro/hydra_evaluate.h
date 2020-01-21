@@ -27,6 +27,8 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #ifndef HYDRO_SPH
     struct Input_vec_Riemann Riemann_vec;
     struct Riemann_outputs Riemann_out;
+    memset(&Riemann_vec, 0, sizeof(struct Input_vec_Riemann));
+    memset(&Riemann_out, 0, sizeof(struct Riemann_outputs));
     double face_area_dot_vel;
     face_area_dot_vel = 0;
 #endif
@@ -147,7 +149,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                     let it be computed from "j" to "i" */
                 integertime TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
                 int j_is_active_for_fluxes = 0;
-#ifndef BOX_SHEARING // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
+#if !defined(BOX_SHEARING) && !defined(OPENMP) && !defined(_OPENMP) // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this; OpenMP can mess with order of operations and vectorization means no gain here with OMP anyways) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
                 /* use relative positions to break degeneracy */
                 if(local.Timestep == TimeStep_J)
