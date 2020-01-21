@@ -50,21 +50,21 @@ int Chimes_incl_full_output = 1;
 struct All_rate_variables_structure *AllRates;
 struct Reactions_Structure *all_reactions_root;
 struct Reactions_Structure *nonmolecular_reactions_root;
-double *dustG_arr;
-double *H2_dissocJ_arr;
-#ifdef OPENMP
-struct All_rate_variables_structure **AllRates_omp;
-struct Reactions_Structure **all_reactions_root_omp;
-struct Reactions_Structure **nonmolecular_reactions_root_omp;
-#endif
-#ifdef CHIMES_METAL_DEPLETION
-#ifdef OPENMP
-struct Chimes_depletion_data_structure ChimesDepletionData[OPENMP];
-#else
-struct Chimes_depletion_data_structure ChimesDepletionData[1];
-#endif
-#endif
-#endif
+double *dustG_arr; 
+double *H2_dissocJ_arr; 
+#ifdef _OPENMP
+struct All_rate_variables_structure **AllRates_omp; 
+struct Reactions_Structure **all_reactions_root_omp; 
+struct Reactions_Structure **nonmolecular_reactions_root_omp; 
+#endif 
+#ifdef CHIMES_METAL_DEPLETION 
+#ifdef _OPENMP
+struct Chimes_depletion_data_structure ChimesDepletionData[OPENMP]; 
+#else 
+struct Chimes_depletion_data_structure ChimesDepletionData[1]; 
+#endif 
+#endif 
+#endif 
 
 
 #ifndef CHIMES
@@ -115,7 +115,7 @@ void chimes_cooling_parent_routine(void)
   if (ThisTask == 0)
     printf("Doing chemistry and cooling with CHIMES. \n");
 
-#ifdef OPENMP
+#ifdef _OPENMP
   /* Determine indices of active particles. */
   int N_active = 0;
   int j;
@@ -331,7 +331,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     
     /* Call CHIMES to evolve the chemistry and temperature over 
      * the hydro timestep. */ 
-#ifdef OPENMP 
+#ifdef _OPENMP
     int ThisThread = omp_get_thread_num(); 
     chimes_network(&(ChimesGasVars[target]), &ChimesGlobalVars, AllRates_omp[ThisThread], all_reactions_root_omp[ThisThread], nonmolecular_reactions_root_omp[ThisThread]); 
 #else 
@@ -1655,19 +1655,19 @@ void InitCool(void)
     else
       init_chimes_parallel(&ChimesGlobalVars, &AllRates, &all_reactions_root, &nonmolecular_reactions_root, dustG_arr, H2_dissocJ_arr);
 
-#ifdef OPENMP
-    int i;
-    free_all_rates_structure(AllRates, &ChimesGlobalVars);
-    free_reactions_list(all_reactions_root);
-    free_reactions_list(nonmolecular_reactions_root);
-
-    AllRates_omp = (struct All_rate_variables_structure **) malloc(maxThreads * sizeof(struct All_rate_variables_structure *));
-    all_reactions_root_omp = (struct Reactions_Structure **) malloc(maxThreads * sizeof(struct Reactions_Structure *));
-    nonmolecular_reactions_root_omp = (struct Reactions_Structure **) malloc(maxThreads * sizeof(struct Reactions_Structure *));
-
-    for (i = 0; i < maxThreads; i++)
-      init_chimes_omp(&ChimesGlobalVars, &AllRates_omp[i], &all_reactions_root_omp[i], &nonmolecular_reactions_root_omp[i]);
-#endif
+#ifdef _OPENMP
+    int i; 
+    free_all_rates_structure(AllRates, &ChimesGlobalVars); 
+    free_reactions_list(all_reactions_root); 
+    free_reactions_list(nonmolecular_reactions_root); 
+    
+    AllRates_omp = (struct All_rate_variables_structure **) malloc(maxThreads * sizeof(struct All_rate_variables_structure *)); 
+    all_reactions_root_omp = (struct Reactions_Structure **) malloc(maxThreads * sizeof(struct Reactions_Structure *)); 
+    nonmolecular_reactions_root_omp = (struct Reactions_Structure **) malloc(maxThreads * sizeof(struct Reactions_Structure *)); 
+    
+    for (i = 0; i < maxThreads; i++) 
+      init_chimes_omp(&ChimesGlobalVars, &AllRates_omp[i], &all_reactions_root_omp[i], &nonmolecular_reactions_root_omp[i]); 
+#endif 
 
 #ifdef CHIMES_METAL_DEPLETION
     chimes_init_depletion_data();
@@ -1929,7 +1929,8 @@ void chimes_update_element_abundances(int i)
   ChimesGasVars[i].metallicity = P[i].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129.
 
 #ifdef CHIMES_METAL_DEPLETION
-#ifdef OPENMP
+
+#ifdef _OPENMP
   int ThisThread = omp_get_thread_num();
 #else
   int ThisThread = 0;
@@ -1982,56 +1983,50 @@ void chimes_update_turbulent_abundances(int i, int mode)
 #ifdef CHIMES_METAL_DEPLETION
 void chimes_init_depletion_data(void)
 {
-  int i;
+  int i; 
+  
+  // Elements in Jenkins (2009) in the order 
+  // C, N, O, Mg, Si, P, S, Cl, Ti, Cr, Mn, Fe, 
+  // Ni, Cu, Zn, Ge, Kr 
+  // Solar abundances are as mass fractions, 
+  // taken from the Cloudy default values, as 
+  // used in CHIMES. 
+  double SolarAbund[DEPL_N_ELEM] = {2.07e-3, 8.36e-4, 5.49e-3, 5.91e-4, 6.83e-4, 7.01e-6, 4.09e-4, 4.72e-6, 3.56e-6, 1.72e-5, 1.12e-5, 1.1e-3, 7.42e-5, 7.32e-7, 1.83e-6, 2.58e-7, 1.36e-7}; 
 
-  // Elements in Jenkins (2009) in the order
-  // C, N, O, Mg, Si, P, S, Cl, Ti, Cr, Mn, Fe,
-  // Ni, Cu, Zn, Ge, Kr
-  // Solar abundances are as mass fractions,
-  // taken from the Cloudy default values, as
-  // used in CHIMES.
-  double SolarAbund[DEPL_N_ELEM] = {2.07e-3, 8.36e-4, 5.49e-3, 5.91e-4, 6.83e-4, 7.01e-6, 4.09e-4, 4.72e-6, 3.56e-6, 1.72e-5, 1.12e-5, 1.1e-3, 7.42e-5, 7.32e-7, 1.83e-6, 2.58e-7, 1.36e-7};
-
-  // Fit parameters, using equation 10 of Jenkins (2009).
-  // Where possible, we take the updated fit parameters
-  // A2 and B2 from De Cia et al. (2016), which we convert
-  // to the Ax and Bx of J09 (with zx = 0). Otherwise, we
-  // use the original J09 parameters. We list these in the
-  // order Ax, Bx, zx.
-  double DeplPars[DEPL_N_ELEM][3] = {{-0.101, -0.193, 0.803}, // C
-				     {0.0, -0.109, 0.55},     // N
-				     {-0.101, -0.172, 0.0},     // O
-				     {-0.412, -0.648, 0.0},     // Mg
-				     {-0.426, -0.669, 0.0},     // Si
-				     {-0.068, -0.091, 0.0},      // P
-				     {-0.189, -0.324, 0.0},     // S
-				     {-1.242, -0.314, 0.609}, // Cl
-				     {-2.048, -1.957, 0.43},  // Ti
-				     {-0.892, -1.188, 0.0},      // Cr
-				     {-0.642, -0.923, 0.0},      // Mn
-				     {-0.851, -1.287, 0.0},     // Fe
-				     {-1.490, -1.829, 0.599}, // Ni
-				     {-0.710, -1.102, 0.711}, // Cu
-				     {-0.182, -0.274, 0.0},       // Zn
-				     {-0.615, -0.725, 0.69},  // Ge
-				     {-0.166, -0.332, 0.684}}; // Kr
-
-#ifdef OPENMP
-  for (i = 0; i < OPENMP; i++)
-    {
-#else
-      i = 0;
+  // Fit parameters, using equation 10 of Jenkins (2009). 
+  // Where possible, we take the updated fit parameters 
+  // A2 and B2 from De Cia et al. (2016), which we convert 
+  // to the Ax and Bx of J09 (with zx = 0). Otherwise, we 
+  // use the original J09 parameters. We list these in the 
+  // order Ax, Bx, zx. 
+  double DeplPars[DEPL_N_ELEM][3] = {{-0.101, -0.193, 0.803}, // C 
+				     {0.0, -0.109, 0.55},     // N 
+				     {-0.101, -0.172, 0.0},     // O 
+				     {-0.412, -0.648, 0.0},     // Mg 
+				     {-0.426, -0.669, 0.0},     // Si 
+				     {-0.068, -0.091, 0.0},      // P 
+				     {-0.189, -0.324, 0.0},     // S 
+				     {-1.242, -0.314, 0.609}, // Cl 
+				     {-2.048, -1.957, 0.43},  // Ti 
+				     {-0.892, -1.188, 0.0},      // Cr 
+				     {-0.642, -0.923, 0.0},      // Mn 
+				     {-0.851, -1.287, 0.0},     // Fe 
+				     {-1.490, -1.829, 0.599}, // Ni 
+				     {-0.710, -1.102, 0.711}, // Cu 
+				     {-0.182, -0.274, 0.0},       // Zn 
+				     {-0.615, -0.725, 0.69},  // Ge 
+				     {-0.166, -0.332, 0.684}}; // Kr 
+  
+        i = 0;
+#ifdef _OPENMP
+        for (i = 0; i < OPENMP; i++)
 #endif
-      memcpy(ChimesDepletionData[i].SolarAbund, SolarAbund, DEPL_N_ELEM * sizeof(double));
-      memcpy(ChimesDepletionData[i].DeplPars, DeplPars, DEPL_N_ELEM * 3 * sizeof(double));
-
-      // DustToGasSaturated is the dust to gas ratio when
-      // F_star = 1.0, i.e. at maximum depletion onto grains.
-      ChimesDepletionData[i].DustToGasSaturated = 5.9688e-03;
-
-#ifdef OPENMP
-    }
-#endif
+        {
+            memcpy(ChimesDepletionData[i].SolarAbund, SolarAbund, DEPL_N_ELEM * sizeof(double));
+            memcpy(ChimesDepletionData[i].DeplPars, DeplPars, DEPL_N_ELEM * 3 * sizeof(double));
+            // DustToGasSaturated is the dust to gas ratio when F_star = 1.0, i.e. at maximum depletion onto grains.
+            ChimesDepletionData[i].DustToGasSaturated = 5.9688e-03;
+        }
 }
 
 /* Computes the linear fits as in Jenkins (2009)

@@ -985,20 +985,20 @@ void init(void)
 #ifdef CHIMES_INITIALISE_IN_EQM
     if (RestartFlag != 1)
       {
-	/* Note that stellar fluxes computed through the
-	 * gravity tree are all zero at this stage,
-	 * because the gravitational forces have not yet
-	 * been computed. So the equilibrium abundances
-	 * computed here include only the extragalactic UVB. */
-	if (ThisTask == 0)
-	  printf("Computing equilibrium CHIMES abundances. \n");
+	/* Note that stellar fluxes computed through the 
+	 * gravity tree are all zero at this stage, 
+	 * because the gravitational forces have not yet 
+	 * been computed. So the equilibrium abundances 
+	 * computed here include only the extragalactic UVB. */ 
+	if (ThisTask == 0) 
+	  printf("Computing equilibrium CHIMES abundances. \n"); 
 
-	int iter_number;
-
-#ifdef OPENMP
-	int ThisThread;
-
-#pragma omp parallel private(i, iter_number, ThisThread)
+	int iter_number; 
+	
+#ifdef _OPENMP 
+	int ThisThread; 
+	
+#pragma omp parallel private(i, iter_number, ThisThread) 
 	{
 	  ThisThread = omp_get_thread_num();
 
@@ -1025,11 +1025,11 @@ void init(void)
 	      chimes_update_turbulent_abundances(i, 1);
 #endif
 	    }
-#ifdef OPENMP
-	} // End of parallel block
-#endif
-      } // RestartFlag != 1
-#endif // CHIMES_INITIALISE_IN_EQM
+#ifdef _OPENMP 
+	} // End of parallel block 
+#endif 
+      } // RestartFlag != 1 
+#endif // CHIMES_INITIALISE_IN_EQM 
 }
 
 
