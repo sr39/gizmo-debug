@@ -986,7 +986,7 @@ void init(void)
 
 	int iter_number; 
 	
-#ifdef OPENMP 
+#ifdef _OPENMP 
 	int ThisThread; 
 	
 #pragma omp parallel private(i, iter_number, ThisThread) 
@@ -1016,7 +1016,7 @@ void init(void)
 	      chimes_update_turbulent_abundances(i, 1); 
 #endif 
 	    }
-#ifdef OPENMP 
+#ifdef _OPENMP 
 	} // End of parallel block 
 #endif 
       } // RestartFlag != 1 
