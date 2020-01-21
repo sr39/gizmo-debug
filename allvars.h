@@ -318,7 +318,7 @@ extern double *H2_dissocJ_arr;
 #define CHIMES_LOCAL_UV_AGE_MID 1.0 
 #define CHIMES_LOCAL_UV_DELTA_AGE_HI 1.0 
 #endif 
-#ifdef OPENMP   
+#ifdef _OPENMP
 extern struct All_rate_variables_structure **AllRates_omp;
 extern struct Reactions_Structure **all_reactions_root_omp;
 extern struct Reactions_Structure **nonmolecular_reactions_root_omp;
@@ -333,7 +333,7 @@ struct Chimes_depletion_data_structure
   double ChimesDepletionFactors[7]; 
   double ChimesDustRatio; 
 }; 
-#ifdef OPENMP 
+#ifdef _OPENMP 
 extern struct Chimes_depletion_data_structure ChimesDepletionData[OPENMP]; 
 #else 
 extern struct Chimes_depletion_data_structure ChimesDepletionData[1]; 
