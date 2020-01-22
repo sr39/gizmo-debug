@@ -1807,7 +1807,6 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
             {
                 j = ngblist[n];
                 if(P[j].Type != 0) continue;
-                //if(j >= N_gas) continue;
 
                 integertime TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
 #ifndef BOX_SHEARING // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
