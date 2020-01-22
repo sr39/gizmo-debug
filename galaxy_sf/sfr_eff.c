@@ -561,7 +561,6 @@ void star_formation_parent_routine(void)
                 P[i].Type = 5;
                 num_bhformed++;
                 P[i].BH_Mass = All.SeedBlackHoleMass; // if desired to make this appreciable fraction of particle mass, please do so in params file
-                TreeReconstructFlag = 1;
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
                 P[i].SinkRadius = All.ForceSoftening[5];
 #ifdef SINGLE_STAR_SINK_DYNAMICS
@@ -732,7 +731,11 @@ void star_formation_parent_routine(void)
     }
 
     // TO: Don't call rearrange_particle_sequence(). This makes the cell array inconsistent with the tree
-    //if(tot_converted+tot_spawned > 0) {rearrange_particle_sequence();}
+    if(tot_converted+tot_spawned > 0)
+    {
+        rearrange_particle_sequence(); force_treebuild(NumPart, NULL); TreeReconstructFlag = 0; // block of (more expensive) calls to completely rebuild the tree if we convert anything
+        //TreeReconstructFlag = 1; // alternatively, we can simply delay the rebuild, but note that it will be needed, by setting the TreeReconstructFlag
+    }
 
     CPU_Step[CPU_COOLINGSFR] += measure_time();
 } /* end of main sfr_cooling routine!!! */
