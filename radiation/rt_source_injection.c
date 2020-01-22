@@ -106,7 +106,7 @@ void rt_source_injection_initial_operations_preloop(void)
     /* first, we do a loop over the gas particles themselves. these are trivial -- they don't need to share any information,
      they just determine their own source functions. so we don't need to do any loops. and we can zero everything before the loop below. */
     int j;
-    for(j=0;j<N_gas;j++) {
+    for(j=0;j<NumPart;j++) {
         if(P[j].Type==0) {
             double lum[N_RT_FREQ_BINS]; int k;
             for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[j].Je[k]=0;} // need to zero -before- calling injection //

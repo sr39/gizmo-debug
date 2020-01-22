@@ -719,7 +719,7 @@ void init(void)
     test_id_uniqueness();
 #endif
     
-    Flag_FullStep = 1;		/* to ensure that Peano-Hilber order is done */
+    Flag_FullStep = 1;		/* to ensure that Peano-Hilbert order is done */
     TreeReconstructFlag = 1;
 
 #ifdef BH_WIND_SPAWN
