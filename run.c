@@ -66,10 +66,8 @@ void run(void)
         }
 	
         find_timesteps();		/* find-timesteps */
-#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_WIND_SPAWN)
         int TreeReconstructFlag_local = TreeReconstructFlag;
-#endif	 
-#ifdef HERMITE_INTEGRATION	
+#ifdef HERMITE_INTEGRATION
         HermiteOnlyFlag = 1;
         gravity_tree();	/* re-compute gravitational accelerations for synchronous particles */
         HermiteOnlyFlag = 0;
@@ -85,18 +83,15 @@ void run(void)
         
         set_non_standard_physics_for_current_time();	/* update auxiliary physics for current time */
 
-#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_WIND_SPAWN)
-        MPI_Allreduce(&TreeReconstructFlag_local, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
+#if defined(SINGLE_STAR_SINK_DYNAMICS)
+        if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart) {TreeReconstructFlag_local = 1;}
 #endif
+        MPI_Allreduce(&TreeReconstructFlag_local, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
         if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)	/* check whether we have a big step */
         {
             domain_Decomposition(0, 0, 1);      /* do domain decomposition if step is big enough, and set new list of active particles  */
         }
-#if defined(SINGLE_STAR_SINK_DYNAMICS)
-        else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart || TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
-#elif defined(BH_WIND_SPAWN)
         else if(TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
-#endif
         else
         {
             force_update_tree();	/* update tree dynamically with kicks of last step so that it can be reused */
