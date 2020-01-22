@@ -548,7 +548,7 @@
 ####################################################################################################-
 
 ####################################################################################################-
-#PIC_MHD                        #- hybrid MHD-PIC simulations for cosmic rays (particle type=3). need to set 'subtype'. in early testing.
+#PIC_MHD                        #- hybrid MHD-PIC simulations for cosmic rays (particle type=3, requires MAGNETIC, GRAIN_BACKREACTION and GRAIN_LORENTZFORCE). need to set 'subtype'. in early testing.
 #PIC_SPEEDOFLIGHT_REDUCTION=1   #- factor to reduce the speed-of-light for mhd-pic simulations.
 ####################################################################################################-
 
