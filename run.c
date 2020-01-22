@@ -328,7 +328,7 @@ void calculate_non_standard_physics(void)
 #endif 
 #endif
 #ifdef GALSF
-    star_formation_parent_routine(); // master star formation routine //
+    star_formation_parent_routine(); // master star formation routine (because this involves common particle conversions, want to keep this at end of this subroutine) //
     CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
 #endif
         
