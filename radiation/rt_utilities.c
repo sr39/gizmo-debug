@@ -865,7 +865,7 @@ void rt_set_simple_inits(int RestartFlag)
 {
     if(RestartFlag==1) return;
     
-    int i; for(i = 0; i < N_gas; i++)
+    int i; for(i = 0; i < NumPart; i++)
     {
         if(P[i].Type == 0)
         {

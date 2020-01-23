@@ -302,12 +302,14 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
                         double dr_code = sqrt(r2); vrel = sqrt(vrel) / All.cf_atime;
                         double vbound = bh_vesc(j, local.Mass, dr_code, ags_h_i);
                         if(vrel < vbound) { /* bound */
+                            double local_sink_radius = All.ForceSoftening[5];
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+                            local_sink_radius = local.SinkRadius;
                             double spec_mom=0; for(k=0;k<3;k++) {spec_mom += dv[k]*dP[k];} // delta_x.delta_v
                             spec_mom = (r2*vrel*vrel - spec_mom*spec_mom*All.cf_a2inv);  // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2;
-                            if(spec_mom < All.G * (local.Mass + P[j].Mass) * local.SinkRadius) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
+                            if(spec_mom < All.G * (local.Mass + P[j].Mass) * local_sink_radius) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
 #endif
-                            if( bh_check_boundedness(j,vrel,vbound,dr_code,local.SinkRadius)==1 )
+                            if( bh_check_boundedness(j,vrel,vbound,dr_code,local_sink_radius)==1 )
                             { /* apocenter within 2.8*epsilon (softening length) */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                                 double eps = DMAX(P[j].Hsml/2.8, DMAX(dr_code, ags_h_i/2.8));
