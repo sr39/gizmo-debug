@@ -59,7 +59,7 @@ def make_IC():
     mv_g=rho_desired/((1.*Ngas)/(Lbox*Lbox*Lbox)) + 0.*xv_g
     # set the initial internal energy per unit mass. recall gizmo uses this as the initial 'temperature' variable
     #  this can be overridden with the InitGasTemp variable (which takes an actual temperature)
-    uv_g=P_desired/((gamma_eos-1.)*rho_desired)
+    uv_g=P_desired/((gamma_eos-1.)*rho_desired) + 0.*xv_g
     # set the gas IDs: here a simple integer list
     id_g=np.arange(1,Ngas+1)
     
