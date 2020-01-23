@@ -1795,21 +1795,18 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
             if (gradient_iteration == 0) {
                 numngb = ngb_treefind_pairs_threads(local.Pos, All.TurbDynamicDiffFac * kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             }
-            else {
+            else
 #endif
-            numngb = ngb_treefind_pairs_threads(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
-#ifdef TURB_DIFF_DYNAMIC
+            {
+                numngb = ngb_treefind_pairs_threads(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             }
-#endif
             
-            if(numngb < 0)
-                return -1;
+            if(numngb < 0) {return -1;}
             
             for(n = 0; n < numngb; n++)
             {
                 j = ngblist[n];
                 if(P[j].Type != 0) continue;
-                if(j >= N_gas) continue;
 
                 integertime TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
 #ifndef BOX_SHEARING // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //

@@ -986,25 +986,27 @@ integertime get_timestep(int p,		/*!< particle index */
 #if defined(SINGLE_STAR_TIMESTEPPING)
 	    if(P[p].DensAroundStar > 0)
 	    {
-		double eps = DMAX(DMAX(BPP(p).SinkRadius, KERNEL_CORE_SIZE*All.ForceSoftening[5]), BPP(p).BH_dr_to_NearestGasNeighbor);
-		if(eps < MAX_REAL_NUMBER) {eps = DMAX(Get_Particle_Size(p), eps);} else {eps = Get_Particle_Size(p);}
+            double eps = DMAX( KERNEL_CORE_SIZE*All.ForceSoftening[5], BPP(p).BH_dr_to_NearestGasNeighbor);
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+            eps = DMAX(eps, BPP(p).SinkRadius);
+#endif
+            if(eps < MAX_REAL_NUMBER) {eps = DMAX(Get_Particle_Size(p), eps);} else {eps = Get_Particle_Size(p);}
 #if (ADAPTIVE_GRAVSOFT_FORALL & 32)
-		eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
+            eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
 #endif		
-		double dt_ff = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest		
-		if(dt > dt_ff && dt_ff > 0) {dt = 1.01 * dt_ff;}
+            double dt_ff = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest
+            if(dt > dt_ff && dt_ff > 0) {dt = 1.01 * dt_ff;}
 		
-		double L_particle = Get_Particle_Size(p);
-		double dt_cour_sink = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / P[p].BH_SurroundingGasVel;
-		if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
-	    }
-            
-            if(P[p].StellarAge == All.Time){
-                // want a brand new sink to be on the lowest occupied timebin
-                long bin; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;}
-                double dt_min =  ((bin ? (((integertime) 1) << bin) : 0) * All.Timebase_interval / All.cf_hubble_a);
-                if(dt > dt_min && dt_min > 0) dt = 1.01 * dt_min;
-            }
+            double L_particle = Get_Particle_Size(p);
+            double dt_cour_sink = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / P[p].BH_SurroundingGasVel;
+            if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
+        }
+        if(P[p].StellarAge == All.Time)
+        {   // want a brand new sink to be on the lowest occupied timebin
+            long bin; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;}
+            double dt_min =  ((bin ? (((integertime) 1) << bin) : 0) * All.Timebase_interval / All.cf_hubble_a);
+            if(dt > dt_min && dt_min > 0) dt = 1.01 * dt_min;
+        }
 #endif
     } // if(P[p].Type == 5)
 

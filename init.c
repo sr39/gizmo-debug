@@ -479,10 +479,10 @@ void init(void)
             {
                 BPP(i).BH_Mass = All.SeedBlackHoleMass;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-		BPP(i).BH_Mass = P[i].Mass;
+                BPP(i).BH_Mass = P[i].Mass;
 #endif
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-		BPP(i).SinkRadius = All.ForceSoftening[5];
+                BPP(i).SinkRadius = All.ForceSoftening[5];
 #endif			
 #ifdef BH_ALPHADISK_ACCRETION
                 BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
@@ -719,7 +719,7 @@ void init(void)
     test_id_uniqueness();
 #endif
     
-    Flag_FullStep = 1;		/* to ensure that Peano-Hilber order is done */
+    Flag_FullStep = 1;		/* to ensure that Peano-Hilbert order is done */
     TreeReconstructFlag = 1;
 
 #ifdef BH_WIND_SPAWN
@@ -986,7 +986,7 @@ void init(void)
 
 	int iter_number; 
 	
-#ifdef OPENMP 
+#ifdef _OPENMP 
 	int ThisThread; 
 	
 #pragma omp parallel private(i, iter_number, ThisThread) 
@@ -1016,7 +1016,7 @@ void init(void)
 	      chimes_update_turbulent_abundances(i, 1); 
 #endif 
 	    }
-#ifdef OPENMP 
+#ifdef _OPENMP 
 	} // End of parallel block 
 #endif 
       } // RestartFlag != 1 
