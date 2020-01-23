@@ -170,7 +170,7 @@ def make_IC():
     p.create_dataset("Velocities",data=q)
     p.create_dataset("ParticleIDs",data=id_d)
     p.create_dataset("Masses",data=mv_d)
-    p.create_dataset("GrainType",data=type_d)
+    p.create_dataset("PICParticleType",data=type_d)
 
     # no PartType4 for this IC
     # no PartType5 for this IC
