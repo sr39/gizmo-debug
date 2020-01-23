@@ -194,7 +194,7 @@ void apply_grain_dragforce(void)
                 vcrosst[0] = v_t[1]*bhat[2] - v_t[2]*bhat[1]; vcrosst[1] = v_t[2]*bhat[0] - v_t[0]*bhat[2]; vcrosst[2] = v_t[0]*bhat[1] - v_t[1]*bhat[0];
                 for(k=0;k<3;k++) {v_p[k] = v_m[k] + (2.*lorentz_coeff/(1.+lorentz_coeff*lorentz_coeff)) * vcrosst[k];} // second half-rotation
                 for(k=0;k<3;k++) {v_p[k] += efield_coeff*efield[k];} // second half-step from E-field
-                double vp2=v_p[0]*v_p[0]+v_p[1]*v_p[1]+v_p[2]*v_p[2], gamma_f=sqrt(reduced_C*reduced_C+vp2); for(k=0;k<3;k++) {vf[k]=reduced_C*v_p[k]/gamma_f;} // convert back to a velocity 'vf' which is always <= reduced_C
+                double vp2=v_p[0]*v_p[0]+v_p[1]*v_p[1]+v_p[2]*v_p[2], gamma_f=sqrt(1+vp2/(reduced_C*reduced_C)); for(k=0;k<3;k++) {vf[k]=v_p[k]/gamma_f;} // convert back to a velocity 'vf' which is always <= reduced_C
 
                 for(k=0;k<3;k++)
                 {
