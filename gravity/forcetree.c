@@ -1673,7 +1673,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 {
     struct NODE *nop = 0;
     int no, nodesinlist, ptype, ninteractions, nexp, task, listindex = 0;
-    double r2, dx, dy, dz, mass, r, fac, u, h, h_inv, h3_inv, xtmp;
+    double r2, dx, dy, dz, mass, r, fac, u, h, h_inv, h3_inv, xtmp; xtmp=0;
 #ifdef RT_USE_TREECOL_FOR_NH
     double gasmass, angular_bin_size = 4*M_PI / RT_USE_TREECOL_FOR_NH, treecol_angular_bins[RT_USE_TREECOL_FOR_NH] = {0};
 

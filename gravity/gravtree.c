@@ -51,7 +51,7 @@ void sum_top_level_node_costfactors(void);
 void gravity_tree(void)
 {
     /* initialize variables */
-    long long n_exported = 0; int i, j, maxnumnodes, iter; iter = 0;
+    long long n_exported = 0; int i, j, maxnumnodes, iter; j = 0; iter = 0;
     double t0, t1, timeall = 0, timetree1 = 0, timetree2 = 0, timetree, timewait, timecomm;
     double timecommsumm1 = 0, timecommsumm2 = 0, timewait1 = 0, timewait2 = 0, sum_costtotal, ewaldtot;
     double maxt, sumt, maxt1, sumt1, maxt2, sumt2, sumcommall, sumwaitall, plb, plb_max;
@@ -564,7 +564,7 @@ void gravity_tree(void)
     {
         for(i = 0; i < NumPart; i++) {costtotal_new += P[i].GravCost[TakeLevel];}
         MPI_Reduce(&costtotal_new, &sum_costtotal_new, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        PRINT_STATUS(" ..relative error in the total number of tree-gravity interactions = %g", (sum_costtotal - sum_costtotal_new) / sum_costtotal); /* can be non-zero if THREAD_SAFE_COSTS is not used (and due to round-off errors). */
+        if(sum_costtotal>0) {PRINT_STATUS(" ..relative error in the total number of tree-gravity interactions = %g", (sum_costtotal - sum_costtotal_new) / sum_costtotal);} /* can be non-zero if THREAD_SAFE_COSTS is not used (and due to round-off errors). */
     }
 #endif
     CPU_Step[CPU_TREEMISC] += measure_time();
