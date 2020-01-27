@@ -552,7 +552,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = P[pindex].Grain_SubType;
+                    *ip_int++ = P[pindex].Grain_SubType;
                     n++;
                 }
 #endif
@@ -1762,11 +1762,12 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             bytes_per_blockelement = sizeof(MyIDType);
             break;
 
-        case IO_EOSCOMP:
         case IO_GENERATION_ID:
         case IO_BHPROGS:
         case IO_TRUENGB:
         case IO_AGS_NGBS:
+        case IO_GRAINTYPE:
+        case IO_EOSCOMP:
             bytes_per_blockelement = sizeof(int);
             break;
             
@@ -1798,7 +1799,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_AGE:
         case IO_OSTAR:
         case IO_GRAINSIZE:
-        case IO_GRAINTYPE:
         case IO_DELAYTIME:
         case IO_HSMS:
         case IO_POT:
@@ -2084,6 +2084,8 @@ int get_datatype_in_block(enum iofields blocknr)
         case IO_GENERATION_ID:
         case IO_TRUENGB:
         case IO_BHPROGS:
+        case IO_GRAINTYPE:
+        case IO_EOSCOMP:
             typekey = 0;		/* native int */
             break;
             
@@ -2538,19 +2540,21 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return nstars;
             break;
              
-#ifdef GRAIN_FLUID
         case IO_GRAINSIZE:
             nngb=0;
+#ifdef GRAIN_FLUID
             for(i=0;i<6;i++) {if((1 << i) & (GRAIN_PTYPES)) {nngb+=header.npart[i];} else {typelist[i]=0;}}
+#endif
             return nngb;
             break;
 
         case IO_GRAINTYPE:
             nngb=0;
+#ifdef GRAIN_FLUID
             for(i=0;i<6;i++) {if((1 << i) & (GRAIN_PTYPES)) {nngb+=header.npart[i];} else {typelist[i]=0;}}
+#endif
             return nngb;
             break;
-#endif
 
 
         case IO_IMF:

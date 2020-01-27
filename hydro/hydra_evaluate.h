@@ -35,8 +35,9 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
     double face_vel_i=0, face_vel_j=0, Face_Area_Norm=0, Face_Area_Vec[3];
 
 #ifdef HYDRO_MESHLESS_FINITE_MASS
-    double epsilon_entropic_eos_big = 0.5; // can be anything from (small number=more diffusive, less accurate entropy conservation) to ~1.1-1.3 (least diffusive, most noisy)
-    double epsilon_entropic_eos_small = 1.e-3; // should be << epsilon_entropic_eos_big
+    double epsilon_entropic_eos_big, epsilon_entropic_eos_small;
+    epsilon_entropic_eos_big = 0.5; // can be anything from (small number=more diffusive, less accurate entropy conservation) to ~1.1-1.3 (least diffusive, most noisy)
+    epsilon_entropic_eos_small = 1.e-3; // should be << epsilon_entropic_eos_big
 #if defined(FORCE_ENTROPIC_EOS_BELOW)
     epsilon_entropic_eos_small = FORCE_ENTROPIC_EOS_BELOW; // if set manually
 #elif !defined(SELFGRAVITY_OFF)
