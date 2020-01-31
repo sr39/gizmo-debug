@@ -211,7 +211,7 @@ void apply_grain_dragforce(void)
 #if defined(GRAIN_BACKREACTION)
     grain_backrx(); /* call master routine to assign the back-reaction force among neighbors */
 #endif
-    PRINT_STATUS("Particulate/grain/PIC force evaluation done.\n");
+    PRINT_STATUS(" ..particulate/grain/PIC force evaluation done.");
     CPU_Step[CPU_DRAGFORCE] += measure_time();
 }
 
@@ -309,7 +309,7 @@ int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnode
 
 void grain_backrx(void)
 {
-    PRINT_STATUS(" ..assigning grain back-reaction to gas\n");
+    PRINT_STATUS(" ..assigning grain back-reaction to gas");
      //grain_backrx_initial_operations_preloop(); /* do initial pre-processing operations as needed before main loop [nothing needed here] */
     #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
