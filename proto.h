@@ -227,7 +227,6 @@ int io_compare_P_GrNr_SubNr(const void *a, const void *b);
 void drift_particle(int i, integertime time1);
 int ShouldWeDoDynamicUpdate(void);
 
-void put_symbol(double t0, double t1, char c);
 void write_cpu_log(void);
 
 int get_timestep_bin(integertime ti_step);

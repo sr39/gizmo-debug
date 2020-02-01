@@ -981,8 +981,9 @@ void hydro_force(void)
     #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */
     hydro_final_operations_and_cleanup(); /* do final operations on results */
     /* collect timing information */
+    double t1; t1 = WallclockTime = my_second(); timeall += timediff(t0, t1);
     CPU_Step[CPU_HYDCOMPUTE] += timecomp; CPU_Step[CPU_HYDWAIT] += timewait; CPU_Step[CPU_HYDCOMM] += timecomm;
-    CPU_Step[CPU_HYDMISC] += timediff(t0, my_second()) - (timecomp + timewait + timecomm);
+    CPU_Step[CPU_HYDMISC] += timeall - (timecomp + timewait + timecomm);
 }
 #include "../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 

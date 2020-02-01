@@ -315,7 +315,7 @@ void grain_backrx(void)
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */
     //grain_backrx_final_operations_and_cleanup(); /* do final operations on results [nothing needed here] */
-    CPU_Step[CPU_DRAGFORCE] += timeall; /* collect timing information [here lumping it all together] */
+    CPU_Step[CPU_DRAGFORCE] += measure_time(); /* collect timings and reset clock for next timing */
 }
 #include "../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 

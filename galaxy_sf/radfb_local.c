@@ -198,6 +198,7 @@ void radiation_pressure_winds_consolidated(void)
         if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {fflush(FdMomWinds);}
     } // if(ThisTask==0)
     PRINT_STATUS(" .. completed local Radiation-Pressure acceleration");
+    CPU_Step[CPU_LOCALWIND] += measure_time(); /* collect timings and reset clock for next timing */
 } // end routine :: void radiation_pressure_winds_consolidated(void)
 
 #endif /* closes defined(GALSF_FB_FIRE_RT_LOCALRP)  */
@@ -364,8 +365,11 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
         }
         if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {fflush(FdHIIHeating);}
     } // ThisTask == 0
+    CPU_Step[CPU_HIIHEATING] += measure_time();
 } // void HII_heating_singledomain(void)
 #endif // GALSF_FB_FIRE_RT_HIIHEATING
+
+
 
 #ifdef CHIMES_HII_REGIONS 
 /* This routine is based heavily on the HII_heating_singledomain() routine 
@@ -588,5 +592,6 @@ void chimes_HII_regions_singledomain(void)
 	} // if((P[i].Type == 4)||(P[i].Type == 2)||(P[i].Type == 3))
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
   myfree(Ngblist);
-} 
+  CPU_Step[CPU_HIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */
+}
 #endif // CHIMES_HII_REGIONS 
