@@ -1213,24 +1213,29 @@ typedef MyDouble MyBigFloat;
 #define CPU_AGSDENSWAIT    36
 #define CPU_AGSDENSCOMM    37
 #define CPU_AGSDENSMISC    38
-#define CPU_SIDMSCATTER    39
-#define CPU_DYNDIFFMISC       40
-#define CPU_DYNDIFFCOMPUTE    41
-#define CPU_DYNDIFFWAIT       42
-#define CPU_DYNDIFFCOMM       43
-#define CPU_IMPROVDIFFMISC    44
-#define CPU_IMPROVDIFFCOMPUTE 45
-#define CPU_IMPROVDIFFWAIT    46
-#define CPU_IMPROVDIFFCOMM    47
+#define CPU_DYNDIFFMISC       39
+#define CPU_DYNDIFFCOMPUTE    40
+#define CPU_DYNDIFFWAIT       41
+#define CPU_DYNDIFFCOMM       42
+#define CPU_IMPROVDIFFMISC    43
+#define CPU_IMPROVDIFFCOMPUTE 44
+#define CPU_IMPROVDIFFWAIT    45
+#define CPU_IMPROVDIFFCOMM    46
+#define CPU_COOLSFRIMBAL   47
+#define CPU_RTNONFLUXOPS  48
+#define CPU_DUMMY01       49
+#define CPU_DUMMY02       50
+#define CPU_DUMMY03       51
+#define CPU_DUMMY04       52
+#define CPU_DUMMY05       53
+#define CPU_DUMMY06       54
+#define CPU_DUMMY07       55
+#define CPU_DUMMY08       56
+#define CPU_DUMMY09       57
+#define CPU_DUMMY10       58
 
-#ifdef CHIMES 
-#define CPU_COOLSFRIMBAL   48
-#define CPU_PARTS          49  /* this gives the number of parts above (must be last) */
-#else 
-#define CPU_PARTS          48  /* this gives the number of parts above (must be last) */
-#endif 
+#define CPU_PARTS          59  /* this gives the number of parts above (must be last) */
 
-#define CPU_STRING_LEN 120
 
 #if (BOX_SPATIAL_DIMENSION==1) || defined(ONEDIM)
 #define NUMDIMS 1           /* define number of dimensions and volume normalization */
@@ -1436,14 +1441,8 @@ extern int *Send_offset, *Send_count, *Recv_count, *Recv_offset;
 extern size_t AllocatedBytes;
 extern size_t HighMarkBytes;
 extern size_t FreeBytes;
-
 extern double CPU_Step[CPU_PARTS];
-extern char CPU_Symbol[CPU_PARTS];
-extern char CPU_SymbolImbalance[CPU_PARTS];
-extern char CPU_String[CPU_STRING_LEN + 1];
-
 extern double WallclockTime;    /*!< This holds the last wallclock time measurement for timings measurements */
-
 extern int Flag_FullStep;	/*!< Flag used to signal that the current step involves all particles */
 
 extern size_t HighMark_run,  HighMark_domain, HighMark_gravtree, HighMark_pmperiodic,
@@ -1564,7 +1563,6 @@ extern FILE
  *FdInfo,       /*!< file handle for info.txt log-file. */
  *FdEnergy,     /*!< file handle for energy.txt log-file. */
  *FdTimings,    /*!< file handle for timings.txt log-file. */
- *FdBalance,    /*!< file handle for balance.txt log-file. */
 #ifdef RT_CHEM_PHOTOION
  *FdRad,		/*!< file handle for radtransfer.txt log-file. */
 #endif
