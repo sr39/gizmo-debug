@@ -561,10 +561,10 @@ void construct_gradient(double *grad, int i)
 
 void hydro_gradient_calc(void)
 {
-    CPU_Step[CPU_DENSMISC] += measure_time(); t0 = my_second();
+    CPU_Step[CPU_DENSMISC] += measure_time(); double t0 = my_second();
     int i, j, k, k1, ndone, ndone_flag, recvTask, place, save_NextParticle;
     double timeall = 0, timecomp1 = 0, timecomp2 = 0, timecommsumm1 = 0, timecommsumm2 = 0, timewait1 = 0, timewait2 = 0;
-    double timecomp, timecomm, timewait, tstart, tend, t0, t1;
+    double timecomp, timecomm, timewait, tstart, tend, t1;
     long long n_exported = 0;
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
     double NV_dt,NV_dummy,NV_limiter,NV_A,divVel_physical,h_eff,alphaloc,cs_nv;
