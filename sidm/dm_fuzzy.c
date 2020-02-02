@@ -469,6 +469,7 @@ int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
 
 void DMGrad_gradient_calc(void)
 {
+    CPU_Step[CPU_MISC] += measure_time(); double t00_truestart = my_second();
     PRINT_STATUS(" ..calculating higher-order gradients for DM density field\n");
     /* initialize data, if needed */
     if(All.Time==All.TimeBegin) {int i; for(i=FirstActiveParticle; i>=0; i=NextActiveParticle[i]) {P[i].AGS_Numerical_QuantumPotential=0;}}
@@ -530,7 +531,7 @@ void DMGrad_gradient_calc(void)
     /* de-allocate memory and collect timing information */
     #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */
     myfree(DMGradDataPasser); /* free the temporary structure we created for the MinMax and additional data passing */
-    double t1; t1 = WallclockTime = my_second(); timeall += timediff(t0, t1);
+    double t1; t1 = WallclockTime = my_second(); timeall = timediff(t00_truestart, t1);
     CPU_Step[CPU_AGSDENSCOMPUTE] += timecomp; CPU_Step[CPU_AGSDENSWAIT] += timewait; CPU_Step[CPU_AGSDENSCOMM] += timecomm;
     CPU_Step[CPU_AGSDENSMISC] += timeall - (timecomp + timewait + timecomm);
 }
