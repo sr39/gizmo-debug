@@ -975,14 +975,16 @@ void hydro_force_initial_operations_preloop(void)
 /* --------------------------------------------------------------------------------- */
 void hydro_force(void)
 {
+    CPU_Step[CPU_MISC] += measure_time(); double t00_truestart = my_second();
     hydro_force_initial_operations_preloop(); /* do initial pre-processing operations as needed before main hydro force loop */
     #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */
     hydro_final_operations_and_cleanup(); /* do final operations on results */
     /* collect timing information */
+    double t1; t1 = WallclockTime = my_second(); timeall = timediff(t00_truestart, t1);
     CPU_Step[CPU_HYDCOMPUTE] += timecomp; CPU_Step[CPU_HYDWAIT] += timewait; CPU_Step[CPU_HYDCOMM] += timecomm;
-    CPU_Step[CPU_HYDMISC] += timediff(t0, my_second()) - (timecomp + timewait + timecomm);
+    CPU_Step[CPU_HYDMISC] += timeall - (timecomp + timewait + timecomm);
 }
 #include "../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 
