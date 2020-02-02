@@ -561,11 +561,10 @@ void construct_gradient(double *grad, int i)
 
 void hydro_gradient_calc(void)
 {
-    int i, j, k, k1, ndone, ndone_flag;
-    int recvTask, place;
+    CPU_Step[CPU_DENSMISC] += measure_time(); t0 = my_second();
+    int i, j, k, k1, ndone, ndone_flag, recvTask, place, save_NextParticle;
     double timeall = 0, timecomp1 = 0, timecomp2 = 0, timecommsumm1 = 0, timecommsumm2 = 0, timewait1 = 0, timewait2 = 0;
     double timecomp, timecomm, timewait, tstart, tend, t0, t1;
-    int save_NextParticle;
     long long n_exported = 0;
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
     double NV_dt,NV_dummy,NV_limiter,NV_A,divVel_physical,h_eff,alphaloc,cs_nv;
@@ -577,14 +576,10 @@ void hydro_gradient_calc(void)
     /* allocate buffers to arrange communication */
     long long NTaskTimesNumPart;
     GasGradDataPasser = (struct temporary_data_topass *) mymalloc("GasGradDataPasser",N_gas * sizeof(struct temporary_data_topass));
-    NTaskTimesNumPart = maxThreads * NumPart;
-    size_t MyBufferSize = All.BufferSize;
+    NTaskTimesNumPart = maxThreads * NumPart; size_t MyBufferSize = All.BufferSize;
     All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
-                                                             sizeof(struct GasGraddata_in) +
-                                                             sizeof(struct GasGraddata_out) +
+                                                             sizeof(struct GasGraddata_in) + sizeof(struct GasGraddata_out) +
                                                              sizemax(sizeof(struct GasGraddata_in),sizeof(struct GasGraddata_out))));
-    CPU_Step[CPU_DENSMISC] += measure_time();
-    t0 = my_second();
     Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
@@ -1713,7 +1708,7 @@ void hydro_gradient_calc(void)
     
     /* collect some timing information */
     t1 = WallclockTime = my_second();
-    timeall += timediff(t0, t1);
+    timeall = timediff(t0, t1);
     timecomp = timecomp1 + timecomp2;
     timewait = timewait1 + timewait2;
     timecomm = timecommsumm1 + timecommsumm2;

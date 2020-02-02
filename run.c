@@ -251,33 +251,20 @@ void calculate_non_standard_physics(void)
     CPU_Step[CPU_MISC] += measure_time();
 
 #if defined(RT_SOURCE_INJECTION)
-#if defined(RT_DIFFUSION_CG)
-    if(Flag_FullStep) 
+#if !defined(RT_INJECT_PHOTONS_DISCRETELY)
+    if(Flag_FullStep) /* for continous injection, requires all sources and gas be active synchronously or else 2x-counts */
 #endif
-    {
-        rt_source_injection(); /* source injection into neighbor gas particles (only on full timesteps) */
-    }
+        {rt_source_injection();} /* source injection into neighbor gas particles (only on full timesteps) */
 #endif
     
 #if defined(RT_DIFFUSION_CG)
     /* use the CG method to solve the RT diffusion equation implicitly for all particles */
-    if(Flag_FullStep) /* only do it for full timesteps */
-    {
-        PRINT_STATUS("start CG iteration for radiative transfer (diffusion equation)...");
-        All.Radiation_Ti_endstep = All.Ti_Current;
-        double timeeach = 0, timeall = 0, tstart = 0, tend = 0;
-        tstart = my_second();
-        rt_diffusion_cg_solve();
-        tend = my_second();
-        timeeach = timediff(tstart, tend);
-        MPI_Allreduce(&timeeach, &timeall, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        All.Radiation_Ti_begstep = All.Radiation_Ti_endstep;
-    }
+    if(Flag_FullStep) /* only on full timesteps, requires synchronous timestepping right now */
+        {All.Radiation_Ti_endstep = All.Ti_Current; rt_diffusion_cg_solve(); All.Radiation_Ti_begstep = All.Radiation_Ti_endstep;}
 #endif
 
 #if defined(RT_CHEM_PHOTOION) && (!defined(COOLING) || defined(RT_COOLING_PHOTOHEATING_OLDFORMAT))
-    /* chemistry updated at sub-stepping as well */
-    rt_update_chemistry();
+    rt_update_chemistry(); /* chemistry updated at sub-stepping as well */
 #ifndef IO_REDUCED_MODE
     if(Flag_FullStep) {rt_write_chemistry_stats();}
 #endif
