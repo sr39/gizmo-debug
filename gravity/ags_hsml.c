@@ -258,7 +258,7 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
 void ags_density(void)
 {
     /* initialize variables used below, in particlar the structures we need to call throughout the iteration */
-    MyFloat *Left, *Right, *AGS_Prev; double fac, fac_lim, desnumngb, desnumngbdev; long long ntot;
+    CPU_Step[CPU_MISC] += measure_time(); double t00_truestart = my_second(); MyFloat *Left, *Right, *AGS_Prev; double fac, fac_lim, desnumngb, desnumngbdev; long long ntot;
     int i, npleft, iter=0, redo_particle, particle_set_to_minhsml_flag = 0, particle_set_to_maxhsml_flag = 0;
     AGS_Prev = (MyFloat *) mymalloc("AGS_Prev", NumPart * sizeof(MyFloat));
     Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));
@@ -568,7 +568,7 @@ void ags_density(void)
     myfree(AGS_Prev);
     
     /* collect some timing information */
-    double t1; t1 = WallclockTime = my_second(); timeall += timediff(t0, t1);
+    double t1; t1 = WallclockTime = my_second(); timeall = timediff(t00_truestart, t1);
     CPU_Step[CPU_AGSDENSCOMPUTE] += timecomp; CPU_Step[CPU_AGSDENSWAIT] += timewait;
     CPU_Step[CPU_AGSDENSCOMM] += timecomm; CPU_Step[CPU_AGSDENSMISC] += timeall - (timecomp + timewait + timecomm);
 }
@@ -963,6 +963,7 @@ int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecoun
 
 void AGSForce_calc(void)
 {
+    CPU_Step[CPU_MISC] += measure_time(); double t00_truestart = my_second();
     PRINT_STATUS(" ..entering AGS-Force calculation [as hydro loop for non-gas elements]\n");
     /* before doing any operations, need to zero the appropriate memory so we can correctly do pair-wise operations */
 #if defined(DM_SIDM)
@@ -980,7 +981,9 @@ void AGSForce_calc(void)
         for(i=FirstActiveParticle; i>=0; i=NextActiveParticle[i]) {do_postgravity_cbe_calcs(i);} // do any final post-tree-walk calcs from the CBE integrator here //
 #endif
     /* collect timing information */
-    CPU_Step[CPU_AGSDENSCOMPUTE] += timecomp; CPU_Step[CPU_AGSDENSWAIT] += timewait; CPU_Step[CPU_AGSDENSCOMM] += timecomm; CPU_Step[CPU_AGSDENSMISC] += timeall - (timecomp + timewait + timecomm);
+    double t1; t1 = WallclockTime = my_second(); timeall = timediff(t00_truestart, t1);
+    CPU_Step[CPU_AGSDENSCOMPUTE] += timecomp; CPU_Step[CPU_AGSDENSWAIT] += timewait;
+    CPU_Step[CPU_AGSDENSCOMM] += timecomm; CPU_Step[CPU_AGSDENSMISC] += timeall - (timecomp + timewait + timecomm);
 }
 #include "../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 

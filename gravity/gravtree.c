@@ -526,7 +526,7 @@ void gravity_tree(void)
     
 
     /* Now the force computation is finished: gather timing and diagnostic information */
-    t1 = WallclockTime = my_second(); timeall += timediff(t0, t1);
+    t1 = WallclockTime = my_second(); timeall = timediff(t0, t1);
     timetree = timetree1 + timetree2; timewait = timewait1 + timewait2; timecomm = timecommsumm1 + timecommsumm2;
     MPI_Reduce(&timetree, &sumt, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&timetree, &maxt, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);

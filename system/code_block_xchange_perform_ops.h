@@ -1,8 +1,9 @@
 /* This is a generic code block designed for simple neighbor loops, so that they don't have to
 be copy-pasted and can be generically optimized in a single place */
 {
-    int j, k, ndone, ndone_flag, recvTask, place, save_NextParticle; long long n_exported = 0; double tstart, tend; /* define some variables used only below */
+    int j, k, ndone, ndone_flag, recvTask, place, save_NextParticle; long long n_exported = 0; double tstart, tend, tstart_loop; /* define some variables used only below */
     NextParticle = FirstActiveParticle;    /* begin the main loop; start with this index */
+    tstart_loop = my_second();
     do /* primary point-element loop */
     {
         BufferFullFlag = 0; Nexport = 0; save_NextParticle = NextParticle; tstart = my_second();
@@ -160,7 +161,7 @@ be copy-pasted and can be generically optimized in a single place */
         tend = my_second(); timewait += timediff(tstart, tend);
     }
     while(ndone < NTask);
-    timeall = timediff(t0, tend);
+    timeall += timediff(tstart_loop, my_second());
     
 } /* closes clause, so variables don't 'leak' */
 

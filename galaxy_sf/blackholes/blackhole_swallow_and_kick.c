@@ -404,6 +404,7 @@ void blackhole_swallow_and_kick_loop(void)
         printf("Accretion done: swallowed %d gas, %d star, %d dm, and %d BH particles\n",
                Ntot_gas_swallowed, Ntot_star_swallowed, Ntot_dm_swallowed, Ntot_BH_swallowed);
     }
+    CPU_Step[CPU_BLACKHOLES] += measure_time(); /* collect timings and reset clock for next timing */
 }
 #include "../../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 

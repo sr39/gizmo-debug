@@ -452,7 +452,7 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
 void density(void)
 {
     /* initialize variables used below, in particlar the structures we need to call throughout the iteration */
-    MyFloat *Left, *Right; double fac, fac_lim, desnumngb, desnumngbdev; long long ntot;
+    CPU_Step[CPU_MISC] += measure_time(); double t00_truestart = my_second(); MyFloat *Left, *Right; double fac, fac_lim, desnumngb, desnumngbdev; long long ntot;
     int i, npleft, iter=0, redo_particle, particle_set_to_minhsml_flag = 0, particle_set_to_maxhsml_flag = 0;
     Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));
     Right = (MyFloat *) mymalloc("Right", NumPart * sizeof(MyFloat));
@@ -1040,7 +1040,7 @@ void density(void)
     
     
     /* collect some timing information */
-    double t1; t1 = WallclockTime = my_second(); timeall += timediff(t0, t1);
+    double t1; t1 = WallclockTime = my_second(); timeall = timediff(t00_truestart, t1);
     CPU_Step[CPU_DENSCOMPUTE] += timecomp; CPU_Step[CPU_DENSWAIT] += timewait;
     CPU_Step[CPU_DENSCOMM] += timecomm; CPU_Step[CPU_DENSMISC] += timeall - (timecomp + timewait + timecomm);
 }
