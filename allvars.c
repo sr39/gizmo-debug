@@ -127,6 +127,15 @@ size_t AllocatedBytes;
 size_t HighMarkBytes;
 size_t FreeBytes;
 double CPU_Step[CPU_PARTS];
+char CPU_Symbol[CPU_PARTS] = {
+    '-', '*', '=', ';', '<', '[', '^', ':', '.', '~', '|', '+', '"', '/',  '`', ',', '>', '@', '#', '&',
+    '$', ']', '(', '?', ')', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '\\', '%', '{', '}', 'Z',
+    'Y', 'X', 'U', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',  'n', 'o'};//, 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y, 'z',
+char CPU_SymbolImbalance[CPU_PARTS] = {
+    'a', 't', 'u', 'v', 'b', 'w', 'd', 'r', 'h', 'm', 'n', 'l', 'o', 'p',  's', 'f', 'i', 'g', 'c', 'e', // 20 columns here
+    'x', 'y', 'z', 'A', 'I', 'W', 'T', 'V', 'B', 'C', 'D', 'E', 'F', 'G', 'H',  'I', 'J', 'K', 'L', 'Q',
+    'R', 'S', 'T', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',  'N', 'O'};//, 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'};
+char CPU_String[CPU_STRING_LEN + 1];
 double WallclockTime;		/*!< This holds the last wallclock time measurement for timings measurements */
 int Flag_FullStep;		/*!< Flag used to signal that the current step involves all particles */
 
@@ -205,6 +214,7 @@ FILE
 *FdInfo,       /*!< file handle for info.txt log-file. */
 *FdEnergy,     /*!< file handle for energy.txt log-file. */
 *FdTimings,    /*!< file handle for timings.txt log-file. */
+*FdBalance,    /*!< file handle for balance.txt log-file. */
 #ifdef RT_CHEM_PHOTOION
 *FdRad,         /*!< file handle for radtransfer.txt log-file. */
 #endif

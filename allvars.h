@@ -1183,59 +1183,59 @@ typedef MyDouble MyBigFloat;
 #define CPU_TREERECV       6
 #define CPU_TREEMISC       7
 #define CPU_TREEBUILD      8
-#define CPU_TREEUPDATE     9
-#define CPU_TREEHMAXUPDATE 10
-#define CPU_DOMAIN         11
-#define CPU_DENSCOMPUTE    12
-#define CPU_DENSWAIT       13
-#define CPU_DENSCOMM       14
-#define CPU_DENSMISC       15
-#define CPU_HYDCOMPUTE     16
-#define CPU_HYDWAIT        17
-#define CPU_HYDCOMM        18
-#define CPU_HYDMISC        19
-#define CPU_DRIFT          20
-#define CPU_TIMELINE       21
-#define CPU_POTENTIAL      22
-#define CPU_MESH           23
-#define CPU_PEANO          24
-#define CPU_COOLINGSFR     25
-#define CPU_SNAPSHOT       26
-#define CPU_FOF            27
-#define CPU_BLACKHOLES     28
-#define CPU_MISC           29
-#define CPU_DRAGFORCE      30
-#define CPU_SNIIHEATING    31
-#define CPU_HIIHEATING     32
-#define CPU_LOCALWIND      33
-#define CPU_HYDNETWORK     34
-#define CPU_AGSDENSCOMPUTE 35
-#define CPU_AGSDENSWAIT    36
-#define CPU_AGSDENSCOMM    37
-#define CPU_AGSDENSMISC    38
-#define CPU_DYNDIFFMISC       39
-#define CPU_DYNDIFFCOMPUTE    40
-#define CPU_DYNDIFFWAIT       41
-#define CPU_DYNDIFFCOMM       42
-#define CPU_IMPROVDIFFMISC    43
-#define CPU_IMPROVDIFFCOMPUTE 44
-#define CPU_IMPROVDIFFWAIT    45
-#define CPU_IMPROVDIFFCOMM    46
-#define CPU_COOLSFRIMBAL   47
-#define CPU_RTNONFLUXOPS  48
-#define CPU_DUMMY01       49
-#define CPU_DUMMY02       50
-#define CPU_DUMMY03       51
-#define CPU_DUMMY04       52
-#define CPU_DUMMY05       53
-#define CPU_DUMMY06       54
-#define CPU_DUMMY07       55
-#define CPU_DUMMY08       56
-#define CPU_DUMMY09       57
-#define CPU_DUMMY10       58
+#define CPU_TREEHMAXUPDATE 9
+#define CPU_DOMAIN         10
+#define CPU_DENSCOMPUTE    11
+#define CPU_DENSWAIT       12
+#define CPU_DENSCOMM       13
+#define CPU_DENSMISC       14
+#define CPU_HYDCOMPUTE     15
+#define CPU_HYDWAIT        16
+#define CPU_HYDCOMM        17
+#define CPU_HYDMISC        18
+#define CPU_DRIFT          19
+#define CPU_TIMELINE       20
+#define CPU_POTENTIAL      21
+#define CPU_MESH           22
+#define CPU_PEANO          23
+#define CPU_COOLINGSFR     24
+#define CPU_SNAPSHOT       25
+#define CPU_FOF            26
+#define CPU_BLACKHOLES     27
+#define CPU_MISC           28
+#define CPU_DRAGFORCE      29
+#define CPU_SNIIHEATING    30
+#define CPU_HIIHEATING     31
+#define CPU_LOCALWIND      32
+#define CPU_COOLSFRIMBAL   33
+#define CPU_AGSDENSCOMPUTE 34
+#define CPU_AGSDENSWAIT    35
+#define CPU_AGSDENSCOMM    36
+#define CPU_AGSDENSMISC    37
+#define CPU_DYNDIFFMISC       38
+#define CPU_DYNDIFFCOMPUTE    39
+#define CPU_DYNDIFFWAIT       40
+#define CPU_DYNDIFFCOMM       41
+#define CPU_IMPROVDIFFMISC    42
+#define CPU_IMPROVDIFFCOMPUTE 43
+#define CPU_IMPROVDIFFWAIT    44
+#define CPU_IMPROVDIFFCOMM    45
+#define CPU_RTNONFLUXOPS  46
+#define CPU_DUMMY01       47
+#define CPU_DUMMY01       48
+#define CPU_DUMMY02       49
+#define CPU_DUMMY03       50
+#define CPU_DUMMY04       51
+#define CPU_DUMMY05       52
+#define CPU_DUMMY06       53
+#define CPU_DUMMY07       54
+#define CPU_DUMMY08       55
+#define CPU_DUMMY09       56
+#define CPU_DUMMY10       57
 
-#define CPU_PARTS          59  /* this gives the number of parts above (must be last) */
+#define CPU_PARTS          58  /* this gives the number of parts above (must be last) */
 
+#define CPU_STRING_LEN 120
 
 #if (BOX_SPATIAL_DIMENSION==1) || defined(ONEDIM)
 #define NUMDIMS 1           /* define number of dimensions and volume normalization */
@@ -1442,6 +1442,9 @@ extern size_t AllocatedBytes;
 extern size_t HighMarkBytes;
 extern size_t FreeBytes;
 extern double CPU_Step[CPU_PARTS];
+extern char CPU_Symbol[CPU_PARTS];
+extern char CPU_SymbolImbalance[CPU_PARTS];
+extern char CPU_String[CPU_STRING_LEN + 1];
 extern double WallclockTime;    /*!< This holds the last wallclock time measurement for timings measurements */
 extern int Flag_FullStep;	/*!< Flag used to signal that the current step involves all particles */
 
@@ -1563,6 +1566,7 @@ extern FILE
  *FdInfo,       /*!< file handle for info.txt log-file. */
  *FdEnergy,     /*!< file handle for energy.txt log-file. */
  *FdTimings,    /*!< file handle for timings.txt log-file. */
+ *FdBalance,    /*!< file handle for balance.txt log-file. */
 #ifdef RT_CHEM_PHOTOION
  *FdRad,		/*!< file handle for radtransfer.txt log-file. */
 #endif
