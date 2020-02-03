@@ -223,7 +223,9 @@
 #define TURB_DIFF_METALS                    /*! explicit sub-grid diffusivity for metals/passive scalars */
 #define TURB_DIFF_METALS_LOWORDER           /*! memory-saving custom mod */
 #define GALSF_SFR_MOLECULAR_CRITERION       /*! molecular criterion for star formation */
+#if !defined(GALSF_SFR_VIRIAL_SF_CRITERION)
 #define GALSF_SFR_VIRIAL_SF_CRITERION 0     /*! sink-particle like self-gravity requirement for star formation: original implementation */
+#endif
 #define GALSF_FB_MECHANICAL                 /*! master switch for mechanical feedback modules */
 #define GALSF_FB_FIRE_STELLAREVOLUTION      /*! turns on default FIRE processes+lookup tables including gas return, SNe, R-process, etc. */
 #define GALSF_FB_FIRE_RT_HIIHEATING         /*! gas within HII regions around young stars is photo-heated to 10^4 K - local stromgren approximation */
