@@ -503,6 +503,20 @@ integertime get_timestep(int p,		/*!< particle index */
         csnd = sqrt(csnd);
         double L_particle = Get_Particle_Size(p);
         dt_courant = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / csnd;
+#ifdef PIC_MHD
+        if(P[p].Grain_SubType==3)
+        {
+            double lorentz_units = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); // code B to Gauss
+            lorentz_units *= All.UnitVelocity_in_cm_per_s * (ELECTRONCHARGE/(PROTONMASS*C_LIGHT)); // code velocity to CGS, times base units e/(mp*c)
+            lorentz_units /= All.UnitVelocity_in_cm_per_s / (All.UnitTime_in_s / All.HubbleParam); // convert 'back' to code-units acceleration
+            double reduced_C = PIC_SPEEDOFLIGHT_REDUCTION * C_LIGHT_CODE;
+            double charge_to_mass_ratio_dimensionless = All.PIC_Charge_to_Mass_Ratio;
+            double v2=0, B2=0; for(k=0;k<3;k++) {v2=P[p].Vel[k]*P[p].Vel[k]; B2+=P[p].Gas_B[k]*P[p].Gas_B[k];}
+            double gamma=1/sqrt(1-v2/(reduced_C*reduced_C));
+            double dt_courant_pic = 0.5 * gamma / (charge_to_mass_ratio_dimensionless * sqrt(B2) * lorentz_units); /* dt = 0.5/omega_g */
+            if(dt_courant_pic < dt_courant) dt_courant = dt_courant_pic;
+        }
+#endif
         if(dt_courant < dt) dt = dt_courant;
     }
 #endif

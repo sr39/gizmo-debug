@@ -181,7 +181,7 @@ void apply_grain_dragforce(void)
                 if(bmag>0) {bmag=sqrt(bmag); for(k=0;k<3;k++) {bhat[k]/=bmag;}} else {bmag=0;} /* take it correctly assuming its non-zero */
                 double efield_coeff = (0.5*dt) * charge_to_mass_ratio_dimensionless * bmag * lorentz_units; // dimensionless half-timestep term for boris integrator //
                 efield[0] = -v_g[1]*bhat[2] + v_g[2]*bhat[1]; efield[1] = -v_g[2]*bhat[0] + v_g[0]*bhat[2]; efield[2] = -v_g[0]*bhat[1] + v_g[1]*bhat[0]; /* efield term, but with magnitude of B factored out for units above */
-                double v_0[3],v0[3],vf[3],v2=0; for(k=0;k<3;k++) {v0[k]=P[i].Vel[k]; v2=v0[k]*v0[k];}
+                double v_0[3],v0[3],vf[3],v2=0; for(k=0;k<3;k++) {v0[k]=P[i].Vel[k]; v2+=v0[k]*v0[k];}
                 if(v2 >= reduced_C*reduced_C) {PRINT_WARNING("VELOCITY HAS EXCEEDED THE SPEED OF LIGHT. BAD.");}
                 double gamma_0=1/sqrt(1-v2/(reduced_C*reduced_C)); for(k=0;k<3;k++) {v_0[k]=v0[k]*gamma_0/reduced_C;} // convert to the momentum term ~gamma*v
                 
