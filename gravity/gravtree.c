@@ -369,7 +369,8 @@ void gravity_tree(void)
 #endif // BH_CALC_DISTANCES
 
 #ifdef RT_USE_TREECOL_FOR_NH
-                for(int kbin=0; kbin < RT_USE_TREECOL_FOR_NH; kbin++) P[place].ColumnDensityBins[kbin] += GravDataOut[j].ColumnDensityBins[kbin];
+                int kbin=0
+                for(kbin=0; kbin < RT_USE_TREECOL_FOR_NH; kbin++) P[place].ColumnDensityBins[kbin] += GravDataOut[j].ColumnDensityBins[kbin];
 #endif                
                 
 #ifdef RT_OTVET
