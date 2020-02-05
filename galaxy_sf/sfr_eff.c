@@ -88,8 +88,11 @@ void assign_imf_properties_from_starforming_gas(int i)
 #ifdef COSMIC_RAYS
     cr_energy_density = SphP[i].CosmicRayEnergyPred * SphP[i].Density * All.cf_a3inv / P[i].Mass;
 #endif
-
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+    P[i].IMF_FormProps[0] = P[i].min_dist_to_bh; // min distance to nearest sink particle
+#else
     P[i].IMF_FormProps[0] = P[i].IMF_Mturnover; // IMF turnover mass as defined above
+#endif
     P[i].IMF_FormProps[1] = SphP[i].Density * All.cf_a3inv; // density
     P[i].IMF_FormProps[2] = SphP[i].InternalEnergyPred; // thermal internal energy (use to calculate temperature)
     P[i].IMF_FormProps[3] = Particle_effective_soundspeed_i(i) * All.cf_afac3; // sound speed (not trivially related to temperature if CRs, etc included)
