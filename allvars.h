@@ -358,6 +358,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define DEVELOPER_MODE
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define BH_OUTPUT_GASSWALLOW //save accretion histories
+#define GALSF_SFR_IMF_VARIATION // save gas properties at sink formation time
 #ifdef SLOPE2_SINKS //Slope2 sinks, this should give dN/dM~M^-2 in isoT sims
 #define BH_DEBUG_DISABLE_MERGERS
 #define BH_ALPHADISK_ACCRETION (1.2)
