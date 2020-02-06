@@ -54,9 +54,9 @@ fi
 rm core*
 rm output/core*
 ## Touch the files to update their access times appropriately
-touch -a *
-touch -a */*
-touch -a */*/*
+#touch -a *
+#touch -a */*
+#touch -a */*/*
 ## Check that the folder 'output' exists, which this script assumes is where all 
 ##   the simulation outputs are being written (should be set in the parameter file)
 if [ -d "output" ]
@@ -118,7 +118,7 @@ fi
 ##   (though it can be much higher if the data is highly regular). Make sure 
 ##   if you use this that you link the correct location of "compress_gizmosnap", 
 ##   here just assumed to be ${HOME}
-touch -a */*/*
+#touch -a */*/*
 for snapshotname in ./snapshot_*.hdf5
 do
     python3 ${HOME}/compress_gizmosnap.py $snapshotname
