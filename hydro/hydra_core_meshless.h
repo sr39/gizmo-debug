@@ -390,15 +390,18 @@
                 if(SM_over_ceff > epsilon_entropic_eos_small && cnum2 < cnumcrit2)
                 {
                     double du_old = facenorm_pm * (Riemann_out.S_M + face_area_dot_vel);
-                    if(Pressure_i/local.Density > Pressure_j/SphP[j].Density)
+                    if(Pressure_i/local.Density != Pressure_j/SphP[j].Density)
                     {
-                        double dtoj = -du_old + facenorm_pm * face_vel_j;
-                        if(dtoj > 0) {use_entropic_energy_equation=0;} else {
-                            if(dtoj > -du_new+facenorm_pm*face_vel_j) {use_entropic_energy_equation=0;}}
-                    } else {
-                        double dtoi = du_old - facenorm_pm * face_vel_i;
-                        if(dtoi > 0) {use_entropic_energy_equation=0;} else {
-                            if(dtoi > du_new-facenorm_pm*face_vel_i) {use_entropic_energy_equation=0;}}
+                        if(Pressure_i/local.Density > Pressure_j/SphP[j].Density)
+                        {
+                            double dtoj = -du_old + facenorm_pm * face_vel_j;
+                            if(dtoj > 0) {use_entropic_energy_equation=0;} else {
+                                if(dtoj > -du_new+facenorm_pm*face_vel_j) {use_entropic_energy_equation=0;}}
+                        } else {
+                            double dtoi = du_old - facenorm_pm * face_vel_i;
+                            if(dtoi > 0) {use_entropic_energy_equation=0;} else {
+                                if(dtoi > du_new-facenorm_pm*face_vel_i) {use_entropic_energy_equation=0;}}
+                        }
                     }
                 }
                 if(cnum2 >= cnumcrit2) {use_entropic_energy_equation=1;}
@@ -481,15 +484,18 @@
                 double cnum2 = SphP[j].ConditionNumber*SphP[j].ConditionNumber;
                 if(SM_over_ceff > epsilon_entropic_eos_small && cnum2 < cnumcrit2)
                 {
-                    if(Pressure_i/local.Density > Pressure_j/SphP[j].Density)
+                    if(Pressure_i/local.Density != Pressure_j/SphP[j].Density)
                     {
-                        double dtoj = -du_old + facenorm_pm * face_vel_j;
-                        if(dtoj > 0) {use_entropic_energy_equation=0;} else {
-                            if(dtoj > -du_new+facenorm_pm*face_vel_j) {use_entropic_energy_equation=0;}}
-                    } else {
-                        double dtoi = du_old - facenorm_pm * face_vel_i;
-                        if(dtoi > 0) {use_entropic_energy_equation=0;} else {
-                            if(dtoi > du_new-facenorm_pm*face_vel_i) {use_entropic_energy_equation=0;}}
+                        if(Pressure_i/local.Density > Pressure_j/SphP[j].Density)
+                        {
+                            double dtoj = -du_old + facenorm_pm * face_vel_j;
+                            if(dtoj > 0) {use_entropic_energy_equation=0;} else {
+                                if(dtoj > -du_new+facenorm_pm*face_vel_j) {use_entropic_energy_equation=0;}}
+                        } else {
+                            double dtoi = du_old - facenorm_pm * face_vel_i;
+                            if(dtoi > 0) {use_entropic_energy_equation=0;} else {
+                                if(dtoi > du_new-facenorm_pm*face_vel_i) {use_entropic_energy_equation=0;}}
+                        }
                     }
                 }
                 if(cnum2 >= cnumcrit2) {use_entropic_energy_equation=1;}
