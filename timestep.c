@@ -995,6 +995,9 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt_accr > 0 && dt_accr < dt) {dt = dt_accr;}
 
         double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (((integertime) 1) << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
+#ifndef SINGLE_STAR_SINK_DYNAMICS
+        dt_ngbs *= 4.; /* standard wakeup-type threshold: use this by default here, unless dynamical interaction important (e.g. back-rx term from oscillation of BH c-o-m, which is important for single-sink sims */
+#endif
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 
 #if defined(SINGLE_STAR_TIMESTEPPING)
