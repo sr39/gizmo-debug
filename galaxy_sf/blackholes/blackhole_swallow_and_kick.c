@@ -253,7 +253,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #ifdef BH_GRAVCAPTURE_NONGAS /* DM and star particles can only be accreted ifdef BH_GRAVCAPTURE_NONGAS */
                     if((P[j].Type == 1) || (All.ComovingIntegrationOn && (P[j].Type==2||P[j].Type==3)) )
                     {   /* this is a DM particle: In this case, no kick, so just zero out the mass and 'get rid of' the particle (preferably by putting it somewhere irrelevant) */
-                        PRINT_STATUS(" ..BH_swallow_DM: j %d Type(j) %d  M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g \n", j,P[j].Type,P[j].Mass,P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],local.Pos[0],local.Pos[1],local.Pos[2]);
+#ifdef BH_OUTPUT_MOREINFO
+                        printf(" ..BH_swallow_DM: j %d Type(j) %d  M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g \n", j,P[j].Type,P[j].Mass,P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],local.Pos[0],local.Pos[1],local.Pos[2]);
+#endif
                         out.accreted_Mass += FLT(P[j].Mass); out.accreted_BH_Mass += FLT(P[j].Mass); P[j].Mass = 0;
                         N_dm_swallowed++;
                     }
@@ -294,8 +296,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #ifdef GALSF_SUBGRID_WINDS // if sub-grid galactic winds are decoupled from the hydro, we decouple the BH kick winds as well
                         SphP[j].DelayTime = All.WindFreeTravelMaxTimeFactor / All.cf_hubble_a;
 #endif
-                        PRINT_STATUS(" ..BAL kick: P[j].ID %llu ID %llu Type(j) %d f_acc %g M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g v_out %g \n",(unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID,P[j].Type, All.BAL_f_accretion,P[j].Mass,P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],local.Pos[0],local.Pos[1],local.Pos[2],v_kick);
 #ifdef BH_OUTPUT_MOREINFO
+                        printf(" ..BAL kick: P[j].ID %llu ID %llu Type(j) %d f_acc %g M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g v_out %g \n",(unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID,P[j].Type, All.BAL_f_accretion,P[j].Mass,P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],local.Pos[0],local.Pos[1],local.Pos[2],v_kick);
                         fprintf(FdBhWindDetails,"%g  %u %g  %2.7f %2.7f %2.7f  %2.7f %2.7f %2.7f  %g %g %g  %u  %2.7f %2.7f %2.7f\n",All.Time, P[j].ID, P[j].Mass,  P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],  P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],dir[0]/norm,dir[1]/norm,dir[2]/norm, local.ID, local.Pos[0],local.Pos[1],local.Pos[2]);
 #endif
 #endif // #ifdef BH_WIND_KICK
@@ -465,9 +467,9 @@ void spawn_bh_wind_feedback(void)
     All.TotNumPart += (long long)MPI_n_particles_split;
     All.TotN_gas   += (long long)MPI_n_particles_split;
     Gas_split       = n_particles_split;                    // specific to the local processor //
-#ifdef SINGLE_STAR_FB_JETS    
+//#ifdef SINGLE_STAR_FB_JETS
     rearrange_particle_sequence();
-#endif
+//#endif
 }
 
 
@@ -487,8 +489,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     /* here is where the details of the split are coded, the rest is bookkeeping */
     //double mass_of_new_particle = total_mass_in_winds / n_particles_split; /* don't do this, as can produce particles with extremely large masses; instead wait to spawn */
     double mass_of_new_particle = All.BAL_wind_particle_mass;
-    PRINT_STATUS("Task %d wants to create %g mass in wind with %d new particles each of mass %g \n", ThisTask,total_mass_in_winds, n_particles_split, mass_of_new_particle);
-    PRINT_STATUS(" .. splitting BH %d using hydro element %d\n", i, dummy_sph_i_to_clone);
+    printf("Task %d wants to create %g mass in wind with %d new particles each of mass %g \n .. splitting BH %d using hydro element %d\n", ThisTask,total_mass_in_winds, n_particles_split, mass_of_new_particle, i, dummy_sph_i_to_clone);
     int k=0; long j;
     if(NumPart + num_already_spawned + n_particles_split >= All.MaxPart)
     {
