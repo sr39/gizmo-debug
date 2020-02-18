@@ -444,6 +444,12 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 P[offset + n].BH_Mdot = *fp++;
 
 #endif
+        case IO_R_PROTOSTAR:
+#ifdef IO_R_PROTOSTAR
+            for(n = 0; n < pc; n++)
+                P[offset + n].ProtoStellarRadius_inSolar = *fp++;
+
+#endif
             break;
             
         case IO_BHPROGS:
