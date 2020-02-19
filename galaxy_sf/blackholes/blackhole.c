@@ -902,7 +902,7 @@ void blackhole_final_operations(void)
     
     double mass = BPP(n).BH_Mass; //mass of star/protostar
     double mdot = BPP(n).BH_Mdot; //accretion rate, shorter to write it this way
-    double mdot_m_solar_per_year = mdot * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/UnitTime_in_s*SEC_PER_YEAR; // accretion rate in msolar/yr
+    double mdot_m_solar_per_year = mdot * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/All.UnitTime_in_s*SEC_PER_YEAR; // accretion rate in msolar/yr
     double m_solar = mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
     double m_initial = DMAX(1.e-37 , (mass - dm)); // mass before accretion
     double mu = DMAX(0, dm/m_initial); // relative mass accreted
@@ -910,7 +910,7 @@ void blackhole_final_operations(void)
     double r_solar = BPP(n).ProtoStellarRadius_inSolar; //star radius in R_solar
     double r = r_solar * SOLAR_RADIUS/All.UnitLength_in_cm; // same but in code units
     int stage_increase = 0; 
-    double lum_Hayashi = ps_lum_Hayashi(mass, r); //blackbody radiation assuming the star follows the Hayashi track 
+    double lum_Hayashi = ps_lum_Hayashi_BB(mass, r); //blackbody radiation assuming the star follows the Hayashi track 
     double lum_MS = ps_lum_MS(mass); //luminosity of main sequence star of m mass
     double lum_int = DMAX(lum_Hayashi, lum_MS); //luminosity from the stellar interior
     if (stage < 5){ //not a main sequence star
@@ -931,7 +931,7 @@ void blackhole_final_operations(void)
                 double dlogbetaperbetac_dlogm = ps_dlogbetaperbetac_dlogm(mass, r, n_ad, beta, rhoc, Pc, Tc); // ratio of gas pressure to total pressure at the center
                 lum_D = lum_int + lum_I + (All.G*mass*mdot/r) * ( 1.-fk-0.5*ag*beta * (1.+dlogbetaperbetac_dlogm) ); // Eq B8 of Offner 2009
                 //Change in available deuterium mass
-                dm_D = dm - (lum_D*dt)*(1e-5 * SOLAR_MASS)/(SEC_PER_YEAR*15.*SOLAR_LUM)*UnitTime_in_s/(All.UnitMass_in_g/All.HubbleParam);
+                dm_D = dm - (lum_D*dt)*(1e-5 * SOLAR_MASS)/(SEC_PER_YEAR*15.*SOLAR_LUM)*All.UnitTime_in_s/(All.UnitMass_in_g/All.HubbleParam);
             }
             else{ if (stage>2){
                 //burning all accreted D for stages above 2
@@ -967,7 +967,7 @@ void blackhole_final_operations(void)
         }
         else{ //the protostar is in the "pre-collapse" state, no internal evolution, just check if it can be promoted to the next stage
             BPP(n).Mass_D = BPP(n).BH_Mass; //no D burned so far
-            if (m_solar >= (0.01){ stage_increase = 1;} //particle qualifies to the "no burning stage" 
+            if (m_solar >= 0.01){ stage_increase = 1;} //particle qualifies to the "no burning stage" 
         }
         if (stage_increase){BPP(n).ProtoStellarStage += stage_increase;} //increase evolutionary stage if the particle satisfies the requirements 
     }
