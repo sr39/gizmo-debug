@@ -603,6 +603,10 @@ void star_formation_parent_routine(void)
                 P[i].DensAroundStar = SphP[i].Density;
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION 
                 P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age
+                if (P[i].Mass < (0.01* SOLAR_MASS / All.UnitMass_in_g) ){ P[i].ProtoStellarStage = 0;} //starts at "pre-collapse" stage
+                else{ P[i].ProtoStellarStage = 1;} //start at the "no burn" phase
+                P[i].Mass_D = P[i].Mass; //Initially all the gas has Deuterium
+                P[i].StarLuminosity = 0; //Start with zero luminosity
 		        if (P[i].Mass < 0.012 * SOLAR_MASS / All.UnitMass_in_g) {P[i].ProtoStellarRadius_inSolar =  5.24 * pow(P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS, 1./3);} // constant density
                     else {P[i].ProtoStellarRadius_inSolar = 100. * (P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS);} // M propto R above this mass
 #endif
@@ -691,7 +695,7 @@ void star_formation_parent_routine(void)
     
 #if defined(BH_SEED_FROM_LOCALGAS) || defined(SINGLE_STAR_SINK_DYNAMICS)
   MPI_Allreduce(&num_bhformed, &tot_bhformed, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-  if(tot_bhformed > 0)
+  if( (ThisTask==0) && (tot_bhformed > 0) )
   {
       printf("BH/Sink formation: %d gas particles converted into BHs\n",tot_bhformed);
       All.TotBHs += tot_bhformed;
