@@ -445,9 +445,33 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 
 #endif
         case IO_R_PROTOSTAR:
-#ifdef IO_R_PROTOSTAR
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++)
                 P[offset + n].ProtoStellarRadius_inSolar = *fp++;
+
+#endif
+            break;
+            
+        case IO_MASS_D_PROTOSTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; n++)
+                P[offset + n].Mass_D = *fp++;
+
+#endif
+            break;
+            
+        case IO_STAGE_PROTOSTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; n++)
+                P[offset + n].ProtoStellarStage = *ip_int++;
+
+#endif
+            break;
+            
+        case IO_LUM_SINGLESTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; n++)
+                P[offset + n].StarLuminosity = *fp++;
 
 #endif
             break;

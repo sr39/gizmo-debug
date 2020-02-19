@@ -31,6 +31,296 @@ double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i)
     return lum;
 }
 
+/*Functions for protosteller evolution model based on Offner 2009*/
+#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
+/*Physical constants used in formulas, undefined later*/
+#define A_SB      7.56e-15 //4 sigma_SB/c
+#define MU     0.613  /* Mean molecular weight of a fully ionized gas of solar composition*/
+
+/* Sets the adiabatic index for pre burning protostars based on Eq B2 from Offner 2009 */
+double ps_adiabatic_index_func(double mdot){
+    double mdot_m_solar_per_year = mdot * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/UnitTime_in_s*SEC_PER_YEAR; // accretion rate in msolar/yr
+    return ( 5.0 - 3/(1.475+0.07*log10(mdot_m_solar_per_year)) )
+}
+
+/*Sets the adiabatic index for protostars based on Appendix B of Offner 2009*/
+double ps_adiabatic_index(int stage, double mdot){
+    double n_ad;
+    switch(stage){
+        case 0: n_ad = ps_adiabatic_index_func(mdot); break;
+        case 1: n_ad = ps_adiabatic_index_func(mdot); break;
+        case 2: n_ad = 1.5; break;
+        case 3: n_ad = 1.5; break;
+        case 4: n_ad = 3.0; break;
+        case 5: n_ad = 3.0; break;
+    }
+    if (n_ad > 3.0){n_ad=3.0;}
+    if (n_ad < 1.5){n_ad=1.5;}
+    return n_ad;
+}
+
+/*Calculate central density for protostar using a pre-computed table for fixed mass, radius and polytropic index, based on Offner 2009, table and code taken from ORION*/
+double ps_rhoc(double m, double n_ad, double r){
+    /*Tabulated values of rho_c/rho_mean for n=1.5 to 3.1 in intervals of 0.1*/
+    static double rhofactab[] = {
+    0.166931, 0.14742, 0.129933, 0.114265, 0.100242,
+    0.0877, 0.0764968, 0.0665109, 0.0576198, 0.0497216,
+    0.0427224, 0.0365357, 0.0310837, 0.0262952, 0.0221057,
+    0.0184553, 0.01529
+    };
+    int itab = (int) floor((n_ad-1.5)/0.1);
+    double wgt = (n_ad - (1.5 + 0.1*itab)) / 0.1;
+    double rhofac = rhofactab[itab]*(1.0-wgt) + rhofactab[itab+1]*wgt;
+    return( mass / (4.0/3.0*M_PI*r*r*r) / rhofac );
+}
+
+/*Calculate central pressure for protostar using a pre-computed table for fixed mass, radius and polytropic index, based on Offner 2009, table and code taken from ORION*/
+double ps_Pc(double m, double n_ad, double r){
+    static double pfactab[] = {
+    0.770087, 0.889001, 1.02979, 1.19731, 1.39753,
+    1.63818, 1.92909, 2.2825, 2.71504, 3.24792, 3.90921,
+    4.73657, 5.78067, 7.11088, 8.82286, 11.0515, 13.9885
+    };
+    int itab = (int) floor((n_ad-1.5)/0.1);
+    double wgt = (n_ad - (1.5 + 0.1*itab)) / 0.1;
+    double pfac = pfactab[itab]*(1.0-wgt) + pfactab[itab+1]*wgt;
+    return( pfac * G * m*m/(r*r*r*r) );
+}
+
+/*Calculate central temperature for protostar by solving Pc = rho_c*kb*Tc/(mu*mH)+1/3*a*Tc^4 using bisection, based on Offner 2009 Eq B14, code taken from ORION*/
+double ps_Tc(double rhoc, double Pc){
+#define JMAX 40 //max number of iterations
+#define TOL 1.0e-7 //error tolerance
+    double Pc_cgs = Pc * UnitPressure_in_cgs;
+    double rhoc_cgs = rhoc * UnitDensity_in_cgs;
+    double Tgas, Trad;
+    int j;
+    double dx, f, fmid, xmid, rtb;
+    double x1, x2;
+    char errstr[256];
+    x1 = 0.0;
+    Tgas = Pc_cgs*MU*PROTONMASS/(BOLTZMANN*rhoc_cgs);
+    Trad = pow(3*Pc_cgs/A_SB, 0.25);
+    x2 = (Trad > Tgas) ? 2*Trad : 2*Tgas;
+    f = Pc_cgs - rhoc_cgs*BOLTZMANN*x1/(MU*PROTONMASS) - A_SB*pow(x1,4)/3.0;
+    fmid=Pc_cgs - rhoc_cgs*BOLTZMANN*x2/(MU*PROTONMASS) - A_SB*pow(x2,4)/3.0;
+    rtb = f < 0.0 ? (dx=x2-x1,x1) : (dx=x1-x2,x2);
+    for (j=1;j<=JMAX;j++) {
+        xmid=rtb+(dx *= 0.5);
+        fmid = Pc_cgs - rhoc_cgs*BOLTZMANN*xmid/(MU*PROTONMASS) - A_SB*pow(xmid,4)/3.0;
+        if (fmid <= 0.0) rtb=xmid;
+        if (fabs(dx) < TOL*fabs(xmid) || fmid == 0.0) return rtb;
+    }
+    printf("ps_Tc: bisection solve didn't converge, P_c = %e, rho_c = %e, Tgas = %e Trad = %e",Pc_cgs, rhoc_cgs, Tgas, Trad);
+    return(-1);
+#undef JMAX
+#undef TOL
+}
+
+
+/*Calculate the mean ratio of the gas pressure to the gas+radiation pressure, either by solving the Eddington quartic (for n_ad=3, Eq B5) or by using tabulated values, based on Offner 2009, code taken from ORION*/
+double ps_beta(double m, double n_ad, double rhoc, double Pc){
+    double mass=m*All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS);//in units of solar mass
+if (n_ad==3.0) {
+    // In this case we solve the Eddington quartic, P_c^3 = (3/a) (k / (mu mH))^4 (1 - beta) / beta^4 rho_c^4 for beta
+#define JMAX 40
+#define BETAMIN 1.0e-4
+#define BETAMAX 1.0
+#define TOL 1.0e-7
+    int j;
+    double dx, f, fmid, xmid, rtb;
+    double x1, x2;
+    double coef;
+
+    coef = 3.0/A_SB*pow(BOLTZMANN*rhoc/(MU*PROTONMASS),4);
+    x1=BETAMIN; x2=BETAMAX;
+    f = pow(Pc,3) - coef * (1.0-x1)/pow(x1,4);
+    fmid = pow(Pc,3) - coef * (1.0-x2)/pow(x2,4);
+    rtb = f < 0.0 ? (dx=x2-x1,x1) : (dx=x1-x2,x2);
+    for (j=1;j<=JMAX;j++) {
+      xmid=rtb+(dx *= 0.5);
+      fmid = pow(Pc,3) - coef * (1.0-xmid)/pow(xmid,4);
+      if (fmid <= 0.0) rtb=xmid;
+      if (fabs(dx) < TOL*fabs(xmid) || fmid == 0.0) return rtb;
+    }
+    printf("ps_beta: bisection solve failed to converge");
+    return(-1);
+#undef JMAX
+#undef BETAMIN
+#undef BETAMAX
+#undef TOL
+  } else {
+    // For n != 3, we use a table lookup. The values of beta have been pre-computed with mathematica. The table goes from M=5 to 50 solar masses in steps of 2.5 M_sun, and from n=1.5 to n=3 in steps of 0.5. We should never call this routine with M > 50 Msun, since by then the star should be fully on the main sequence.
+#define MTABMIN  5.0)
+#define MTABMAX  50.0
+#define MTABSTEP 2.5
+#define NTABMIN  1.5
+#define NTABMAX  3.0
+#define NTABSTEP 0.5
+    if (mass < MTABMIN) return(1.0);  // Set beta = 1 for M < 5 Msun
+    if ((mass >= MTABMAX) || (n >= NTABMAX)) {
+        printf("ps_beta: too high protostar mass, m: %g n_ad %g",mass, n_ad)
+        return(-1.0);
+    }
+    static double betatab[19][4] = {
+      {0.98785, 0.988928, 0.98947, 0.989634}, 
+      {0.97438, 0.976428, 0.977462, 0.977774}, 
+      {0.957927, 0.960895, 0.962397, 0.962846}, 
+      {0.939787, 0.943497, 0.945369, 0.945922}, 
+      {0.92091, 0.925151, 0.927276, 0.927896}, 
+      {0.901932, 0.906512, 0.908785, 0.909436}, 
+      {0.883254, 0.888017, 0.890353, 0.891013}, 
+      {0.865111, 0.86994, 0.872277, 0.872927}, 
+      {0.847635, 0.852445, 0.854739, 0.855367}, 
+      {0.830886, 0.835619, 0.837842, 0.838441}, 
+      {0.814885, 0.8195, 0.821635, 0.822201}, 
+      {0.799625, 0.804095, 0.806133, 0.806664}, 
+      {0.785082, 0.789394, 0.791328, 0.791825}, 
+      {0.771226, 0.775371, 0.777202, 0.777665}, 
+      {0.758022, 0.761997, 0.763726, 0.764156}, 
+      {0.745433, 0.749238, 0.750869, 0.751268}, 
+      {0.733423, 0.73706, 0.738596, 0.738966}, 
+      {0.721954, 0.725429, 0.726874, 0.727216}, 
+      {0.710993, 0.714311, 0.715671, 0.715987}
+    };
+
+    // Locate ourselves on the table and do a linear interpolation
+    int midx = (int) floor((mass-MTABMIN)/MTABSTEP);
+    double mwgt = (mass-(MTABMIN+midx*MTABSTEP)) / MTABSTEP;
+    int nidx = (int) floor((n_ad-NTABMIN)/NTABSTEP);
+    double nwgt = (n_ad-(NTABMIN+nidx*NTABSTEP)) / NTABSTEP;
+    return ( betatab[midx][nidx]*(1.0-mwgt)*(1.0-nwgt) +
+	     betatab[midx+1][nidx]*mwgt*(1.0-nwgt) +
+	     betatab[midx][nidx+1]*(1.0-mwgt)*nwgt +
+	     betatab[midx+1][nidx+1]*mwgt*nwgt );
+  }
+#undef MTABMIN
+#undef MTABMAX
+#undef MTABSTEP
+#undef NTABMIN
+#undef NTABMAX
+#undef NTABSTEP
+    
+}
+
+/*Calculate the mean ratio of the gas pressure to the gas+radiation pressure at the center, based on Offner 2009, code taken from ORION*/
+double inline ps_betac(double rhoc, double Pc, double Tc){
+    return( rhoc*BOLTZMANN*Tc/(MU*PROTONMASS) / Pc );
+}
+
+
+    
+#define DM (0.01*m)
+/*Calculate dlog beta/d logm by taking a numerical derivative, based on Offner 2009, code taken from ORION*/
+double ps_dlogbeta_dlogm(double m, double r, double n_ad, double beta, double rhoc, double Pc){
+    double rhoc2 = ps_rhoc( (m+DM) , n_ad, r) //slight imprecision here as we do not update the radius
+    double Pc2 = ps_Pc( (m+DM) , n_ad, r) //slight imprecision here as we do not update the radius
+    double beta2 = ps_beta( (m+dm), n_ad, rhoc2, Pc2);
+    return( m/beta * (beta2-beta) / DM );
+}
+/*Calculate dlog (beta/betac)/d logm by taking a numerical derivative, based on Offner 2009, code taken from ORION*/
+double ps_dlogbetaperbetac_dlogm(double m, double r, double n_ad, double beta, double rhoc, double Pc, double Tc){
+    double betac = ps_betac(rhoc, Pc, Tc)
+    double rhoc2 = ps_rhoc( (m+DM) , n_ad, r) //slight imprecision here as we do not update the radius
+    double Pc2 = ps_Pc( (m+DM) , n_ad, r) //slight imprecision here as we do not update the radius
+    double Tc2 = ps_Tc(rhoc2, Pc2)
+    double beta2 = ps_beta( (m+dm), n_ad, rhoc2, Pc2);
+    double betac2 = ps_betac(rhoc2, Pc2, Tc2)
+    return( m/(beta/betac) * ((beta2/betac2) - (beta/betac)) / DM );
+
+}
+#undef DM
+
+/*Calculate the luminosity required to ionize the infalling material, based on Offner 2009*/
+double ps_lum_I(double mdot){
+    double mdot_m_solar_per_year = mdot * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/UnitTime_in_s*SEC_PER_YEAR; // accretion rate in msolar/yr
+    return (2.5*SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s) * ( mdot_m_solar_per_year/(1e-5));
+}
+/*Calculate the blackbody luminosity of the star following the Hayashi track*/
+double ps_lum_Hayashi_KH(double m, double r){
+    double m_solar = mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
+    double T4000_4 = pow(m_solar , 0.55); // protostellar temperature along Hayashi track
+    return (0.2263 * r * r * T4000_4 * SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)); // luminosity from KH contraction
+}
+/*Calculate the luminosity of a main sequence star*/
+double ps_lum_MS(double m){
+    double m_solar = mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
+    double lum_sol = 0;
+    
+/***************************************************/
+/*  Original GIZMO version  */
+/*     if(m_solar > 0.012)
+        {
+        if(m_solar < 0.43) {lum_sol = 0.185 * m_solar*m_solar;}
+        else if(m_solar < 2.) {lum_sol = m_solar*m_solar*m_solar*m_solar;}
+        else if(m_solar < 53.9) {lum_sol = 1.5 * m_solar*m_solar*m_solar * sqrt(m_solar);}
+        else {lum_sol = 32000. * m_solar;}
+    } */
+    
+/***************************************************/
+/*  ORION version  */
+/*Calculate the luminosity of a main sequence star using the fitting formulas of Tout et al (1996), code taken from ORION*/
+// Parameters for the main sequence luminosity and radius fitting formulae
+#define MS_ALPHA    0.39704170
+#define MS_BETA     8.52762600
+#define MS_GAMMA    0.00025546
+#define MS_DELTA    5.43288900
+#define MS_EPSILON  5.56357900
+#define MS_ZETA     0.78866060
+#define MS_ETA      0.00586685 
+    if(m_solar > 0.1){ //minimum mass for the Tout fitting function
+        lum_sol = (MS_ALPHA*pow(m_solar,5.5) + MS_BETA*pow(m_solar,11)) / (MS_GAMMA+pow(m_solar,3)+MS_DELTA*pow(m_solar,5) 
+        + MS_EPSILON*pow(m_solar,7) + MS_ZETA*pow(m_solar,8)+MS_ETA*pow(m_solar,9.5));
+    }
+    return(lum_sol*SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s));
+#undef MS_ALPHA
+#undef MS_BETA
+#undef MS_GAMMA
+#undef MS_DELTA
+#undef MS_EPSILON
+#undef MS_ZETA
+#undef MS_ETA
+    
+    
+}
+
+/*Calculate the radius of a main sequence star*/
+double ps_radius_MS_in_solar(double m){
+    double m_solar = mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
+/***************************************************/
+/*  ORION version  */
+/*Calculate the luminosity of a main sequence star using the fitting formulas of Tout et al (1996), code taken from ORION*/
+// Parameters for the main sequence luminosity and radius fitting formulae
+#define MS_THETA    1.71535900
+#define MS_IOTA     6.59778800
+#define MS_KAPPA   10.08855000
+#define MS_LAMBDA   1.01249500
+#define MS_MU       0.07490166
+#define MS_NU       0.01077422
+#define MS_XI       3.08223400
+#define MS_UPSILON 17.84778000
+#define MS_PI       0.00022582
+    double rsol = (MS_THETA*pow(m_solar,2.5)+MS_IOTA*pow(m_solar,6.5)+MS_KAPPA*pow(m_solar,11)+
+	       MS_LAMBDA*pow(m_solar,19)+MS_MU*pow(m_solar,19.5)) /
+    (MS_NU+MS_XI*pow(m_solar,2)+UPSILON*pow(m_solar,8.5)+pow(m_solar,18.5)+
+     MS_PI*pow(m_solar,19.5));
+  return(rsol); //*SOLAR_RADIUS/All.UnitLength_in_cm);
+#undef MS_THETA
+#undef MS_IOTA
+#undef MS_KAPPA
+#undef MS_LAMBDA
+#undef MS_MU
+#undef MS_NU
+#undef MS_XI
+#undef MS_UPSILON
+#undef MS_PI
+}
+
+//remove definitions we don't use
+#undef A_SB
+#undef MU
+#endif //end of protostellar evolution functions
+
 
 /* subroutine to calculate luminosity of an individual star, according to accretion rate, 
     mass, age, etc. Modify your assumptions about main-sequence evolution here. */
@@ -46,7 +336,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
     lum = rad_eff_protostar * mdot * c_code*c_code;
     /* now for pre-main sequence, need to also check the mass-luminosity relation */
     double lum_sol = 0;
-#ifdef SINGLE_STAR_PROMOTION  
+#if (defined(SINGLE_STAR_PROMOTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0))  
     if(m_solar >= 0.012)
     {
         if(m_solar < 0.43) {lum_sol = 0.185 * m_solar*m_solar;}
@@ -55,26 +345,36 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
         else {lum_sol = 32000. * m_solar;}
     }
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION 
+
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
     if(i > 0)
     {
         if(P[i].Type == 5) /* account for pre-main sequence evolution */
         {
+#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0)
             double T4000_4 = pow(m_solar , 0.55); // protostellar temperature along Hayashi track
             double l_kh = 0.2263 * P[i].ProtoStellarRadius_inSolar*P[i].ProtoStellarRadius_inSolar * T4000_4; // luminosity from KH contraction
             if(l_kh > lum_sol) {lum_sol = l_kh;} // if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
             // now, calculate accretion luminosity using protostellar radius
 #ifdef SINGLE_STAR_FB_JETS
-            double eps_protostar=All.BAL_f_accretion; // fraction of gas that does not get launched out with a jet 
+            double eps_protostar=1.0; // since mdot is already modified by All.BAL_f_accretion 
 #else
-            double eps_protostar=0.75; //default value, although 1.0 would be energy conserving
+            double eps_protostar=0.75; //fraction of gas that does not get launched out with a jet, default value, although 1.0 would be energy conserving
 #endif
             lum = eps_protostar * (All.G * P[i].Mass / (P[i].ProtoStellarRadius_inSolar * 6.957e10 / All.UnitLength_in_cm)) * mdot; // assume GM/r liberated per unit mass. Note we need radius in code units here since everything else in 'lum' is code-units as well.
+
+#elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
+            lum = P[i].StarLuminosity; //get pre-calculated luminosity of the star
+#endif
         }
     }
 #endif
+#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0)
     lum_sol *= SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
     lum += lum_sol;
+    P[i].StarLuminosity = lum; //store total luminosity of the star
+#endif
+    
 #endif    
     return lum;
 }
