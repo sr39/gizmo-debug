@@ -2404,7 +2404,8 @@ extern ALIGN(32) struct particle_data
 
 #if ( (!defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)) && defined(SINGLE_STAR_FB_RT_HEATING) )
 #ifndef SINGLE_STAR_PROMOTION
-#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 1 //default
+//#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 1 //default
+#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 0 //default
 #else
 #define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 0 // the promotion module is incompatible with the evolution model from ORION we use in SINGLE_STAR_PROTOSTELLAR_EVOLUTION 1, so we revert to the simpler one
 #endif 
