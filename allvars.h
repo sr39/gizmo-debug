@@ -358,7 +358,8 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define DEVELOPER_MODE
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define BH_OUTPUT_GASSWALLOW //save accretion histories
-#define GALSF_SFR_IMF_VARIATION // save gas properties at sink formation time
+#define BH_OUTPUT_FORMATION_PROPERTIES //save at-formation properties of sink particles
+//#define GALSF_SFR_IMF_VARIATION // save gas properties at sink formation time
 #ifdef SLOPE2_SINKS //Slope2 sinks, this should give dN/dM~M^-2 in isoT sims
 #define BH_DEBUG_DISABLE_MERGERS
 #define BH_ALPHADISK_ACCRETION (1.2)
@@ -1019,6 +1020,7 @@ typedef unsigned long long peanokey;
 #define  GRAVITY_G      (6.672e-8)
 #define  SOLAR_MASS     (1.989e33)
 #define  SOLAR_LUM      (3.826e33)
+#define  SOLAR_RADIUS   (6.957e10)
 #define  BOLTZMANN      (1.38066e-16)
 #define  C_LIGHT        (2.9979e10)
 #define  PROTONMASS     (1.6726e-24)
@@ -1600,6 +1602,9 @@ extern FILE *FdBlackHoles;	/*!< file handle for blackholes.txt log-file. */
 #ifdef BH_OUTPUT_GASSWALLOW
 extern FILE *FdBhSwallowDetails;
 #endif
+#ifdef BH_OUTPUT_FORMATION_PROPERTIES
+extern FILE *FdBhFormationDetails;
+#endif
 #if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
 extern FILE *FdBlackHolesDetails;
 #ifdef BH_OUTPUT_MOREINFO
@@ -1731,7 +1736,7 @@ extern struct global_data_all_processes
     UnitVelocity_in_cm_per_s,	/*!< factor to convert intqernal velocity unit to cm/sec */
     UnitLength_in_cm,		/*!< factor to convert internal length unit to cm/h */
     UnitPressure_in_cgs,	/*!< factor to convert internal pressure unit to cgs units (little 'h' still around!) */
-    UnitDensity_in_cgs,		/*!< factor to convert internal length unit to g/cm^3*h^2 */
+    UnitDensity_in_cgs,		/*!< factor to convert internal density unit to g/cm^3*h^2 */
     UnitEnergy_in_cgs,		/*!< factor to convert internal energy to cgs units */
     UnitTime_in_Megayears,	/*!< factor to convert internal time to megayears/h */
     GravityConstantInternal,	/*!< If set to zero in the parameterfile, the internal value of the
@@ -2397,13 +2402,20 @@ extern ALIGN(32) struct particle_data
 #endif  
 #endif
 
-#if defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_RT_HEATING)
-#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-#endif    
+#if ( (!defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)) && defined(SINGLE_STAR_FB_RT_HEATING) )
+#ifndef SINGLE_STAR_PROMOTION
+#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 1 //default
+#else
+#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 0 // the promotion module is incompatible with the evolution model from ORION we use in SINGLE_STAR_PROTOSTELLAR_EVOLUTION 1, so we revert to the simpler one
+#endif 
+#endif
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION    
     MyFloat ProtoStellarAge; /*!< record the proto-stellar age instead of age */
-    //MyFloat PreMainSeq_Tracker; /*!< track evolution from protostar to ZAMS star */
     MyFloat ProtoStellarRadius_inSolar; /*!< protostellar radius (also tracks evolution from protostar to ZAMS star) */
+    int ProtoStellarStage; /*Track the stage of protostellar evolution, 0: pre collapse, 1: no burning, 2: fixed Tc burning, 3: variable Tc burning, 4: shell burning, 5: main sequence, see Offner 2009 Appendix B*/ //IO flag IO_STAGE_PROTOSTAR
+    MyFloat Mass_D; /* Mass of gas in the protostar that still contains D to burn */ // IO flag IO_MASS_D_PROTOSTAR
+    MyFloat StarLuminosity_Solar; /*the total luminosity of the star in L_solar units*/ //IO flag IO_LUM_SINGLESTAR
+    
 #endif
     
 #if defined(DM_SIDM)
@@ -3078,6 +3090,10 @@ enum iofields
   IO_BHMASSALPHA,
   IO_BH_ANGMOM,
   IO_BHMDOT,
+  IO_R_PROTOSTAR,
+  IO_MASS_D_PROTOSTAR,
+  IO_STAGE_PROTOSTAR,
+  IO_LUM_SINGLESTAR,
   IO_BHPROGS,
   IO_BH_DIST,
   IO_ACRB,
