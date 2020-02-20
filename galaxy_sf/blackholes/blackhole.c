@@ -926,12 +926,12 @@ void blackhole_final_operations(void)
             double lum_I = ps_lum_I(mdot); //luminosity needed to ionize the accreted material
             //Calculate luminosity from D burning
             double lum_D = 0; //luminosity from D burning
-            double dm_D = dm; //by deafult we burn no D (stage 1)
+            double dm_D = dm; //by default we burn no D (stage 1)
             if (stage==2){ //burning at fixed Tc, lum_D set to keep the central temperature constant
                 double dlogbetaperbetac_dlogm = ps_dlogbetaperbetac_dlogm(mass, r, n_ad, beta, rhoc, Pc, Tc); // ratio of gas pressure to total pressure at the center
                 lum_D = lum_int + lum_I + (All.G*mass*mdot/r) * ( 1.-fk-0.5*ag*beta * (1.+dlogbetaperbetac_dlogm) ); // Eq B8 of Offner 2009
                 //Change in available deuterium mass
-                dm_D = dm - (lum_D*dt)*(1e-5 * SOLAR_MASS)/(SEC_PER_YEAR*15.*SOLAR_LUM)*All.UnitTime_in_s/(All.UnitMass_in_g/All.HubbleParam);
+                dm_D = dm - dt * lum_D / (15.*SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)) * (1e-5) / ((All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/All.UnitTime_in_s*SEC_PER_YEAR) ;
             }
             else{ if (stage>2){
                 //burning all accreted D for stages above 2
@@ -944,7 +944,7 @@ void blackhole_final_operations(void)
             //Let's evolve the stellar radius
             double rel_dr = 2 * ( mu * (1.-(1.-fk)/(ag*beta)+0.5*dlogbeta_dlogm) - dt/(ag*beta)*r/(All.G*mass*mass) * (lum_int+lum_I-lum_D) ); //Eq B4 of Offner 2009 divided by r
             BPP(n).ProtoStellarRadius_inSolar *= (1.0+rel_dr);
-            printf("%u mass %g radius_solar %g stage %d mdot_m_solar_per_year %g mD %g rel_dr %g dm %g dm_D %g Tc %g beta %g dt %g n_ad %g lum_int %g lum_I %g lum_D %g age %g Myr\n",P[n].ID,mass,r_solar,stage, mdot_m_solar_per_year, (BPP(n).Mass_D-dm_D),rel_dr,dm, dm_D, Tc, beta, dt, n_ad, lum_int / (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), lum_I/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), lum_D/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), (All.Time-P[n].ProtoStellarAge)/UnitTime_in_Megayears );
+            printf("sink ID %u mass %g radius_solar %g stage %d mdot_m_solar_per_year %g mD %g rel_dr %g dm %g dm_D %g Tc %g beta %g dt %g n_ad %g lum_int %g lum_I %g lum_D %g age %g Myr\n",P[n].ID,mass,r_solar,stage, mdot_m_solar_per_year, (BPP(n).Mass_D-dm_D),rel_dr,dm, dm_D, Tc, beta, dt, n_ad, lum_int / (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), lum_I/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), lum_D/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), (All.Time-P[n].ProtoStellarAge)*All.UnitTime_in_Megayears );
             //Check whether the star can progress to the next state
             //Move from "no burn" to "burning at fixed Tc" phase when central temperature gets high enough for D ignition
             if ( (stage==1) && (Tc >= 1.5e6) ){ 
@@ -989,7 +989,7 @@ void blackhole_final_operations(void)
 #else
             double eps_protostar=0.75; //fraction of gas that does not get launched out with a jet, default value, although 1.0 would be energy conserving
 #endif
-    BPP(n).StarLuminosity_Solar = 0*(eps_protostar*All.G*mass*mdot/r + lum_int)/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)); //luminosity of the star in solar units
+    BPP(n).StarLuminosity_Solar = (eps_protostar*All.G*mass*mdot/r + lum_int)/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)); //luminosity of the star in solar units
 
 #endif
         
