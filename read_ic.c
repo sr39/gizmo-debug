@@ -471,7 +471,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_LUM_SINGLESTAR:
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++)
-                P[offset + n].StarLuminosity = *fp++;
+                P[offset + n].StarLuminosity_Solar = *fp++;
 
 #endif
             break;

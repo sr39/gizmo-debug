@@ -1108,7 +1108,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = BPP(pindex).StarLuminosity;
+                    *fp++ = BPP(pindex).StarLuminosity_Solar;
                     n++;
                 }
 #endif
@@ -4207,6 +4207,15 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_R_PROTOSTAR:
             strcpy(buf, "ProtoStellarRadius_inSolar");
+            break;
+        case IO_MASS_D_PROTOSTAR:
+            strcpy(buf, "Mass_D");
+            break;
+        case IO_STAGE_PROTOSTAR:
+            strcpy(buf, "ProtoStellarStage");
+            break;
+        case IO_LUM_SINGLESTAR:
+            strcpy(buf, "StarLuminosity_Solar");
             break;
         case IO_BHPROGS:
             strcpy(buf, "BH_NProgs");

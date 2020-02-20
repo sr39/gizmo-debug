@@ -2414,7 +2414,7 @@ extern ALIGN(32) struct particle_data
     MyFloat ProtoStellarRadius_inSolar; /*!< protostellar radius (also tracks evolution from protostar to ZAMS star) */
     int ProtoStellarStage; /*Track the stage of protostellar evolution, 0: pre collapse, 1: no burning, 2: fixed Tc burning, 3: variable Tc burning, 4: shell burning, 5: main sequence, see Offner 2009 Appendix B*/ //IO flag IO_STAGE_PROTOSTAR
     MyFloat Mass_D; /* Mass of gas in the protostar that still contains D to burn */ // IO flag IO_MASS_D_PROTOSTAR
-    MyDouble StarLuminosity; /*total luminosity of the star */ //IO flag IO_LUM_SINGLESTAR
+    MyFloat StarLuminosity_Solar; /*the total luminosity of the star in L_solar units*/ //IO flag IO_LUM_SINGLESTAR
     
 #endif
     
