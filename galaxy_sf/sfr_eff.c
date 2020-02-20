@@ -610,6 +610,28 @@ void star_formation_parent_routine(void)
 		        if (P[i].Mass < 0.012 * SOLAR_MASS / All.UnitMass_in_g) {P[i].ProtoStellarRadius_inSolar =  5.24 * pow(P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS, 1./3);} // constant density
                     else {P[i].ProtoStellarRadius_inSolar = 100. * (P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS);} // M propto R above this mass
 #endif
+
+#ifdef BH_OUTPUT_FORMATION_PROPERTIES //save the at-formation properties of sink particles
+                        MyDouble tempB[3]={0,0,0};
+#ifdef MAGNETIC
+                        tempB[0]=SphP[j].B[0];tempB[1]=SphP[j].B[1];tempB[2]=SphP[j].B[2]; //use particle magnetic field
+#endif
+                        double NH = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i);
+                        double dv2_abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
+                        // squared norm of the trace-free symmetric [shear] component of the velocity gradient tensor //
+                        dv2_abs = ((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])
+                            + (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2])*(SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) +
+                            (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])*(SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])) +
+                            (2./3.)*((SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[0][0] +
+                            SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[1][1] +
+                            SphP[i].Gradients.Velocity[2][2]*SphP[i].Gradients.Velocity[2][2]) -
+                            (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] +
+                            SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
+                            SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
+                        //Saves at formation sink properties in a table: 0:Time 1:ID 2:Mass 3-5:Position 6-8:Velocity 9-11:Magnetic field 12:Internal energy 13:Density 14:cs_effective 15:particle size 16:local surface density 17:local velocity dispersion 
+                        fprintf(FdBhFormationDetails,"%g %u %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g \n", All.Time, P[i].ID, P[i].Mass, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],  P[i].Vel[0], P[i].Vel[1],P[i].Vel[2], tempB[0], tempB[1], tempB[2], SphP[i].InternalEnergyPred, SphP[i].Density * All.cf_a3inv, Particle_effective_soundspeed_i(i) * All.cf_afac3, Get_Particle_Size(i) * All.cf_atime, NH, dv2_abs );
+#endif
+
 #endif // SINGLE_STAR_SINK_DYNAMICS
                 
 		    } /* closes final generation from original gas particle */

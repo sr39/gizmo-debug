@@ -358,6 +358,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define DEVELOPER_MODE
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define BH_OUTPUT_GASSWALLOW //save accretion histories
+#define BH_OUTPUT_FORMATION_PROPERTIES //save at-formation properties of sink particles
 //#define GALSF_SFR_IMF_VARIATION // save gas properties at sink formation time
 #ifdef SLOPE2_SINKS //Slope2 sinks, this should give dN/dM~M^-2 in isoT sims
 #define BH_DEBUG_DISABLE_MERGERS
@@ -1600,6 +1601,9 @@ extern FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 extern FILE *FdBlackHoles;	/*!< file handle for blackholes.txt log-file. */
 #ifdef BH_OUTPUT_GASSWALLOW
 extern FILE *FdBhSwallowDetails;
+#endif
+#ifdef BH_OUTPUT_FORMATION_PROPERTIES
+extern FILE *FdBhFormationDetails;
 #endif
 #if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
 extern FILE *FdBlackHolesDetails;

@@ -569,6 +569,14 @@ void open_outputfiles(void)
       endrun(1);
     }
 #endif // output-gas-swallow if
+#ifdef BH_OUTPUT_FORMATION_PROPERTIES
+  sprintf(buf, "%sblackhole_details/bhformation_%d.txt", All.OutputDir, ThisTask); 
+  if(!(FdBhFormationDetails = fopen(buf, mode)))
+    {
+      printf("error in opening file '%s'\n", buf);
+      endrun(1);
+    }
+#endif // output-gas-formation if
 #ifdef BH_OUTPUT_MOREINFO
   sprintf(buf, "%sblackhole_details/bhmergers_%d.txt", All.OutputDir, ThisTask); 
   if(!(FdBhMergerDetails = fopen(buf, mode)))
