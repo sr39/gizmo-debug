@@ -365,7 +365,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
             lum = eps_protostar * (All.G * P[i].Mass / (P[i].ProtoStellarRadius_inSolar * 6.957e10 / All.UnitLength_in_cm)) * mdot; // assume GM/r liberated per unit mass. Note we need radius in code units here since everything else in 'lum' is code-units as well.
 
 #elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
-            lum = P[i].StarLuminosity; //get pre-calculated luminosity of the star
+            lum = P[i].StarLuminosity_Solar * SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s); //get pre-calculated luminosity of the star
 #endif
         }
     }
@@ -373,7 +373,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 #if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0)
     lum_sol *= SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
     lum += lum_sol;
-    P[i].StarLuminosity = lum; //store total luminosity of the star
+    P[i].StarLuminosity_Solar = lum / ( SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s) ); //store total luminosity of the star in solar units
 #endif
     
 #endif    

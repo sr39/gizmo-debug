@@ -969,7 +969,7 @@ void blackhole_final_operations(void)
             BPP(n).Mass_D = BPP(n).BH_Mass; //no D burned so far
             if (m_solar >= 0.01){ stage_increase = 1;} //particle qualifies to the "no burning stage" 
         }
-        if (stage_increase){BPP(n).ProtoStellarStage += stage_increase;} //increase evolutionary stage if the particle satisfies the requirements 
+        if (stage_increase){BPP(n).ProtoStellarStage += stage_increase; printf("%u promoted to %d \n",P[n].ID,(stage+stage_increase));} //increase evolutionary stage if the particle satisfies the requirements 
     }
     else{// for main sequence stars
         BPP(n).ProtoStellarRadius_inSolar = ps_radius_MS_in_solar(mass); //update the mass if the mass changes (unlikely)
@@ -979,7 +979,7 @@ void blackhole_final_operations(void)
     /* Power based parametrization from ORION (2 params)*/
     //lum_acc = facc * fk * All.G*mass*mdot/r; //luminosity radiated at the accretion shock
     //lum_disk = (1.-fk) * All.G*mass*mdot/r; //luminosity released by material that traverses the inner disk
-    //BPP(n).StarLuminosity = lum_acc + lum_disk + lum_int; //luminosity of the star
+    //BPP(n).StarLuminosity_Solar = (lum_acc + lum_disk + lum_int) / (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)) ; //luminosity of the star
     /*********************************************/
     /* Mass flux based parametrization (1 params) */
     /* For our nominal choice of BAL_f_accretion=0.7 this gives very similar results to the ORION parameters of fk=facc=0.5, which is equivalent to 0.75*/
@@ -988,7 +988,7 @@ void blackhole_final_operations(void)
 #else
             double eps_protostar=0.75; //fraction of gas that does not get launched out with a jet, default value, although 1.0 would be energy conserving
 #endif
-    BPP(n).StarLuminosity = eps_protostar*All.G*mass*mdot/r + lum_int; //luminosity of the st
+    BPP(n).StarLuminosity_Solar = 0*(eps_protostar*All.G*mass*mdot/r + lum_int)/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)); //luminosity of the star in solar units
 
 #endif
         
