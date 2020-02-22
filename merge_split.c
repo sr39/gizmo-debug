@@ -206,7 +206,7 @@ void merge_and_split_particles(void)
                                 double v2_tmp=0,vr_tmp=0; int ktmp=0; for(ktmp=0;ktmp<3;ktmp++) {v2_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Vel[ktmp]-P[j].Vel[ktmp]); vr_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Pos[ktmp]-P[j].Pos[ktmp]);}
                                 if(vr_tmp > 0) {do_allow_merger=0;}
                                 if(v2_tmp > 0) {v2_tmp=sqrt(v2_tmp*All.cf_a2inv);} else {v2_tmp=0;}
-                                if((v2_tmp > 0.5*All.BAL_v_outflow) && (v2_tmp > 0.9*Particle_effective_soundspeed_i(j)*All.cf_afac3)) {do_allow_merger=0;}
+                                if((v2_tmp > 0.25*All.BAL_v_outflow) && (v2_tmp > 0.9*Particle_effective_soundspeed_i(j)*All.cf_afac3)) {do_allow_merger=0;}
                             }
                         }
                         if(P[j].ID == All.AGNWindID) {m_eff *= 1.0e10;} /* boost this enough to ensure the spawned element will never chosen if 'real' candidate exists */
