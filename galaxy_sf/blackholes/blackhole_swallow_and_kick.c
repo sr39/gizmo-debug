@@ -457,9 +457,7 @@ void spawn_bh_wind_feedback(void)
     }
     MPI_Allreduce(&n_particles_split, &MPI_n_particles_split, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     if(MPI_n_particles_split>0){
-#ifndef SINGLE_STAR_FB_JETS
       TreeReconstructFlag = 1; 
-#endif
       if(ThisTask == 0) {printf(" ..BH-Spawn Event: %d particles spawned \n", MPI_n_particles_split);}
     }
 
@@ -467,9 +465,6 @@ void spawn_bh_wind_feedback(void)
     All.TotNumPart += (long long)MPI_n_particles_split;
     All.TotN_gas   += (long long)MPI_n_particles_split;
     Gas_split       = n_particles_split;                    // specific to the local processor //
-//#ifdef SINGLE_STAR_FB_JETS
-    rearrange_particle_sequence();
-//#endif
 }
 
 

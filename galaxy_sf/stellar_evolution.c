@@ -32,7 +32,7 @@ double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i)
 }
 
 /*Functions for protosteller evolution model based on Offner 2009*/
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
 /*Physical constants used in formulas, undefined later*/
 #define A_SB      7.56e-15 //4 sigma_SB/c
 #define MU     0.613  /* Mean molecular weight of a fully ionized gas of solar composition*/
@@ -352,7 +352,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
     {
         if(P[i].Type == 5) /* account for pre-main sequence evolution */
         {
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0)
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0)
             double T4000_4 = pow(m_solar , 0.55); // protostellar temperature along Hayashi track
             double l_kh = 0.2263 * P[i].ProtoStellarRadius_inSolar*P[i].ProtoStellarRadius_inSolar * T4000_4; // luminosity from KH contraction
             if(l_kh > lum_sol) {lum_sol = l_kh;} // if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
@@ -370,7 +370,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
         }
     }
 #endif
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0)
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0)
     lum_sol *= SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
     lum += lum_sol;
     P[i].StarLuminosity_Solar = lum / ( SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s) ); //store total luminosity of the star in solar units

@@ -106,10 +106,13 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 {
     /* if pair is a gas particle make sure to account for its thermal pressure */
     double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
-/* #if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(MAGNETIC) */
-/*     double bmag=0; for(int k=0;k<3;k++) {bmag+=Get_Particle_BField(j,k)*Get_Particle_BField(j,k);} */
-/*     cs = sqrt(cs*cs + bmag/SphP[j].Density); */
-/* #endif */
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(MAGNETIC)
+    double bmag=0; for(int k=0;k<3;k++) {bmag+=Get_Particle_BField(j,k)*Get_Particle_BField(j,k);}
+    cs = sqrt(cs*cs + bmag/SphP[j].Density);
+#endif    
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+    if(Get_Particle_Size(j) > sink_radius * 1.396263) return 0; // particle volume should be less than sink volume, enforcing a minimum spatial resolution around the sink
+#endif
 #if defined(COOLING) && defined(SINGLE_STAR_SINK_DYNAMICS)
     double nHcgs = HYDROGEN_MASSFRAC * (SphP[j].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
     if(nHcgs > 1e13 && cs > 0.1 * vrel) { // we're probably sitting at the bottom of a quasi-hydrostatic Larson core
@@ -746,7 +749,7 @@ void blackhole_final_operations(void)
 #endif
         } // if(masses > 0) check
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-        P[n].SinkRadius = DMAX(P[n].SinkRadius, All.ForceSoftening[5]);
+	P[n].SinkRadius = DMAX(P[n].SinkRadius, All.ForceSoftening[5]);
 #endif
 
         /* Correct for the mass loss due to radiation and BAL winds */
@@ -847,7 +850,7 @@ void blackhole_final_operations(void)
         if(BPP(n).BH_Mass > 0) {TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;}
         
 
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION==0) // initially we want to do this protostellar evolution, but not the promotion
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION==0) // initially we want to do this protostellar evolution, but not the promotion
         double m_initial = DMAX(1.e-37 , (BPP(n).BH_Mass - dm)); // mass before the accretion
         double mu = DMAX(0, dm/m_initial); // relative mass accreted
         //double m_initial_msun = m_initial * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS));

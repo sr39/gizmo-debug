@@ -350,7 +350,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #define ADAPTIVE_GRAVSOFT_FORGAS
 #define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
-#define BH_RETURN_ANGMOM_TO_GAS
+//#define BH_RETURN_ANGMOM_TO_GAS
 #define SINGLE_STAR_TIMESTEPPING 0
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
