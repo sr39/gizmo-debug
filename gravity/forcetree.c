@@ -2446,6 +2446,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if((h_p_inv > 0) && (ptype_sec > -1))
                 {
 #ifdef ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING // the 'zeta' terms for conservation with adaptive softening assume kernel-scale forces are averaged to symmetrize, to make them continuous
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+		  if((ptype==0) && (ptype_sec==0)) { // we don't want to do the symmetrization below for sink interactions because it can create very noisy interactions between tiny sink particles and diffuse gas. However we do want it for gas-gas interactions so we keep the below
+#endif // SINGLE_STAR_SINK_DYNAMICS
                     h_p3_inv = h_p_inv * h_p_inv * h_p_inv; u_p = r * h_p_inv;
                     fac = 0.5 * (fac + mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1)); // average with neighbor
 #ifdef EVALPOTENTIAL
@@ -2474,13 +2477,17 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             if(!isnan(fac_corr)) {fac += fac_corr;}
                         }
                     } // if(ptype==ptype_sec)
-#else // if not averaging, follow the standard procedure of 'taking the larger' softening. this leads to less-disparate forces, but is not exact with the 'zeta' terms below //
-                    if(h_p_inv < h_inv) // if the softening of the particle whose force is being summed is greater than the target
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+		  } else { // we have an interaction involving with a sink particle - take the larger of the two softenings
+#endif // SINGLE_STAR_SINK_DYNAMICS
+#endif // ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING
+#if !defined(ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING) || defined(SINGLE_STAR_SINK_DYNAMICS) // if not averaging, follow the standard procedure of 'taking the larger' softening. this leads to less-disparate forces, but is not exact with the 'zeta' terms below // 
+                    if(h_p_inv < h_inv) // if the softening of the particle whose force is being summed i s greater than the target
                     {
                         h_p3_inv = h_p_inv * h_p_inv * h_p_inv; u_p = r * h_p_inv;
                         fac = mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1);
 #ifdef EVALPOTENTIAL
-			            facpot = mass * kernel_gravity(u, h_p_inv, h_p3_inv, -1);
+			facpot = mass * kernel_gravity(u, h_p_inv, h_p3_inv, -1);
 #endif 			
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                         fac2_tidal = mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 2);
@@ -2510,7 +2517,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             if(!isnan(fac_corr)) {fac += fac_corr;}
                         }
                     } // if(ptype==ptype_sec)
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+		  } // closes else{} block for when  we have a star interaction and take the larger of two softenings
 #endif
+#endif // !defined(ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING) || defined(SINGLE_STAR_SINK_DYNAMICS)
                 } // closes (if((h_p_inv > 0) && (ptype_sec > -1)))
 #endif // #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) //
             } // closes r < h (else) clause
