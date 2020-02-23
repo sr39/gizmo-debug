@@ -831,7 +831,7 @@ void read_parameter_file(char *fname)
   if(ThisTask == 0)		/* read parameter file on process 0 */
     {
       nt = 0;
-      for(j=0;j<MAXTAGS;j++) {strcpy(alternate_tag[nt], "xsxsxsxer2rr2rwq1DONOTUSETHISASATAGNAMEsjfnsfe29");}
+      for(j=0;j<MAXTAGS;j++) {strcpy(alternate_tag[nt], "-null[invalid_tag_name]-");}
 
       strcpy(tag[nt], "InitCondFile");
       strcpy(alternate_tag[nt], "Initial_Conditions_File");
@@ -926,7 +926,7 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 
       strcpy(tag[nt], "TimeMax");
-      strcpy(alternate_tag[nt], "Time_at_End");
+      strcpy(alternate_tag[nt], "Time_at_End_of_Simulation");
       addr[nt] = &All.TimeMax;
       id[nt++] = REAL;
 
@@ -952,6 +952,7 @@ void read_parameter_file(char *fname)
 
 #ifdef MAGNETIC
       strcpy(tag[nt], "UnitMagneticField_in_gauss");
+      strcpy(alternate_tag[nt], "UnitMagneticField_in_Gauss_for_ICSnapshotIO");
       addr[nt] = &All.UnitMagneticField_in_gauss;
       id[nt++] = REAL;
 #endif
@@ -1208,10 +1209,12 @@ void read_parameter_file(char *fname)
 #endif
         
       strcpy(tag[nt], "ComovingIntegrationOn");
+      strcpy(alternate_tag[nt], "Cosmological_Simulation_On");
       addr[nt] = &All.ComovingIntegrationOn;
       id[nt++] = INT;
 
       strcpy(tag[nt], "ICFormat");
+      strcpy(alternate_tag[nt], "Initial_Conditions_Format");
       addr[nt] = &All.ICFormat;
       id[nt++] = INT;
 
@@ -1312,6 +1315,7 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 
       strcpy(tag[nt], "GravityConstantInternal");
+      strcpy(alternate_tag[nt], "GravityConstant_SetByHand_inCodeUnits");
       addr[nt] = &All.GravityConstantInternal;
       id[nt++] = REAL;
 
@@ -2033,13 +2037,47 @@ void read_parameter_file(char *fname)
         {
             if(*tag[i])
             {
+                if(strcmp("RestartFile",tag[i])==0) {strcpy((char *)addr[i],"restart"); printf("Tag %s (%s) not set in parameter file: defaulting to value = 'restart' \n",tag[i],alternate_tag[i]); continue;}
+                if(strcmp("SnapshotFileBase",tag[i])==0) {strcpy((char *)addr[i],"snapshot"); printf("Tag %s (%s) not set in parameter file: defaulting to value = 'snapshot' \n",tag[i],alternate_tag[i]); continue;}
                 if(All.ComovingIntegrationOn==0)
                 {
-                    if(strcmp("Omega0",tag[i])==0) {printf("Tag %s not set in parameter file: defaulting to [non-cosmological] value =",0); *((double *) addr[j]) = 0; continue;}
+                    if(strcmp("Omega0",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.Omega0); continue;}
+                    if(strcmp("OmegaLambda",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.OmegaLambda); continue;}
+                    if(strcmp("OmegaBaryon",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.OmegaBaryon); continue;}
+                    if(strcmp("HubbleParam",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.HubbleParam); continue;}
+                    if(strcmp("SofteningGasMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                    if(strcmp("SofteningHaloMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                    if(strcmp("SofteningDiskMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                    if(strcmp("SofteningBulgeMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                    if(strcmp("SofteningStarsMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                    if(strcmp("SofteningBndryMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
                 }
-                
-                
-                printf("Error. I miss a value for tag '%s' in parameter file '%s'.\n", tag[i], fname);
+                if(All.OutputListOn==0) {
+                    if(strcmp("OutputListFilename",tag[i])==0) {strcpy((char *)addr[i],"output_times_dummy.txt"); continue;}
+                } else {
+                    if(strcmp("TimeOfFirstSnapshot",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                    if(strcmp("TimeBetSnapshot",tag[i])==0) {*((double *)addr[i])=1.1; continue;}
+                }
+                if(strcmp("InitGasTemp",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume temperatures defined in ICs (=%g) \n",tag[i],alternate_tag[i],All.InitGasTemp); continue;}
+                if(strcmp("MinGasTemp",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasTemp); continue;}
+                if(strcmp("MinGasHsmlFractional",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasHsmlFractional); continue;}
+                if(strcmp("MaxHsml",tag[i])==0) {*((double *)addr[i])=MAX_REAL_NUMBER; printf("Tag %s (%s) not set in parameter file: defaulting to assume no maximum (=%g) \n",tag[i],alternate_tag[i],All.MaxHsml); continue;}
+                if(strcmp("GravityConstantInternal",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to calculating in terms of other specified units if needed (=%g) \n",tag[i],alternate_tag[i],All.GravityConstantInternal); continue;}
+                if(strcmp("MinSizeTimestep",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to minimum allowed by memory table-size (=%g) \n",tag[i],alternate_tag[i],All.MinSizeTimestep); continue;}
+                if(strcmp("NumFilesWrittenInParallel",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to only main-task writes (=%d) \n",tag[i],alternate_tag[i],All.NumFilesWrittenInParallel); continue;}
+                if(strcmp("NumFilesPerSnapshot",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to single-file snapshots (=%d) \n",tag[i],alternate_tag[i],All.NumFilesPerSnapshot); continue;}
+                if(strcmp("SnapFormat",tag[i])==0) {*((int *)addr[i])=3; printf("Tag %s (%s) not set in parameter file: defaulting to standard hdf5 snapshot format (=%d) \n",tag[i],alternate_tag[i],All.SnapFormat); continue;}
+                if(strcmp("TimeLimitCPU",tag[i])==0) {*((double *)addr[i])=8.6e4; printf("Tag %s (%s) not set in parameter file: defaulting to 24-hours before auto-shutdown (=%g) \n",tag[i],alternate_tag[i],All.TimeLimitCPU); continue;}
+                if(strcmp("CpuTimeBetRestartFile",tag[i])==0) {*((double *)addr[i])=3450.; printf("Tag %s (%s) not set in parameter file: defaulting to write restart checkpoints just under every hour (=%g) \n",tag[i],alternate_tag[i],All.CpuTimeBetRestartFile); continue;}
+#if !defined(COOLING) && !defined(GALSF) && !defined(EOS_HELMHOLTZ) && !defined(EOS_ELASTIC) && !defined(EOS_TILLOTSON)
+                if(strcmp("UnitLength_in_cm",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitLength_in_cm); continue;}
+                if(strcmp("UnitMass_in_g",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitMass_in_g); continue;}
+                if(strcmp("UnitVelocity_in_cm_per_s",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitVelocity_in_cm_per_s); continue;}
+#ifdef MAGNETIC
+                if(strcmp("UnitMagneticField_in_gauss",tag[i])==0) {*((double *)addr[i])=3.5449077018110318; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitMagneticField_in_gauss); continue;}
+#endif
+#endif
+                printf("ERROR. I miss a required value for tag '%s' (or alternate name '%s') in parameter file '%s'.\n", tag[i], alternate_tag[i], fname);
                 errorFlag = 1;
             }
         }
