@@ -796,6 +796,7 @@ void read_parameter_file(char *fname)
   int id[MAXTAGS];
   void *addr[MAXTAGS];
   char tag[MAXTAGS][50];
+  char alternate_tag[MAXTAGS][50];
   int pnum, errorFlag = 0;
 
   if(sizeof(long long) != 8)
@@ -830,8 +831,10 @@ void read_parameter_file(char *fname)
   if(ThisTask == 0)		/* read parameter file on process 0 */
     {
       nt = 0;
+      for(j=0;j<MAXTAGS;j++) {strcpy(alternate_tag[nt], "xsxsxsxer2rr2rwq1DONOTUSETHISASATAGNAMEsjfnsfe29");}
 
       strcpy(tag[nt], "InitCondFile");
+      strcpy(alternate_tag[nt], "InitialConditionsFile");
       addr[nt] = All.InitCondFile;
       id[nt++] = STRING;
 
@@ -1903,7 +1906,7 @@ void read_parameter_file(char *fname)
                         continue;
                     
                     for(i = 0, j = -1; i < nt; i++)
-                        if(strcmp(buf1, tag[i]) == 0)
+                        if((strcmp(buf1, tag[i]) == 0) || (strcmp(buf1, alternate_tag[i]) == 0))
                         {
                             j = i;
                             tag[i][0] = 0;

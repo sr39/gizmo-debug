@@ -378,7 +378,7 @@
             int use_entropic_energy_equation = 0;
             double du_new = 0;
             double SM_over_ceff = fabs(Riemann_out.S_M) / DMIN(kernel.sound_i,kernel.sound_j);
-            if(SM_over_ceff < epsilon_entropic_eos_big)
+            if(SM_over_ceff < epsilon_entropic_eos_big && All.ComovingIntegrationOn == 1)
             {
                 use_entropic_energy_equation = 1;
                 double PdV_fac = Riemann_out.P_M * vdotr2_phys / All.cf_a2inv;
@@ -466,7 +466,7 @@
             /* for MFM, do the face correction for adiabatic flows here */
             double SM_over_ceff = fabs(Riemann_out.S_M) / DMIN(kernel.sound_i,kernel.sound_j); // for now use sound speed here (more conservative) vs magnetosonic speed //
             /* if SM is sufficiently large, we do nothing to the equations */
-            if(SM_over_ceff < epsilon_entropic_eos_big)
+            if(SM_over_ceff < epsilon_entropic_eos_big && All.ComovingIntegrationOn == 1)
             {
                 /* ok SM is small, we should use adiabatic equations instead */
 #ifdef MAGNETIC
