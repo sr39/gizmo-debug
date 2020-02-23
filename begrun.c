@@ -1986,18 +1986,18 @@ void read_parameter_file(char *fname)
                         {
                             case REAL:
                                 *((double *) addr[j]) = atof(buf2);
-                                fprintf(fdout, "%-35s%g\n", buf1, *((double *) addr[j]));
-                                fprintf(stdout, "%-35s%g\n", buf1, *((double *) addr[j]));
+                                fprintf(fdout, "%-50s%g\n", buf1, *((double *) addr[j]));
+                                fprintf(stdout, "%-50s%g\n", buf1, *((double *) addr[j]));
                                 break;
                             case STRING:
                                 strcpy((char *) addr[j], buf2);
-                                fprintf(fdout, "%-35s%s\n", buf1, buf2);
-                                fprintf(stdout, "%-35s%s\n", buf1, buf2);
+                                fprintf(fdout, "%-50s%s\n", buf1, buf2);
+                                fprintf(stdout, "%-50s%s\n", buf1, buf2);
                                 break;
                             case INT:
                                 *((int *) addr[j]) = atoi(buf2);
-                                fprintf(fdout, "%-35s%d\n", buf1, *((int *) addr[j]));
-                                fprintf(stdout, "%-35s%d\n", buf1, *((int *) addr[j]));
+                                fprintf(fdout, "%-50s%d\n", buf1, *((int *) addr[j]));
+                                fprintf(stdout, "%-50s%d\n", buf1, *((int *) addr[j]));
                                 break;
                         }
                     }
@@ -2151,7 +2151,7 @@ void read_parameter_file(char *fname)
     All.ErrTolForceAcc = 0.0025;
     All.MaxRMSDisplacementFac = 0.25;
     All.TimeBetStatistics = 1.0e10;
-    All.ResubmitCommand = "none";
+    strcpy(All.ResubmitCommand,"none");
     All.ResubmitOn = 0;
 #ifdef HYDRO_SPH
     All.ArtBulkViscConst = 1.0;
