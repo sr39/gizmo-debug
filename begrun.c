@@ -834,91 +834,119 @@ void read_parameter_file(char *fname)
       for(j=0;j<MAXTAGS;j++) {strcpy(alternate_tag[nt], "xsxsxsxer2rr2rwq1DONOTUSETHISASATAGNAMEsjfnsfe29");}
 
       strcpy(tag[nt], "InitCondFile");
-      strcpy(alternate_tag[nt], "InitialConditionsFile");
+      strcpy(alternate_tag[nt], "Initial_Conditions_File");
       addr[nt] = All.InitCondFile;
       id[nt++] = STRING;
 
       strcpy(tag[nt], "OutputDir");
+      strcpy(alternate_tag[nt], "Output_Directory");
       addr[nt] = All.OutputDir;
       id[nt++] = STRING;
 
       strcpy(tag[nt], "SnapshotFileBase");
+      strcpy(alternate_tag[nt], "Snapshot_Filename_Base");
       addr[nt] = All.SnapshotFileBase;
       id[nt++] = STRING;
 
       strcpy(tag[nt], "RestartFile");
+      strcpy(alternate_tag[nt], "Restart_Filename_Base");
       addr[nt] = All.RestartFile;
       id[nt++] = STRING;
 
+#ifdef DEVELOPER_MODE
+      strcpy(tag[nt], "ResubmitOn");
+      addr[nt] = &All.ResubmitOn;
+      id[nt++] = INT;
+
       strcpy(tag[nt], "ResubmitCommand");
+      strcpy(alternate_tag[nt], "Shell_Resubmission_Command");
       addr[nt] = All.ResubmitCommand;
       id[nt++] = STRING;
-
+#endif
+        
       strcpy(tag[nt], "OutputListFilename");
+      strcpy(alternate_tag[nt], "Snapshot_Times_Table_Filename");
       addr[nt] = All.OutputListFilename;
       id[nt++] = STRING;
 
       strcpy(tag[nt], "OutputListOn");
+      strcpy(alternate_tag[nt], "Use_Tabulated_Snapshot_Times");
       addr[nt] = &All.OutputListOn;
       id[nt++] = INT;
 
       strcpy(tag[nt], "Omega0");
+      strcpy(alternate_tag[nt], "Omega_Matter");
       addr[nt] = &All.Omega0;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "OmegaBaryon");
+      strcpy(alternate_tag[nt], "Omega_Baryon");
       addr[nt] = &All.OmegaBaryon;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "OmegaLambda");
+      strcpy(alternate_tag[nt], "Omega_Lambda");
       addr[nt] = &All.OmegaLambda;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "HubbleParam");
+      strcpy(alternate_tag[nt], "Hubble_Param_Little_h");
       addr[nt] = &All.HubbleParam;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "BoxSize");
+      strcpy(alternate_tag[nt], "Box_Size_In_Code_Units");
       addr[nt] = &All.BoxSize;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "MaxMemSize");
+      strcpy(alternate_tag[nt], "Max_Memory_Per_MPI_Task_in_MB");
       addr[nt] = &All.MaxMemSize;
       id[nt++] = INT;
 
       strcpy(tag[nt], "TimeOfFirstSnapshot");
+      strcpy(alternate_tag[nt], "Simulation_Time_of_First_Snapshot");
       addr[nt] = &All.TimeOfFirstSnapshot;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "CpuTimeBetRestartFile");
+      strcpy(alternate_tag[nt], "Walltime_in_Seconds_Between_Restartfiles");
       addr[nt] = &All.CpuTimeBetRestartFile;
       id[nt++] = REAL;
 
+#ifdef DEVELOPER_MODE
       strcpy(tag[nt], "TimeBetStatistics");
       addr[nt] = &All.TimeBetStatistics;
       id[nt++] = REAL;
-
+#endif
+        
       strcpy(tag[nt], "TimeBegin");
+      strcpy(alternate_tag[nt], "Time_at_ICs_Begin");
       addr[nt] = &All.TimeBegin;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "TimeMax");
+      strcpy(alternate_tag[nt], "Time_at_End");
       addr[nt] = &All.TimeMax;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "TimeBetSnapshot");
+      strcpy(alternate_tag[nt], "Time_Between_Snapshots");
       addr[nt] = &All.TimeBetSnapshot;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "UnitVelocity_in_cm_per_s");
+      strcpy(alternate_tag[nt], "UnitVelocity_in_cm_per_seconds");
       addr[nt] = &All.UnitVelocity_in_cm_per_s;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "UnitLength_in_cm");
+      strcpy(alternate_tag[nt], "UnitLength_in_cms");
       addr[nt] = &All.UnitLength_in_cm;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "UnitMass_in_g");
+      strcpy(alternate_tag[nt], "UnitMass_in_grams");
       addr[nt] = &All.UnitMass_in_g;
       id[nt++] = REAL;
 
@@ -929,6 +957,7 @@ void read_parameter_file(char *fname)
 #endif
 
       strcpy(tag[nt], "TreeDomainUpdateFrequency");
+      strcpy(alternate_tag[nt], "DomainTreeRebuild_ActiveFractionThreshold");
       addr[nt] = &All.TreeDomainUpdateFrequency;
       id[nt++] = REAL;
 
@@ -1039,10 +1068,12 @@ void read_parameter_file(char *fname)
 
 #if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         strcpy(tag[nt],"InitMetallicity");
+        strcpy(alternate_tag[nt],"Initial_Metallicity");
         addr[nt] = &All.InitMetallicityinSolar;
         id[nt++] = REAL;
         
         strcpy(tag[nt],"InitStellarAge");
+        strcpy(alternate_tag[nt],"Initial_StellarAge_NonTypeFourStars");
         addr[nt] = &All.InitStellarAgeinGyr;
         id[nt++] = REAL;
 #endif
@@ -1050,19 +1081,23 @@ void read_parameter_file(char *fname)
 
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
         strcpy(tag[nt], "SNeIIEnergyFrac");
+        strcpy(alternate_tag[nt], "SNe_Energy_Renormalization");
         addr[nt] = &All.SNeIIEnergyFrac;
         id[nt++] = REAL;
 
         strcpy(tag[nt],"GasReturnFraction");
+        strcpy(alternate_tag[nt], "StellarMassLoss_Rate_Renormalization");
         addr[nt] = &All.GasReturnFraction;
         id[nt++] = REAL;
         
         strcpy(tag[nt],"GasReturnEnergy");
+        strcpy(alternate_tag[nt], "StellarMassLoss_Energy_Renormalization");
         addr[nt] = &All.AGBGasEnergy;
         id[nt++] = REAL;
 
 #ifdef COSMIC_RAYS
         strcpy(tag[nt], "CosmicRay_SNeFraction");
+        strcpy(alternate_tag[nt], "CosmicRay_SNeEnergyFraction");
         addr[nt] = &All.CosmicRay_SNeFraction;
         id[nt++] = REAL;
 #endif
@@ -1083,10 +1118,12 @@ void read_parameter_file(char *fname)
         
 #ifdef GALSF_FB_FIRE_RT_LONGRANGE
         strcpy(tag[nt], "PhotonMomentum_fUV");
+        strcpy(alternate_tag[nt], "PhotonMomentum_min_fUV_in_SED");
         addr[nt] = &All.PhotonMomentum_fUV;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "PhotonMomentum_fOPT");
+        strcpy(alternate_tag[nt], "PhotonMomentum_min_fOPT_in_SED");
         addr[nt] = &All.PhotonMomentum_fOPT;
         id[nt++] = REAL;
 #endif
@@ -1131,29 +1168,35 @@ void read_parameter_file(char *fname)
         
 
         strcpy(tag[nt], "MinGasHsmlFractional");
+        strcpy(alternate_tag[nt], "Minimum_Gas_KernelSize_RelativetoSoftening");
         addr[nt] = &All.MinGasHsmlFractional;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "MaxHsml");
+        strcpy(alternate_tag[nt], "Maximum_KernelSize_CodeUnits");
         addr[nt] = &All.MaxHsml;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "MaxSizeTimestep");
+        strcpy(alternate_tag[nt], "Maximum_Timestep_Allowed");
         addr[nt] = &All.MaxSizeTimestep;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "MinSizeTimestep");
+        strcpy(alternate_tag[nt], "Minimum_Timestep_Allowed");
         addr[nt] = &All.MinSizeTimestep;
         id[nt++] = REAL;
         
         
         strcpy(tag[nt], "DesNumNgb");
+        strcpy(alternate_tag[nt], "Effective_Kernel_NeighborNumber");
         addr[nt] = &All.DesNumNgb;
         id[nt++] = REAL;
 
 
 #ifdef SUBFIND
       strcpy(tag[nt], "DesLinkNgb");
+      strcpy(alternate_tag[nt], "Subfind_FOFLink_NeighborNumber");
       addr[nt] = &All.DesLinkNgb;
       id[nt++] = INT;
 #endif
@@ -1173,19 +1216,18 @@ void read_parameter_file(char *fname)
       id[nt++] = INT;
 
       strcpy(tag[nt], "SnapFormat");
+      strcpy(alternate_tag[nt], "Snapshot_Format");
       addr[nt] = &All.SnapFormat;
       id[nt++] = INT;
 
       strcpy(tag[nt], "NumFilesPerSnapshot");
+      strcpy(alternate_tag[nt], "Number_of_Files_per_Snapshot");
       addr[nt] = &All.NumFilesPerSnapshot;
       id[nt++] = INT;
 
       strcpy(tag[nt], "NumFilesWrittenInParallel");
+      strcpy(alternate_tag[nt], "Number_of_Files_Written_in_Parallel");
       addr[nt] = &All.NumFilesWrittenInParallel;
-      id[nt++] = INT;
-
-      strcpy(tag[nt], "ResubmitOn");
-      addr[nt] = &All.ResubmitOn;
       id[nt++] = INT;
 
 #ifdef COOL_GRACKLE
@@ -1195,62 +1237,77 @@ void read_parameter_file(char *fname)
 #endif
         
       strcpy(tag[nt], "TimeLimitCPU");
+      strcpy(alternate_tag[nt], "MaxSimulationWallTime_in_Seconds");
       addr[nt] = &All.TimeLimitCPU;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningHalo");
+      strcpy(alternate_tag[nt], "Softening_Type1");
       addr[nt] = &All.SofteningHalo;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningDisk");
+      strcpy(alternate_tag[nt], "Softening_Type2");
       addr[nt] = &All.SofteningDisk;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningBulge");
+      strcpy(alternate_tag[nt], "Softening_Type3");
       addr[nt] = &All.SofteningBulge;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningGas");
+      strcpy(alternate_tag[nt], "Softening_Type0");
       addr[nt] = &All.SofteningGas;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningStars");
+      strcpy(alternate_tag[nt], "Softening_Type4");
       addr[nt] = &All.SofteningStars;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningBndry");
+      strcpy(alternate_tag[nt], "Softening_Type5");
       addr[nt] = &All.SofteningBndry;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningHaloMaxPhys");
+      strcpy(alternate_tag[nt], "Softening_Type1_MaxPhysLimit");
       addr[nt] = &All.SofteningHaloMaxPhys;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningDiskMaxPhys");
+      strcpy(alternate_tag[nt], "Softening_Type2_MaxPhysLimit");
       addr[nt] = &All.SofteningDiskMaxPhys;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningBulgeMaxPhys");
+      strcpy(alternate_tag[nt], "Softening_Type3_MaxPhysLimit");
       addr[nt] = &All.SofteningBulgeMaxPhys;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningGasMaxPhys");
+      strcpy(alternate_tag[nt], "Softening_Type0_MaxPhysLimit");
       addr[nt] = &All.SofteningGasMaxPhys;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningStarsMaxPhys");
+      strcpy(alternate_tag[nt], "Softening_Type4_MaxPhysLimit");
       addr[nt] = &All.SofteningStarsMaxPhys;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningBndryMaxPhys");
+      strcpy(alternate_tag[nt], "Softening_Type5_MaxPhysLimit");
       addr[nt] = &All.SofteningBndryMaxPhys;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "BufferSize");
+      strcpy(alternate_tag[nt], "MPI_Buffersize_in_MB");
       addr[nt] = &All.BufferSize;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "PartAllocFactor");
+      strcpy(alternate_tag[nt], "ParticleNumberMemoryImbalance_Limit");
       addr[nt] = &All.PartAllocFactor;
       id[nt++] = REAL;
 
@@ -1259,10 +1316,12 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 
       strcpy(tag[nt], "InitGasTemp");
+      strcpy(alternate_tag[nt], "Initial_Gas_Temperature");
       addr[nt] = &All.InitGasTemp;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "MinGasTemp");
+      strcpy(alternate_tag[nt], "Minimum_Gas_Temperature");
       addr[nt] = &All.MinGasTemp;
       id[nt++] = REAL;
 
@@ -1545,14 +1604,17 @@ void read_parameter_file(char *fname)
 #ifdef MAGNETIC
 #ifdef MHD_B_SET_IN_PARAMS
       strcpy(tag[nt], "BiniX");
+      strcpy(alternate_tag[nt], "B_initialvalue_x");
       addr[nt] = &All.BiniX;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "BiniY");
+      strcpy(alternate_tag[nt], "B_initialvalue_y");
       addr[nt] = &All.BiniY;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "BiniZ");
+      strcpy(alternate_tag[nt], "B_initialvalue_z");
       addr[nt] = &All.BiniZ;
       id[nt++] = REAL;
 #endif
@@ -1651,6 +1713,7 @@ void read_parameter_file(char *fname)
 
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
         strcpy(tag[nt], "AGS_DesNumNgb");
+        strcpy(alternate_tag[nt], "AdaptGravSoft_Effective_NeighborNumber");
         addr[nt] = &All.AGS_DesNumNgb;
         id[nt++] = REAL;
         
@@ -1949,17 +2012,13 @@ void read_parameter_file(char *fname)
                 printf("\n");
                 
                 i = strlen(All.OutputDir);
-                if(i > 0)
-                    if(All.OutputDir[i - 1] != '/')
-                        strcat(All.OutputDir, "/");
+                if(i > 0) {if(All.OutputDir[i - 1] != '/') {strcat(All.OutputDir, "/");}}
                 
                 sprintf(buf1, "%s%s", fname, "-usedvalues");
                 sprintf(buf2, "%s%s", All.OutputDir, "parameters-usedvalues");
                 sprintf(buf3, "cp %s %s", buf1, buf2);
 #ifndef NOCALLSOFSYSTEM
-                int ret;
-                
-                ret = system(buf3);
+                int ret; ret = system(buf3);
 #endif
             }
         }
@@ -1974,15 +2033,18 @@ void read_parameter_file(char *fname)
         {
             if(*tag[i])
             {
+                if(All.ComovingIntegrationOn==0)
+                {
+                    if(strcmp("Omega0",tag[i])==0) {printf("Tag %s not set in parameter file: defaulting to [non-cosmological] value =",0); *((double *) addr[j]) = 0; continue;}
+                }
+                
+                
                 printf("Error. I miss a value for tag '%s' in parameter file '%s'.\n", tag[i], fname);
                 errorFlag = 1;
             }
         }
         
-        if(All.OutputListOn && errorFlag == 0)
-            errorFlag += read_outputlist(All.OutputListFilename);
-        else
-            All.OutputListLength = 0;
+        if(All.OutputListOn && errorFlag == 0) {errorFlag += read_outputlist(All.OutputListFilename);} else {All.OutputListLength = 0;}
     }
 
     MPI_Bcast(&errorFlag, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -2050,6 +2112,9 @@ void read_parameter_file(char *fname)
     All.ErrTolTheta = 0.7;
     All.ErrTolForceAcc = 0.0025;
     All.MaxRMSDisplacementFac = 0.25;
+    All.TimeBetStatistics = 1.0e10;
+    All.ResubmitCommand = "none";
+    All.ResubmitOn = 0;
 #ifdef HYDRO_SPH
     All.ArtBulkViscConst = 1.0;
 #ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
