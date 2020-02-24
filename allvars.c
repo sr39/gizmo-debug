@@ -245,6 +245,9 @@ FILE *FdBlackHoles;		/*!< file handle for blackholes.txt log-file. */
 #ifdef BH_OUTPUT_GASSWALLOW
 FILE *FdBhSwallowDetails;
 #endif
+#ifdef BH_OUTPUT_FORMATION_PROPERTIES
+FILE *FdBhFormationDetails;
+#endif
 #if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
 FILE *FdBlackHolesDetails;
 #ifdef BH_OUTPUT_MOREINFO

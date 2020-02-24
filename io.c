@@ -1070,6 +1070,50 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
             
+        case IO_R_PROTOSTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = BPP(pindex).ProtoStellarRadius_inSolar;
+                    n++;
+                }
+#endif
+            break;
+            
+        case IO_MASS_D_PROTOSTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = BPP(pindex).Mass_D;
+                    n++;
+                }
+#endif
+            break;
+            
+        case IO_STAGE_PROTOSTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *ip_int++ = BPP(pindex).ProtoStellarStage;
+                    n++;
+                }
+#endif
+            break;
+            
+        case IO_LUM_SINGLESTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = BPP(pindex).StarLuminosity_Solar;
+                    n++;
+                }
+#endif
+            break;
+            
         case IO_BHPROGS:
 #ifdef BH_COUNTPROGS
             for(n = 0; n < pc; pindex++)
@@ -1825,6 +1869,10 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_BHMDOT:
+        case IO_R_PROTOSTAR:
+        case IO_MASS_D_PROTOSTAR:
+        case IO_STAGE_PROTOSTAR:
+        case IO_LUM_SINGLESTAR:
         case IO_CAUSTIC_COUNTER:
         case IO_FLOW_DETERMINANT:
         case IO_STREAM_DENSITY:
@@ -2182,6 +2230,10 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_BHMDOT:
+        case IO_R_PROTOSTAR:
+        case IO_MASS_D_PROTOSTAR:
+        case IO_STAGE_PROTOSTAR:
+        case IO_LUM_SINGLESTAR:
         case IO_BHPROGS:
         case IO_CAUSTIC_COUNTER:
         case IO_FLOW_DETERMINANT:
@@ -2667,6 +2719,10 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_BHMDOT:
+        case IO_R_PROTOSTAR:
+        case IO_MASS_D_PROTOSTAR:
+        case IO_STAGE_PROTOSTAR:
+        case IO_LUM_SINGLESTAR:
         case IO_BHPROGS:
             for(i = 0; i < 6; i++)
                 if(i != 5)
@@ -3158,7 +3214,34 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-            
+        case IO_R_PROTOSTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+        case IO_MASS_D_PROTOSTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+        case IO_STAGE_PROTOSTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+        case IO_LUM_SINGLESTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            return 1;
+#else
+            return 0;
+#endif
+            break;
         case IO_BH_DIST:
 #ifdef BH_CALC_DISTANCES
             return 1;
@@ -3663,6 +3746,18 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_BHMDOT:
             strncpy(label, "BHMD", 4);
             break;
+        case IO_R_PROTOSTAR:
+            strncpy(label, "RPST", 4);
+            break;
+        case IO_STAGE_PROTOSTAR:
+            strncpy(label, "PSST", 4);
+            break;
+        case IO_MASS_D_PROTOSTAR:
+            strncpy(label, "PSMD", 4);
+            break;
+        case IO_LUM_SINGLESTAR:
+            strncpy(label, "LUMS", 4);
+            break;
         case IO_BHPROGS:
             strncpy(label, "BHPC", 4);
             break;
@@ -4109,6 +4204,18 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_BHMDOT:
             strcpy(buf, "BH_Mdot");
+            break;
+        case IO_R_PROTOSTAR:
+            strcpy(buf, "ProtoStellarRadius_inSolar");
+            break;
+        case IO_MASS_D_PROTOSTAR:
+            strcpy(buf, "Mass_D");
+            break;
+        case IO_STAGE_PROTOSTAR:
+            strcpy(buf, "ProtoStellarStage");
+            break;
+        case IO_LUM_SINGLESTAR:
+            strcpy(buf, "StarLuminosity_Solar");
             break;
         case IO_BHPROGS:
             strcpy(buf, "BH_NProgs");
