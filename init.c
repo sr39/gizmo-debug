@@ -481,6 +481,9 @@ void init(void)
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                 BPP(i).BH_Mass = P[i].Mass;
 #endif
+#ifdef GRAIN_FLUID
+                BPP(i).BH_Dust_Mass = 0;
+#endif                
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
                 BPP(i).SinkRadius = All.ForceSoftening[5];
 #endif			

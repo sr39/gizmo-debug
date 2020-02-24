@@ -296,7 +296,12 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
                                     Currently, I only allow gas accretion to contribute to BH_Mdot (consistent with the energy radiating away). For star particles, if there is an alpha-disk, they are captured to the disk. If not, they directly go
                                     to the hole, without any contribution to BH_Mdot and feedback. This can be modified in the swallow loop for other purposes. The goal of the following part is to estimate BH_Mdot, which will be used to evaluate feedback strength.
                                     Therefore, we only need it when we enable BH_GRAVCAPTURE_GAS as gas accretion model. */
+#ifdef GRAIN_FLUID                    
+                    if( (P[j].Mass > 0) && ((P[j].Type == 0) || ((1<<P[j].Type) & GRAIN_PTYPES)))
+#else
                     if( (P[j].Mass > 0) && (P[j].Type == 0))
+#endif                        
+                      
                     {
                         double vrel=0, r2=0; for(k=0;k<3;k++) {vrel+=dv[k]*dv[k]; r2+=dP[k]*dP[k];}
                         double dr_code = sqrt(r2); vrel = sqrt(vrel) / All.cf_atime;
