@@ -505,6 +505,22 @@ void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i);
 #endif
 #endif
 
+#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
+double ps_adiabatic_index(int stage, double mdot);
+double ps_rhoc(double m, double n_ad, double r);
+double ps_Pc(double m, double n_ad, double r);
+double ps_Tc(double rhoc, double Pc);
+double ps_beta(double m, double n_ad, double rhoc, double Pc);
+double ps_betac(double rhoc, double Pc, double Tc);
+double ps_dlogbeta_dlogm(double m, double r, double n_ad, double beta, double rhoc, double Pc);
+double ps_dlogbetaperbetac_dlogm(double m, double r, double n_ad, double beta, double rhoc, double Pc, double Tc);
+double ps_lum_I(double mdot);
+double ps_lum_MS(double m);
+double ps_radius_MS_in_solar(double m);
+double ps_lum_Hayashi_BB(double m, double r);
+
+#endif
+
 
 #ifdef GRAIN_FLUID
 void apply_grain_dragforce(void);

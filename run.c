@@ -301,7 +301,6 @@ void calculate_non_standard_physics(void)
     {
         spawn_bh_wind_feedback();
         rearrange_particle_sequence();
-        force_treebuild(NumPart, NULL);
         MaxUnSpanMassBH=MaxUnSpanMassBH_global=0.;
     }
 #endif

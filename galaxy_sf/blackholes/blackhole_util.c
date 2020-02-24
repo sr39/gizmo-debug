@@ -104,6 +104,9 @@ void blackhole_end(void)
 #ifdef BH_OUTPUT_GASSWALLOW
         fflush(FdBhSwallowDetails);
 #endif
+#ifdef BH_OUTPUT_FORMATION_PROPERTIES
+        fflush(FdBhFormationDetails);
+#endif
 #if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
         fflush(FdBlackHolesDetails);
 #ifdef BH_OUTPUT_MOREINFO
