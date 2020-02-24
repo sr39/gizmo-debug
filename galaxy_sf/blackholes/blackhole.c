@@ -748,7 +748,6 @@ void blackhole_final_operations(void)
             BPP(n).BH_Mass_AlphaDisk += BlackholeTempInfo[i].accreted_BH_Mass_alphadisk;
 #endif
 #ifdef GRAIN_FLUID
-            printf("accreted dust mass: %g\n", BlackholeTempInfo[i].accreted_dust_Mass);
             BPP(n).BH_Dust_Mass += BlackholeTempInfo[i].accreted_dust_Mass;
 #endif            
         } // if(masses > 0) check
