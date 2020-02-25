@@ -836,7 +836,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                    if(pa->Type == 5) if (PPP[p].Hsml > maxsoft) maxsoft = PPP[p].Hsml;
+                    if(pa->Type == 5) if(PPP[p].Hsml > maxsoft) {maxsoft = PPP[p].Hsml;}
 #endif
                 }
             }
