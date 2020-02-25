@@ -505,6 +505,8 @@ void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i);
 #endif
 #endif
 
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt);
 #if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
 double ps_adiabatic_index(int stage, double mdot);
 double ps_rhoc(double m, double n_ad, double r);
@@ -518,7 +520,7 @@ double ps_lum_I(double mdot);
 double ps_lum_MS(double m);
 double ps_radius_MS_in_solar(double m);
 double ps_lum_Hayashi_BB(double m, double r);
-
+#endif
 #endif
 
 
