@@ -681,7 +681,7 @@ void set_blackhole_long_range_rp(int i, int n) /* pre-set quantities needed for 
 void blackhole_final_operations(void)
 {
     int i, k, n, bin; double dt, mass_disk, mdot_disk, MgasBulge, MstarBulge, r0;
-#ifdef SINGLE_STAR_PROMOTION
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
     int count_bhelim=0, tot_bhelim;
 #endif
 
@@ -749,7 +749,7 @@ void blackhole_final_operations(void)
 #endif
         } // if(masses > 0) check
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-	P[n].SinkRadius = DMAX(P[n].SinkRadius, All.ForceSoftening[5]);
+        P[n].SinkRadius = DMAX(P[n].SinkRadius, All.ForceSoftening[5]);
 #endif
 
         /* Correct for the mass loss due to radiation and BAL winds */
@@ -783,17 +783,16 @@ void blackhole_final_operations(void)
 #endif
 #endif // ifdef BH_WIND_CONTINUOUS
         
-	/* save local effective signal velocity of gas for sink particle CFL-like timestep criterion */
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-	P[n].BH_SurroundingGasVel = 0;
-	for(k=0; k<3; k++) {P[n].BH_SurroundingGasVel += BlackholeTempInfo[i].BH_SurroundingGasVel[k]*BlackholeTempInfo[i].BH_SurroundingGasVel[k];}
-	P[n].BH_SurroundingGasVel += convert_internalenergy_soundspeed2(n,BlackholeTempInfo[i].BH_InternalEnergy);
-	P[n].BH_SurroundingGasVel = sqrt(P[n].BH_SurroundingGasVel);
+	
+#ifdef SINGLE_STAR_SINK_DYNAMICS /* save local effective signal velocity of gas for sink particle CFL-like timestep criterion */
+        P[n].BH_SurroundingGasVel = 0;
+        for(k=0; k<3; k++) {P[n].BH_SurroundingGasVel += BlackholeTempInfo[i].BH_SurroundingGasVel[k]*BlackholeTempInfo[i].BH_SurroundingGasVel[k];}
+        P[n].BH_SurroundingGasVel += convert_internalenergy_soundspeed2(n,BlackholeTempInfo[i].BH_InternalEnergy);
+        P[n].BH_SurroundingGasVel = sqrt(P[n].BH_SurroundingGasVel);
 #endif
 
 #ifdef BH_WIND_SPAWN
-        /* DAA: for wind spawning, we only need to subtract the BAL wind mass from BH_Mass (or BH_Mass_AlphaDisk)
-            --> wind mass subtracted from P.Mass in blackhole_spawn_particle_wind_shell()  */        
+        /* DAA: for wind spawning, we only need to subtract the BAL wind mass from BH_Mass (or BH_Mass_AlphaDisk) --> wind mass subtracted from P.Mass in blackhole_spawn_particle_wind_shell()  */
         double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
 #ifdef SINGLE_STAR_FB_JETS
         if((P[n].BH_Mass * All.UnitMass_in_g / (All.HubbleParam*SOLAR_MASS) < 0.01) || P[n].Mass < 7*All.MinMassForParticleMerger) dm_wind = 0; // no jets launched yet if <0.01msun or if we haven't accreted enough to get a reliable jet direction
@@ -849,160 +848,16 @@ void blackhole_final_operations(void)
         TimeBin_BH_Mdot[bin] += BPP(n).BH_Mdot;
         if(BPP(n).BH_Mass > 0) {TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;}
         
-
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION==0) // initially we want to do this protostellar evolution, but not the promotion
-        double m_initial = DMAX(1.e-37 , (BPP(n).BH_Mass - dm)); // mass before the accretion
-        double mu = DMAX(0, dm/m_initial); // relative mass accreted
-        //double m_initial_msun = m_initial * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS));
-        //double t_premainseq = 50.0e6 / pow(m_initial_msun,2.5); // lifetime at previous mass
-        //t_premainseq /= (All.UnitTime_in_s/(All.HubbleParam * SEC_PER_YEAR));
-        ///* compute evolution of 'tracker' [here modeled on self-similar contraction along Hayashi line on Kelvin-Helmholtz timescale, with accretion 'puffing up' the star */
-        //BPP(n).PreMainSeq_Tracker = (BPP(n).PreMainSeq_Tracker * exp(-dt/t_premainseq) + mu) / (1. + mu);
-        
-        double m_solar = BPP(n).BH_Mass * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS)); // mass in solar units
-        double T4000_4 = pow(m_solar, 0.55); // (temperature/4000K)^4 along Hayashi track
-        double lum_sol = 0.0; // get the main-sequence luminosity
-        if(m_solar > 0.012)
-        {
-            if(m_solar < 0.43) {lum_sol = 0.185 * m_solar*m_solar;}
-            else if(m_solar < 2.) {lum_sol = m_solar*m_solar*m_solar*m_solar;}
-            else if(m_solar < 53.9) {lum_sol = 1.5 * m_solar*m_solar*m_solar * sqrt(m_solar);}
-            else {lum_sol = 32000. * m_solar;}
-        }
-        double R_Hayashi_Henyey = 2.1 * sqrt(lum_sol / T4000_4); // size below which, at the temperature above, contraction must occur along the Henyey track at constant luminosity
-        double t_R_evol = 0, contraction_factor = 0; // timescale for contraction
-        if(BPP(n).ProtoStellarRadius_inSolar <= R_Hayashi_Henyey)
-        {
-            // currently on Henyey track, contracting at constant Luminosity
-            t_R_evol = 1.815e7 * m_solar*m_solar / (BPP(n).ProtoStellarRadius_inSolar * lum_sol) / (All.UnitTime_in_s/(All.HubbleParam * SEC_PER_YEAR)); // contraction timescale
-            contraction_factor = 1. / (1. + dt/t_R_evol);
-        } else {
-            // currently on Hayashi track, contracting at constant Temperature
-            t_R_evol = 8.021e7 * m_solar*m_solar / (BPP(n).ProtoStellarRadius_inSolar*BPP(n).ProtoStellarRadius_inSolar*BPP(n).ProtoStellarRadius_inSolar * T4000_4) / (All.UnitTime_in_s/(All.HubbleParam * SEC_PER_YEAR)); // contraction timescale
-            contraction_factor = 1. / pow(1 + 3.*dt/t_R_evol, 1./3.);
-        }
-        double r_new = 100. * m_solar; // size of newly-formed protostar
-	    if (m_solar < 0.012) {r_new =  5.24 * pow(m_solar, 1./3);} // constant density for Jupiter-type objects
-        BPP(n).ProtoStellarRadius_inSolar = (BPP(n).ProtoStellarRadius_inSolar * contraction_factor + r_new * mu) / (1. + mu); // new size (contraction + accretion both accounted for)
-        double R_main_sequence_ignition; // main sequence radius - where contraction should halt
-        if(m_solar <= 1) {R_main_sequence_ignition = pow(m_solar,0.8);} else {R_main_sequence_ignition = pow(m_solar,0.57);}
-        
-        //if(BPP(n).PreMainSeq_Tracker < 0.36787944117144233) // if drops below 1/e [one t_premainseq timescale, in the absence of accretion], promote //
-        if(BPP(n).ProtoStellarRadius_inSolar <= R_main_sequence_ignition)
-        {
-	        BPP(n).ProtoStellarRadius_inSolar = R_main_sequence_ignition;
-            BPP(n).ProtoStellarStage = 5; //using same notation for MS as SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1
-#ifdef SINGLE_STAR_PROMOTION		    
-            P[n].Type = 4; // convert type
-            count_bhelim++; // note one fewer BH-type particle
-            P[n].StellarAge = All.Time; // mark the new ZAMS age according to the current time
-            P[n].Mass = DMAX(P[n].Mass , BPP(n).BH_Mass + BPP(n).BH_Mass_AlphaDisk);
-#endif		    
-        }
-#elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
-    /*Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B*/
-    const double frad = 0.33; //limit for forming radiative barrier
-    const double fk = 0.5; //fraction of kinetic energy that is radiated away in the inner disk before reaching the surface, using default ORION value here as it is not a GIZMO input parameter
-    
-    double mass = BPP(n).BH_Mass; //mass of star/protostar
-    double mdot = BPP(n).BH_Mdot; //accretion rate, shorter to write it this way
-    double mdot_m_solar_per_year = mdot * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/All.UnitTime_in_s*SEC_PER_YEAR; // accretion rate in msolar/yr
-    double m_solar = mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
-    double m_initial = DMAX(1.e-37 , (mass - dm)); // mass before accretion
-    double mu = DMAX(0, dm/m_initial); // relative mass accreted
-    int stage = BPP(n).ProtoStellarStage; /*what stage of stellar evolution the particle is in 0: pre collapse, 1: no burning, 2: fixed Tc burnig, 3: variable Tc burning, 4: shell burning, 5: main sequence, see Offner 2009 Appendix B*/
-    double r_solar = BPP(n).ProtoStellarRadius_inSolar; //star radius in R_solar
-    double r = r_solar * SOLAR_RADIUS/All.UnitLength_in_cm; // same but in code units
-    int stage_increase = 0; 
-    double lum_Hayashi = ps_lum_Hayashi_BB(mass, r); //blackbody radiation assuming the star follows the Hayashi track 
-    double lum_MS = ps_lum_MS(mass); //luminosity of main sequence star of m mass
-    double lum_int = DMAX(lum_Hayashi, lum_MS); //luminosity from the stellar interior
-    if (stage < 5){ //not a main sequence star
-        if (stage >= 1){ //We only evolve those that are beyond the pre-collapse phase
-            //Get properties for stellar evolution
-            double n_ad = ps_adiabatic_index(stage, mdot); //get adiabatic index. Note: ORION does not seem to update this, but I think it is worthwhile as mdot can vary over time
-            double ag = 3.0/(5.0-n_ad); //shorthand
-            double rhoc = ps_rhoc(mass, n_ad, r); //central density
-            double Pc = ps_Pc(mass, n_ad, r); //central pressure
-            double Tc = ps_Tc(rhoc,Pc); //central temperature
-            double beta = ps_beta(mass, n_ad, rhoc, Pc); //mean ratio of gas pressure to total pressure
-            double dlogbeta_dlogm = ps_dlogbeta_dlogm(mass, r, n_ad, beta, rhoc, Pc); // d log beta/ d log m
-            double lum_I = ps_lum_I(mdot); //luminosity needed to ionize the accreted material
-            //Calculate luminosity from D burning
-            double lum_D = 0; //luminosity from D burning
-            double dm_D = dm; //by default we burn no D (stage 1)
-            if (stage==2){ //burning at fixed Tc, lum_D set to keep the central temperature constant
-                double dlogbetaperbetac_dlogm = ps_dlogbetaperbetac_dlogm(mass, r, n_ad, beta, rhoc, Pc, Tc); // ratio of gas pressure to total pressure at the center
-                lum_D = lum_int + lum_I + (All.G*mass*mdot/r) * ( 1.-fk-0.5*ag*beta * (1.+dlogbetaperbetac_dlogm) ); // Eq B8 of Offner 2009
-                //Change in available deuterium mass
-                dm_D = dm - dt * lum_D / (15.*SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)) * (1e-5) / ((All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/All.UnitTime_in_s*SEC_PER_YEAR) ;
-            }
-            else{ if (stage>2){
-                //burning all accreted D for stages above 2
-                lum_D = 15.*SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s) * (mdot_m_solar_per_year/(1e-5));
-                dm_D = 0; //all new D is burned
-                }
-            }
-            //Evolve D content
-            if (dm_D!=0){ BPP(n).Mass_D += dm_D;} //change in D content
-            //Let's evolve the stellar radius
-            double rel_dr = 2 * ( mu * (1.-(1.-fk)/(ag*beta)+0.5*dlogbeta_dlogm) - dt/(ag*beta)*r/(All.G*mass*mass) * (lum_int+lum_I-lum_D) ); //Eq B4 of Offner 2009 divided by r
-            BPP(n).ProtoStellarRadius_inSolar *= (1.0+rel_dr);
-            printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: %g rel_dr: %g dm: %g dm_D: %g Tc: %g beta: %g dt: %g n_ad: %g lum_int: %g lum_I: %g lum_D: %g age_Myr: %g \n",All.Time, P[n].ID,mass,r_solar,stage, mdot_m_solar_per_year, (BPP(n).Mass_D-dm_D),rel_dr,dm, dm_D, Tc, beta, dt, n_ad, lum_int / (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), lum_I/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), lum_D/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), (All.Time-P[n].ProtoStellarAge)*All.UnitTime_in_Megayears );
-            //Check whether the star can progress to the next state
-            //Move from "no burn" to "burning at fixed Tc" phase when central temperature gets high enough for D ignition
-            if ( (stage==1) && (Tc >= 1.5e6) ){ 
-                stage_increase = 1;//particle qualifies to the "fixed Tc burn" phase
-            }
-            //Move from "burning at fixed Tc" to "variable Tc burn" phase when D runs out
-            if ( (stage==2) && (BPP(n).Mass_D <= 0) ){ 
-                BPP(n).Mass_D = 0;
-                stage_increase = 1;//particle qualifies to the "variable Tc burn" phase
-            }
-            //Move from "variable Tc burn" to "shell burn" phase when radiation becomes strong enough to form a radiative zone
-            if ( (stage==3) && ((lum_D/lum_MS) < frad) ){ 
-                stage_increase = 1;//particle qualifies to the "shell burn" phase
-                BPP(n).ProtoStellarRadius_inSolar *= 2.1; //star swells due to the formation of radiative barrier
-            }
-            //Move from "shell burn" to "main sequence" phase when the radius reaches the main sequence radius
-            if ( (stage==4) && (BPP(n).ProtoStellarRadius_inSolar <= ps_radius_MS_in_solar(mass)) ){ 
-                stage_increase = 1;//particle qualifies to become a ZAMS star
-                BPP(n).ProtoStellarRadius_inSolar = ps_radius_MS_in_solar(mass);
-            }
-        }
-        else{ //the protostar is in the "pre-collapse" state, no internal evolution, just check if it can be promoted to the next stage
-            BPP(n).Mass_D = BPP(n).BH_Mass; //no D burned so far
-            if (m_solar >= 0.01){ stage_increase = 1;} //particle qualifies to the "no burning stage" 
-        }
-        if (stage_increase){BPP(n).ProtoStellarStage += stage_increase; printf("%u promoted to %d \n",P[n].ID,(stage+stage_increase));} //increase evolutionary stage if the particle satisfies the requirements 
-    }
-    else{// for main sequence stars
-        BPP(n).ProtoStellarRadius_inSolar = ps_radius_MS_in_solar(mass); //update the mass if the mass changes (unlikely)
-    }
-    //Calculate the luminosity of the star
-    /*********************************************/
-    /* Power based parametrization from ORION (2 params)*/
-    //lum_acc = facc * fk * All.G*mass*mdot/r; //luminosity radiated at the accretion shock
-    //lum_disk = (1.-fk) * All.G*mass*mdot/r; //luminosity released by material that traverses the inner disk
-    //BPP(n).StarLuminosity_Solar = (lum_acc + lum_disk + lum_int) / (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)) ; //luminosity of the star
-    /*********************************************/
-    /* Mass flux based parametrization (1 params) */
-    /* For our nominal choice of BAL_f_accretion=0.7 this gives very similar results to the ORION parameters of fk=facc=0.5, which is equivalent to 0.75*/
-#ifdef SINGLE_STAR_FB_JETS
-            double eps_protostar=1.0; // since mdot is already modified by All.BAL_f_accretion
-#else
-            double eps_protostar=0.75; //fraction of gas that does not get launched out with a jet, default value, although 1.0 would be energy conserving
-#endif
-    BPP(n).StarLuminosity_Solar = (eps_protostar*All.G*mass*mdot/r + lum_int)/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)); //luminosity of the star in solar units
-
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+        singlestar_subgrid_protostellar_evolution_update_track(n, dm, dt);
+        if((P[n].Type!=5) || (P[n].Mass==0)) {count_bhelim++;} // our subroutine has promoted or removed this sink: one fewer BH-type particle exists now //
 #endif
         
     } // for(i=0; i<N_active_loc_BHs; i++)
-    
-    
-#if (defined(SINGLE_STAR_PROMOTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0)) 
+            
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
     MPI_Allreduce(&count_bhelim, &tot_bhelim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    All.TotBHs -= tot_bhelim; 
+    All.TotBHs -= tot_bhelim;
 #endif
     
 }
