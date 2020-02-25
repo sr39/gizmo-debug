@@ -81,6 +81,9 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 struct OUTPUT_STRUCT_NAME
 { /* define variables below as e.g. "double X;" */
     MyDouble accreted_Mass, accreted_BH_Mass, accreted_BH_Mass_alphadisk;
+#ifdef GRAIN_FLUID
+    MyDouble accreted_dust_Mass;
+#endif    
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
     MyDouble accreted_momentum[3];
 #endif
@@ -104,9 +107,12 @@ struct OUTPUT_STRUCT_NAME
 static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
     int k, target = P[i].IndexMapToTempStruc;
-    ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_Mass, out->accreted_Mass, mode);
+    ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_Mass, out->accreted_Mass, mode);    
     ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_BH_Mass, out->accreted_BH_Mass, mode);
     ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_BH_Mass_alphadisk, out->accreted_BH_Mass_alphadisk, mode);
+#ifdef GRAIN_FLUID
+    ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_dust_Mass, out->accreted_dust_Mass, mode);
+#endif    
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
     for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_momentum[k], out->accreted_momentum[k], mode);}
 #endif
@@ -201,6 +207,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     if(P[j].Type==5) {mcount_for_conserve += BPP(j).BH_Mass_AlphaDisk;}
 #endif
 #endif
+#ifdef GRAIN_FLUID
+                    if((1<<P[j].Type) & GRAIN_PTYPES) {out.accreted_dust_Mass += FLT(P[j].Mass);}
+#endif                    
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
                     for(k=0;k<3;k++) {out.accreted_momentum[k] += FLT( mcount_for_conserve * dvel[k]);}
 #endif

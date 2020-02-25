@@ -1035,6 +1035,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+
+        case IO_BHDUSTMASS:
+#if defined(BLACK_HOLES) && defined(GRAIN_FLUID)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = BPP(pindex).BH_Dust_Mass;
+                    n++;
+                }
+#endif
+            break;            
             
         case IO_BHMASSALPHA:
 #ifdef BH_ALPHADISK_ACCRETION
@@ -1865,6 +1876,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_CONDRATE:
         case IO_DENN:
         case IO_BHMASS:
+        case IO_BHDUSTMASS:
         case IO_BHMASSALPHA:
         case IO_ACRB:
         case IO_SINKRAD:
@@ -2226,6 +2238,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_CONDRATE:
         case IO_DENN:
         case IO_BHMASS:
+        case IO_BHDUSTMASS:
         case IO_BHMASSALPHA:
         case IO_ACRB:
         case IO_SINKRAD:
@@ -2714,6 +2727,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
 #endif // CHIMES 
             
         case IO_BHMASS:
+        case IO_BHDUSTMASS:
         case IO_BHMASSALPHA:
         case IO_BH_ANGMOM:
         case IO_ACRB:
@@ -3201,6 +3215,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_BHMASS:
+        case IO_BHDUSTMASS:
         case IO_BHMASSALPHA:
 #ifdef BH_ALPHADISK_ACCRETION
 	    return 1;
@@ -3728,6 +3743,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_BHMASS:
             strncpy(label, "BHMA", 4);
             break;
+        case IO_BHDUSTMASS:
+            strncpy(label, "BHDM", 4);
+            break;
         case IO_BH_DIST:
             strncpy(label, "BHR ", 4);
             break;
@@ -4186,6 +4204,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_BHMASS:
             strcpy(buf, "BH_Mass");
+            break;
+        case IO_BHDUSTMASS:
+            strcpy(buf, "BH_Dust_Mass");
             break;
         case IO_BH_DIST:
             strcpy(buf, "BH_Dist");
