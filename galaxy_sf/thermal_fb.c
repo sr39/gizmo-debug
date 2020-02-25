@@ -193,7 +193,7 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
 
 void thermal_fb_calc(void)
 {
-    PRINT_STATUS(" ..depositing thermal feedback to gas\n");
+    PRINT_STATUS(" ..depositing thermal feedback to gas");
     #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */

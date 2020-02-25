@@ -2796,13 +2796,12 @@ int blockpresent(enum iofields blocknr)
         case IO_RHO:
         case IO_HSML:
             return 1;			/* always present */
+            break;
             
         case IO_NE:
         case IO_NH:
-#if defined(COOLING) || defined(RADTRANSFER)
-#ifndef CHIMES 
+#if (defined(COOLING) || defined(RADTRANSFER)) && !defined(CHIMES)
             return 1;
-#endif
 #endif
             return 0;
             break;
@@ -2821,7 +2820,8 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_HSMS:
 #if defined(SUBFIND)
             return 1;
@@ -2868,76 +2868,77 @@ int blockpresent(enum iofields blocknr)
 #ifdef CHIMES 
         case IO_CHIMES_ABUNDANCES:
 #ifdef CHIMES_REDUCED_OUTPUT 
-	  if (Chimes_incl_full_output == 1) 
-	    return 1; 
-	  else 
-	    return 0; 
+            if (Chimes_incl_full_output == 1)
+                return 1;
+            else
+                return 0;
 #else 
-	  return 1; 
+            return 1;
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_MU: 
-	  return 1; 
+            return 1;
+            break;
 
         case IO_CHIMES_REDUCED: 
 #ifdef CHIMES_REDUCED_OUTPUT 
-	  if (Chimes_incl_full_output == 0) 
-	    return 1; 
-	  else 
-	    return 0; 
+            if (Chimes_incl_full_output == 0)
+                return 1;
+            else
+                return 0;
 #else 
-	  return 0; 
+            return 0;
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_NH:
 #ifdef CHIMES_NH_OUTPUT 
-	  return 1;
+            return 1;
 #else 
-	  return 0; 
+            return 0;
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_STAR_SIGMA: 
 #if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
-	  return 1; 
+            return 1;
 #else 
-	  return 0; 
+            return 0;
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_FLUX_G0: 
 #ifdef CHIMES_STELLAR_FLUXES  
-	  return 1; 
+            return 1;
 #else 
-	  return 0; 
+            return 0;
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_FLUX_ION: 
 #ifdef CHIMES_STELLAR_FLUXES  
-	  return 1; 
+            return 1;
 #else 
-	  return 0; 
+            return 0;
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_STAR_DENS:
 #ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
-	  return 1;
+            return 1;
 #else 
-	  return 0; 
+            return 0;
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_DELAY_HII:
 #ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
-	  return 1;
+            return 1;
 #else 
-	  return 0; 
+            return 0;
 #endif 
-	  break; 
+            break;
 
 #endif // CHIMES 
             
@@ -2962,8 +2963,6 @@ int blockpresent(enum iofields blocknr)
         case IO_HeIII:
             return 0;
             break;
-            
-            
             
         case IO_H2I:
         case IO_H2II:
@@ -2996,7 +2995,6 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             
-            
         case IO_VSTURB_DISS:
         case IO_VSTURB_DRIVE:
 #if defined(TURB_DRIVING)
@@ -3006,7 +3004,6 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
             
-            
         case IO_ACCEL:
 #ifdef OUTPUT_ACCELERATION
             return 1;
@@ -3014,7 +3011,6 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-            
             
         case IO_DTENTR:
 #ifdef OUTPUT_CHANGEOFENERGY
@@ -3046,7 +3042,7 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
+            break;
             
         case IO_BFLD:
 #ifdef MAGNETIC
@@ -3055,7 +3051,6 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-            
             
         case IO_DBDT:
             return 0;
@@ -3126,7 +3121,6 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
 
-            
         case IO_DIVB:
 #ifdef MAGNETIC
             return 1;
@@ -3142,7 +3136,6 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-            
             
         case IO_AMDC:
 #if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
@@ -3168,11 +3161,9 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
             
-            
         case IO_ROTB:
             return 0;
             break;
-            
             
         case IO_COOLRATE:
 #ifdef OUTPUT_COOLRATE
@@ -3182,7 +3173,6 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
             
-            
         case IO_CONDRATE:
 #ifdef OUTPUTCONDRATE
             return 1;
@@ -3191,12 +3181,10 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
             
-            
         case IO_DENN:
             return 0;
             break;
             
-
         case IO_BH_ANGMOM:
 #ifdef BH_FOLLOW_ACCRETED_ANGMOM
             return 1;
@@ -3215,13 +3203,29 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_BHMASS:
+#ifdef BLACK_HOLES
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+            
         case IO_BHDUSTMASS:
+#if defined(BLACK_HOLES) && defined(GRAIN_FLUID)
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+            
         case IO_BHMASSALPHA:
 #ifdef BH_ALPHADISK_ACCRETION
-	    return 1;
+            return 1;
 #else
-	    return 0;
-#endif	    
+            return 0;
+#endif
+            break;
+            
         case IO_BHMDOT:
 #ifdef BLACK_HOLES
             return 1;
@@ -3229,6 +3233,7 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
+            
         case IO_R_PROTOSTAR:
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
             return 1;
@@ -3236,6 +3241,7 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
+            
         case IO_MASS_D_PROTOSTAR:
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
             return 1;
@@ -3243,6 +3249,7 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
+            
         case IO_STAGE_PROTOSTAR:
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
             return 1;
@@ -3250,6 +3257,7 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
+            
         case IO_LUM_SINGLESTAR:
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
             return 1;
@@ -3257,12 +3265,14 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
+            
         case IO_BH_DIST:
 #ifdef BH_CALC_DISTANCES
             return 1;
 #else
             return 0;
 #endif
+            break;
             
         case IO_BHPROGS:
 #ifdef BH_COUNTPROGS
@@ -3272,13 +3282,13 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
                         
-            
         case IO_TIDALTENSORPS:
 #ifdef OUTPUT_TIDAL_TENSOR
             return 1;
 #else
             return 0;
 #endif
+            break;
             
         case IO_GDE_DISTORTIONTENSOR:
         case IO_CAUSTIC_COUNTER:
@@ -3287,6 +3297,7 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+            break;
             
         case IO_FLOW_DETERMINANT:
 #if defined(GDE_DISTORTIONTENSOR) && !defined(GDE_LEAN)
@@ -3294,7 +3305,8 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_STREAM_DENSITY:
         case IO_PHASE_SPACE_DETERMINANT:
 #ifdef GDE_DISTORTIONTENSOR
@@ -3302,21 +3314,24 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_ANNIHILATION_RADIATION:
 #if defined(GDE_DISTORTIONTENSOR) && !defined(GDE_LEAN)
             return 1;
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_LAST_CAUSTIC:
 #ifdef OUTPUT_GDE_LASTCAUSTIC
             return 1;
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_SHEET_ORIENTATION:
         case IO_INIT_DENSITY:
 #if defined(GDE_DISTORTIONTENSOR) && (!defined(GDE_LEAN) || defined(GDE_READIC))
@@ -3324,20 +3339,22 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
+            break;
             
         case IO_SECONDORDERMASS:
             if(header.flag_ic_info == FLAG_SECOND_ORDER_ICS)
                 return 1;
             else
                 return 0;
-            
+            break;
+
         case IO_EOSTEMP:
 #ifdef EOS_CARRIES_TEMPERATURE
             return 1;
 #else
             return 0;
 #endif
+            break;
 
         case IO_PRESSURE:
         case IO_EOSCS:
@@ -3346,6 +3363,7 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+            break;
 
         case IO_EOS_STRESS_TENSOR:
 #ifdef EOS_ELASTIC
@@ -3353,6 +3371,7 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+            break;
 
         case IO_EOSCOMP:
 #ifdef EOS_TILLOTSON
@@ -3360,6 +3379,7 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+            break;
 
         case IO_EOSABAR:
 #ifdef EOS_CARRIES_ABAR
@@ -3367,6 +3387,7 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+            break;
 
         case IO_EOSYE:
 #ifdef EOS_CARRIES_YE
@@ -3374,13 +3395,15 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_CBE_MOMENTS:
 #ifdef CBE_INTEGRATOR
             return 1;
 #else
             return 0;
 #endif
+            break;
 
         case IO_PARTVEL:
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -3388,14 +3411,16 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_EDDINGTON_TENSOR:
 #if defined(RADTRANSFER)
             return 1;
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_CHEM:
             return 0;
             break;
@@ -3410,7 +3435,7 @@ int blockpresent(enum iofields blocknr)
 
         case IO_AGS_RHO:
         case IO_AGS_QPT:
-#if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
+#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
             return 1;
 #else
             return 0;
@@ -3419,7 +3444,7 @@ int blockpresent(enum iofields blocknr)
 
         case IO_AGS_PSI_RE:
         case IO_AGS_PSI_IM:
-#if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
+#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
 #if (DM_FUZZY > 0)
             return 1;
 #else
@@ -3431,7 +3456,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_AGS_ZETA:
-#if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTZETA)
+#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTZETA)
             return 1;
 #else
             return 0;
@@ -3478,27 +3503,28 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
 
-    case IO_TURB_DYNAMIC_COEFF:
-    case IO_TURB_DIFF_COEFF:
+        case IO_TURB_DYNAMIC_COEFF:
+        case IO_TURB_DIFF_COEFF:
 #ifdef TURB_DIFF_DYNAMIC
-        return 1;
+            return 1;
 #else
-        return 0;
+            return 0;
 #endif
-        break;
+            break;
 
-    case IO_DYNERRORDEFAULT:
-    case IO_DYNERROR:
+        case IO_DYNERRORDEFAULT:
+        case IO_DYNERROR:
 #ifdef IO_TURB_DIFF_DYNAMIC_ERROR
-        return 1;
+            return 1;
 #else
-        return 0;
+            return 0;
 #endif
-        break; 
+            break;
+
         case IO_LASTENTRY:
             return 0;			/* will not occur */
+            break;
     }
-    
     
     return 0;			/* default: not present */
 }

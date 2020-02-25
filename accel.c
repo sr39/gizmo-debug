@@ -127,6 +127,7 @@ void compute_stellar_feedback(void)
     CPU_Step[CPU_MISC] += measure_time();
 
 #ifdef GALSF_FB_MECHANICAL /* check the mechanical sources of feedback */
+    PRINT_STATUS("Start mechanical feedback computation...");
 #ifndef GALSF_USE_SNE_ONELOOP_SCHEME
     mechanical_fb_calc(-2); /* compute weights for coupling [first weight-calculation pass] */
 #endif
