@@ -468,7 +468,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 #endif
     }
 
-#elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1
+#elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
     /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */
     
     const double frad = 0.33; //limit for forming radiative barrier
