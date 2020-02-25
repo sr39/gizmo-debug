@@ -366,6 +366,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #else
 #define BH_ALPHADISK_ACCRETION (1.0e6)
 #endif
+#ifdef GRAIN_FLUID
+#define BH_GRAVCAPTURE_NONGAS
+#endif
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1
 #endif
@@ -2344,10 +2347,13 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_COUNTPROGS
     int BH_CountProgs;
 #endif
-    MyFloat BH_Mass;
+    MyFloat BH_Mass;    
 #if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
     MyFloat SinkRadius;
 #endif
+#ifdef GRAIN_FLUID
+    MyFloat BH_Dust_Mass;
+#endif    
 #ifdef SINGLE_STAR_SINK_DYNAMICS  
     MyFloat SwallowTime; /* freefall time of a particle onto a sink particle  */
     int BH_Ngb_Flag; /* Whether or not the gas live's in a sink's hydro stencil */
@@ -3091,6 +3097,7 @@ enum iofields
   IO_BHMASSALPHA,
   IO_BH_ANGMOM,
   IO_BHMDOT,
+  IO_BHDUSTMASS,
   IO_R_PROTOSTAR,
   IO_MASS_D_PROTOSTAR,
   IO_STAGE_PROTOSTAR,

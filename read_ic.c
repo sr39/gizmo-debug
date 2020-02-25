@@ -399,6 +399,15 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++) {P[offset + n].BH_Mass = *fp++;}
 #endif
             break;
+
+        case IO_BHDUSTMASS:
+#if defined(BLACK_HOLES) && defined(GRAIN_FLUID)
+            for(n = 0; n < pc; n++)
+                P[offset + n].BH_Dust_Mass = *fp++;
+#endif
+            break;
+
+            
             
         case IO_BH_DIST:
             break;
