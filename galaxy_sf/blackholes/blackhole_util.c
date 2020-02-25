@@ -166,4 +166,3 @@ void blackhole_properties_loop(void) /* Note, normalize_temp_info_struct is now 
     }// for(i=0; i<N_active_loc_BHs; i++)
 }
 
-
