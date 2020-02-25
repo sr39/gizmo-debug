@@ -106,22 +106,22 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 {
     /* if pair is a gas particle make sure to account for its thermal pressure */
     double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(MAGNETIC)
-    if(P[j].Type == 0) {
-        double bmag=0; for(int k=0;k<3;k++) {bmag+=Get_Particle_BField(j,k)*Get_Particle_BField(j,k);}
-        cs = sqrt(cs*cs + bmag/SphP[j].Density);
-    }
-#endif    
+    
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-    if(P[j].Type == 0) {if(Get_Particle_Size(j) > sink_radius * 1.396263) return 0;} // particle volume should be less than sink volume, enforcing a minimum spatial resolution around the sink
+    if(P[j].Type == 0) {
+        if(Get_Particle_Size(j) > sink_radius*1.396263) {return 0;} // particle volume should be less than sink volume, enforcing a minimum spatial resolution around the sink
+#if defined(MAGNETIC)
+        double bmag=0; int k; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(j,k)*Get_Particle_BField(j,k);}
+        cs = sqrt(cs*cs + bmag/SphP[j].Density);
 #endif
-#if defined(COOLING) && defined(SINGLE_STAR_SINK_DYNAMICS)
-    double nHcgs = HYDROGEN_MASSFRAC * (SphP[j].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
-    if(nHcgs > 1e13 && cs > 0.1 * vrel) { // we're probably sitting at the bottom of a quasi-hydrostatic Larson core
-        double m_eff = 4. * M_PI * dr_code * dr_code * dr_code * SphP[j].Density; // assume an isothermal sphere interior, for Shu-type solution
-        vesc = DMAX(sqrt(2*All.G * m_eff / dr_code), vesc); // re-estimate vesc using self-gravity of the gas
+#if defined(COOLING)
+        double nHcgs = HYDROGEN_MASSFRAC * (SphP[j].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
+        if(nHcgs > 1e13 && cs > 0.1 * vrel) { // we're probably sitting at the bottom of a quasi-hydrostatic Larson core
+            double m_eff = 4. * M_PI * dr_code * dr_code * dr_code * SphP[j].Density; vesc = DMAX(sqrt(2*All.G * m_eff / dr_code), vesc);} // assume an isothermal sphere interior, for Shu-type solution, and re-estimate vesc using self-gravity of the gas
+#endif
     }
-#endif    
+#endif // SINGLE_STAR_SINK_DYNAMICS
+    
     double v2 = (vrel*vrel+cs*cs)/(vesc*vesc); int bound = 0;
     if(v2 < 1) 
     {
