@@ -570,19 +570,12 @@ static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int
     SphP[i].dMass += out->dMass;
     for(k=0;k<3;k++) {SphP[i].GravWorkTerm[k] += out->GravWorkTerm[k];}
 #endif
-    if(SphP[i].MaxSignalVel < out->MaxSignalVel)
-        SphP[i].MaxSignalVel = out->MaxSignalVel;
+    if(SphP[i].MaxSignalVel < out->MaxSignalVel) {SphP[i].MaxSignalVel = out->MaxSignalVel;}
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
-    if(SphP[i].MaxKineticEnergyNgb < out->MaxKineticEnergyNgb)
-        SphP[i].MaxKineticEnergyNgb = out->MaxKineticEnergyNgb;
+    if(SphP[i].MaxKineticEnergyNgb < out->MaxKineticEnergyNgb) {SphP[i].MaxKineticEnergyNgb = out->MaxKineticEnergyNgb;}
 #endif
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
-    for(k=0;k<NUM_METAL_SPECIES;k++)
-    {
-        double z_tmp = P[i].Metallicity[k] + out->Dyield[k] / P[i].Mass;
-        z_tmp = DMAX(z_tmp , 0.5 * P[i].Metallicity[k]);
-        P[i].Metallicity[k] = z_tmp;
-    }
+    for(k=0;k<NUM_METAL_SPECIES;k++) {SphP[i].Dyield[k] += out->Dyield[k];}
 #endif
 
 #ifdef CHIMES_TURB_DIFF_IONS  
@@ -607,11 +600,7 @@ static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int
     
 #if defined(MAGNETIC)
     /* can't just do DtB += out-> DtB, because for SPH methods, the induction equation is solved in the density loop; need to simply add it here */
-    for(k=0;k<3;k++)
-    {
-        SphP[i].DtB[k] += out->DtB[k];
-        SphP[i].Face_Area[k] += out->Face_Area[k];
-    }
+    for(k=0;k<3;k++) {SphP[i].DtB[k] += out->DtB[k]; SphP[i].Face_Area[k] += out->Face_Area[k];}
     SphP[i].divB += out->divB;
 #if defined(DIVBCLEANING_DEDNER)
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME // mass-based phi-flux
@@ -813,7 +802,10 @@ void hydro_final_operations_and_cleanup(void)
 #endif
 
             
-            
+#if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME)) /* update the metal masses from exchange */
+            for(k=0;k<NUM_METAL_SPECIES;k++) {P[i].Metallicity[k] = DMAX(P[i].Metallicity[k] + SphP[i].Dyield[k] / P[i].Mass , 0.01*P[i].Metallicity[k]);}
+#endif
+
             
 #ifdef GALSF_SUBGRID_WINDS
             /* if we have winds, we decouple particles briefly if delaytime>0 */
@@ -921,6 +913,9 @@ void hydro_force_initial_operations_preloop(void)
             for(k=0;k<3;k++) {SphP[i].HydroAccel[k] = 0;} //SphP[i].dMomentum[k] = 0;//manifest-indiv-timestep-debug//
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtMass = 0; SphP[i].dMass = 0; for(k=0;k<3;k++) SphP[i].GravWorkTerm[k] = 0;
+#endif
+#if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
+            for(k=0;k<NUM_METAL_SPECIES;k++) {SphP[i].Dyield[k] = 0;}
 #endif
 #if defined(RT_SOLVER_EXPLICIT)
 #if defined(RT_EVOLVE_ENERGY)

@@ -138,19 +138,17 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
             /* --------------------------------------------------------------------------------- */
             /* get the neighbor list */
             /* --------------------------------------------------------------------------------- */
-            numngb = ngb_treefind_pairs_threads(local.Pos, kernel.h_i, target, &startnode, mode, exportflag,
-                                       exportnodecount, exportindex, ngblist);
+            numngb = ngb_treefind_pairs_threads(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             if(numngb < 0) return -1;
             
             for(n = 0; n < numngb; n++)
             {
                 j = ngblist[n];
                 
-                /* check if I need to compute this pair-wise interaction from "i" to "j", or skip it and 
-                    let it be computed from "j" to "i" */
+                /* check if I need to compute this pair-wise interaction from "i" to "j", or skip it and let it be computed from "j" to "i" */
                 integertime TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
                 int j_is_active_for_fluxes = 0;
-#if !defined(BOX_SHEARING) && !defined(OPENMP) && !defined(_OPENMP) // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this; OpenMP can mess with order of operations and vectorization means no gain here with OMP anyways) //
+#if 0 //!defined(BOX_SHEARING) && !defined(_OPENMP) && !defined(HYDRO_MESHLESS_FINITE_VOLUME) // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this; OpenMP on some new compilers goes bad here because pointers [e.g. P...] are not thread-safe shared with predictive operations, and vectorization means no gain here with OMP anyways) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
                 /* use relative positions to break degeneracy */
                 if(local.Timestep == TimeStep_J)
@@ -308,15 +306,15 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                     with the HLL reimann problem solution. This adds numerical diffusion (albeit limited to the magnitude of the 
                     physical diffusion coefficients), but stabilizes the relevant equations */
 #ifdef HYDRO_SPH
-        face_vel_i = face_vel_j = 0;
-        for(k=0;k<3;k++) 
-        {
-            face_vel_i += local.Vel[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
-            face_vel_j += SphP[j].VelPred[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
-        }
-        // SPH: use the sph 'effective areas' oriented along the lines between particles and direct-difference gradients
-        Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density) * All.cf_atime*All.cf_atime;
-        for(k=0;k<3;k++) {Face_Area_Vec[k] = Face_Area_Norm * kernel.dp[k]/kernel.r;}
+                face_vel_i = face_vel_j = 0;
+                for(k=0;k<3;k++)
+                {
+                    face_vel_i += local.Vel[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
+                    face_vel_j += SphP[j].VelPred[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
+                }
+                // SPH: use the sph 'effective areas' oriented along the lines between particles and direct-difference gradients
+                Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density) * All.cf_atime*All.cf_atime;
+                for(k=0;k<3;k++) {Face_Area_Vec[k] = Face_Area_Norm * kernel.dp[k]/kernel.r;}
 #endif
 
 #ifdef MAGNETIC
@@ -387,13 +385,15 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 if(dmass_holder > 0) {dmass_limiter=P[j].Mass;} else {dmass_limiter=local.Mass;}
                 dmass_limiter *= 0.1;
                 if(fabs(dmass_holder) > dmass_limiter) {dmass_holder *= dmass_limiter / fabs(dmass_holder);}
-                out.dMass += dmass_holder;
+                if((local.Timestep < TimeStep_J) || (local.Timestep==TimeStep_J && j_is_active_for_fluxes==1)) {out.dMass += dmass_holder; SphP[j].dMass -= dmass_holder;}
+                if(local.Timestep==TimeStep_J && j_is_active_for_fluxes==0) {out.dMass += 0.5*dmass_holder; SphP[j].dMass -= 0.5*dmass_holder;}
+                 /* this gets subtracted here to ensure the exchange is exact */
                 out.DtMass += Fluxes.rho;
-#ifndef BOX_SHEARING
-                SphP[j].dMass -= dmass_holder;
-#endif
                 double gravwork[3]; gravwork[0]=Fluxes.rho*kernel.dp[0]; gravwork[1]=Fluxes.rho*kernel.dp[1]; gravwork[2]=Fluxes.rho*kernel.dp[2];
                 for(k=0;k<3;k++) {out.GravWorkTerm[k] += gravwork[k];}
+#ifdef METALS   /* if we have mass fluxes, we need to have metal fluxes if we're using them (or any other passive scalars) */
+                if(Fluxes.rho > 0) {out.Dyield[k] += (P[j].Metallicity[k] - local.Metallicity[k]) * dmass_holder;}
+#endif
 #endif
                 for(k=0;k<3;k++) {out.Acc[k] += Fluxes.v[k];}
                 out.DtInternalEnergy += Fluxes.p;                
@@ -434,6 +434,9 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                     SphP[j].DtMass -= Fluxes.rho;
                     for(k=0;k<3;k++) {SphP[j].GravWorkTerm[k] -= gravwork[k];}
+#ifdef METALS       /* if we have mass fluxes, we need to have metal fluxes if we're using them (or any other passive scalars) */
+                    if(Fluxes.rho < 0) {SphP[j].Dyield[k] = (P[j].Metallicity[k] - local.Metallicity[k]) * dmass_holder;}
+#endif
 #endif
                     for(k=0;k<3;k++) {SphP[j].HydroAccel[k] -= Fluxes.v[k];}
                     SphP[j].DtInternalEnergy -= Fluxes.p;
@@ -467,33 +470,13 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif
 #endif
 #endif // magnetic //
+                } // j_is_active_for_fluxes
 
-                }
-
-                /* if we have mass fluxes, we need to have metal fluxes if we're using them (or any other passive scalars) */
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME
-                if(dmass_holder != 0)
-                {
-#ifdef METALS
-                    if(Fluxes.rho > 0)
-                    {
-                        /* particle i gains mass from particle j */
-                        for(k=0;k<NUM_METAL_SPECIES;k++)
-                            out.Dyield[k] += (P[j].Metallicity[k] - local.Metallicity[k]) * dmass_holder;
-                    } else {
-                        /* particle j gains mass from particle i */
-                        dmass_holder /= -P[j].Mass;
-                        for(k=0;k<NUM_METAL_SPECIES;k++)
-                            P[j].Metallicity[k] += (local.Metallicity[k] - P[j].Metallicity[k]) * dmass_holder;
-                    }
-#endif
-                }
-#endif
-
+                
                 /* --------------------------------------------------------------------------------- */
                 /* don't forget to save the signal velocity for time-stepping! */
                 /* --------------------------------------------------------------------------------- */
-                if(kernel.vsig > out.MaxSignalVel) out.MaxSignalVel = kernel.vsig;
+                if(kernel.vsig > out.MaxSignalVel) {out.MaxSignalVel = kernel.vsig;}
                 if(j_is_active_for_fluxes) {if(kernel.vsig > SphP[j].MaxSignalVel) SphP[j].MaxSignalVel = kernel.vsig;}
 #ifdef WAKEUP
                 if(!(TimeBinActive[P[j].TimeBin]))
@@ -515,19 +498,14 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
             if(listindex < NODELISTLENGTH)
             {
                 startnode = DATAGET_NAME[target].NodeList[listindex];
-                if(startnode >= 0)
-                    startnode = Nodes[startnode].u.d.nextnode;	/* open it */
+                if(startnode >= 0) {startnode = Nodes[startnode].u.d.nextnode;}	/* open it */
             }
         } // if(mode == 1) //
 #endif
     } // while(startnode >= 0) //
     
     /* Now collect the result at the right place */
-    if(mode == 0)
-        out2particle_hydra(&out, target, 0, loop_iteration);
-    else
-        DATARESULT_NAME[target] = out;
-    
+    if(mode == 0) {out2particle_hydra(&out, target, 0, loop_iteration);} else {DATARESULT_NAME[target] = out;}
     return 0;
 }
 
