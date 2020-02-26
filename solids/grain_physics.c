@@ -69,7 +69,7 @@ void apply_grain_dragforce(void)
 #ifdef GRAIN_EPSTEIN_STOKES
                 if(grain_subtype == 0 || grain_subtype == 1)
                 {
-                    double mu = 2.3*PROTONMASS, temperature = mu * (1.4-1.) * U_TO_TEMP_UNITS * P[i].Gas_InternalEnergy; // assume molecular gas (as its the only regime where this is relevant) with gamma=1.4
+                    double mu = 2.3*PROTONMASS, temperature = (mu/PROTONMASS) * (1.4-1.) * U_TO_TEMP_UNITS * P[i].Gas_InternalEnergy; // assume molecular gas (as its the only regime where this is relevant) with gamma=1.4
                     double cross_section = GRAIN_EPSTEIN_STOKES * 2.0e-15 * (1. + 70./temperature);
                     cross_section /= (All.UnitLength_in_cm * All.UnitLength_in_cm / (All.HubbleParam*All.HubbleParam));
                     double n_mol = rho_gas / (mu * All.HubbleParam/All.UnitMass_in_g), mean_free_path = 1 / (n_mol * cross_section); // should be in code units now //
