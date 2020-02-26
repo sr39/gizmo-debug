@@ -2627,7 +2627,10 @@ extern struct sph_particle_data
     MyDouble MaxKineticEnergyNgb;   /*!< maximum kinetic energy (with respect to neighbors): use for entropy 'switch' */
 #endif
 
-    
+#if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
+    MyFloat Dyield[NUM_METAL_SPECIES];
+#endif
+
 #ifdef HYDRO_SPH
     MyDouble DhsmlHydroSumFactor;   /* for 'traditional' SPH, we need the SPH hydro-element volume estimator */
 #endif
