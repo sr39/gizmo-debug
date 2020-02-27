@@ -126,8 +126,6 @@ void run(void)
         
         do_second_halfstep_kick();	/* this does the half-step kick at the end of the timestep */
 
-        calculate_non_standard_physics();	/* source terms are here treated in a strang-split fashion */
-
 #ifdef HERMITE_INTEGRATION // we do a prediction step using the saved "old" pos, accel and jerk from the beginning of the timestep. Then we recompute accel and jerk and do the correction
         do_hermite_prediction();
         HermiteOnlyFlag = 1;
@@ -135,6 +133,9 @@ void run(void)
         HermiteOnlyFlag = 0;
         do_hermite_correction();
 #endif                		
+        
+        calculate_non_standard_physics();	/* source terms are here treated in a strang-split fashion */
+
 
 	
         /* Check whether we need to interrupt the run */
