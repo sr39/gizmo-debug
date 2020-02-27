@@ -728,15 +728,9 @@ void blackhole_final_operations(void)
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM) && !defined(BH_REPOSITION_ON_POTMIN)
             for(k=0;k<3;k++) {P[n].Vel[k] = (P[n].Vel[k]*m_new+ BlackholeTempInfo[i].accreted_momentum[k]) / m_new;} 
-#ifdef HERMITE_INTEGRATION
-            for(k=0;k<3;k++) {P[n].OldVel[k] = (P[n].OldVel[k]*m_new + BlackholeTempInfo[i].accreted_momentum[k]) / m_new;}
-#endif	    
 #endif
 #if defined(BH_FOLLOW_ACCRETED_COM) && !defined(BH_REPOSITION_ON_POTMIN)
             for(k=0;k<3;k++) {P[n].Pos[k] = (P[n].Pos[k]*m_new + BlackholeTempInfo[i].accreted_centerofmass[k]) / m_new;}
-#ifdef HERMITE_INTEGRATION
-            for(k=0;k<3;k++) {P[n].OldPos[k] = (P[n].OldPos[k]*m_new + BlackholeTempInfo[i].accreted_centerofmass[k]) / m_new;}
-#endif	    	    
 #endif
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
             for(k=0;k<3;k++) {BPP(n).BH_Specific_AngMom[k] = (BPP(n).BH_Specific_AngMom[k]*P[n].Mass + BlackholeTempInfo[i].accreted_J[k]) / m_new;}
