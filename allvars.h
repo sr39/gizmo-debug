@@ -1416,7 +1416,7 @@ extern double TimeBin_BH_Medd[TIMEBINS];
 #endif
 
 #ifdef HERMITE_INTEGRATION
-extern int HermiteOnlyFlag;     /*!< flag to only do Hermite integration for applicable particles (ie. stars) in the gravity routine */
+extern int HermiteOnlyFlag;     /*!< flag to only do Hermite integration for applicable particles (ie. stars) in the gravity routine - set =1 on the first prediction pass and =2 on the second correction pass */
 #endif
 
 extern int ThisTask;		/*!< the number of the local processor  */

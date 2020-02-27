@@ -2736,7 +2736,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     if(mode == 0)
     {
 #ifdef HERMITE_INTEGRATION
-        if(HermiteOnlyFlag == 1){ // we're on the first hermite-only pass, let's save the grav acceleration from before the previous drift
+        if(HermiteOnlyFlag == 1){ // we're on the first hermite-only pass, let's save the grav acceleration from before the previous kick
             if(eligible_for_hermite(target)){
                 int k; for(k=0; k<3; k++) { P[target].Hermite_OldAcc[k] = P[target].GravAccel[k];}
             }
