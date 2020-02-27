@@ -360,12 +360,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define BH_OUTPUT_GASSWALLOW //save accretion histories
 #define BH_OUTPUT_FORMATION_PROPERTIES //save at-formation properties of sink particles
 //#define GALSF_SFR_IMF_VARIATION // save gas properties at sink formation time
-#ifdef SLOPE2_SINKS //Slope2 sinks, this should give dN/dM~M^-2 in isoT sims
-#define BH_DEBUG_DISABLE_MERGERS
-#define BH_ALPHADISK_ACCRETION (1.2)
-#else
 #define BH_ALPHADISK_ACCRETION (1.0e6)
-#endif
 #ifdef GRAIN_FLUID
 #define BH_GRAVCAPTURE_NONGAS
 #endif
