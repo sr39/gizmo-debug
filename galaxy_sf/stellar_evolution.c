@@ -497,6 +497,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
             int n_subcycle=1; //no subcycle by default
             double dm_curr = dm; double dt_curr = dt;
             mass = m_initial; //value at the beginning o the timestep
+            double n_ad, ag, rhoc, Pc, Tc, beta, dlogbeta_dlogm, lum_D, dm_D, rel_dr; //need to declare them here or the compiler reduces their scope to the loop???
             do{//we use a do-while loop here because we first try the full timestep and if dr is too large we subcycle
             //Note: this subcycling does not update stage, so a protostar could overshoot
                 //Evolve mass
@@ -506,16 +507,16 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
                 lum_Hayashi = ps_lum_Hayashi_BB(mass, r); //blackbody radiation assuming the star follows the Hayashi track
                 lum_MS = ps_lum_MS(mass); //luminosity of main sequence star of m mass
                 lum_int = DMAX(lum_Hayashi, lum_MS); //luminosity from the stellar interior
-                double n_ad = ps_adiabatic_index(stage, mdot); //get adiabatic index. Note: ORION does not seem to update this, but I think it is worthwhile as mdot can vary over time
-                double ag = 3.0/(5.0-n_ad); //shorthand
-                double rhoc = ps_rhoc(mass, n_ad, r); //central density
-                double Pc = ps_Pc(mass, n_ad, r); //central pressure
-                double Tc = ps_Tc(rhoc,Pc); //central temperature
-                double beta = ps_beta(mass, n_ad, rhoc, Pc); //mean ratio of gas pressure to total pressure
-                double dlogbeta_dlogm = ps_dlogbeta_dlogm(mass, r, n_ad, beta, rhoc, Pc); // d log beta/ d log m
+                n_ad = ps_adiabatic_index(stage, mdot); //get adiabatic index. Note: ORION does not seem to update this, but I think it is worthwhile as mdot can vary over time
+                ag = 3.0/(5.0-n_ad); //shorthand
+                rhoc = ps_rhoc(mass, n_ad, r); //central density
+                Pc = ps_Pc(mass, n_ad, r); //central pressure
+                Tc = ps_Tc(rhoc,Pc); //central temperature
+                beta = ps_beta(mass, n_ad, rhoc, Pc); //mean ratio of gas pressure to total pressure
+                dlogbeta_dlogm = ps_dlogbeta_dlogm(mass, r, n_ad, beta, rhoc, Pc); // d log beta/ d log m
                 //Calculate luminosity from D burning
-                double lum_D = 0; //luminosity from D burning
-                double dm_D = dm_curr; //by default we burn no D (stage 1)
+                lum_D = 0; //luminosity from D burning
+                dm_D = dm_curr; //by default we burn no D (stage 1)
                 if (stage==2){ //burning at fixed Tc, lum_D set to keep the central temperature constant
                     double dlogbetaperbetac_dlogm = ps_dlogbetaperbetac_dlogm(mass, r, n_ad, beta, rhoc, Pc, Tc); // ratio of gas pressure to total pressure at the center
                     lum_D = lum_int + lum_I + (All.G*mass*mdot/r) * ( 1.-fk-0.5*ag*beta * (1.+dlogbetaperbetac_dlogm) ); // Eq B8 of Offner 2009
@@ -530,7 +531,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
                     }
                 }                
                 //Let's evolve the stellar radius
-                double rel_dr = 2. * ( mu * (1.-(1.-fk)/(ag*beta)+0.5*dlogbeta_dlogm) - dt_curr/(ag*beta)*r/(All.G*mass*mass) * (lum_int+lum_I-lum_D) ); //Eq B4 of Offner 2009 divided by r
+                rel_dr = 2. * ( dm_rel * (1.-(1.-fk)/(ag*beta)+0.5*dlogbeta_dlogm) - dt_curr/(ag*beta)*r/(All.G*mass*mass) * (lum_int+lum_I-lum_D) ); //Eq B4 of Offner 2009 divided by r
                 //Let's check if we need to subcycle
                 if (rel_dr > max_rel_dr){
                     n_subcycle = (int) DMAX(ceil(rel_dr/max_rel_dr), 2.0*n_subcycle); //number of subcycle steps, at least 2, either double the previous number or estimated from dr
