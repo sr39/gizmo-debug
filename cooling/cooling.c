@@ -2016,7 +2016,8 @@ void chimes_init_depletion_data(void)
   
         i = 0;
 #ifdef _OPENMP
-        for (i = 0; i < OPENMP; i++)
+        int n_openmp_threads = omp_get_num_threads();
+        for (i = 0; i < n_openmp_threads; i++)
 #endif
         {
             memcpy(ChimesDepletionData[i].SolarAbund, SolarAbund, DEPL_N_ELEM * sizeof(double));

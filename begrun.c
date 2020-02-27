@@ -2388,8 +2388,7 @@ void read_parameter_file(char *fname)
     
 #ifdef PTHREADS_NUM_THREADS
 #ifdef _OPENMP
-    if(ThisTask == 0)
-        printf("PTHREADS_NUM_THREADS is incompatible with enabling OpenMP in the compiler options \n");
+    if(ThisTask == 0) {printf("PTHREADS_NUM_THREADS is incompatible with enabling OpenMP in the compiler options \n");}
     endrun(0);
 #endif
 #endif

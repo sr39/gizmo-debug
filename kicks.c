@@ -327,7 +327,10 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                     P[i].OldVel[j] = P[i].Vel[j];
                     P[i].OldPos[j] = P[i].Pos[j];
                     P[i].OldJerk[j] = P[i].GravJerk[j];
-                    P[i].Hermite_OldAcc[j] = P[i].GravAccel[j];
+                     // we used Hermite_OldAcc to store the gravitaional field from before the most recent kick before the first Hermite tree pass, so now we do a switcheroo to restore GravAccel to the proper value to use with the upcoming KDK timestep, to integrate self-consistently with the gas
+                    double temp = P[i].Hermite_OldAcc[j];
+                    P[i].Hermite_OldAcc[j] = P[i].GravAccel[j]; // this is the value from the first Hermite tree pass for this timestep
+                    P[i].GravAccel[j] = temp; // this is the old value from the previous timestep, to be used with the upcoming half-step kick
                 }
             }
 #endif	    
