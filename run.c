@@ -128,7 +128,7 @@ void run(void)
 
 #ifdef HERMITE_INTEGRATION // we do a prediction step using the saved "old" pos, accel and jerk from the beginning of the timestep. Then we recompute accel and jerk and do the correction
         do_hermite_prediction();
-        HermiteOnlyFlag = 1;
+        HermiteOnlyFlag = 2;
         gravity_tree();	/* re-compute gravitational accelerations for synchronous particles */
         HermiteOnlyFlag = 0;
         do_hermite_correction();
