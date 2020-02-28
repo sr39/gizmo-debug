@@ -564,6 +564,9 @@ void star_formation_parent_routine(void)
                 P[i].Type = 5;
                 num_bhformed++;
                 P[i].BH_Mass = All.SeedBlackHoleMass; // if desired to make this appreciable fraction of particle mass, please do so in params file
+#ifdef HERMITE_INTEGRATION
+                P[i].AccretedThisTimestep = 0;
+#endif                
 #ifdef GRAIN_FLUID
                 P[i].BH_Dust_Mass = 0;
 #endif                
