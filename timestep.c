@@ -438,7 +438,7 @@ integertime get_timestep(int p,		/*!< particle index */
     if(P[p].Type == 5)
     {
         double dt_2body = sqrt(2*All.ErrTolIntAccuracy) * 0.3 / (1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
-#ifdef HERMITE_INTEGRATION	
+#ifdef HERMITE_INTEGRATION
         if(eligible_for_hermite(p)) dt_2body /= 0.3;
 #endif
 #if (SINGLE_STAR_TIMESTEPPING > 0)
