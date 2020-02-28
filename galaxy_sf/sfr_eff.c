@@ -245,12 +245,17 @@ double get_starformation_rate(int i)
     
     update_internalenergy_for_galsf_effective_eos(i,tcool,tsfr,x,rateOfSF); // updates entropies for the effective equation-of-state //
 #endif // GALSF_EFFECTIVE_EQS
-    
+
     
 #ifdef GALSF_SFR_MOLECULAR_CRITERION
     /* Krumholz & Gnedin fitting function for f_H2 as a function of local properties */
     double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i);
     tau_fmol *= (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]);
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(GALSF_SFR_VIRIAL_SF_CRITERION)
+#if (GALSF_SFR_VIRIAL_SF_CRITERION < 2)
+    if(SphP[i].Density*All.cf_a3inv > 100.*All.PhysDensThresh) {tau_fmol=-1;} // PFH: note the this is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
+#endif
+#endif
     if(tau_fmol>0) {
         tau_fmol *= 434.78 * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam;
         y = 0.756 * (1 + 3.1*pow(P[i].Metallicity[0]/All.SolarAbundances[0],0.365));
@@ -262,16 +267,9 @@ double get_starformation_rate(int i)
 #endif // GALSF_SFR_MOLECULAR_CRITERION
 
     
-#ifdef CHIMES_SFR_MOLECULAR_CRITERION 
-    /* This is similar to GALSF_SFR_MOLECULAR_CRITERION, except that 
-     * the H2 fraction is taken from the CHIMES network. */
-    y = ChimesGasVars[i].abundances[H2] * 2.0; 
-    if (y < 0) 
-      y = 0.0; 
-    if (y > 1) 
-      y = 1.0; 
-    rateOfSF *= y; 
-#endif 
+#ifdef CHIMES_SFR_MOLECULAR_CRITERION
+    rateOfSF *= DMIN(1,DMAX(0,ChimesGasVars[i].abundances[H2] * 2.0)); /* This is similar to GALSF_SFR_MOLECULAR_CRITERION, except that the H2 fraction is taken from the CHIMES network. */
+#endif
     
     
 #ifdef GALSF_SFR_VIRIAL_SF_CRITERION
@@ -609,8 +607,10 @@ void star_formation_parent_routine(void)
                 P[i].DensAroundStar = SphP[i].Density;
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION 
                 P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age
-                if (P[i].Mass < (0.01* SOLAR_MASS / All.UnitMass_in_g) ){ P[i].ProtoStellarStage = 0;} //starts at "pre-collapse" stage
-                else{ P[i].ProtoStellarStage = 1;} //start at the "no burn" phase
+                P[i].StellarAge = All.Time; // record the time at which point the sink entered the current stage of stellar evolution (will become actual stellar age when reaching MS)
+                P[i].ProtoStellarStage = 0;
+                //if (P[i].Mass < (0.01* SOLAR_MASS / All.UnitMass_in_g) ){ P[i].ProtoStellarStage = 0;} //starts at "pre-collapse" stage
+                //else{ P[i].ProtoStellarStage = 1;} //start at the "no burn" phase
                 P[i].Mass_D = P[i].Mass; //Initially all the gas has Deuterium
                 P[i].StarLuminosity_Solar = 0; //Start with zero luminosity
 		        if (P[i].Mass < 0.012 * SOLAR_MASS / All.UnitMass_in_g) {P[i].ProtoStellarRadius_inSolar =  5.24 * pow(P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS, 1./3);} // constant density

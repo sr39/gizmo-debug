@@ -360,12 +360,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define BH_OUTPUT_GASSWALLOW //save accretion histories
 #define BH_OUTPUT_FORMATION_PROPERTIES //save at-formation properties of sink particles
 //#define GALSF_SFR_IMF_VARIATION // save gas properties at sink formation time
-#ifdef SLOPE2_SINKS //Slope2 sinks, this should give dN/dM~M^-2 in isoT sims
-#define BH_DEBUG_DISABLE_MERGERS
-#define BH_ALPHADISK_ACCRETION (1.2)
-#else
 #define BH_ALPHADISK_ACCRETION (1.0e6)
-#endif
 #ifdef GRAIN_FLUID
 #define BH_GRAVCAPTURE_NONGAS
 #endif
@@ -791,25 +786,19 @@ int network_integrate( double temp, double rho, const double *x, double *dx, dou
 #define MYSORT_DATAINDEX qsort
 #endif
 
-// compiler specific data alignment hints
-// XLC compiler
-/*
-#if defined(__xlC__)
+#ifndef DISABLE_MEMORY_MANAGER // compiler specific data alignment hints: use only with memory manager as malloc'd memory is not sufficiently aligned
+// (experimenting right now with removing this, as many compilers internal AVX optimizations appear to be doing marginally better, and can resolve crashes on some compilers)
+#if defined(__xlC__) // XLC compiler
 #define ALIGN(n) __attribute__((__aligned__(n)))
-// GNU compiler 
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) // GNU compiler
 #define ALIGN(n) __attribute__((__aligned__(n)))
-// Intel Compiler
-#elif defined(__INTEL_COMPILER)
-// GNU Intel Compiler
+#elif defined(__INTEL_COMPILER) // Intel Compiler
 #define ALIGN(n) __declspec(align(n))
-// Unknown Compiler
-#else
-#define ALIGN(n) 
 #endif
- */
-#define ALIGN(n) // experimenting right now with removing this, as many compilers internal AVX optimizations appear to be doing marginally better, and can resolve crashes on some compilers
-
+#endif
+#ifndef ALIGN // Unknown Compiler or using default malloc
+#define ALIGN(n)
+#endif
 
 #define ASSIGN_ADD(x,y,mode) (mode == 0 ? (x=y) : (x+=y))
 
