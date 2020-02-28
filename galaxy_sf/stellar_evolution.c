@@ -660,7 +660,7 @@ double ps_adiabatic_index(int stage, double mdot){
 /* Calculate central temperature for protostar by solving Pc = rho_c*kb*Tc/(mu*mH)+1/3*a*Tc^4 using bisection, based on Offner 2009 Eq B14, code taken from ORION */
 double ps_Tc(double rhoc, double Pc) {
     int JMAX=40; double TOL=1.0e-7; // max number of iterations, and error tolerance, respectively
-    double Pc_cgs=Pc*All.UnitPressure_in_cgs, rhoc_cgs=rhoc * All.UnitDensity_in_cgs, Tgas=Pc_cgs*0.613*PROTONMASS/(BOLTZMANN*rhoc_cgs), Trad=pow(3*Pc_cgs/7.56e-15, 0.25), dx, f, fmid, xmid, rtb, x1=0, x2; int j; char errstr[256];
+    double Pc_cgs=Pc*All.UnitPressure_in_cgs, rhoc_cgs=rhoc * All.UnitDensity_in_cgs, Tgas=Pc_cgs*0.613*PROTONMASS/(BOLTZMANN*rhoc_cgs), Trad=pow(3*Pc_cgs/7.56e-15, 0.25), dx, f, fmid, xmid, rtb, x1=0, x2; int j;
     x2 = (Trad > Tgas) ? 2*Trad : 2*Tgas;
     f = Pc_cgs - rhoc_cgs*BOLTZMANN*x1/(0.613*PROTONMASS) - 7.56e-15*pow(x1,4)/3.0;
     fmid=Pc_cgs - rhoc_cgs*BOLTZMANN*x2/(0.613*PROTONMASS) - 7.56e-15*pow(x2,4)/3.0;
@@ -687,7 +687,8 @@ double ps_Pc(double m, double n_ad, double r) {
 }
 /* Calculate the mean ratio of the gas pressure to the gas+radiation pressure at the center, based on Offner 2009, code taken from ORION */
 double ps_betac(double rhoc, double Pc, double Tc) {
-    return rhoc*BOLTZMANN*Tc/(0.613*PROTONMASS) / Pc;
+    double Pc_cgs=Pc*All.UnitPressure_in_cgs, rhoc_cgs=rhoc * All.UnitDensity_in_cgs;
+    return rhoc_cgs*BOLTZMANN*Tc/(0.613*PROTONMASS) / Pc_cgs;
 }
 /* Calculate dlog(beta)/dlog(m) by taking a numerical derivative, based on Offner 2009, code taken from ORION */
 double ps_dlogbeta_dlogm(double m, double r, double n_ad, double beta, double rhoc, double Pc) {
@@ -707,13 +708,14 @@ double ps_lum_I(double mdot) {
 }
 /* Calculate the blackbody luminosity [in code units] of the star following the Hayashi track */
 double ps_lum_Hayashi_BB(double m, double r) {
-    double m_solar = m * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS), T4000_4 = pow(m_solar , 0.55); // protostellar temperature along Hayashi track
-    return 0.2263 * r * r * T4000_4 * SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s); // luminosity from KH contraction
+    double m_solar = m * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS), T4000_4 = pow(m_solar , 0.55), r_solar = r * (All.UnitLength_in_cm/SOLAR_RADIUS); // protostellar temperature along Hayashi track
+    T4000_4 = 0.316406; //ORION prescription T=3000K
+    return 0.2263 * r_solar * r_solar * T4000_4 * SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s); // luminosity from KH contraction
 }
 /* Calculate the luminosity of a main sequence star in code units: ORION version: fitting formulas of Tout et al (1996) */
 double ps_lum_MS(double m) {
     double m_solar = m * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS), unit_L = SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
-    if(m_solar <= 0.1) {return 0;} // zero luminosity below some threshold for fits, otherwise use formulae below //
+    if(m_solar <= 0.1) {return 0;} // zero luminosity below some threshold for fits, otherwise use formula below //
     return ((0.39704170*pow(m_solar,5.5) + 8.52762600*pow(m_solar,11)) / (0.00025546+pow(m_solar,3)+5.43288900*pow(m_solar,5) + 5.56357900*pow(m_solar,7) + 0.78866060*pow(m_solar,8)+0.00586685*pow(m_solar,9.5))) * unit_L;
 }
 /* Calculate the radius of a main sequence star in solar units: ORION version: fitting formulas of Tout et al (1996) */
