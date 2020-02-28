@@ -2230,6 +2230,7 @@ extern ALIGN(32) struct particle_data
     MyFloat OldPos[3];
     MyFloat OldVel[3];
     MyFloat OldJerk[3];
+    short int AccretedThisTimestep;     /*!< flag to decide whether to stick with the KDK step for stability reasons, e.g. when actively accreting */
 #endif
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL)
     MyFloat Potential;		/*!< gravitational potential */
