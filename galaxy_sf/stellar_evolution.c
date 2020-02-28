@@ -552,7 +552,9 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
             dm_D = mass_D - BPP(n).Mass_D; //get the tota change in D mass in the protostar
             BPP(n).Mass_D = mass_D;
             //Debug message
+#ifdef PS_EVOL_OUTPUT_MOREINFO
             printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: %g rel_dr: %g dm: %g dm_D: %g Tc: %g beta: %g dt: %g n_ad: %g lum_int: %g lum_I: %g lum_D: %g age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: %g n_subcycle: %d PS_end\n",All.Time, P[n].ID,m_solar,BPP(n).ProtoStellarRadius_inSolar,stage, mdot_m_solar_per_year, BPP(n).Mass_D*(All.UnitMass_in_g / SOLAR_MASS),rel_dr,dm* (All.UnitMass_in_g / SOLAR_MASS), dm_D* (All.UnitMass_in_g / SOLAR_MASS), Tc, beta, dt*All.UnitTime_in_Megayears, n_ad, lum_int / (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), lum_I/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), lum_D/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), (All.Time-P[n].ProtoStellarAge)*All.UnitTime_in_Megayears, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk, BPP(n).SinkRadius, dlogbeta_dlogm, n_subcycle );
+#endif
             //Check whether the star can progress to the next state
             //Move from "no burn" to "burning at fixed Tc" phase when central temperature gets high enough for D ignition
             if ( (stage==1) && (Tc >= 1.5e6) && ((All.Time-BPP(n).StellarAge) > DMAX(3.*dt, 1e-4/All.UnitTime_in_Megayears) ) ){ //further check that the sink has been promoted at least a couple of timesteps and 100 yr ago, so that we don't start D burning immediately after forming the sink (relevant in low res cases)
@@ -583,8 +585,10 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
         if (stage_increase){
             BPP(n).ProtoStellarStage += stage_increase;
             BPP(n).StellarAge = All.Time; //store the time of the last promotion
+#ifdef PS_EVOL_OUTPUT_MOREINFO
             //Debug message
             printf("%u promoted to %d \n",P[n].ID,(stage+stage_increase));
+#endif
         } //increase evolutionary stage if the particle satisfies the requirements
     }
     else{ // for main sequence stars
