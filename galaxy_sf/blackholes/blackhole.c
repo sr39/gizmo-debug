@@ -720,9 +720,12 @@ void blackhole_final_operations(void)
     for(i=0; i<N_active_loc_BHs; i++)
     {
         n = BlackholeTempInfo[i].index;
+        
         if(((BlackholeTempInfo[i].accreted_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass_alphadisk>0)) && P[n].Mass > 0)
         {
-            
+#ifdef HERMITE_INTEGRATION
+            P[n].AccretedThisTimestep = 1;
+#endif          
             double m_new = P[n].Mass + BlackholeTempInfo[i].accreted_Mass;
 #if (BH_FOLLOW_ACCRETED_ANGMOM == 1) /* in this case we are only counting this if its coming from BH particles */
             m_new = P[n].Mass + BlackholeTempInfo[i].accreted_BH_Mass + BlackholeTempInfo[i].accreted_BH_Mass_alphadisk;
@@ -748,6 +751,9 @@ void blackhole_final_operations(void)
             BPP(n).BH_Dust_Mass += BlackholeTempInfo[i].accreted_dust_Mass;
 #endif            
         } // if(masses > 0) check
+#ifdef HERMITE_INTEGRATION
+        else { P[n].AccretedThisTimestep = 0; }
+#endif        
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
         P[n].SinkRadius = DMAX(P[n].SinkRadius, All.ForceSoftening[5]);
 #endif
