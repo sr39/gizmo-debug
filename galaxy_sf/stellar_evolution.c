@@ -483,7 +483,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
     int stage = BPP(n).ProtoStellarStage; /*what stage of stellar evolution the particle is in 0: pre collapse, 1: no burning, 2: fixed Tc burnig, 3: variable Tc burning, 4: shell burning, 5: main sequence, see Offner 2009 Appendix B*/
     if (stage == 0){
         //set the radius for the pre-collapse phase according to Eq B1 in Offner 2009, this overwrites the original prescription from sfr_eff.c
-        BPP(n).ProtoStellarRadius_inSolar = DMAX(2.5 * pow(mdot_m_solar_per_year*1e5,0.2),2.0); //radius always at least 2 R_sun
+        BPP(n).ProtoStellarRadius_inSolar = DMAX(2.5 * pow(mdot_m_solar_per_year*1e5,0.33),2.0); //radius always at least 2 R_sun
     }
     double r = BPP(n).ProtoStellarRadius_inSolar * SOLAR_RADIUS/All.UnitLength_in_cm; // star radius in code units
     int stage_increase = 0;
@@ -553,7 +553,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
             BPP(n).Mass_D = mass_D;
             //Debug message
 #ifdef PS_EVOL_OUTPUT_MOREINFO
-            printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: %g rel_dr: %g dm: %g dm_D: %g Tc: %g beta: %g dt: %g n_ad: %g lum_int: %g lum_I: %g lum_D: %g age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: %g n_subcycle: %d PS_end\n",All.Time, P[n].ID,m_solar,BPP(n).ProtoStellarRadius_inSolar,stage, mdot_m_solar_per_year, BPP(n).Mass_D*(All.UnitMass_in_g / SOLAR_MASS),rel_dr,dm* (All.UnitMass_in_g / SOLAR_MASS), dm_D* (All.UnitMass_in_g / SOLAR_MASS), Tc, beta, dt*All.UnitTime_in_Megayears, n_ad, lum_int / (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), lum_I/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), lum_D/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), (All.Time-P[n].ProtoStellarAge)*All.UnitTime_in_Megayears, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk, BPP(n).SinkRadius, dlogbeta_dlogm, n_subcycle );
+            printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: %g rel_dr: %g dm: %g dm_D: %g Tc: %g Pc: %g rhoc: %g beta: %g dt: %g n_ad: %g lum_int: %g lum_I: %g lum_D: %g age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: %g n_subcycle: %d PS_end\n",All.Time, P[n].ID,m_solar,BPP(n).ProtoStellarRadius_inSolar,stage, mdot_m_solar_per_year, BPP(n).Mass_D*(All.UnitMass_in_g / SOLAR_MASS),rel_dr,dm* (All.UnitMass_in_g / SOLAR_MASS), dm_D* (All.UnitMass_in_g / SOLAR_MASS), Tc, Pc*All.UnitPressure_in_cgs, rhoc* All.UnitDensity_in_cgs, beta, dt*All.UnitTime_in_Megayears, n_ad, lum_int / (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), lum_I/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), lum_D/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), (All.Time-P[n].ProtoStellarAge)*All.UnitTime_in_Megayears, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk, BPP(n).SinkRadius, dlogbeta_dlogm, n_subcycle );
 #endif
             //Check whether the star can progress to the next state
             //Move from "no burn" to "burning at fixed Tc" phase when central temperature gets high enough for D ignition
@@ -616,11 +616,12 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 /* Calculate the mean ratio of the gas pressure to the gas+radiation pressure, either by solving the Eddington quartic (for n_ad=3, Eq B5) or by using tabulated values, based on Offner 2009, code taken from ORION */
 double ps_beta(double m, double n_ad, double rhoc, double Pc) {
     double mass=m*All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS);//in units of solar mass
+    double Pc_cgs=Pc*All.UnitPressure_in_cgs, rhoc_cgs=rhoc * All.UnitDensity_in_cgs;
     if(n_ad==3.0) {// In this case we solve the Eddington quartic, P_c^3 = (3/a) (k / (mu mH))^4 (1 - beta) / beta^4 rho_c^4 for beta
-        int JMAX=40, j; double BETAMIN=1.0e-4, BETAMAX=1.0, TOL=1.0e-7, dx, f, fmid, xmid, rtb, x1=BETAMIN, x2=BETAMAX, coef=3.0/7.56e-15*pow(BOLTZMANN*rhoc/(0.613*PROTONMASS),4);
-        f = pow(Pc,3) - coef * (1.0-x1)/pow(x1,4); fmid = pow(Pc,3) - coef * (1.0-x2)/pow(x2,4); rtb = f < 0.0 ? (dx=x2-x1,x1) : (dx=x1-x2,x2);
+        int JMAX=40, j; double BETAMIN=1.0e-4, BETAMAX=1.0, TOL=1.0e-7, dx, f, fmid, xmid, rtb, x1=BETAMIN, x2=BETAMAX, coef=3.0/7.56e-15*pow(BOLTZMANN*rhoc_cgs/(0.613*PROTONMASS),4);
+        f = pow(Pc_cgs,3) - coef * (1.0-x1)/pow(x1,4); fmid = pow(Pc_cgs,3) - coef * (1.0-x2)/pow(x2,4); rtb = f < 0.0 ? (dx=x2-x1,x1) : (dx=x1-x2,x2);
         for (j=1;j<=JMAX;j++) {
-          xmid=rtb+(dx *= 0.5); fmid = pow(Pc,3) - coef * (1.0-xmid)/pow(xmid,4);
+          xmid=rtb+(dx *= 0.5); fmid = pow(Pc_cgs,3) - coef * (1.0-xmid)/pow(xmid,4);
           if(fmid <= 0.0) rtb=xmid;
           if(fabs(dx) < TOL*fabs(xmid) || fmid == 0.0) return rtb;
         }
@@ -644,7 +645,12 @@ double ps_beta(double m, double n_ad, double rhoc, double Pc) {
 /* Sets the adiabatic index for pre burning protostars based on Eq B2 from Offner 2009 */
 double ps_adiabatic_index_func(double mdot) {
     double mdot_m_solar_per_year = mdot * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/All.UnitTime_in_s*SEC_PER_YEAR; // accretion rate in msolar/yr
-    return ( 5.0 - 3/(1.475+0.07*log10(mdot_m_solar_per_year)) );
+    //return ( 5.0 - 3/(1.475+0.07*log10(mdot_m_solar_per_year)) );
+    if (mdot_m_solar_per_year < 1.0e-5){
+        return (2.5);
+    }else{
+        return(2.5+0.25*log10(mdot_m_solar_per_year*1.0e5));
+    }
 }
 /* Sets the adiabatic index for protostars based on Appendix B of Offner 2009 */
 double ps_adiabatic_index(int stage, double mdot){
@@ -652,13 +658,13 @@ double ps_adiabatic_index(int stage, double mdot){
     switch(stage) {
         case 0: n_ad = ps_adiabatic_index_func(mdot); break;
         case 1: n_ad = ps_adiabatic_index_func(mdot); break;
-        case 2: n_ad = 1.5; break;
-        case 3: n_ad = 1.5; break;
+        case 2: n_ad = 1.75; break;
+        case 3: n_ad = 1.75; break;
         case 4: n_ad = 3.0; break;
         case 5: n_ad = 3.0; break;
     }
     if(n_ad > 3.0) {n_ad=3.0;}
-    if(n_ad < 1.5) {n_ad=1.5;}
+    if(n_ad < 1.75) {n_ad=1.75;}
     return n_ad;
 }
 /* Calculate central temperature for protostar by solving Pc = rho_c*kb*Tc/(mu*mH)+1/3*a*Tc^4 using bisection, based on Offner 2009 Eq B14, code taken from ORION */
@@ -681,18 +687,18 @@ double ps_Tc(double rhoc, double Pc) {
 double ps_rhoc(double m, double n_ad, double r) { /* Use Tabulated values of rho_c/rho_mean for n=1.5 to 3.1 in intervals of 0.1*/
     static double rhofactab[] = {0.166931, 0.14742, 0.129933, 0.114265, 0.100242, 0.0877, 0.0764968, 0.0665109, 0.0576198, 0.0497216, 0.0427224, 0.0365357, 0.0310837, 0.0262952, 0.0221057, 0.0184553, 0.01529};
     int itab = (int) floor((n_ad-1.5)/0.1); double wgt = (n_ad - (1.5 + 0.1*itab)) / 0.1, rhofac = rhofactab[itab]*(1.0-wgt) + rhofactab[itab+1]*wgt;
-    return m / (4.0/3.0*M_PI*r*r*r) / rhofac;
+    return (m / (4.0/3.0*M_PI*r*r*r) / rhofac);
 }
 /* Calculate central pressure for protostar using a pre-computed table for fixed mass, radius and polytropic index, based on Offner 2009, table and code taken from ORION */
 double ps_Pc(double m, double n_ad, double r) {
     static double pfactab[] = {0.770087, 0.889001, 1.02979, 1.19731, 1.39753, 1.63818, 1.92909, 2.2825, 2.71504, 3.24792, 3.90921, 4.73657, 5.78067, 7.11088, 8.82286, 11.0515, 13.9885};
     int itab = (int) floor((n_ad-1.5)/0.1); double wgt = (n_ad - (1.5 + 0.1*itab)) / 0.1, pfac = pfactab[itab]*(1.0-wgt) + pfactab[itab+1]*wgt;
-    return pfac * All.G * m*m/(r*r*r*r);
+    return (pfac * All.G * m*m/(r*r*r*r));
 }
 /* Calculate the mean ratio of the gas pressure to the gas+radiation pressure at the center, based on Offner 2009, code taken from ORION */
 double ps_betac(double rhoc, double Pc, double Tc) {
     double Pc_cgs=Pc*All.UnitPressure_in_cgs, rhoc_cgs=rhoc * All.UnitDensity_in_cgs;
-    return rhoc_cgs*BOLTZMANN*Tc/(0.613*PROTONMASS) / Pc_cgs;
+    return (rhoc_cgs*BOLTZMANN*Tc/(0.613*PROTONMASS) / Pc_cgs);
 }
 /* Calculate dlog(beta)/dlog(m) by taking a numerical derivative, based on Offner 2009, code taken from ORION */
 double ps_dlogbeta_dlogm(double m, double r, double n_ad, double beta, double rhoc, double Pc) {
