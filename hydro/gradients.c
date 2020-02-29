@@ -1445,7 +1445,11 @@ void hydro_gradient_calc(void)
             SphP[i].Density_Relative_Maximum_in_Kernel = GasGradDataPasser[i].Maxima.Density;
 #endif
             local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,0, 1,d_max,SphP[i].Density);
-            local_slopelimiter(SphP[i].Gradients.Pressure,GasGradDataPasser[i].Maxima.Pressure,GasGradDataPasser[i].Minima.Pressure,a_limiter,h_lim,stol, 1,d_max,SphP[i].Pressure);
+            int pressure_is_positive_definite = 1;
+#if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
+            pressure_is_positive_definite = 0; /* some physics allow negative pressures - account for that here */
+#endif
+            local_slopelimiter(SphP[i].Gradients.Pressure,GasGradDataPasser[i].Maxima.Pressure,GasGradDataPasser[i].Minima.Pressure,a_limiter,h_lim,stol, pressure_is_positive_definite,d_max,SphP[i].Pressure);
             stol_tmp = stol;
 #if defined(VISCOSITY)
             stol_tmp = DMAX(stol,stol_diffusion);
