@@ -56,6 +56,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
     
     /* certain particles should never enter the loop: check for these */
     if(local.Mass <= 0) return 0;
+    if(local.Density <= 0) return 0;
 #ifdef GALSF_SUBGRID_WINDS
     if(local.DelayTime > 0) {return 0;}
 #endif
@@ -144,7 +145,12 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
             for(n = 0; n < numngb; n++)
             {
                 j = ngblist[n];
-                
+                if(P[j].Mass <= 0) continue;
+                if(SphP[j].Density <= 0) continue;
+#ifdef GALSF_SUBGRID_WINDS
+                if(SphP[j].DelayTime > 0) continue; /* no hydro forces for decoupled wind particles */
+#endif
+
                 /* check if I need to compute this pair-wise interaction from "i" to "j", or skip it and let it be computed from "j" to "i" */
                 integertime TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
                 int j_is_active_for_fluxes = 0;
@@ -157,11 +163,6 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                     if(local.Pos[n0] < P[j].Pos[n0]) continue;
                 }
                 if(TimeBinActive[P[j].TimeBin]) {j_is_active_for_fluxes = 1;}
-#endif
-                if(P[j].Mass <= 0) continue;
-                if(SphP[j].Density <= 0) continue;
-#ifdef GALSF_SUBGRID_WINDS
-                if(SphP[j].DelayTime > 0) continue; /* no hydro forces for decoupled wind particles */
 #endif
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
