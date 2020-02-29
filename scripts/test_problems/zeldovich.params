@@ -30,7 +30,6 @@ BoxSize                            64000
 OutputListOn                       0
 TimeOfFirstSnapshot                0.00990099
 TimeBetSnapshot                    1.05
-TimeBetStatistics                  1.5
 CourantFac                         0.2
 MaxSizeTimestep                    0.01
 TreeDomainUpdateFrequency          0.05

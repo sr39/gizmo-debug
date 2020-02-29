@@ -25,7 +25,6 @@ BoxSize                            1
 OutputListOn                       0
 TimeOfFirstSnapshot                0
 TimeBetSnapshot                    0.05
-TimeBetStatistics                  0.5
 MaxSizeTimestep                    0.1
 TreeDomainUpdateFrequency          0.005
 DesNumNgb                          4
