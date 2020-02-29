@@ -498,7 +498,7 @@ void DMGrad_gradient_calc(void)
                 /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
                 /* (actually not clear that we need to slope-limit these, because we are not using the gradients for reconstruction.
                     testing this now. if not, we can remove the limiter information entirely and save some time in these computations) */
-                //local_slopelimiter(P[i].AGS_Gradients_Density,DMGradDataPasser[i].Maxima.AGS_Density,DMGradDataPasser[i].Minima.AGS_Density,0.5,PPP[i].AGS_Hsml,0);
+                //local_slopelimiter(P[i].AGS_Gradients_Density,DMGradDataPasser[i].Maxima.AGS_Density,DMGradDataPasser[i].Minima.AGS_Density,0.5,PPP[i].AGS_Hsml,0, 0,0,0);
             } else {
                 int k;
                 for(k=0;k<3;k++)
@@ -509,7 +509,7 @@ void DMGrad_gradient_calc(void)
                     construct_gradient_DMGrad(P[i].AGS_Gradients2_Psi_Re[k],i);
                     construct_gradient_DMGrad(P[i].AGS_Gradients2_Psi_Im[k],i);
 #endif
-                    //local_slopelimiter(P[i].AGS_Gradients2_Density[k],DMGradDataPasser[i].Maxima.AGS_Gradients_Density[k],DMGradDataPasser[i].Minima.AGS_Gradients_Density[k],0.5,PPP[i].AGS_Hsml,0);
+                    //local_slopelimiter(P[i].AGS_Gradients2_Density[k],DMGradDataPasser[i].Maxima.AGS_Gradients_Density[k],DMGradDataPasser[i].Minima.AGS_Gradients_Density[k],0.5,PPP[i].AGS_Hsml,0, 0,0,0);
                 }
                 /* symmetrize the gradients */
                 int k0[3]={0,0,1},k1[3]={1,2,2}; double tmp;

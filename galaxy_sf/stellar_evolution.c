@@ -287,7 +287,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     double p=0, star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), ZZ = P[i].Metallicity[0]/All.SolarAbundances[0];
     if(ZZ>3) {ZZ=3;}
     if(ZZ<0.01) {ZZ=0.01;}
-    if(star_age<=0.001){p=11.6846;} else {
+    if(star_age<=0.001){p=11.6846*ZZ;} else {
         if(star_age<=0.0035){p=11.6846*ZZ*
             pow(10.,1.838*(0.79+log10(ZZ))*(log10(star_age)-(-3.00)));} else {
                 if(star_age<=0.1){p=72.1215*pow(star_age/0.0035,-3.25)+0.0103;} else {
