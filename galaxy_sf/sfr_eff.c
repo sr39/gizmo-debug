@@ -181,7 +181,7 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
     if(SphP[i].Density*All.cf_a3inv < All.PhysDensThresh) {return 0;} /* must be above SF density threshold */
     double Z_in_solar = P[i].Metallicity[0]/All.SolarAbundances[0], surfacedensity = MIN_REAL_NUMBER;
     /* now calculate probability of forming a BH seed particle */
-    double p = P[i].Mass / All.SeedBlackHolePerUnitMass; /* probability of forming a seed per unit mass [in code units] */
+    p = P[i].Mass / All.SeedBlackHolePerUnitMass; /* probability of forming a seed per unit mass [in code units] */
     if(p > 12.) {p=1;} else {if(p > 1.e-4) {p=1-exp(-p);}}
 #ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
     double Rcrit = PPP[i].Hsml;
@@ -195,10 +195,11 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
     double Z_u = Z_in_solar/Z_threshold_solar, S_u = surfacedensity / surfacedensity_threshold_cgs;
     if(!isfinite(Z_u) || !isfinite(S_u)) {return 0;}
     if(S_u < 3.5) {p *= 1 - exp(-S_u*S_u);} // quadratic cutoff at low densities: probability drops as S^(2), saturates at 1
-    p /= 1 + ZZ + 0.5*ZZ*ZZ; // quadratic expansion of exponential cutoff: probability drops as Z^(-2) rather than exp(-Z), saturates at 1
+    p /= 1 + Z_u + 0.5*Z_u*Z_u; // quadratic expansion of exponential cutoff: probability drops as Z^(-2) rather than exp(-Z), saturates at 1
 #else
     surfacedensity = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; /* this gives the Sobolev-estimated column density of -gas- alone */
     if(surfacedensity>0.1) {p *= (1-exp(-surfacedensity/surfacedensity_threshold_cgs)) * exp(-Z_in_solar/Z_threshold_solar);} /* apply threshold metallicity and density cutoff */
+#endif
 #endif
     return p;
 }
