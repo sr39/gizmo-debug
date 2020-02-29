@@ -70,7 +70,7 @@ int GasGrad_isactive(int i)
 {
     if(P[i].Type != 0) return 0;
     if(P[i].Mass <= 0) return 0;
-    if(SphP[i].Density <= 0 || SphP[i].Hsml <= 0) return 0;
+    if(SphP[i].Density <= 0 || PPP[i].Hsml <= 0) return 0;
 #if defined(GALSF_SUBGRID_WINDS) && !defined(TURB_DIFF_DYNAMIC)
     if(SphP[j].DelayTime > 0) return 0;
 #endif
@@ -543,7 +543,7 @@ void local_slopelimiter(double *grad, double valmax, double valmin, double alim,
         double cfac = 1 / (alim * h * sqrt(d_abs)); /* inverse change over distance for limiter */
         double fabs_max = fabs(valmax), fabs_min = fabs(valmin), abs_max=fabs_max, abs_min=fabs_min, f_corr_overshoot;
         if(abs_max<abs_min) {abs_max=fabs_min; abs_min=fabs_max;} /* get largest positive/negative deviations, determine smaller in absolute value */
-        double f_corr_overshoot = DMIN(abs_min + shoot_tol*abs_max, abs_max); /* = abs_min for shoot_tol = 0; don't let gradient deviate by more than this in size, slightly larger if 'shoot_tol' allows some overshoot tolerance */
+        f_corr_overshoot = DMIN(abs_min + shoot_tol*abs_max, abs_max); /* = abs_min for shoot_tol = 0; don't let gradient deviate by more than this in size, slightly larger if 'shoot_tol' allows some overshoot tolerance */
         cfac *= f_corr_overshoot; /* multiply by the correction factor of interest */
         if(pos_preserve == 1) /* demand that the limited slope be strictly positivity-preserving over the maximal range to any neighbors */
         {
