@@ -71,25 +71,31 @@ DesNumNgb               32      % 32 for standard kernel, 60-114 for quintic
 MaxHsml                 1.0e10  % minimum gas kernel length (some very large value to prevent errors)
 MinGasHsmlFractional    0       % minimum kernel length relative to gas force softening (<= 1)
 
-%---- Gravitational softening lengths 
-%----- Softening lengths per particle type. If ADAPTIVE_GRAVSOFT is set, these  
-%-------- are the minimum softening allowed for each type ------- 
+%---- Gravitational softening lengths, in code units
+%----- Softening lengths per element type. If ADAPTIVE_GRAVSOFT is set, these
+%-------- are the minimum softening allowed for each type -------
 %-------- (units are co-moving for cosmological integrations)
-SofteningGas    0.001    % gas (type=0) (in units above, =1 pc softening)
-SofteningHalo   0.020    % dark matter/collisionless particles (type=1)
-SofteningDisk   0.150    % collisionless particles (type=2)
-SofteningBulge  0.500    % collisionless particles (type=3)
-SofteningStars  0.001    % stars spawned from gas (type=4)
-SofteningBndry  0.001    % black holes (if active), or collisionless (type=5)
-%---- if these are set in cosmo runs, SofteningX switches from comoving to physical
+Softening_Type0     0.001    % element/particle type 0 [gas; this parameter can also be named 'SofteningGas']
+Softening_Type1     0.020    % element type 1 [e.g. high-res dark matter; can also use 'SofteningHalo' here]
+Softening_Type2     0.150    % element type 2 [e.g. dummy collisionless; alt. 'SofteningDisk']
+Softening_Type3     0.500    % element type 3 [e.g. grains/PIC particles; alt. 'SofteningBulge']
+Softening_Type4     0.001    % element type 4 [e.g. stars, in galaxy sims; alt. 'SofteningStars']
+Softening_Type5     0.001    % element type 5 [e.g. black holes/sinks; alt. 'SofteningBndry']
+%
+%--- If these are set in cosmological runs, SofteningX switches from comoving to physical
 %------- units when the comoving value exceeds the choice here
 %------- (these are ignored, and *only* the above are used, for non-cosmo runs)
-SofteningGasMaxPhys     0.0005    % switch to 0.5pc physical below z=1 
-SofteningHaloMaxPhys    0.010 
-SofteningDiskMaxPhys    0.075 
-SofteningBulgeMaxPhys   0.250 
-SofteningStarsMaxPhys   0.0005 
-SofteningBndryMaxPhys   0.0005 
+Softening_Type0_MaxPhysLimit    0.0005  % e.g. switch to 0.5pc physical below z=1 [alt. 'SofteningGasMaxPhys']
+Softening_Type1_MaxPhysLimit    0.010   % [alt. 'SofteningHaloMaxPhys']
+Softening_Type2_MaxPhysLimit    0.075   % [alt. 'SofteningDiskMaxPhys']
+Softening_Type3_MaxPhysLimit    0.250   % [alt. 'SofteningBulgeMaxPhys']
+Softening_Type4_MaxPhysLimit    0.0005  % [alt. 'SofteningStarsMaxPhys']
+Softening_Type5_MaxPhysLimit    0.0005  % [alt. 'SofteningBndryMaxPhys']
+%
+%--- (Note: code is compatible with old naming convention: so 'SofteningGas' can be used
+%---  interchangeable with 'Softening_Type0' - just choose one. Likewise 'SofteningHalo' for
+%---  'Softening_Type1', 'SofteningHaloMaxPhys' for 'Softening_Type1_MaxPhysLimit', etc.,
+%---  as defined above. See User Guide for details.)
 %----- parameters for adaptive gravitational softening 
 AGS_DesNumNgb           32  % neighbor number for calculating adaptive gravsoft
 
