@@ -2375,6 +2375,9 @@ extern ALIGN(32) struct particle_data
     MyFloat BH_MinPot;
 #endif
 #endif  /* if defined(BLACK_HOLES) */
+#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+    MyFloat MencInRcrit;
+#endif
     
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
@@ -2960,6 +2963,9 @@ extern struct gravdata_out
 #endif 
 #ifdef BH_COMPTON_HEATING
     MyLongDouble RadFluxAGN;
+#endif
+#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+    MyLongDouble MencInRcrit;
 #endif
 #ifdef EVALPOTENTIAL
     MyLongDouble Potential;
