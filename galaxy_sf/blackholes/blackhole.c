@@ -406,7 +406,8 @@ void set_blackhole_mdot(int i, int n, double dt)
         double t_acc_disk = 4.2e7 * t_yr * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass) / BPP(n).BH_Mass_AlphaDisk, 0.4); /* shakura-sunyaev disk, integrated out to Q~1 radius, approximately */
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        double Gm_i=1./(All.G*P[n].Mass);
+        //double Gm_i=1./(All.G*P[n].Mass);
+        double Gm_i=1./(All.G*2.*All.MinMassForParticleMerger); //effectively setting the value to the freefall time the particle has when it forms
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
         double reff = P[n].SinkRadius; // Assuming this is scaled to the nominal minimum resolved Jeans length
 #else	
@@ -423,14 +424,14 @@ void set_blackhole_mdot(int i, int n, double dt)
         j *= 1. + 1./BH_ALPHADISK_ACCRETION; // correction assuming a ratio of accretion disk to sink mass ~BH_ALPHADISK_ACCRETION [max allowed], with the material in the sink having given its angular momentum to the sink [which is what should happen]
 #endif
         //t_acc_disk = j*j*j*Gm_i*Gm_i; // dynamical time at circularization radius of the alpha-disk
-#ifdef SLOPE2_SINKS
+//#ifdef SLOPE2_SINKS
         //t_acc_disk = DMAX(sqrt(pow(0.033*All.SofteningTable[5],3)/(All.G*P[n].BH_Mass)) , t_acc_disk); // catch against un-resolvably small j [since accreted particles are extended, there is always material at non-zero "j" even if accreted at zero impact parameter; 1/30th is conservative estimate for perfect impact parameter]
         //t_acc_disk = t_dyn_eff; //use the dynamical time as the orbital time (equivalent to circular orbit at sink radius)
-        t_acc_disk = DMAX(10. * 2.*M_PI*t_acc_disk, t_dyn_eff); // 10 orbits at circularization radius to spiral all the way in (very fast), but should be no less than the resolution-scale dynamical time	
-#else
+//        t_acc_disk = DMAX(10. * 2.*M_PI*t_acc_disk, t_dyn_eff); // 10 orbits at circularization radius to spiral all the way in (very fast), but should be no less than the resolution-scale dynamical time	
+//#else
         //if(j*j*Gm_i < 6.957e11 / All.UnitLength_in_cm) {t_acc_disk = 0;} // when angular momentum is low enough, we're falling straight onto the protostellar surface, here taking 10R_solar as a rough number
         //t_acc_disk = DMAX(100. * t_acc_disk * (1 / (Gm_i * DMIN(reff, j*j*Gm_i))) / soundspeed2, t_dyn_eff); // Shakura-Sunyaev prescription with alpha=0.01, using minimum of sink and circularization radius
-#endif // SLOPE2_SINKS
+//#endif // SLOPE2_SINKS
 #endif // BH_FOLLOW_ACCRETED_ANGMOM
 #endif // SINGLE_STAR_SINK_DYNAMICS
         
@@ -719,9 +720,12 @@ void blackhole_final_operations(void)
     for(i=0; i<N_active_loc_BHs; i++)
     {
         n = BlackholeTempInfo[i].index;
+        
         if(((BlackholeTempInfo[i].accreted_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass_alphadisk>0)) && P[n].Mass > 0)
         {
-            
+#ifdef HERMITE_INTEGRATION
+            P[n].AccretedThisTimestep = 1;
+#endif          
             double m_new = P[n].Mass + BlackholeTempInfo[i].accreted_Mass;
 #if (BH_FOLLOW_ACCRETED_ANGMOM == 1) /* in this case we are only counting this if its coming from BH particles */
             m_new = P[n].Mass + BlackholeTempInfo[i].accreted_BH_Mass + BlackholeTempInfo[i].accreted_BH_Mass_alphadisk;
@@ -747,6 +751,9 @@ void blackhole_final_operations(void)
             BPP(n).BH_Dust_Mass += BlackholeTempInfo[i].accreted_dust_Mass;
 #endif            
         } // if(masses > 0) check
+#ifdef HERMITE_INTEGRATION
+        else { P[n].AccretedThisTimestep = 0; }
+#endif        
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
         P[n].SinkRadius = DMAX(P[n].SinkRadius, All.ForceSoftening[5]);
 #endif

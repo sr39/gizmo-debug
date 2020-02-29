@@ -562,6 +562,9 @@ void star_formation_parent_routine(void)
                 P[i].Type = 5;
                 num_bhformed++;
                 P[i].BH_Mass = All.SeedBlackHoleMass; // if desired to make this appreciable fraction of particle mass, please do so in params file
+#ifdef HERMITE_INTEGRATION
+                P[i].AccretedThisTimestep = 0;
+#endif                
 #ifdef GRAIN_FLUID
                 P[i].BH_Dust_Mass = 0;
 #endif                
@@ -604,8 +607,10 @@ void star_formation_parent_routine(void)
                 P[i].DensAroundStar = SphP[i].Density;
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION 
                 P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age
-                if (P[i].Mass < (0.01* SOLAR_MASS / All.UnitMass_in_g) ){ P[i].ProtoStellarStage = 0;} //starts at "pre-collapse" stage
-                else{ P[i].ProtoStellarStage = 1;} //start at the "no burn" phase
+                P[i].StellarAge = All.Time; // record the time at which point the sink entered the current stage of stellar evolution (will become actual stellar age when reaching MS)
+                P[i].ProtoStellarStage = 0;
+                //if (P[i].Mass < (0.01* SOLAR_MASS / All.UnitMass_in_g) ){ P[i].ProtoStellarStage = 0;} //starts at "pre-collapse" stage
+                //else{ P[i].ProtoStellarStage = 1;} //start at the "no burn" phase
                 P[i].Mass_D = P[i].Mass; //Initially all the gas has Deuterium
                 P[i].StarLuminosity_Solar = 0; //Start with zero luminosity
 		        if (P[i].Mass < 0.012 * SOLAR_MASS / All.UnitMass_in_g) {P[i].ProtoStellarRadius_inSolar =  5.24 * pow(P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS, 1./3);} // constant density
