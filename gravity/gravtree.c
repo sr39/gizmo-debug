@@ -369,16 +369,17 @@ void gravity_tree(void)
 #endif // BH_CALC_DISTANCES
 
 #ifdef RT_USE_TREECOL_FOR_NH
-                int kbin=0;
-                for(kbin=0; kbin < RT_USE_TREECOL_FOR_NH; kbin++) P[place].ColumnDensityBins[kbin] += GravDataOut[j].ColumnDensityBins[kbin];
+                int kbin=0; for(kbin=0; kbin < RT_USE_TREECOL_FOR_NH; kbin++) {P[place].ColumnDensityBins[kbin] += GravDataOut[j].ColumnDensityBins[kbin];}
 #endif                
-                
+#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+                P[place].MencInRcrit += GravDataOut[j].MencInRcrit;
+#endif
 #ifdef RT_OTVET
                 if(P[place].Type==0) {int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) for(k=0;k<6;k++) SphP[place].ET[k_freq][k] += GravDataOut[j].ET[k_freq][k];}
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
-                if(P[place].Type==0) SphP[place].RadFluxUV += GravDataOut[j].RadFluxUV;
-                if(P[place].Type==0) SphP[place].RadFluxEUV += GravDataOut[j].RadFluxEUV;
+                if(P[place].Type==0) {SphP[place].RadFluxUV += GravDataOut[j].RadFluxUV;}
+                if(P[place].Type==0) {SphP[place].RadFluxEUV += GravDataOut[j].RadFluxEUV;}
 #ifdef CHIMES 			
                 if(P[place].Type == 0)
                 {
