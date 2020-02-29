@@ -67,7 +67,7 @@ void run(void)
 	
         find_timesteps();		/* find-timesteps */
         int TreeReconstructFlag_local = TreeReconstructFlag;
-#ifdef HERMITE_INTEGRATION
+#ifdef HERMITE_INTEGRATION 
         HermiteOnlyFlag = 1;
         gravity_tree();	/* re-compute gravitational accelerations for synchronous particles */
         HermiteOnlyFlag = 0;
@@ -125,19 +125,16 @@ void run(void)
         compute_hydro_densities_and_forces();	/* densities, gradients, & hydro-accels for synchronous particles */
         
         do_second_halfstep_kick();	/* this does the half-step kick at the end of the timestep */
-
+        
+        calculate_non_standard_physics();	/* source terms are here treated in a strang-split fashion */
+        
 #ifdef HERMITE_INTEGRATION // we do a prediction step using the saved "old" pos, accel and jerk from the beginning of the timestep. Then we recompute accel and jerk and do the correction
         do_hermite_prediction();
         HermiteOnlyFlag = 2;
         gravity_tree();	/* re-compute gravitational accelerations for synchronous particles */
         HermiteOnlyFlag = 0;
         do_hermite_correction();
-#endif                		
-        
-        calculate_non_standard_physics();	/* source terms are here treated in a strang-split fashion */
-
-
-	
+#endif                		                         	
         /* Check whether we need to interrupt the run */
         int stopflag = 0;
         if(ThisTask == 0)
