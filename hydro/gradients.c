@@ -540,7 +540,7 @@ void local_slopelimiter(double *grad, double valmax, double valmin, double alim,
     for(k=0;k<3;k++) {d_abs += grad[k]*grad[k];}
     if(d_abs > 0)
     {
-        double cfac = 1 / (alim * h * sqrt(d_abs)); /* inverse change over distance for limiter */
+        d_abs=sqrt(d_abs); double cfac = 1 / (alim * h * d_abs); /* inverse change over distance for limiter */
         double fabs_max = fabs(valmax), fabs_min = fabs(valmin), abs_max=fabs_max, abs_min=fabs_min, f_corr_overshoot;
         if(abs_max<abs_min) {abs_max=fabs_min; abs_min=fabs_max;} /* get largest positive/negative deviations, determine smaller in absolute value */
         f_corr_overshoot = DMIN(abs_min + shoot_tol*abs_max, abs_max); /* = abs_min for shoot_tol = 0; don't let gradient deviate by more than this in size, slightly larger if 'shoot_tol' allows some overshoot tolerance */
