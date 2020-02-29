@@ -36,7 +36,6 @@ HubbleParam                        0.5
 OutputListOn                       0
 TimeOfFirstSnapshot                0.02
 TimeBetSnapshot                    2
-TimeBetStatistics                  0.5
 MaxSizeTimestep                    0.01
 TreeDomainUpdateFrequency          0.05
 DesNumNgb                          32
