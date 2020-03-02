@@ -182,7 +182,6 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
     double Z_in_solar = P[i].Metallicity[0]/All.SolarAbundances[0], surfacedensity = MIN_REAL_NUMBER;
     /* now calculate probability of forming a BH seed particle */
     p = P[i].Mass / All.SeedBlackHolePerUnitMass; /* probability of forming a seed per unit mass [in code units] */
-    if(p > 12.) {p=1;} else {if(p > 1.e-4) {p=1-exp(-p);}}
 #ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
     double Rcrit = PPP[i].Hsml;
 #if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -201,6 +200,7 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
     if(surfacedensity>0.1) {p *= (1-exp(-surfacedensity/surfacedensity_threshold_cgs)) * exp(-Z_in_solar/Z_threshold_solar);} /* apply threshold metallicity and density cutoff */
 #endif
 #endif
+    if(p > 12.) {p=1;} else {if(p > 1.e-4) {p=1-exp(-p);}}
     return p;
 }
 
