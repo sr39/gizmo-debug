@@ -471,8 +471,14 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 #elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
     /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */
     
-    const double frad = 0.33; //limit for forming radiative barrier
+    const double frad = 0.18; //limit for forming radiative barrier, based on Offner+MckKee 2011 source code
     const double fk = 0.5; //fraction of kinetic energy that is radiated away in the inner disk before reaching the surface, using default ORION value here as it is not a GIZMO input parameter
+    const double f_acc = 0.5; //fraction of accretion power that is radiated away instead of being used to drive winds, using default ORION value here as it is not a GIZMO input parameter
+#ifdef SINGLE_STAR_FB_JETS
+    //We ca convert the GIZMo parameters into their ORION versions, FWIND=(1.0-All.BAL_f_accretion) and f_acc = (1.0-All.BAL_f_accretion)*SINGLE_STAR_FB_JETS_POWER_FACTOR. 
+    f_acc = (1.0-All.BAL_f_accretion)*SINGLE_STAR_FB_JETS_POWER_FACTOR/All.BAL_f_accretion; //But we need to be careful because the f_acc here only sees the modified mdot = All.BAL_f_accretion * mdot_now_ind, so we need to divide with All.BAL_f_accretion. For our nominal All.BAL_f_accretion=0.7 and SINGLE_STAR_FB_JETS_POWER_FACTOR=1 this yields 0.42, not that far from the ORION value of 0.5
+#endif
+
     const double max_rel_dr = 0.01; //Maximum relative change in radius per step, if the change over a single timestep is larger than this than we subcycle the evolution of the stellar radius
     double mass = BPP(n).BH_Mass; //mass of star/protostar at the end of the timestep
     double mass_D = BPP(n).Mass_D; //amount of D in the protostar
@@ -489,7 +495,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
     int stage_increase = 0;
     double lum_Hayashi = ps_lum_Hayashi_BB(mass, r); //blackbody radiation assuming the star follows the Hayashi track
     double lum_MS = ps_lum_MS(mass); //luminosity of main sequence star of m mass
-    double lum_int = DMAX(lum_Hayashi, lum_MS); //luminosity from the stellar interior
+    double lum_int = DMAX(lum_Hayashi, lum_MS+(f_acc*fk*All.G*mass*mdot/r )); //luminosity from the stellar interior
     double lum_I = ps_lum_I(mdot); //luminosity needed to ionize the accreted material
     if (stage < 5){ //not a main sequence star
         if (stage >= 1){ //We only evolve those that are beyond the pre-collapse phase
@@ -506,7 +512,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
                 //Get properties for stellar evolution
                 lum_Hayashi = ps_lum_Hayashi_BB(mass, r); //blackbody radiation assuming the star follows the Hayashi track
                 lum_MS = ps_lum_MS(mass); //luminosity of main sequence star of m mass
-                lum_int = DMAX(lum_Hayashi, lum_MS+(0.25*All.G*mass*mdot/r )); //luminosity from the stellar interior
+                lum_int = DMAX(lum_Hayashi, lum_MS+(f_acc*fk*All.G*mass*mdot/r )); //luminosity from the stellar interior
                 n_ad = ps_adiabatic_index(stage, mdot); //get adiabatic index. Note: ORION does not seem to update this, but I think it is worthwhile as mdot can vary over time
                 ag = 3.0/(5.0-n_ad); //shorthand
                 rhoc = ps_rhoc(mass, n_ad, r); //central density
@@ -531,7 +537,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
                     }
                 }                
                 //Let's evolve the stellar radius
-                rel_dr = 2. * ( dm_rel * (1.-(1.-fk)/(ag*beta)+0.5*dlogbeta_dlogm) - dt_curr/(ag*beta)*r/(All.G*mass*mass) * (lum_int+lum_I-lum_D) ); //Eq B4 of Offner 2009 divided by r
+                rel_dr = ( dm_rel * (1.-(1.-fk)/(ag*beta)+0.5*dlogbeta_dlogm) - dt_curr/(ag*beta)*r/(All.G*mass*mass) * (lum_int+lum_I-lum_D) ); //Eq B4 of Offner 2009 divided by r, and corrected by a factor of 2 as per the ORION source used for Offner+McKee 2011
                 //Let's check if we need to subcycle
                 if (fabs(rel_dr) > max_rel_dr){
                     n_subcycle = (int) DMAX(ceil(rel_dr/max_rel_dr), 2.0*n_subcycle); //number of subcycle steps, at least 2, either double the previous number or estimated from dr
@@ -606,10 +612,11 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
     /*********************************************/
     /* Mass flux based parametrization (1 params) */
     /* For our nominal choice of BAL_f_accretion=0.7 this gives very similar results to the ORION parameters of fk=facc=0.5, which is equivalent to 0.75*/
-    double eps_protostar=0.75; //fraction of gas that does not get launched out with a jet, default value, although 1.0 would be energy conserving
+    double eps_protostar=0.75; //fraction of gas that does not get launched out with a jet, default value, although 1.0 would be energy conserving.
 #ifdef SINGLE_STAR_FB_JETS
     eps_protostar=1.0; // since mdot is already modified by All.BAL_f_accretion
 #endif
+    eps_protostar -= f_acc*fk; //Need to deduct the part that is already accounted for in L_int (ORION uses the convention to add lum_acc to that)
     BPP(n).StarLuminosity_Solar = (eps_protostar*All.G*mass*mdot/r + lum_int)/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)); //luminosity of the star in solar units
 #endif
 }
@@ -631,7 +638,8 @@ double ps_beta(double m, double n_ad, double rhoc, double Pc) {
         printf("ps_beta: bisection solve failed to converge"); return(-1);
     } else {
         // For n != 3, we use a table lookup. The values of beta have been pre-computed with mathematica. The table goes from M=5 to 50 solar masses in steps of 2.5 M_sun, and from n=1.5 to n=3 in steps of 0.5. We should never call this routine with M > 50 Msun, since by then the star should be fully on the main sequence.
-        double MTABMIN=5.0, MTABMAX=50.0, MTABSTEP=2.5, NTABMIN=1.5, NTABMAX=3.0, NTABSTEP=0.5;
+        double MTABMIN=5.0, MTABMAX=50.0, MTABSTEP=2.5, NTABMIN=1.5, NTABMAX=3.0, NTABSTEP=0.5, MBETMIN=0.1 ;
+        if (mass < MBETMIN){return (1.15);}  // Setting from Offner+Mckee2011, not sure why, probably to fit to previous results
         if (mass < MTABMIN){return (1.0);}  // Set beta = 1 for M < 5 Msun
         if ((mass >= MTABMAX) || (n_ad >= NTABMAX)) {printf("ps_beta: too high protostar mass, m: %g n_ad %g",m, n_ad); return(-1.0);}
         static double betatab[19][4] = {{0.98785, 0.988928, 0.98947, 0.989634}, {0.97438, 0.976428, 0.977462, 0.977774}, {0.957927, 0.960895, 0.962397, 0.962846},
@@ -674,7 +682,7 @@ double ps_adiabatic_index(int stage, double mdot){
 double ps_Tc(double rhoc, double Pc) {
     int JMAX=40; double TOL=1.0e-7; // max number of iterations, and error tolerance, respectively
     double Pc_cgs=Pc*All.UnitPressure_in_cgs, rhoc_cgs=rhoc * All.UnitDensity_in_cgs, Tgas=Pc_cgs*0.613*PROTONMASS/(BOLTZMANN*rhoc_cgs), Trad=pow(3*Pc_cgs/7.56e-15, 0.25), dx, f, fmid, xmid, rtb, x1=0, x2; int j;
-    x2 = (Trad > Tgas) ? 2*Trad : 2*Tgas;
+    x2 = (Trad > Tgas) ? 2*Trad : Tgas;
     f = Pc_cgs - rhoc_cgs*BOLTZMANN*x1/(0.613*PROTONMASS) - 7.56e-15*pow(x1,4)/3.0;
     fmid=Pc_cgs - rhoc_cgs*BOLTZMANN*x2/(0.613*PROTONMASS) - 7.56e-15*pow(x2,4)/3.0;
     rtb = f < 0.0 ? (dx=x2-x1,x1) : (dx=x1-x2,x2);
