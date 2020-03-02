@@ -506,7 +506,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
                 //Get properties for stellar evolution
                 lum_Hayashi = ps_lum_Hayashi_BB(mass, r); //blackbody radiation assuming the star follows the Hayashi track
                 lum_MS = ps_lum_MS(mass); //luminosity of main sequence star of m mass
-                lum_int = DMAX(lum_Hayashi, lum_MS); //luminosity from the stellar interior
+                lum_int = DMAX(lum_Hayashi, lum_MS+(0.25*All.G*mass*mdot/r )); //luminosity from the stellar interior
                 n_ad = ps_adiabatic_index(stage, mdot); //get adiabatic index. Note: ORION does not seem to update this, but I think it is worthwhile as mdot can vary over time
                 ag = 3.0/(5.0-n_ad); //shorthand
                 rhoc = ps_rhoc(mass, n_ad, r); //central density
@@ -533,7 +533,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
                 //Let's evolve the stellar radius
                 rel_dr = 2. * ( dm_rel * (1.-(1.-fk)/(ag*beta)+0.5*dlogbeta_dlogm) - dt_curr/(ag*beta)*r/(All.G*mass*mass) * (lum_int+lum_I-lum_D) ); //Eq B4 of Offner 2009 divided by r
                 //Let's check if we need to subcycle
-                if (rel_dr > max_rel_dr){
+                if (fabs(rel_dr) > max_rel_dr){
                     n_subcycle = (int) DMAX(ceil(rel_dr/max_rel_dr), 2.0*n_subcycle); //number of subcycle steps, at least 2, either double the previous number or estimated from dr
                     //reset protostar properties, restart loop
                     loop_subcycle = 0;
@@ -543,16 +543,19 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
                 }
                 else{
                     loop_subcycle++;
-                    r *= rel_dr;
+                    r *= (1.0+rel_dr);
                     mass_D += dm_D;
                 }
             } while(loop_subcycle<n_subcycle); //repeat for the number of subcycle steps
             //Update stellar properties
-            BPP(n).ProtoStellarRadius_inSolar *= (1.0+rel_dr);
-            dm_D = mass_D - BPP(n).Mass_D; //get the tota change in D mass in the protostar
+            BPP(n).ProtoStellarRadius_inSolar = r * (All.UnitLength_in_cm/SOLAR_RADIUS);
             BPP(n).Mass_D = mass_D;
             //Debug message
 #ifdef PS_EVOL_OUTPUT_MOREINFO
+            if (n_subcycle>1){
+                dm_D = mass_D - BPP(n).Mass_D; //get the tota change in D mass in the protostar
+                rel_dr = r/(BPP(n).ProtoStellarRadius_inSolar * SOLAR_RADIUS/All.UnitLength_in_cm)-1.0; //get the actual relative change over the whole timestep
+            }
             printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: %g rel_dr: %g dm: %g dm_D: %g Tc: %g Pc: %g rhoc: %g beta: %g dt: %g n_ad: %g lum_int: %g lum_I: %g lum_D: %g age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: %g n_subcycle: %d PS_end\n",All.Time, P[n].ID,m_solar,BPP(n).ProtoStellarRadius_inSolar,stage, mdot_m_solar_per_year, BPP(n).Mass_D*(All.UnitMass_in_g / SOLAR_MASS),rel_dr,dm* (All.UnitMass_in_g / SOLAR_MASS), dm_D* (All.UnitMass_in_g / SOLAR_MASS), Tc, Pc*All.UnitPressure_in_cgs, rhoc* All.UnitDensity_in_cgs, beta, dt*All.UnitTime_in_Megayears, n_ad, lum_int / (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), lum_I/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), lum_D/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)), (All.Time-P[n].ProtoStellarAge)*All.UnitTime_in_Megayears, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk, BPP(n).SinkRadius, dlogbeta_dlogm, n_subcycle );
 #endif
             //Check whether the star can progress to the next state
