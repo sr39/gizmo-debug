@@ -4384,10 +4384,10 @@ void write_file(char *fname, int writeTask, int lastTask)
 #endif
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-    header.flag_agetracers        = GALSF_FB_FIRE_AGE_TRACERS;
+    header.flag_agetracers           = GALSF_FB_FIRE_AGE_TRACERS;
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
-    header.flag_agetracers_custom    = NUM_AGE_TRACERS;
+    header.flag_agetracers_custom    = 1;
 
     for (n = 0; n < NUM_AGE_TRACERS+1; n++)
       header.agetracer_time_bins[n]  = All.AgeTracerTimeBins[n];
