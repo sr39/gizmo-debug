@@ -708,7 +708,7 @@ void do_equilibrium_cooling(void *user_data)
 	  i++;
 	}
 	  
-      if(i == maxIter) PRINT_WARNING("WARNING: Problem with eqm cooling finding the upper bound");
+      if(i == maxIter) PRINT_WARNING("Problem with eqm cooling finding the upper bound");
     }
   else /* cooling */ 
     {
@@ -772,7 +772,7 @@ void do_equilibrium_cooling(void *user_data)
 
 	      i++;
 	    }
-	  if (i == maxIter) PRINT_WARNING("WARNING: Problem with eqm cooling finding the lower bound");
+	  if (i == maxIter) PRINT_WARNING("Problem with eqm cooling finding the lower bound");
 	}
       if (u_lower - u_old - LambdaNet * dt > 0.0 && i < maxIter)
 	return; /* u_lower reached TempFloor, but is still above converged solution. */
@@ -805,7 +805,7 @@ void do_equilibrium_cooling(void *user_data)
     }
   while (fabs(du / u) > 1.0e-6 && i < maxIter);
 
-  if (i >= maxIter) PRINT_WARNING("WARNING: eqm cooling failed to converge");
+  if (i >= maxIter) PRINT_WARNING("eqm cooling failed to converge");
 
   return;
 }

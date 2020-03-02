@@ -702,7 +702,7 @@ void density(void)
                 {
                     /* ok we have reached the desired number of neighbors: save the condition number for next timestep */
                     if(ConditionNumber > 1e6 * (double)CONDITION_NUMBER_DANGER) {
-                        PRINT_WARNING("Warning: Condition number=%g CNum_prevtimestep=%g Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g\n",
+                        PRINT_WARNING("Condition number=%g CNum_prevtimestep=%g Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g\n",
                                ConditionNumber,SphP[i].ConditionNumber,PPP[i].NumNgb,desnumngb,PPP[i].Hsml,All.MinHsml,All.MaxHsml);}
                     SphP[i].ConditionNumber = ConditionNumber;
                 }
