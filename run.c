@@ -853,7 +853,7 @@ void write_cpu_log(void)
   if(ThisTask == 0)
     {
       fprintf(FdCPU, "Step %lld, Time: %g, CPUs: %d\n",(long long) All.NumCurrentTiStep, All.Time, NTask);
-      fprintf(FdCPU, "Nactive=%lld, Imbal(Max/Mean)=%g \n", (long long) GlobNumForceUpdate, max_CPU_Step[0]/(MIN_REAL_NUMBER + avg_CPU_Step[0]));
+      fprintf(FdCPU, "Nactive=%lld, Imbal(Max/Mean)=%g \n", (long long) GlobNumForceUpdate, (max_CPU_Step[0]/(MIN_REAL_NUMBER + avg_CPU_Step[0])-1.)*NTask);
       fprintf(FdCPU,
 	      "total         %10.2f  %5.1f%%\n"
 	      "tree+gravity  %10.2f  %5.1f%%\n"

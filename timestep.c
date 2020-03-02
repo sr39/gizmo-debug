@@ -1048,7 +1048,7 @@ integertime get_timestep(int p,		/*!< particle index */
     
     if((dt < All.MinSizeTimestep)||(((integertime) (dt / All.Timebase_interval)) <= 1))
     {
-        PRINT_WARNING("warning: Timestep wants to be below the limit `MinSizeTimestep'");
+        PRINT_WARNING("Timestep wants to be below the limit `MinSizeTimestep'");
         if(P[p].Type == 0)
         {
 #ifndef LONGIDS
