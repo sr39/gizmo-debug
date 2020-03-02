@@ -4362,6 +4362,12 @@ void write_file(char *fname, int writeTask, int lastTask)
     header.flag_cooling = 0;
     header.flag_stellarage = 0;
     header.flag_metals = 0;
+    header.flag_agetracers = 0;
+    header.flag_agetracers_custom = 0;
+    header.agetracer_bin_start = 0.0;
+    header.agetracer_bin_end   = 0.0;
+    for (n = 0; n < NUM_AGE_TRACERS+1; n++)
+      header.agetracer_time_bins[n] = 0.0;
     
 #ifdef COOLING
     header.flag_cooling = 1;
@@ -4376,6 +4382,22 @@ void write_file(char *fname, int writeTask, int lastTask)
 #ifdef METALS
     header.flag_metals = NUM_METAL_SPECIES;
 #endif
+
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+    header.flag_agetracers        = GALSF_FB_FIRE_AGE_TRACERS;
+
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
+    header.flag_agetracers_custom    = NUM_AGE_TRACERS;
+
+    for (n = 0; n < NUM_AGE_TRACERS+1; n++)
+      header.agetracer_time_bins[n]  = All.AgeTracerTimeBins[n];
+#else
+    header.agetracer_bin_start    = All.AgeTracerBinStart;
+    header.agetracer_bin_end      = All.AgeTracerBinEnd;
+#endif
+
+#endif
+
     
     header.num_files = All.NumFilesPerSnapshot;
     header.BoxSize = All.BoxSize;
@@ -4746,6 +4768,7 @@ void write_file(char *fname, int writeTask, int lastTask)
 void write_header_attributes_in_hdf5(hid_t handle)
 {
     hsize_t adim[1] = { 6 };
+    hsize_t agedim[1] = {NUM_AGE_TRACERS+1};
     
     hid_t hdf5_dataspace, hdf5_attribute;
     
@@ -4840,6 +4863,36 @@ void write_header_attributes_in_hdf5(hid_t handle)
     hdf5_dataspace = H5Screate(H5S_SCALAR);
     hdf5_attribute = H5Acreate(handle, "Flag_Metals", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_INT, &header.flag_metals);
+    H5Aclose(hdf5_attribute);
+    H5Sclose(hdf5_dataspace);
+
+    hdf5_dataspace = H5Screate(H5S_SCALAR);
+    hdf5_attribute = H5Acreate(handle, "Flag_AgeTracers", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_INT, &header.flag_agetracers);
+    H5Aclose(hdf5_attribute);
+    H5Sclose(hdf5_dataspace);
+
+    hdf5_dataspace = H5Screate(H5S_SCALAR);
+    hdf5_attribute = H5Acreate(handle, "Flag_AgeTracersCustom", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_INT, &header.flag_agetracers_custom);
+    H5Aclose(hdf5_attribute);
+    H5Sclose(hdf5_dataspace);
+
+    H5Sset_extent_simple(hdf5_dataspace, 1, adim, NULL);
+    hdf5_attribute = H5Acreate(handle, "AgeTracerTimeBins", H5T_NATIVE_UINT, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_UINT, header.agetracer_time_bins);
+    H5Aclose(hdf5_attribute);
+    H5Sclose(hdf5_dataspace);
+
+    hdf5_dataspace = H5Screate(H5S_SCALAR);
+    hdf5_attribute = H5Acreate(handle, "AgeTracerBinStart", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &header.agetracer_bin_start);
+    H5Aclose(hdf5_attribute);
+    H5Sclose(hdf5_dataspace);
+
+    hdf5_dataspace = H5Screate(H5S_SCALAR);
+    hdf5_attribute = H5Acreate(handle, "AgeTracerBinEnd", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &header.agetracer_bin_end);
     H5Aclose(hdf5_attribute);
     H5Sclose(hdf5_dataspace);
     
