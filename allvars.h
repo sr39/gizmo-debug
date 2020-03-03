@@ -3083,11 +3083,7 @@ extern struct io_header
   double HubbleParam;		/*!< Hubble parameter in units of 100 km/sec/Mpc */
   int flag_stellarage;		/*!< flags whether the file contains formation times of star particles */
   int flag_metals;		/*!< flags whether the file contains metallicity values for gas and star particles */
-  int flag_agetracers;          /*!< flags whether the file contains stellar age tracer fields for abundance post-processing */
-  int flag_agetracers_custom;   /*!< flags whether or not agetracers (if included) are log-spaced over a range or defined using custom intervals */
-  double agetracer_bin_start;   /*!< left edge of first bin (in Myr) of agetracer time bins if using logsapced (non-custom) bins */
-  double agetracer_bin_end;     /*!< right edge of last bin (in Myr) of agetracer time bins if using logspaced (non-custom)  bins */
-  double agetracer_time_bins[NUM_AGE_TRACERS+1]; /*!< left edges of custom age tracer time bins (in Myr) plus right edge of last bin (in Myr) if using custom bins */
+
   unsigned int npartTotalHighWord[6];	/*!< High word of the total number of particles of each type (needed to combine with npartTotal to allow >2^31 particles of a given type) */
   int flag_doubleprecision;	/*!< flags that snapshot contains double-precision instead of single precision */
 
