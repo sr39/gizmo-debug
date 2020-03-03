@@ -106,17 +106,22 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 {
     /* if pair is a gas particle make sure to account for its thermal pressure */
     double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
-/* #if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(MAGNETIC) */
-/*     double bmag=0; for(int k=0;k<3;k++) {bmag+=Get_Particle_BField(j,k)*Get_Particle_BField(j,k);} */
-/*     cs = sqrt(cs*cs + bmag/SphP[j].Density); */
-/* #endif */
-#if defined(COOLING) && defined(SINGLE_STAR_SINK_DYNAMICS)
-    double nHcgs = HYDROGEN_MASSFRAC * (SphP[j].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
-    if(nHcgs > 1e13 && cs > 0.1 * vrel) { // we're probably sitting at the bottom of a quasi-hydrostatic Larson core
-        double m_eff = 4. * M_PI * dr_code * dr_code * dr_code * SphP[j].Density; // assume an isothermal sphere interior, for Shu-type solution
-        vesc = DMAX(sqrt(2*All.G * m_eff / dr_code), vesc); // re-estimate vesc using self-gravity of the gas
+    
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+    if(P[j].Type == 0) {
+        if(Get_Particle_Size(j) > sink_radius*1.396263) {return 0;} // particle volume should be less than sink volume, enforcing a minimum spatial resolution around the sink
+#if defined(MAGNETIC)
+        double bmag=0; int k; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(j,k)*Get_Particle_BField(j,k);}
+        cs = sqrt(cs*cs + bmag/SphP[j].Density);
+#endif
+#if defined(COOLING)
+        double nHcgs = HYDROGEN_MASSFRAC * (SphP[j].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
+        if(nHcgs > 1e13 && cs > 0.1 * vrel) { // we're probably sitting at the bottom of a quasi-hydrostatic Larson core
+            double m_eff = 4. * M_PI * dr_code * dr_code * dr_code * SphP[j].Density; vesc = DMAX(sqrt(2*All.G * m_eff / dr_code), vesc);} // assume an isothermal sphere interior, for Shu-type solution, and re-estimate vesc using self-gravity of the gas
+#endif
     }
-#endif    
+#endif // SINGLE_STAR_SINK_DYNAMICS
+    
     double v2 = (vrel*vrel+cs*cs)/(vesc*vesc); int bound = 0;
     if(v2 < 1) 
     {
@@ -161,7 +166,9 @@ double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r
     if(V_j<0 || isnan(V_j)) {V_j=0;}
     double sph_area = fabs(V_i*V_i*dwk + V_j*V_j*dwk_j); // effective face area //
     wk = 0.5 * (1. - 1./sqrt(1. + sph_area / (M_PI*r*r))); // corresponding geometric weight //
-    //wk = 0.5 * (V_j/V_i) * (V_i*wk + V_j*wk_j); // weight in the limit N_particles >> 1 for equal-mass particles (accounts for self-shielding if some in dense disk)
+#if !defined(BH_PUSHAREA)
+    wk = 0.5 * (V_j/V_i) * (V_i*wk + V_j*wk_j); // weight in the limit N_particles >> 1 for equal-mass particles (accounts for self-shielding if some in dense disk)
+#endif
 #if defined(BH_FB_COLLIMATED)
     double costheta2=cos_theta*cos_theta, eps_width_jet=0.35; eps_width_jet*=eps_width_jet; /* eps_width^2 is approximate with in radians of 'core' of jet */
     wk *= eps_width_jet * (eps_width_jet + costheta2) / ((eps_width_jet + 1) * (eps_width_jet + (1-costheta2)));
@@ -336,6 +343,11 @@ void set_blackhole_mdot(int i, int n, double dt)
             double facc_which_hubber_mdot = DMIN(1, 1.75*sqrt(j_eff)/(m_eff*sqrt(All.G*(m_eff+P[n].Mass)*rmax_for_bhar))); /* disk fraction estimator */
             mdot = DMAX( BlackholeTempInfo[i].hubber_mdot_bondi_limiter , pow(hubber_mdot_from_vr_estimator,1-facc_which_hubber_mdot)*pow(hubber_mdot_disk_estimator,facc_which_hubber_mdot));
 #endif
+#ifdef BH_SIGMAMULTIPLIER
+            double sigma_crit = 3000. * (2.09e-4 / (All.UnitMass_in_g*All.HubbleParam/(All.UnitLength_in_cm*All.UnitLength_in_cm))); // from MG's fit to isolated cloud sims [converts from Msun/pc^2 to code units]
+            double sigma_enc = (BlackholeTempInfo[i].Malt_in_Kernel + P[n].Mass) / (M_PI*rmax_for_bhar*rmax_for_bhar); // effective surface density [total gravitating mass / area]
+            mdot *= sigma_enc / (sigma_enc + sigma_crit);
+#endif
 #ifndef IO_REDUCED_MODE
             printf(" ..BH accretion kernel :: mdot %g Norm %g fdisk %g bh_8 %g fgas %g f0 %g mdisk_9 %g rmax_100 %g \n",
                    mdot,fac,f_disk_for_bhar,bh_mass_units,fgas_for_bhar,f0_for_bhar,mdisk_for_bhar_units,rmax_for_bhar_units);
@@ -394,7 +406,8 @@ void set_blackhole_mdot(int i, int n, double dt)
         double t_acc_disk = 4.2e7 * t_yr * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass) / BPP(n).BH_Mass_AlphaDisk, 0.4); /* shakura-sunyaev disk, integrated out to Q~1 radius, approximately */
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        double Gm_i=1./(All.G*P[n].Mass);
+        //double Gm_i=1./(All.G*P[n].Mass);
+        double Gm_i=1./(All.G*2.*All.MinMassForParticleMerger); //effectively setting the value to the freefall time the particle has when it forms
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
         double reff = P[n].SinkRadius; // Assuming this is scaled to the nominal minimum resolved Jeans length
 #else	
@@ -411,14 +424,14 @@ void set_blackhole_mdot(int i, int n, double dt)
         j *= 1. + 1./BH_ALPHADISK_ACCRETION; // correction assuming a ratio of accretion disk to sink mass ~BH_ALPHADISK_ACCRETION [max allowed], with the material in the sink having given its angular momentum to the sink [which is what should happen]
 #endif
         //t_acc_disk = j*j*j*Gm_i*Gm_i; // dynamical time at circularization radius of the alpha-disk
-#ifdef SLOPE2_SINKS
+//#ifdef SLOPE2_SINKS
         //t_acc_disk = DMAX(sqrt(pow(0.033*All.SofteningTable[5],3)/(All.G*P[n].BH_Mass)) , t_acc_disk); // catch against un-resolvably small j [since accreted particles are extended, there is always material at non-zero "j" even if accreted at zero impact parameter; 1/30th is conservative estimate for perfect impact parameter]
         //t_acc_disk = t_dyn_eff; //use the dynamical time as the orbital time (equivalent to circular orbit at sink radius)
-        t_acc_disk = DMAX(10. * 2.*M_PI*t_acc_disk, t_dyn_eff); // 10 orbits at circularization radius to spiral all the way in (very fast), but should be no less than the resolution-scale dynamical time	
-#else
+//        t_acc_disk = DMAX(10. * 2.*M_PI*t_acc_disk, t_dyn_eff); // 10 orbits at circularization radius to spiral all the way in (very fast), but should be no less than the resolution-scale dynamical time	
+//#else
         //if(j*j*Gm_i < 6.957e11 / All.UnitLength_in_cm) {t_acc_disk = 0;} // when angular momentum is low enough, we're falling straight onto the protostellar surface, here taking 10R_solar as a rough number
         //t_acc_disk = DMAX(100. * t_acc_disk * (1 / (Gm_i * DMIN(reff, j*j*Gm_i))) / soundspeed2, t_dyn_eff); // Shakura-Sunyaev prescription with alpha=0.01, using minimum of sink and circularization radius
-#endif // SLOPE2_SINKS
+//#endif // SLOPE2_SINKS
 #endif // BH_FOLLOW_ACCRETED_ANGMOM
 #endif // SINGLE_STAR_SINK_DYNAMICS
         
@@ -671,7 +684,7 @@ void set_blackhole_long_range_rp(int i, int n) /* pre-set quantities needed for 
 void blackhole_final_operations(void)
 {
     int i, k, n, bin; double dt, mass_disk, mdot_disk, MgasBulge, MstarBulge, r0;
-#ifdef SINGLE_STAR_PROMOTION
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
     int count_bhelim=0, tot_bhelim;
 #endif
 
@@ -707,24 +720,21 @@ void blackhole_final_operations(void)
     for(i=0; i<N_active_loc_BHs; i++)
     {
         n = BlackholeTempInfo[i].index;
+        
         if(((BlackholeTempInfo[i].accreted_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass_alphadisk>0)) && P[n].Mass > 0)
         {
-            
+#ifdef HERMITE_INTEGRATION
+            P[n].AccretedThisTimestep = 1;
+#endif          
             double m_new = P[n].Mass + BlackholeTempInfo[i].accreted_Mass;
 #if (BH_FOLLOW_ACCRETED_ANGMOM == 1) /* in this case we are only counting this if its coming from BH particles */
             m_new = P[n].Mass + BlackholeTempInfo[i].accreted_BH_Mass + BlackholeTempInfo[i].accreted_BH_Mass_alphadisk;
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM) && !defined(BH_REPOSITION_ON_POTMIN)
             for(k=0;k<3;k++) {P[n].Vel[k] = (P[n].Vel[k]*m_new+ BlackholeTempInfo[i].accreted_momentum[k]) / m_new;} 
-#ifdef HERMITE_INTEGRATION
-            for(k=0;k<3;k++) {P[n].OldVel[k] = (P[n].OldVel[k]*m_new + BlackholeTempInfo[i].accreted_momentum[k]) / m_new;}
-#endif	    
 #endif
 #if defined(BH_FOLLOW_ACCRETED_COM) && !defined(BH_REPOSITION_ON_POTMIN)
             for(k=0;k<3;k++) {P[n].Pos[k] = (P[n].Pos[k]*m_new + BlackholeTempInfo[i].accreted_centerofmass[k]) / m_new;}
-#ifdef HERMITE_INTEGRATION
-            for(k=0;k<3;k++) {P[n].OldPos[k] = (P[n].OldPos[k]*m_new + BlackholeTempInfo[i].accreted_centerofmass[k]) / m_new;}
-#endif	    	    
 #endif
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
             for(k=0;k<3;k++) {BPP(n).BH_Specific_AngMom[k] = (BPP(n).BH_Specific_AngMom[k]*P[n].Mass + BlackholeTempInfo[i].accreted_J[k]) / m_new;}
@@ -737,7 +747,13 @@ void blackhole_final_operations(void)
 #ifdef BH_ALPHADISK_ACCRETION
             BPP(n).BH_Mass_AlphaDisk += BlackholeTempInfo[i].accreted_BH_Mass_alphadisk;
 #endif
+#ifdef GRAIN_FLUID
+            BPP(n).BH_Dust_Mass += BlackholeTempInfo[i].accreted_dust_Mass;
+#endif            
         } // if(masses > 0) check
+#ifdef HERMITE_INTEGRATION
+        else { P[n].AccretedThisTimestep = 0; }
+#endif        
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
         P[n].SinkRadius = DMAX(P[n].SinkRadius, All.ForceSoftening[5]);
 #endif
@@ -773,17 +789,16 @@ void blackhole_final_operations(void)
 #endif
 #endif // ifdef BH_WIND_CONTINUOUS
         
-	/* save local effective signal velocity of gas for sink particle CFL-like timestep criterion */
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-	P[n].BH_SurroundingGasVel = 0;
-	for(k=0; k<3; k++) {P[n].BH_SurroundingGasVel += BlackholeTempInfo[i].BH_SurroundingGasVel[k]*BlackholeTempInfo[i].BH_SurroundingGasVel[k];}
-	P[n].BH_SurroundingGasVel += convert_internalenergy_soundspeed2(n,BlackholeTempInfo[i].BH_InternalEnergy);
-	P[n].BH_SurroundingGasVel = sqrt(P[n].BH_SurroundingGasVel);
+	
+#ifdef SINGLE_STAR_SINK_DYNAMICS /* save local effective signal velocity of gas for sink particle CFL-like timestep criterion */
+        P[n].BH_SurroundingGasVel = 0;
+        for(k=0; k<3; k++) {P[n].BH_SurroundingGasVel += BlackholeTempInfo[i].BH_SurroundingGasVel[k]*BlackholeTempInfo[i].BH_SurroundingGasVel[k];}
+        P[n].BH_SurroundingGasVel += convert_internalenergy_soundspeed2(n,BlackholeTempInfo[i].BH_InternalEnergy);
+        P[n].BH_SurroundingGasVel = sqrt(P[n].BH_SurroundingGasVel);
 #endif
 
 #ifdef BH_WIND_SPAWN
-        /* DAA: for wind spawning, we only need to subtract the BAL wind mass from BH_Mass (or BH_Mass_AlphaDisk)
-            --> wind mass subtracted from P.Mass in blackhole_spawn_particle_wind_shell()  */        
+        /* DAA: for wind spawning, we only need to subtract the BAL wind mass from BH_Mass (or BH_Mass_AlphaDisk) --> wind mass subtracted from P.Mass in blackhole_spawn_particle_wind_shell()  */
         double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
 #ifdef SINGLE_STAR_FB_JETS
         if((P[n].BH_Mass * All.UnitMass_in_g / (All.HubbleParam*SOLAR_MASS) < 0.01) || P[n].Mass < 7*All.MinMassForParticleMerger) dm_wind = 0; // no jets launched yet if <0.01msun or if we haven't accreted enough to get a reliable jet direction
@@ -839,63 +854,16 @@ void blackhole_final_operations(void)
         TimeBin_BH_Mdot[bin] += BPP(n).BH_Mdot;
         if(BPP(n).BH_Mass > 0) {TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;}
         
-
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) // initially we want to do this protostellar evolution, but not the promotion
-        double m_initial = DMAX(1.e-37 , (BPP(n).BH_Mass - dm)); // mass before the accretion
-        double mu = DMAX(0, dm/m_initial); // relative mass accreted
-        //double m_initial_msun = m_initial * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS));
-        //double t_premainseq = 50.0e6 / pow(m_initial_msun,2.5); // lifetime at previous mass
-        //t_premainseq /= (All.UnitTime_in_s/(All.HubbleParam * SEC_PER_YEAR));
-        ///* compute evolution of 'tracker' [here modeled on self-similar contraction along Hayashi line on Kelvin-Helmholtz timescale, with accretion 'puffing up' the star */
-        //BPP(n).PreMainSeq_Tracker = (BPP(n).PreMainSeq_Tracker * exp(-dt/t_premainseq) + mu) / (1. + mu);
-        
-        double m_solar = BPP(n).BH_Mass * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS)); // mass in solar units
-        double T4000_4 = pow(m_solar, 0.55); // (temperature/4000K)^4 along Hayashi track
-        double lum_sol = 0.0; // get the main-sequence luminosity
-        if(m_solar > 0.012)
-        {
-            if(m_solar < 0.43) {lum_sol = 0.185 * m_solar*m_solar;}
-            else if(m_solar < 2.) {lum_sol = m_solar*m_solar*m_solar*m_solar;}
-            else if(m_solar < 53.9) {lum_sol = 1.5 * m_solar*m_solar*m_solar * sqrt(m_solar);}
-            else {lum_sol = 32000. * m_solar;}
-        }
-        double R_Hayashi_Henyey = 2.1 * sqrt(lum_sol / T4000_4); // size below which, at the temperature above, contraction must occur along the Henyey track at constant luminosity
-        double t_R_evol = 0, contraction_factor = 0; // timescale for contraction
-        if(BPP(n).ProtoStellarRadius_inSolar <= R_Hayashi_Henyey)
-        {
-            // currently on Henyey track, contracting at constant Luminosity
-            t_R_evol = 1.815e7 * m_solar*m_solar / (BPP(n).ProtoStellarRadius_inSolar * lum_sol) / (All.UnitTime_in_s/(All.HubbleParam * SEC_PER_YEAR)); // contraction timescale
-            contraction_factor = 1. / (1. + dt/t_R_evol);
-        } else {
-            // currently on Hayashi track, contracting at constant Temperature
-            t_R_evol = 8.021e7 * m_solar*m_solar / (BPP(n).ProtoStellarRadius_inSolar*BPP(n).ProtoStellarRadius_inSolar*BPP(n).ProtoStellarRadius_inSolar * T4000_4) / (All.UnitTime_in_s/(All.HubbleParam * SEC_PER_YEAR)); // contraction timescale
-            contraction_factor = 1. / pow(1 + 3.*dt/t_R_evol, 1./3.);
-        }
-        double r_new = 100. * m_solar; // size of newly-formed protostar
-	    if (m_solar < 0.012) {r_new =  5.24 * pow(m_solar, 1./3);} // constant density for Jupiter-type objects
-        BPP(n).ProtoStellarRadius_inSolar = (BPP(n).ProtoStellarRadius_inSolar * contraction_factor + r_new * mu) / (1. + mu); // new size (contraction + accretion both accounted for)
-        double R_main_sequence_ignition; // main sequence radius - where contraction should halt
-        if(m_solar <= 1) {R_main_sequence_ignition = pow(m_solar,0.8);} else {R_main_sequence_ignition = pow(m_solar,0.57);}
-        
-        //if(BPP(n).PreMainSeq_Tracker < 0.36787944117144233) // if drops below 1/e [one t_premainseq timescale, in the absence of accretion], promote //
-        if(BPP(n).ProtoStellarRadius_inSolar <= R_main_sequence_ignition)
-        {
-	        BPP(n).ProtoStellarRadius_inSolar = R_main_sequence_ignition;
-#ifdef SINGLE_STAR_PROMOTION		    
-            P[n].Type = 4; // convert type
-            count_bhelim++; // note one fewer BH-type particle
-            P[n].StellarAge = All.Time; // mark the new ZAMS age according to the current time
-            P[n].Mass = DMAX(P[n].Mass , BPP(n).BH_Mass + BPP(n).BH_Mass_AlphaDisk);
-#endif		    
-        }
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+        singlestar_subgrid_protostellar_evolution_update_track(n, dm, dt);
+        if((P[n].Type!=5) || (P[n].Mass==0)) {count_bhelim++;} // our subroutine has promoted or removed this sink: one fewer BH-type particle exists now //
 #endif
         
     } // for(i=0; i<N_active_loc_BHs; i++)
-    
-    
-#ifdef SINGLE_STAR_PROMOTION
+            
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
     MPI_Allreduce(&count_bhelim, &tot_bhelim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    All.TotBHs -= tot_bhelim; 
+    All.TotBHs -= tot_bhelim;
 #endif
     
 }

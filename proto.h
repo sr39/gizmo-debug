@@ -415,6 +415,7 @@ void set_injection_accel(void);
 
 
 int density_isactive(int n);
+int GasGrad_isactive(int i);
 
 size_t sizemax(size_t a, size_t b);
 
@@ -504,6 +505,24 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i);
+#endif
+#endif
+
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt);
+#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
+double ps_adiabatic_index(int stage, double mdot);
+double ps_rhoc(double m, double n_ad, double r);
+double ps_Pc(double m, double n_ad, double r);
+double ps_Tc(double rhoc, double Pc);
+double ps_beta(double m, double n_ad, double rhoc, double Pc);
+double ps_betac(double rhoc, double Pc, double Tc);
+double ps_dlogbeta_dlogm(double m, double r, double n_ad, double beta, double rhoc, double Pc);
+double ps_dlogbetaperbetac_dlogm(double m, double r, double n_ad, double beta, double rhoc, double Pc, double Tc);
+double ps_lum_I(double mdot);
+double ps_lum_MS(double m);
+double ps_radius_MS_in_solar(double m);
+double ps_lum_Hayashi_BB(double m, double r);
 #endif
 #endif
 
@@ -825,7 +844,8 @@ void subtract_companion_gravity(int i);
 
 void hydro_gradient_calc(void);
 int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
-void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol);
+void construct_gradient(double *grad, int i);
+void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol, int pos_preserve, double d_max, double val_cen);
 
 #ifdef TURB_DIFF_DYNAMIC
 void dynamic_diff_vel_calc(void);

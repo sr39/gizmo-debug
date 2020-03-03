@@ -57,7 +57,7 @@
     /* now we're ready to compute the volume integral of the fluxes (or equivalently an 'effective area'/face orientation) */
     /* ------------------------------------------------------------------------------------------------------------------- */
     double wt_i,wt_j; wt_i=V_i; wt_j=V_j;
-#if (SLOPE_LIMITER_TOLERANCE != 2) // unless using the most aggressive reconstruction, we will limit face-area disparity here //
+#if (SLOPE_LIMITER_TOLERANCE != 2) && !((defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)) // unless using the most aggressive reconstruction, we will limit face-area disparity here //
 #if defined(COOLING) || (SLOPE_LIMITER_TOLERANCE==0)
     if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=2.*V_i*V_j/(V_i+V_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
 #else
@@ -378,7 +378,7 @@
             int use_entropic_energy_equation = 0;
             double du_new = 0;
             double SM_over_ceff = fabs(Riemann_out.S_M) / DMIN(kernel.sound_i,kernel.sound_j);
-            if(SM_over_ceff < epsilon_entropic_eos_big)
+            if(SM_over_ceff < epsilon_entropic_eos_big && All.ComovingIntegrationOn == 1)
             {
                 use_entropic_energy_equation = 1;
                 double PdV_fac = Riemann_out.P_M * vdotr2_phys / All.cf_a2inv;
@@ -390,15 +390,18 @@
                 if(SM_over_ceff > epsilon_entropic_eos_small && cnum2 < cnumcrit2)
                 {
                     double du_old = facenorm_pm * (Riemann_out.S_M + face_area_dot_vel);
-                    if(Pressure_i/local.Density > Pressure_j/SphP[j].Density)
+                    if(Pressure_i/local.Density != Pressure_j/SphP[j].Density)
                     {
-                        double dtoj = -du_old + facenorm_pm * face_vel_j;
-                        if(dtoj > 0) {use_entropic_energy_equation=0;} else {
-                            if(dtoj > -du_new+facenorm_pm*face_vel_j) {use_entropic_energy_equation=0;}}
-                    } else {
-                        double dtoi = du_old - facenorm_pm * face_vel_i;
-                        if(dtoi > 0) {use_entropic_energy_equation=0;} else {
-                            if(dtoi > du_new-facenorm_pm*face_vel_i) {use_entropic_energy_equation=0;}}
+                        if(Pressure_i/local.Density > Pressure_j/SphP[j].Density)
+                        {
+                            double dtoj = -du_old + facenorm_pm * face_vel_j;
+                            if(dtoj > 0) {use_entropic_energy_equation=0;} else {
+                                if(dtoj > -du_new+facenorm_pm*face_vel_j) {use_entropic_energy_equation=0;}}
+                        } else {
+                            double dtoi = du_old - facenorm_pm * face_vel_i;
+                            if(dtoi > 0) {use_entropic_energy_equation=0;} else {
+                                if(dtoi > du_new-facenorm_pm*face_vel_i) {use_entropic_energy_equation=0;}}
+                        }
                     }
                 }
                 if(cnum2 >= cnumcrit2) {use_entropic_energy_equation=1;}
@@ -463,7 +466,7 @@
             /* for MFM, do the face correction for adiabatic flows here */
             double SM_over_ceff = fabs(Riemann_out.S_M) / DMIN(kernel.sound_i,kernel.sound_j); // for now use sound speed here (more conservative) vs magnetosonic speed //
             /* if SM is sufficiently large, we do nothing to the equations */
-            if(SM_over_ceff < epsilon_entropic_eos_big)
+            if(SM_over_ceff < epsilon_entropic_eos_big && All.ComovingIntegrationOn == 1)
             {
                 /* ok SM is small, we should use adiabatic equations instead */
 #ifdef MAGNETIC
@@ -481,15 +484,18 @@
                 double cnum2 = SphP[j].ConditionNumber*SphP[j].ConditionNumber;
                 if(SM_over_ceff > epsilon_entropic_eos_small && cnum2 < cnumcrit2)
                 {
-                    if(Pressure_i/local.Density > Pressure_j/SphP[j].Density)
+                    if(Pressure_i/local.Density != Pressure_j/SphP[j].Density)
                     {
-                        double dtoj = -du_old + facenorm_pm * face_vel_j;
-                        if(dtoj > 0) {use_entropic_energy_equation=0;} else {
-                            if(dtoj > -du_new+facenorm_pm*face_vel_j) {use_entropic_energy_equation=0;}}
-                    } else {
-                        double dtoi = du_old - facenorm_pm * face_vel_i;
-                        if(dtoi > 0) {use_entropic_energy_equation=0;} else {
-                            if(dtoi > du_new-facenorm_pm*face_vel_i) {use_entropic_energy_equation=0;}}
+                        if(Pressure_i/local.Density > Pressure_j/SphP[j].Density)
+                        {
+                            double dtoj = -du_old + facenorm_pm * face_vel_j;
+                            if(dtoj > 0) {use_entropic_energy_equation=0;} else {
+                                if(dtoj > -du_new+facenorm_pm*face_vel_j) {use_entropic_energy_equation=0;}}
+                        } else {
+                            double dtoi = du_old - facenorm_pm * face_vel_i;
+                            if(dtoi > 0) {use_entropic_energy_equation=0;} else {
+                                if(dtoi > du_new-facenorm_pm*face_vel_i) {use_entropic_energy_equation=0;}}
+                        }
                     }
                 }
                 if(cnum2 >= cnumcrit2) {use_entropic_energy_equation=1;}

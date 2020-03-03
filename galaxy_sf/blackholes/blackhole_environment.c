@@ -296,18 +296,25 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
                                     Currently, I only allow gas accretion to contribute to BH_Mdot (consistent with the energy radiating away). For star particles, if there is an alpha-disk, they are captured to the disk. If not, they directly go
                                     to the hole, without any contribution to BH_Mdot and feedback. This can be modified in the swallow loop for other purposes. The goal of the following part is to estimate BH_Mdot, which will be used to evaluate feedback strength.
                                     Therefore, we only need it when we enable BH_GRAVCAPTURE_GAS as gas accretion model. */
+#ifdef GRAIN_FLUID                    
+                    if( (P[j].Mass > 0) && ((P[j].Type == 0) || ((1<<P[j].Type) & GRAIN_PTYPES)))
+#else
                     if( (P[j].Mass > 0) && (P[j].Type == 0))
+#endif                        
+                      
                     {
                         double vrel=0, r2=0; for(k=0;k<3;k++) {vrel+=dv[k]*dv[k]; r2+=dP[k]*dP[k];}
                         double dr_code = sqrt(r2); vrel = sqrt(vrel) / All.cf_atime;
                         double vbound = bh_vesc(j, local.Mass, dr_code, ags_h_i);
                         if(vrel < vbound) { /* bound */
+                            double local_sink_radius = All.ForceSoftening[5];
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+                            local_sink_radius = local.SinkRadius;
                             double spec_mom=0; for(k=0;k<3;k++) {spec_mom += dv[k]*dP[k];} // delta_x.delta_v
                             spec_mom = (r2*vrel*vrel - spec_mom*spec_mom*All.cf_a2inv);  // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2;
-                            if(spec_mom < All.G * (local.Mass + P[j].Mass) * local.SinkRadius) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
+                            if(spec_mom < All.G * (local.Mass + P[j].Mass) * local_sink_radius) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
 #endif
-                            if( bh_check_boundedness(j,vrel,vbound,dr_code,local.SinkRadius)==1 )
+                            if( bh_check_boundedness(j,vrel,vbound,dr_code,local_sink_radius)==1 )
                             { /* apocenter within 2.8*epsilon (softening length) */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                                 double eps = DMAX(P[j].Hsml/2.8, DMAX(dr_code, ags_h_i/2.8));
@@ -340,6 +347,7 @@ void blackhole_environment_loop(void)
     #include "../../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */
     /* final operations on results */
     {int i; for(i=0; i<N_active_loc_BHs; i++) {bh_normalize_temp_info_struct_after_environment_loop(i);}}
+    CPU_Step[CPU_BLACKHOLES] += measure_time(); /* collect timings and reset clock for next timing */
 }
 #include "../../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 
@@ -425,6 +433,7 @@ void blackhole_environment_second_loop(void)
 #include "../../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
 #include "../../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
 #include "../../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */
+CPU_Step[CPU_BLACKHOLES] += measure_time(); /* collect timings and reset clock for next timing */
 }
 #include "../../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 

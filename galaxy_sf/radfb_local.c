@@ -186,18 +186,16 @@ void radiation_pressure_winds_consolidated(void)
     MPI_Reduce(&total_prob_kick, &totMPI_prob_kick, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if(ThisTask == 0)
     {
-        if(totMPI_prob_kick>0)
+        if(totMPI_prob_kick>0 && totMPI_n_wind>0)
         {
-            if(totMPI_n_wind>0)
-            {
-                if(totMPI_n_wind>0) {totMPI_avg_v /= totMPI_n_wind; totMPI_pwt_avg_v /= totMPI_mom_wind;}
-                fprintf(FdMomWinds, "%lg %g %g %g %g %g \n", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v);
-                PRINT_STATUS("Momentum Wind Feedback: Time=%g Nkicked=%g (L/c)dt=%g Momkicks=%g V_avg=%g tau_j_mean=%g \n", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v);
-            }
+            totMPI_avg_v /= totMPI_n_wind; totMPI_pwt_avg_v /= totMPI_mom_wind;
+            fprintf(FdMomWinds, "%lg %g %g %g %g %g \n", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v);
+            PRINT_STATUS(" ..momentum coupled: Time=%g Nkicked=%g (L/c)dt=%g Momkicks=%g V_avg=%g tau_j_mean=%g ", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v);
         }
-        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {fflush(FdMomWinds);}
     } // if(ThisTask==0)
+    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin && ThisTask == 0) {fflush(FdMomWinds);}
     PRINT_STATUS(" .. completed local Radiation-Pressure acceleration");
+    CPU_Step[CPU_LOCALWIND] += measure_time(); /* collect timings and reset clock for next timing */
 } // end routine :: void radiation_pressure_winds_consolidated(void)
 
 #endif /* closes defined(GALSF_FB_FIRE_RT_LOCALRP)  */
@@ -364,8 +362,11 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
         }
         if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {fflush(FdHIIHeating);}
     } // ThisTask == 0
+    CPU_Step[CPU_HIIHEATING] += measure_time();
 } // void HII_heating_singledomain(void)
 #endif // GALSF_FB_FIRE_RT_HIIHEATING
+
+
 
 #ifdef CHIMES_HII_REGIONS 
 /* This routine is based heavily on the HII_heating_singledomain() routine 
@@ -588,5 +589,6 @@ void chimes_HII_regions_singledomain(void)
 	} // if((P[i].Type == 4)||(P[i].Type == 2)||(P[i].Type == 3))
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
   myfree(Ngblist);
-} 
+  CPU_Step[CPU_HIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */
+}
 #endif // CHIMES_HII_REGIONS 
