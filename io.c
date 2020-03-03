@@ -5023,7 +5023,7 @@ void write_header_attributes_in_hdf5(hid_t handle)
     H5Awrite(hdf5_attribute, H5T_NATIVE_INT, &header.flag_metals);
     H5Aclose(hdf5_attribute);
     H5Sclose(hdf5_dataspace);
-
+/*
     hdf5_dataspace = H5Screate(H5S_SCALAR);
     hdf5_attribute = H5Acreate(handle, "Flag_AgeTracers", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_INT, &header.flag_agetracers);
@@ -5053,7 +5053,7 @@ void write_header_attributes_in_hdf5(hid_t handle)
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &header.agetracer_bin_end);
     H5Aclose(hdf5_attribute);
     H5Sclose(hdf5_dataspace);
-    
+ */ 
     hdf5_dataspace = H5Screate(H5S_SCALAR);
     hdf5_attribute = H5Acreate(handle, "Flag_Feedback", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_INT, &header.flag_feedback);
