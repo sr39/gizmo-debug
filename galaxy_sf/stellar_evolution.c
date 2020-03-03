@@ -618,7 +618,18 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 #endif
     eps_protostar -= f_acc*fk; //Need to deduct the part that is already accounted for in L_int (ORION uses the convention to add lum_acc to that)
     BPP(n).StarLuminosity_Solar = (eps_protostar*All.G*mass*mdot/r + lum_int)/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)); //luminosity of the star in solar units
+#endif//end of SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1
+
+#ifdef PS_EVOL_OUTPUT_MOREINFO
+    // print out the basic star info
+#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
+    if (BPP(n).ProtoStellarStage == 5) //only for MS stars, for previous stages we will print out the properties before
 #endif
+    {
+        printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: 0 rel_dr: 0 dm: %g dm_D: 0 Tc: 0 Pc: 0 rhoc: 0 beta: 0 dt: %g n_ad: 0 lum_int: 0 lum_I: 0 lum_D: 0 age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: 0 n_subcycle: 0 PS_end\n",All.Time, P[n].ID,BPP(n).BH_Mass*(All.UnitMass_in_g / SOLAR_MASS),BPP(n).ProtoStellarRadius_inSolar,BPP(n).ProtoStellarStage, BPP(n).BH_Mdot*(All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/All.UnitTime_in_s*SEC_PER_YEAR , dm* (All.UnitMass_in_g / SOLAR_MASS), dt*All.UnitTime_in_Megayears, (All.Time-P[n].ProtoStellarAge)*All.UnitTime_in_Megayears, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk*(All.UnitMass_in_g / SOLAR_MASS), BPP(n).SinkRadius );
+    }
+#endif
+
 }
 
 
@@ -639,7 +650,7 @@ double ps_beta(double m, double n_ad, double rhoc, double Pc) {
     } else {
         // For n != 3, we use a table lookup. The values of beta have been pre-computed with mathematica. The table goes from M=5 to 50 solar masses in steps of 2.5 M_sun, and from n=1.5 to n=3 in steps of 0.5. We should never call this routine with M > 50 Msun, since by then the star should be fully on the main sequence.
         double MTABMIN=5.0, MTABMAX=50.0, MTABSTEP=2.5, NTABMIN=1.5, NTABMAX=3.0, NTABSTEP=0.5, MBETMIN=0.1 ;
-        if (mass < MBETMIN){return (1.0+ 0.15*log(mass/MBETMIN)/log(0.01/MBETMIN) );}  // Setting from Offner+Mckee2011, not sure why, does not make much sense above 1, probably to fit to previous results. I made it change continously to avoid big drops in R at 0.1 Msun
+        if (mass < MBETMIN){return (1.0+ 0.25*log(mass/MBETMIN)/log(0.01/MBETMIN) );}  // Setting from Offner+Mckee2011, not sure why, does not make much sense above 1, probably to fit to previous results. I made it change continously to avoid big drops in R at 0.1 Msun, value adjusted from 1.15
         if (mass < MTABMIN){return (1.0);}  // Set beta = 1 for M < 5 Msun
         if ((mass >= MTABMAX) || (n_ad >= NTABMAX)) {printf("ps_beta: too high protostar mass, m: %g n_ad %g",m, n_ad); return(-1.0);}
         static double betatab[19][4] = {{0.98785, 0.988928, 0.98947, 0.989634}, {0.97438, 0.976428, 0.977462, 0.977774}, {0.957927, 0.960895, 0.962397, 0.962846},
