@@ -1784,10 +1784,6 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-        strcpy(tag[nt], "IsoSoundSpeed");  // initializes gas sound speed in box to this value
-        addr[nt] = &All.IsoSoundSpeed;
-        id[nt++] = REAL;
-
         strcpy(tag[nt], "ST_decay"); // decay time for driving-mode phase correlations
         addr[nt] = &All.StDecay;
         id[nt++] = REAL;

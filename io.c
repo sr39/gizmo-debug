@@ -5037,8 +5037,8 @@ void write_header_attributes_in_hdf5(hid_t handle)
     H5Sclose(hdf5_dataspace);
 
     H5Sset_extent_simple(hdf5_dataspace, 1, adim, NULL);
-    hdf5_attribute = H5Acreate(handle, "AgeTracerTimeBins", H5T_NATIVE_UINT, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_UINT, header.agetracer_time_bins);
+    hdf5_attribute = H5Acreate(handle, "AgeTracerTimeBins", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, header.agetracer_time_bins);
     H5Aclose(hdf5_attribute);
     H5Sclose(hdf5_dataspace);
 
