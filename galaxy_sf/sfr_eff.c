@@ -614,7 +614,7 @@ void star_formation_parent_routine(void)
                 P[i].Mass_D = P[i].Mass; //Initially all the gas has Deuterium
                 P[i].StarLuminosity_Solar = 0; //Start with zero luminosity
 		        if (P[i].Mass < 0.012 * SOLAR_MASS / All.UnitMass_in_g) {P[i].ProtoStellarRadius_inSolar =  5.24 * pow(P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS, 1./3);} // constant density
-                    else {P[i].ProtoStellarRadius_inSolar = 100. * (P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS);} // M propto R above this mass
+                    else {P[i].ProtoStellarRadius_inSolar = 10. * (P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS);} // M propto R above this mass
 #endif
 
 #ifdef BH_OUTPUT_FORMATION_PROPERTIES //save the at-formation properties of sink particles
