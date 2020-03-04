@@ -3967,7 +3967,7 @@ void ewald_init(void)
     }
     else
     {
-        printf("\nNo Ewald tables in file `%s' found.\nRecomputing them...\n", buf);
+        if(ThisTask == 0) {printf("\nNo Ewald tables in file `%s' found.\nRecomputing them...\n", buf);}
         
         /* ok, let's recompute things. Actually, we do that in parallel. */
         

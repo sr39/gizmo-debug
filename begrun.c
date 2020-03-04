@@ -47,17 +47,13 @@ void begrun(void)
 #endif
   if(ThisTask == 0)
     {
-     printf("\nRunning on %d MPI tasks.\n", NTask);
+     printf("Running on %d MPI tasks.\n", NTask);
 #ifdef _OPENMP
 #pragma omp parallel private(tid)
       {
 #pragma omp master
-	printf("\nUsing %d OpenMP threads\n", omp_get_num_threads());
-
+	printf("Using %d OpenMP threads\n", omp_get_num_threads());
 	tid = omp_get_thread_num();
-	/*
-	   printf("Hello from thread = %d\n", tid);
-	 */
       }
 #endif
 
