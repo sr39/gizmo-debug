@@ -59,7 +59,7 @@
 
             /* here we add the HLL-like correction term. this greatly reduces noise and improves the stability of the diffusion.
             	however it comes at the cost of (significant) additional numerical diffusion */
-            double v_eff_light = DMIN(c_light , kappa_ij / (Get_Particle_Size(j)*All.cf_atime)); // physical
+            double v_eff_light = DMIN(c_light , kappa_ij / Particle_Size_j); // physical
             double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + v_eff_light;
             double q = 0.5 * c_hll * kernel.r * All.cf_atime / fabs(1.e-37 + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q); // physical
             double d_scalar_tmp = d_scalar - grad_dot_x_ij; // (1/code volume)
@@ -67,7 +67,7 @@
             double hll_tmp = -A_dot_grad_alignment * q * Face_Area_Norm * c_hll * d_scalar_hll; // physical
             
             /* add asymptotic-preserving correction so that numerical flux doesn't dominate in optically thick limit */
-            double tau_c_j = Get_Particle_Size(j)*All.cf_atime * SphP[j].Kappa_RT[k_freq]*SphP[j].Density*All.cf_a3inv; // = L_particle / (lambda_mean_free_path) = L*kappa*rho (physical) //
+            double tau_c_j = Particle_Size_j * SphP[j].Kappa_RT[k_freq]*SphP[j].Density*All.cf_a3inv; // = L_particle / (lambda_mean_free_path) = L*kappa*rho (physical) //
             double hll_corr = 1./(1. + 1.5*DMAX(tau_c_i[k_freq],tau_c_j));
             hll_tmp *= hll_corr;
             
@@ -177,9 +177,9 @@
             }
             
             /* add asymptotic-preserving correction so that numerical flux doesn't unphysically dominate in optically thick limit */
-            double v_eff_light = DMIN(c_light , kappa_ij / (Get_Particle_Size(j)*All.cf_atime)); // physical
+            double v_eff_light = DMIN(c_light , kappa_ij / Particle_Size_j); // physical
             c_hll = 0.5*fabs(face_vel_i-face_vel_j) + DMAX(1.,hlle_wtfac_u) * v_eff_light; // physical
-            double tau_c_j = Get_Particle_Size(j)*All.cf_atime * SphP[j].Kappa_RT[k_freq]*(SphP[j].Density*All.cf_a3inv); // = L_particle / (lambda_mean_free_path) = L*kappa*rho [physical units] //
+            double tau_c_j = Particle_Size_j * SphP[j].Kappa_RT[k_freq]*(SphP[j].Density*All.cf_a3inv); // = L_particle / (lambda_mean_free_path) = L*kappa*rho [physical units] //
             double hll_corr = 1./(1. + 1.5*DMAX(tau_c_i[k_freq],tau_c_j));
             /* q below is a limiter to try and make sure the diffusion speed given by the hll flux doesn't exceed the diffusion speed in the diffusion limit */
             double q = 0.5 * c_hll * (kernel.r*All.cf_atime) / fabs(MIN_REAL_NUMBER + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q); // physical

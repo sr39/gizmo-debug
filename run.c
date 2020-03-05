@@ -299,9 +299,10 @@ void calculate_non_standard_physics(void)
     {
         spawn_bh_wind_feedback();
         rearrange_particle_sequence();
-#ifndef SINGLE_STAR_SINK_DYNAMICS
-        force_treebuild(NumPart, NULL);
-#endif
+//#ifndef SINGLE_STAR_SINK_DYNAMICS
+//        force_treebuild(NumPart, NULL); // not needed [we think] if we use TreeReconstructFlag to force a new domain decomp+build before next timestep
+//#endif
+        
         MaxUnSpanMassBH=MaxUnSpanMassBH_global=0.;
     }
 #endif
@@ -853,7 +854,7 @@ void write_cpu_log(void)
   if(ThisTask == 0)
     {
       fprintf(FdCPU, "Step %lld, Time: %g, CPUs: %d\n",(long long) All.NumCurrentTiStep, All.Time, NTask);
-      fprintf(FdCPU, "Nactive=%lld, Imbal(Max/Mean)=%g \n", (long long) GlobNumForceUpdate, max_CPU_Step[0]/(MIN_REAL_NUMBER + avg_CPU_Step[0]));
+      fprintf(FdCPU, "Nactive=%lld, Imbal(Max/Mean)=%g \n", (long long) GlobNumForceUpdate, (max_CPU_Step[0]/(MIN_REAL_NUMBER + avg_CPU_Step[0])-1.)*NTask+1.);
       fprintf(FdCPU,
 	      "total         %10.2f  %5.1f%%\n"
 	      "tree+gravity  %10.2f  %5.1f%%\n"
