@@ -860,23 +860,13 @@ void rearrange_particle_sequence(void)
                 SphP[i] = SphP[j];
                 SphP[j] = sphsave;  /* have the gas particle take its sph pointer with it */
 
-#ifdef CHIMES 
-		// Also swap gasVars. 
-		gasVarsSave = ChimesGasVars[i]; 
-		ChimesGasVars[i] = ChimesGasVars[j]; 
-		ChimesGasVars[j] = gasVarsSave; 
-
-		/* Old particle (now at position j) is no longer 
-		 * a gas particle, so delete its abundance array. */
-		free(ChimesGasVars[j].abundances); 
-		free(ChimesGasVars[j].isotropic_photon_density);
-		free(ChimesGasVars[j].dust_G_parameter); 
-		free(ChimesGasVars[j].H2_dissocJ); 
-		ChimesGasVars[j].abundances = NULL; 
-		ChimesGasVars[j].isotropic_photon_density = NULL; 
-		ChimesGasVars[j].dust_G_parameter = NULL; 
-		ChimesGasVars[j].H2_dissocJ = NULL; 
+#ifdef CHIMES /* swap chimes-specific 'gasvars' structure which is separate from SphP */
+                gasVarsSave = ChimesGasVars[i]; ChimesGasVars[i] = ChimesGasVars[j]; ChimesGasVars[j] = gasVarsSave;
+                /* Old particle (now at position j) is no longer a gas particle, so delete its abundance array. */
+                free(ChimesGasVars[j].abundances); free(ChimesGasVars[j].isotropic_photon_density); free(ChimesGasVars[j].dust_G_parameter); free(ChimesGasVars[j].H2_dissocJ);
+                ChimesGasVars[j].abundances = NULL; ChimesGasVars[j].isotropic_photon_density = NULL; ChimesGasVars[j].dust_G_parameter = NULL; ChimesGasVars[j].H2_dissocJ = NULL;
 #endif /* CHIMES */
+                
                 /* ok we've now swapped the ordering so the gas particle is still inside the block */
                 flag = 1;
             }
@@ -902,17 +892,12 @@ void rearrange_particle_sequence(void)
                 P[i] = P[N_gas - 1];
                 SphP[i] = SphP[N_gas - 1];
                 /* swap with properties of last gas particle (i-- below will force a check of this so its ok) */
-#ifdef CHIMES 
-		free(ChimesGasVars[i].abundances); 
-		free(ChimesGasVars[i].isotropic_photon_density);
-		free(ChimesGasVars[i].dust_G_parameter); 
-		free(ChimesGasVars[i].H2_dissocJ); 
-		ChimesGasVars[i] = ChimesGasVars[N_gas - 1]; 
-		ChimesGasVars[N_gas - 1].abundances = NULL; 
-		ChimesGasVars[N_gas - 1].isotropic_photon_density = NULL; 
-		ChimesGasVars[N_gas - 1].dust_G_parameter = NULL; 
-		ChimesGasVars[N_gas - 1].H2_dissocJ = NULL; 
-#endif  /* CHIMES */
+                
+#ifdef CHIMES
+                free(ChimesGasVars[i].abundances); free(ChimesGasVars[i].isotropic_photon_density); free(ChimesGasVars[i].dust_G_parameter); free(ChimesGasVars[i].H2_dissocJ);
+                ChimesGasVars[i] = ChimesGasVars[N_gas - 1];
+                ChimesGasVars[N_gas - 1].abundances = NULL; ChimesGasVars[N_gas - 1].isotropic_photon_density = NULL; ChimesGasVars[N_gas - 1].dust_G_parameter = NULL; ChimesGasVars[N_gas - 1].H2_dissocJ = NULL;
+#endif
                 
                 P[N_gas - 1] = P[NumPart - 1]; /* redirect the final gas pointer to go to the final particle (BH) */
                 N_gas--; /* shorten the total N_gas count */
@@ -934,8 +919,7 @@ void rearrange_particle_sequence(void)
     MPI_Allreduce(&count_gaselim, &tot_gaselim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&count_bhelim, &tot_bhelim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     
-    if(count_elim)
-        flag = 1;
+    if(count_elim) {flag = 1;}
     
     if(ThisTask == 0) {if(tot_elim > 0) {printf("Rearrange: Eliminated %d/%d gas/star particles and merged away %d black holes.\n", tot_gaselim, tot_elim - tot_gaselim - tot_bhelim, tot_bhelim);}}
     
@@ -946,8 +930,7 @@ void rearrange_particle_sequence(void)
 #endif
     
     MPI_Allreduce(&flag, &flag_sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    if(flag_sum)
-        reconstruct_timebins();
+    if(flag_sum) {reconstruct_timebins();}
 }
 
 
