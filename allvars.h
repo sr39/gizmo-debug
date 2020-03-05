@@ -2036,7 +2036,6 @@ extern struct global_data_all_processes
 #endif
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-  double AgeTracerRateLimitThreshold;
   double AgeTracerReturnFraction;
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
 /* Bin edges (left) for stellar age passive scalar tracers when using custom (uneven) bins

@@ -312,7 +312,6 @@ void begrun(void)
 #endif
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-      All.AgeTracerRateLimitThreshold = all.AgeTracerRateLimitThreshold;
       All.AgeTracerReturnFraction     = all.AgeTracerReturnFraction;
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
       strcpy(All.AgeTracerListFilename, all.AgeTracerListFilename);
@@ -1130,10 +1129,6 @@ void read_parameter_file(char *fname)
 #endif
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-        strcpy(tag[nt], "AgeTracerRateLimitThreshold");
-        addr[nt] = &All.AgeTracerRateLimitThreshold;
-        id[nt++] = REAL;
-
         strcpy(tag[nt], "AgeTracerReturnFraction");
         addr[nt] = &All.AgeTracerReturnFraction;
         id[nt++] = REAL;

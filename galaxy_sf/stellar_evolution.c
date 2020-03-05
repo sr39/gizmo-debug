@@ -330,12 +330,12 @@ void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
     if (P[i].Type != 4) return;
 
     // return; // this stops things
-    if (All.AgeTracerRateLimitThreshold <= 0) {
+    if (All.AgeTracerReturnFraction <= 0) {
       P[i].AgeDeposition_ThisTimeStep = 1.0;
       return;
     }
 
-      // find bin - make sure dt is not comparable to width
+    // find bin - make sure dt is not comparable to width
     const double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge) * 1000.0; // Age in Myr
     dt                   *= All.UnitTime_in_Megayears; // convert to Myr
     const int k           = get_age_tracer_bin(star_age);
@@ -347,8 +347,13 @@ void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
     const double bin_dt = pow(10.0,log10(All.AgeTracerBinStart+(k+1)*log_bin_dt)) -
                           pow(10.0,log10(All.AgeTracerBinStart+(k  )*log_bin_dt));
 #endif
-    // if dt is large compared to bin spacing, make full event and return
-    if (dt / bin_dt > All.AgeTracerRateLimitThreshold){
+    //
+    // if dt is large compared to bin spacing this is not safe
+    // make full event and return. This could be improved, but may
+    // require some history of knowing when last ejection was to
+    // back-correct for enrichment missed
+    //
+    if (dt / bin_dt > All.AgeTracerReturnFraction){
       P[i].AgeDeposition_ThisTimeStep = 1.0; // make event
       return;
     }
