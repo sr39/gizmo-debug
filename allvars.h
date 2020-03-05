@@ -430,6 +430,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 #ifdef SINGLE_STAR_FB_JETS
 #define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
+#define SINGLE_STAR_FB_JETS_POWER_FACTOR 1.0 //scales the amount of accretion power going into jets, we eject (1-All.BAL_f_accretion) fraction of the accreted mass at SINGLE_STAR_FB_JETS_POWER_FACTOR times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.BAL_f_accretion)
 #endif
 
 #ifdef SINGLE_STAR_PROMOTION
@@ -2401,10 +2402,9 @@ extern ALIGN(32) struct particle_data
 #endif  
 #endif
 
-#if ( (!defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)) && defined(SINGLE_STAR_FB_RT_HEATING) )
+#if ( (!defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)) && (defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_JETS)) )
 #ifndef SINGLE_STAR_PROMOTION
-//#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 1 //default
-#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 0 //default
+#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 1 //default PS evolution based on ORION module
 #else
 #define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 0 // the promotion module is incompatible with the evolution model from ORION we use in SINGLE_STAR_PROTOSTELLAR_EVOLUTION 1, so we revert to the simpler one
 #endif 
