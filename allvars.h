@@ -232,7 +232,7 @@
 #define GALSF_FB_FIRE_RT_LOCALRP            /*! turn on local radiation pressure coupling to gas - account for local multiple-scattering and isotropic local absorption */
 #define GALSF_FB_FIRE_RT_LONGRANGE          /*! continuous acceleration from starlight (uses luminosity tree) to propagate FIRE RT */
 #define GALSF_FB_FIRE_RT_UVHEATING          /*! use estimate of local spectral information from FIRE RT for photoionization and photoelectric heating */
-#define GALSF_FB_FIRE_RPROCESS 4            /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
+//#define GALSF_FB_FIRE_RPROCESS 4          /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
 #if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -2376,6 +2376,9 @@ extern ALIGN(32) struct particle_data
     MyFloat BH_MinPot;
 #endif
 #endif  /* if defined(BLACK_HOLES) */
+#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+    MyFloat MencInRcrit;
+#endif
     
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
@@ -2960,6 +2963,9 @@ extern struct gravdata_out
 #endif 
 #ifdef BH_COMPTON_HEATING
     MyLongDouble RadFluxAGN;
+#endif
+#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+    MyLongDouble MencInRcrit;
 #endif
 #ifdef EVALPOTENTIAL
     MyLongDouble Potential;

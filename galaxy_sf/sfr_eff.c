@@ -175,22 +175,32 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
 {
     double p=0;
 #ifdef BH_SEED_FROM_LOCALGAS
-    if(All.Time < 1.0/(1.0+All.SeedBlackHoleMinRedshift)) /* within the allowed redshift range for forming seeds */
-    if(SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) /* require it be above the SF density threshold */
-    if(P[i].Metallicity[0]/All.SolarAbundances[0] < 0.1) /* and below some metallicity */
-    {
-        double GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; /* this gives the Sobolev-estimated column density */
-        /* surface dens in g/cm^2; threshold for bound cluster formation in our experiments is ~2 g/cm^2 (10^4 M_sun/pc^2) */
-        if (GradRho > 0.1)
-        {
-            /* now calculate probability of forming a BH seed particle */
-            p = P[i].Mass / All.SeedBlackHolePerUnitMass; /* probability of forming a seed per unit mass [in code units] */
-            if(p > 1.e-4) {p = 1.-exp(-p);}
-            p *= (1-exp(-GradRho/1.0)) * exp(-(P[i].Metallicity[0]/All.SolarAbundances[0])/0.01); /* apply threshold metallicity and density cutoff */
-            /* want to add factors to control this probability in zoom-in runs */
-        }
-    }
+    double Z_threshold_solar = 0.01, surfacedensity_threshold_cgs = 1.0; /* metallicity below which, and density above which, seed BH formation is efficient */
+    /* note surface dens in g/cm^2; threshold for bound cluster formation in our experiments is ~0.2-2 g/cm^2 (10^3 - 10^4 M_sun/pc^2) */
+    if(All.Time > 1/(1+All.SeedBlackHoleMinRedshift)) {return 0;} /* outside allowed redshift */
+    if(SphP[i].Density*All.cf_a3inv < All.PhysDensThresh) {return 0;} /* must be above SF density threshold */
+    double Z_in_solar = P[i].Metallicity[0]/All.SolarAbundances[0], surfacedensity = MIN_REAL_NUMBER;
+    /* now calculate probability of forming a BH seed particle */
+    p = P[i].Mass / All.SeedBlackHolePerUnitMass; /* probability of forming a seed per unit mass [in code units] */
+#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+    double Rcrit = PPP[i].Hsml;
+#if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
+    Rcrit = All.ForceSoftening[0]; /* search radius is not h, in this case, but the force softening, but this is really not the case we want to study */
 #endif
+#ifdef BH_CALC_DISTANCES
+    if(P[i].min_dist_to_bh < 2.*Rcrit) {return 0;} /* don't allow formation if there is already a sink nearby, akin to SF sink rules */
+#endif
+    surfacedensity = P[i].MencInRcrit / (M_PI*Rcrit*Rcrit)  * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam * All.cf_a2inv; /* this is the -total- mass density inside the critical kernel radius Rcrit, evaluated within the tree walk */
+    double Z_u = Z_in_solar/Z_threshold_solar, S_u = surfacedensity / surfacedensity_threshold_cgs;
+    if(!isfinite(Z_u) || !isfinite(S_u)) {return 0;}
+    if(S_u < 3.5) {p *= 1 - exp(-S_u*S_u);} // quadratic cutoff at low densities: probability drops as S^(2), saturates at 1
+    p /= 1 + Z_u + 0.5*Z_u*Z_u; // quadratic expansion of exponential cutoff: probability drops as Z^(-2) rather than exp(-Z), saturates at 1
+#else
+    surfacedensity = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; /* this gives the Sobolev-estimated column density of -gas- alone */
+    if(surfacedensity>0.1) {p *= (1-exp(-surfacedensity/surfacedensity_threshold_cgs)) * exp(-Z_in_solar/Z_threshold_solar);} /* apply threshold metallicity and density cutoff */
+#endif
+#endif
+    if(p > 12.) {p=1;} else {if(p > 1.e-4) {p=1-exp(-p);}}
     return p;
 }
 

@@ -21,7 +21,6 @@ BoxSize                            6
 OutputListOn                       0
 TimeOfFirstSnapshot                0
 TimeBetSnapshot                    0.003
-TimeBetStatistics                  0.001
 MaxSizeTimestep                    0.0001
 TreeDomainUpdateFrequency          0.05
 DesNumNgb                          32
@@ -40,3 +39,4 @@ ErrTolIntAccuracy                  0.002
 CourantFac                         0.05
 MaxRMSDisplacementFac              0.1
 ErrTolForceAcc                     0.0015
+TimeBetStatistics                  0.001
