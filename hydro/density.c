@@ -68,7 +68,11 @@ int density_isactive(int n)
         if(All.ComovingIntegrationOn==0) // only do stellar age evaluation if we have to //
         {
             double star_age = evaluate_stellar_age_Gyr(P[n].StellarAge);
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES)
+            if(star_age < 0.0035) return 1;
+#else
             if(star_age < 0.035) return 1;
+#endif
         }
 #endif
     }
@@ -634,6 +638,9 @@ void density(void)
                     // if we're finding this for feedback routines, there isn't any good reason to search beyond a modest physical radius //
                     double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
                     maxsoft = 2.0 / unitlength_in_kpc;
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES) && (defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL))
+        if(P[i].SNe_ThisTimeStep>0 || P[i].MassReturn_ThisTimeStep>0) {maxsoft=2.0/unitlength_in_kpc;} else {maxsoft=0.1/unitlength_in_kpc;};
+#endif
 #endif
                     desnumngbdev = desnumngb / 2; // enforcing exact number not important
                 }
