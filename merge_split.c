@@ -801,6 +801,86 @@ void merge_particles_ij(int i, int j)
 }
 
 
+/*!
+  This routine swaps the location of two pointers/indices (either to a node or to a particle) in the treewalk needed for neighbor searches and gravity.
+  This should be run if you are messing around with the indices of things but don't intend to do a whole treebuild after. - MYG
+ */ 
+void swap_treewalk_pointers(int i, int j){
+    printf("swapping particle %d and %d in the tree\n", i, j);
+    int no, next_node;
+    int previous_node_i, previous_node_j;
+
+    if((Nextnode[i] == j) ||( Nextnode[j] == i)){ // handle it as a separate case if one points to the other, less confusing
+        if(Nextnode[j] == i){ // swap i and j so that we can assume i points to j
+            no = i;
+            i = j;
+            j = no;
+        }
+        
+        next_node = Father[i];
+        do{ // first walk the tree until we get to the node before i
+            no = next_node;
+            if(no < All.MaxPart) {next_node = Nextnode[no];}
+            else {next_node = Nodes[no].u.d.nextnode;}
+        } while (next_node != i);
+       
+        // now make the node pointing to i, point to j
+        if(no < All.MaxPart) { Nextnode[no] = j;} else {Nodes[no].u.d.nextnode = j;}
+
+        // now swap i's and j's nextnodes and fathers
+        Nextnode[i] = Nextnode[j];
+        Nextnode[j] = i;
+
+        no = Father[j]; // save j's father node
+        Father[j] = Father[i]; // j's father node is now i's
+        Father[i] = no; // and i's is now j's - the fathers are now swapped.
+    } else { // neither i nor j points to the other
+        // First we get the node that points to i, and make it point to j
+        next_node = Father[i];
+        do{ // first walk the tree until we get to the node before i
+            no = next_node;
+            if(no < All.MaxPart) {next_node = Nextnode[no];}
+            else {next_node = Nodes[no].u.d.nextnode;}
+        } while (next_node != i);
+        previous_node_i = no;
+        if(previous_node_i < All.MaxPart) {Nextnode[previous_node_i] = j;} else {Nodes[previous_node_i].u.d.nextnode = j;} 
+
+        // Then we get the node that points to j, and make it point to i
+        next_node = Father[j];
+        do{ // first walk the tree until we get to the node before j
+            no = next_node;
+            if(no < All.MaxPart) {next_node = Nextnode[no];}
+            else {next_node = Nodes[no].u.d.nextnode;}
+        } while (next_node != j);
+        previous_node_j = no;
+        if(previous_node_j < All.MaxPart) {Nextnode[previous_node_j] = i;} else {Nodes[previous_node_j].u.d.nextnode = i;}      // j's previous node now points to i instead of j    
+        // Next we swap the respective father nodes
+        no = Father[j]; // save j's father node
+        Father[j] = Father[i]; // j's father node is now i's
+        Father[i] = no; // and i's is now j's - the fathers are now swapped.
+    
+        // Finally, swap i's and j's respective Nextnode's, the pointer that they each point to in the treewalk
+        no = Nextnode[i];
+        Nextnode[i] = Nextnode[j];
+        Nextnode[j] = no;
+    }
+}
+
+/*!
+  This routine deletes a particle from the linked list for the treewalk, preserving the lists's integrity. This must be run if you are deleting particles but don't want to do a while treebuild after. - MYG
+*/
+void remove_particle_from_treewalkwalk(int i){
+    int no, next_node;
+    next_node = Father[i];
+    do{ // first walk the tree until we get to the node before i
+        no = next_node;
+        if(no < All.MaxPart) {next_node = Nextnode[no];}
+        else {next_node = Nodes[no].u.d.nextnode;}
+    } while (next_node != i);
+    
+    if(no < All.MaxPart) { Nextnode[no] = Nextnode[i];} else {Nodes[no].u.d.nextnode = Nextnode[i];}  // take the node that pointed to i, and make it point to i's next node instead 
+}
+
 /*! This is an important routine used throughout -- any time particle masses are variable OR particles can
     be created/destroyed: it goes through the particle list, makes sure they are in the appropriate order (gas 
     must all come before collisionless particles, though the collisionless particles can be blocked into any order
@@ -859,7 +939,8 @@ void rearrange_particle_sequence(void)
                 sphsave = SphP[i];
                 SphP[i] = SphP[j];
                 SphP[j] = sphsave;  /* have the gas particle take its sph pointer with it */
-
+                swap_treewalk_pointers(i,j);
+                
 #ifdef CHIMES /* swap chimes-specific 'gasvars' structure which is separate from SphP */
                 gasVarsSave = ChimesGasVars[i]; ChimesGasVars[i] = ChimesGasVars[j]; ChimesGasVars[j] = gasVarsSave;
                 /* Old particle (now at position j) is no longer a gas particle, so delete its abundance array. */
@@ -891,6 +972,7 @@ void rearrange_particle_sequence(void)
                 
                 P[i] = P[N_gas - 1];
                 SphP[i] = SphP[N_gas - 1];
+                swap_treewalk_pointers(i, N_gas-1);
                 /* swap with properties of last gas particle (i-- below will force a check of this so its ok) */
                 
 #ifdef CHIMES
@@ -900,6 +982,7 @@ void rearrange_particle_sequence(void)
 #endif
                 
                 P[N_gas - 1] = P[NumPart - 1]; /* redirect the final gas pointer to go to the final particle (BH) */
+                swap_treewalk_pointers(N_gas - 1, NumPart-1);
                 N_gas--; /* shorten the total N_gas count */
                 count_gaselim++; /* record that a BH was eliminated */
             }
@@ -909,7 +992,10 @@ void rearrange_particle_sequence(void)
                 P[i] = P[NumPart - 1]; /* re-directs pointer for this particle to pointer at final particle -- so we
                                         swap the two; note that ordering -does not- matter among the non-SPH particles
                                         so its fine if this mixes up the list ordering of different particle types */
+                swap_treewalk_pointers(i, NumPart - 1);
             }
+            remove_particle_from_treewalk(NumPart - 1);
+            
             NumPart--;
             i--;
             count_elim++;
