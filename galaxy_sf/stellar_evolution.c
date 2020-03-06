@@ -617,7 +617,11 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
     eps_protostar=1.0; // since mdot is already modified by All.BAL_f_accretion
 #endif
     eps_protostar -= f_acc*fk; //Need to deduct the part that is already accounted for in L_int (ORION uses the convention to add lum_acc to that)
+#ifndef SINGLE_STAR_FB_DISABLE_MS_HEATING
     BPP(n).StarLuminosity_Solar = (eps_protostar*All.G*mass*mdot/r + lum_int)/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)); //luminosity of the star in solar units
+#else
+    BPP(n).StarLuminosity_Solar = (eps_protostar*All.G*mass*mdot/r + lum_Hayashi)/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)); //same as above but we don't count H burning for th emission. Thsi way the radial evolution follows the same track as with the full model, but we don't provide feedback from H burning to the nearby gas
+#endif
 #endif//end of SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1
 
 #ifdef PS_EVOL_OUTPUT_MOREINFO
