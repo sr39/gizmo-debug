@@ -1027,8 +1027,8 @@ void density(void)
             {
                 double rho_igm = All.OmegaBaryon*(All.HubbleParam*HUBBLE_CGS)*(All.HubbleParam*HUBBLE_CGS)*(3./(8.*M_PI*GRAVITY_G)) * DMIN(All.cf_a3inv, 1000.);
                 double rho_gas = DMAX( SphP[i].Density , All.DesNumNgb*P[i].Mass/(4.*M_PI/3.*PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml) )* All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;
-                if(P[i].Type == 0 && rho_gas < 0.001*rho_igm) {P[i].Mass = 0;}
-                if(P[i].Type != 0 && SphP[i].Density > 0 & rho_gas < 1.e-6*rho_igm) {P[i].Mass = 0;}
+                if(P[i].Type == 0 && rho_gas < 1.e-6*rho_igm) {P[i].Mass = 0;}
+                if(P[i].Type != 0 && SphP[i].Density > 0 & rho_gas < 1.e-9*rho_igm) {P[i].Mass = 0;}
             }
 #endif
 #ifdef BLACK_HOLES
