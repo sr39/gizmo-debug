@@ -48,10 +48,15 @@
 #define IO_REDUCED_MODE
 #endif
 #ifndef IO_DISABLE_HDF5
-#define HAVE_HDF5
+#define HAVE_HDF5               /* default to using HDF5 */
 #include <hdf5.h>
 #endif
-
+#if !defined(OUTPUT_POSITIONS_IN_DOUBLE) && defined(HAVE_HDF5)
+#define OUTPUT_POSITIONS_IN_DOUBLE /* recommended to always default to recording positions in double-precision: there's not really a good reason not to do this unless we need to match unformatted binary */
+#endif
+#if !defined(LONG_INTEGER_TIME)
+#define LONG_INTEGER_TIME   /* always recommended: on modern machines the memory overhead cost of this is negligible */
+#endif
 
 
 #define DO_PREPROCESSOR_EXPAND_(VAL)  VAL ## 1
@@ -215,6 +220,10 @@
 
 
 #ifdef FIRE_PHYSICS_DEFAULTS
+#if !(CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(FIRE_PHYSICS_DEFAULTS)) /* no numerical value is set, so set one as our 'default' */
+#undef FIRE_PHYSICS_DEFAULTS
+#define FIRE_PHYSICS_DEFAULTS 2             /*! defaults currently to FIRE-2 baseline */
+#endif
 #define COOLING                             /*! master switch for cooling */
 #define COOL_LOW_TEMPERATURES               /*! include low-temperature (<1e4 K) cooling */
 #define COOL_METAL_LINES_BY_SPECIES         /*! include high-temperature metal-line cooling, species-by-species */
@@ -236,10 +245,10 @@
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
 #if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
-#define ADAPTIVE_GRAVSOFT_FORGAS
+#define ADAPTIVE_GRAVSOFT_FORGAS            /*! default choice is adaptive force softening for gas, but not stars [since ambiguously defined] */
 #endif
 #if !defined(OUTPUT_POSITIONS_IN_DOUBLE)
-#define OUTPUT_POSITIONS_IN_DOUBLE
+#define OUTPUT_POSITIONS_IN_DOUBLE          /*! need to output positions in double, otherwise get some real problems */
 #endif
 #if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
 #define ALLOW_IMBALANCED_GASPARTICLELOAD
@@ -262,8 +271,9 @@
 // currently uses default settings above, but keep this here for future use //
 #endif
 #if (FIRE_PHYSICS_DEFAULTS == 3)
+#define COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
 #undef PROTECT_FROZEN_FIRE  /* undefine protections to test new code */
-#undef GALSF_SFR_VIRIAL_SF_CRITERION    /* can't be used reliably with effective EOS, will give bogus results */
+#undef GALSF_SFR_VIRIAL_SF_CRITERION 
 #define GALSF_SFR_VIRIAL_SF_CRITERION 4 /*! sink-particle like self-gravity requirement for star formation: slightly more sophisticated version per Mike */
 #endif
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
