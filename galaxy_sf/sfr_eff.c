@@ -175,22 +175,32 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
 {
     double p=0;
 #ifdef BH_SEED_FROM_LOCALGAS
-    if(All.Time < 1.0/(1.0+All.SeedBlackHoleMinRedshift)) /* within the allowed redshift range for forming seeds */
-    if(SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) /* require it be above the SF density threshold */
-    if(P[i].Metallicity[0]/All.SolarAbundances[0] < 0.1) /* and below some metallicity */
-    {
-        double GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; /* this gives the Sobolev-estimated column density */
-        /* surface dens in g/cm^2; threshold for bound cluster formation in our experiments is ~2 g/cm^2 (10^4 M_sun/pc^2) */
-        if (GradRho > 0.1)
-        {
-            /* now calculate probability of forming a BH seed particle */
-            p = P[i].Mass / All.SeedBlackHolePerUnitMass; /* probability of forming a seed per unit mass [in code units] */
-            if(p > 1.e-4) {p = 1.-exp(-p);}
-            p *= (1-exp(-GradRho/1.0)) * exp(-(P[i].Metallicity[0]/All.SolarAbundances[0])/0.01); /* apply threshold metallicity and density cutoff */
-            /* want to add factors to control this probability in zoom-in runs */
-        }
-    }
+    double Z_threshold_solar = 0.01, surfacedensity_threshold_cgs = 1.0; /* metallicity below which, and density above which, seed BH formation is efficient */
+    /* note surface dens in g/cm^2; threshold for bound cluster formation in our experiments is ~0.2-2 g/cm^2 (10^3 - 10^4 M_sun/pc^2) */
+    if(All.Time > 1/(1+All.SeedBlackHoleMinRedshift)) {return 0;} /* outside allowed redshift */
+    if(SphP[i].Density*All.cf_a3inv < All.PhysDensThresh) {return 0;} /* must be above SF density threshold */
+    double Z_in_solar = P[i].Metallicity[0]/All.SolarAbundances[0], surfacedensity = MIN_REAL_NUMBER;
+    /* now calculate probability of forming a BH seed particle */
+    p = P[i].Mass / All.SeedBlackHolePerUnitMass; /* probability of forming a seed per unit mass [in code units] */
+#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+    double Rcrit = PPP[i].Hsml;
+#if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
+    Rcrit = All.ForceSoftening[0]; /* search radius is not h, in this case, but the force softening, but this is really not the case we want to study */
 #endif
+#ifdef BH_CALC_DISTANCES
+    if(P[i].min_dist_to_bh < 2.*Rcrit) {return 0;} /* don't allow formation if there is already a sink nearby, akin to SF sink rules */
+#endif
+    surfacedensity = P[i].MencInRcrit / (M_PI*Rcrit*Rcrit)  * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam * All.cf_a2inv; /* this is the -total- mass density inside the critical kernel radius Rcrit, evaluated within the tree walk */
+    double Z_u = Z_in_solar/Z_threshold_solar, S_u = surfacedensity / surfacedensity_threshold_cgs;
+    if(!isfinite(Z_u) || !isfinite(S_u)) {return 0;}
+    if(S_u < 3.5) {p *= 1 - exp(-S_u*S_u);} // quadratic cutoff at low densities: probability drops as S^(2), saturates at 1
+    p /= 1 + Z_u + 0.5*Z_u*Z_u; // quadratic expansion of exponential cutoff: probability drops as Z^(-2) rather than exp(-Z), saturates at 1
+#else
+    surfacedensity = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; /* this gives the Sobolev-estimated column density of -gas- alone */
+    if(surfacedensity>0.1) {p *= (1-exp(-surfacedensity/surfacedensity_threshold_cgs)) * exp(-Z_in_solar/Z_threshold_solar);} /* apply threshold metallicity and density cutoff */
+#endif
+#endif
+    if(p > 12.) {p=1;} else {if(p > 1.e-4) {p=1-exp(-p);}}
     return p;
 }
 
@@ -245,12 +255,17 @@ double get_starformation_rate(int i)
     
     update_internalenergy_for_galsf_effective_eos(i,tcool,tsfr,x,rateOfSF); // updates entropies for the effective equation-of-state //
 #endif // GALSF_EFFECTIVE_EQS
-    
+
     
 #ifdef GALSF_SFR_MOLECULAR_CRITERION
     /* Krumholz & Gnedin fitting function for f_H2 as a function of local properties */
     double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i);
     tau_fmol *= (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]);
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(GALSF_SFR_VIRIAL_SF_CRITERION)
+#if (GALSF_SFR_VIRIAL_SF_CRITERION < 2)
+    if(SphP[i].Density*All.cf_a3inv > 100.*All.PhysDensThresh) {tau_fmol=-1;} // PFH: note the this is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
+#endif
+#endif
     if(tau_fmol>0) {
         tau_fmol *= 434.78 * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam;
         y = 0.756 * (1 + 3.1*pow(P[i].Metallicity[0]/All.SolarAbundances[0],0.365));
@@ -262,16 +277,9 @@ double get_starformation_rate(int i)
 #endif // GALSF_SFR_MOLECULAR_CRITERION
 
     
-#ifdef CHIMES_SFR_MOLECULAR_CRITERION 
-    /* This is similar to GALSF_SFR_MOLECULAR_CRITERION, except that 
-     * the H2 fraction is taken from the CHIMES network. */
-    y = ChimesGasVars[i].abundances[H2] * 2.0; 
-    if (y < 0) 
-      y = 0.0; 
-    if (y > 1) 
-      y = 1.0; 
-    rateOfSF *= y; 
-#endif 
+#ifdef CHIMES_SFR_MOLECULAR_CRITERION
+    rateOfSF *= DMIN(1,DMAX(0,ChimesGasVars[i].abundances[H2] * 2.0)); /* This is similar to GALSF_SFR_MOLECULAR_CRITERION, except that the H2 fraction is taken from the CHIMES network. */
+#endif
     
     
 #ifdef GALSF_SFR_VIRIAL_SF_CRITERION
@@ -357,9 +365,7 @@ double get_starformation_rate(int i)
     if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;} // restrict to local density/potential maxima //
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 8)
-#ifndef SLOPE2_SINKS
     if(P[i].BH_Ngb_Flag) {rateOfSF=0;} // particle cannot be 'seen' by -any- sink as a potential interacting neighbor //
-#endif
     if(P[i].min_dist_to_bh < 1.24*Get_Particle_Size(i)) {rateOfSF=0;} // particle does not see a sink within a volume = 8x=2^3 times its cell volume [set coefficient =1.86 for 27x=3^3 its cell volume] //
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
@@ -597,9 +603,6 @@ void star_formation_parent_routine(void)
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)		
                 double bh_mu=2.0*get_random_number(P[i].ID+3)-1.0, bh_phi=2*M_PI*get_random_number(P[i].ID+4), bh_sin=sqrt(1-bh_mu*bh_mu);
                 double spin_prefac = All.G * P[i].BH_Mass / C_LIGHT_CODE; // assume initially maximally-spinning BH with random orientation
-#ifdef SLOPE2_SINKS
-                spin_prefac = sqrt(All.G * P[i].Mass * All.ForceSoftening[5]); // assume material is initially in a circular orbit at the resolution limit
-#endif
                 P[i].BH_Specific_AngMom[0]=spin_prefac*bh_sin*cos(bh_phi); P[i].BH_Specific_AngMom[1]= spin_prefac * bh_sin*sin(bh_phi); P[i].BH_Specific_AngMom[2]=spin_prefac * bh_mu;
 #endif
 #ifdef BH_COUNTPROGS
@@ -612,12 +615,14 @@ void star_formation_parent_routine(void)
                 P[i].DensAroundStar = SphP[i].Density;
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION 
                 P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age
-                if (P[i].Mass < (0.01* SOLAR_MASS / All.UnitMass_in_g) ){ P[i].ProtoStellarStage = 0;} //starts at "pre-collapse" stage
-                else{ P[i].ProtoStellarStage = 1;} //start at the "no burn" phase
+                P[i].StellarAge = All.Time; // record the time at which point the sink entered the current stage of stellar evolution (will become actual stellar age when reaching MS)
+                P[i].ProtoStellarStage = 0;
+                //if (P[i].Mass < (0.01* SOLAR_MASS / All.UnitMass_in_g) ){ P[i].ProtoStellarStage = 0;} //starts at "pre-collapse" stage
+                //else{ P[i].ProtoStellarStage = 1;} //start at the "no burn" phase
                 P[i].Mass_D = P[i].Mass; //Initially all the gas has Deuterium
                 P[i].StarLuminosity_Solar = 0; //Start with zero luminosity
 		        if (P[i].Mass < 0.012 * SOLAR_MASS / All.UnitMass_in_g) {P[i].ProtoStellarRadius_inSolar =  5.24 * pow(P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS, 1./3);} // constant density
-                    else {P[i].ProtoStellarRadius_inSolar = 100. * (P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS);} // M propto R above this mass
+                    else {P[i].ProtoStellarRadius_inSolar = 10. * (P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS);} // M propto R above this mass
 #endif
 
 #ifdef BH_OUTPUT_FORMATION_PROPERTIES //save the at-formation properties of sink particles
@@ -759,15 +764,6 @@ void star_formation_parent_routine(void)
             fflush(FdSfr); // can flush it, because only occuring on master steps anyways
         } // thistask==0
     }
-
-#if 0
-    if(tot_converted+tot_spawned > 0) // TO: Don't call rearrange_particle_sequence(). This makes the cell array inconsistent with the tree
-    {
-        //rearrange_particle_sequence(); force_treebuild(NumPart, NULL); // TreeReconstructFlag = 0; // block of (more expensive) calls to completely rebuild the tree if we convert anything
-        //TreeReconstructFlag = 1; // alternatively, we can simply delay the rebuild, but note that it will be needed, by setting the TreeReconstructFlag
-    }
-#endif
-    
     CPU_Step[CPU_COOLINGSFR] += measure_time();
 } /* end of main sfr_cooling routine!!! */
 

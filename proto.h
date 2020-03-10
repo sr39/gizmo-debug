@@ -415,6 +415,7 @@ void set_injection_accel(void);
 
 
 int density_isactive(int n);
+int GasGrad_isactive(int i);
 
 size_t sizemax(size_t a, size_t b);
 
@@ -673,6 +674,8 @@ void read_ic(char *fname);
 int read_outputlist(char *fname);
 void read_parameter_file(char *fname);
 void rearrange_particle_sequence(void);
+void swap_treewalk_pointers(int i, int j);
+void remove_particle_from_tree(int i);
 void reorder_gas(void);
 void reorder_particles(void);
 void restart(int modus);
@@ -841,7 +844,8 @@ void subtract_companion_gravity(int i);
 
 void hydro_gradient_calc(void);
 int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
-void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol);
+void construct_gradient(double *grad, int i);
+void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol, int pos_preserve, double d_max, double val_cen);
 
 #ifdef TURB_DIFF_DYNAMIC
 void dynamic_diff_vel_calc(void);

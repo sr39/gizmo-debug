@@ -55,7 +55,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
     int k, j_tempinfo; j_tempinfo = P[i].IndexMapToTempStruc; /* link to the location in the shared structure where this is stored */
     for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k]; in->Vel[k]=P[i].Vel[k];} /* good example - always needed */
     in->Hsml = PPP[i].Hsml; in->Mass = P[i].Mass; in->BH_Mass = BPP(i).BH_Mass; in->ID = P[i].ID; in->Mdot = BPP(i).BH_Mdot;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
     for(k=0;k<3;k++) {in->Jgas_in_Kernel[k] = P[i].BH_Specific_AngMom[k];}
 #else
@@ -153,7 +153,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 {
     int startnode, numngb, listindex = 0, j, k, n, bin; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
-    double h_i = local.Hsml, hinv=h_i, hinv3, f_accreted; hinv3=hinv*hinv*hinv; f_accreted=0;
+    double h_i=local.Hsml, hinv=1/h_i, hinv3, f_accreted; hinv3=hinv*hinv*hinv; f_accreted=0;
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     double kernel_zero,dwk; kernel_main(0.0,1.0,1.0,&kernel_zero,&dwk,-1); dwk=0;
 #endif
@@ -503,8 +503,12 @@ void spawn_bh_wind_feedback(void)
     }
     MPI_Allreduce(&n_particles_split, &MPI_n_particles_split, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     if(MPI_n_particles_split>0){
-      TreeReconstructFlag = 1; 
-      if(ThisTask == 0) {printf(" ..BH-Spawn Event: %d particles spawned \n", MPI_n_particles_split);}
+#ifdef MAINTAIN_TREE_IN_REARRANGE
+        All.NumForcesSinceLastDomainDecomp +=  0.01 * All.TreeDomainUpdateFrequency * All.TotNumPart; // we can insert spawned particles in the tree, but still a good idea to rebuild the tree every now and then, so we make the next domain+treebuild come a bit sooner; additional cost should be small
+#else        
+        TreeReconstructFlag = 1; // otherwise just wipe and rebuild the tree next chance you get - more expensive but more accurate
+#endif        
+        if(ThisTask == 0) {printf(" ..BH-Spawn Event: %d particles spawned \n", MPI_n_particles_split);}
     }
 
     /* rearrange_particle_sequence -must- be called immediately after this routine! */
@@ -704,7 +708,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
         R_star_solar_launch = P[i].ProtoStellarRadius_inSolar;
 #endif
-        v_magnitude = sqrt(All.G * P[i].BH_Mass / (R_star_solar_launch * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
+        v_magnitude = sqrt(SINGLE_STAR_FB_JETS_POWER_FACTOR * All.G * P[i].BH_Mass / (R_star_solar_launch * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // SINGLE_STAR_FB_JETS_POWER_FACTOR times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
 #endif
         
         // actually lay down position and velocities using coordinate basis

@@ -136,7 +136,7 @@
         double renormerFAC = cos_theta_face_flux*cos_theta_face_flux;
 #else
         double kappa_ij = 0.5 * (kappa_i+kappa_j); // physical
-        double L_eff_j = Get_Particle_Size(j)*All.cf_atime; // physical
+        double L_eff_j = Particle_Size_j; // physical
         double CRopticaldepth = DMIN(Particle_Size_i,L_eff_j)*COSMIC_RAYS_M1/kappa_ij;
         double reductionfactor = sqrt((1.0-exp(0.0-CRopticaldepth*CRopticaldepth)))/CRopticaldepth;
         double reducedcM1 = reductionfactor*COSMIC_RAYS_M1;

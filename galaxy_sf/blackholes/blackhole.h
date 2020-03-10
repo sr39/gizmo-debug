@@ -14,8 +14,7 @@
 
 
 #ifndef BH_CSND_FRAC_BH_MERGE
-/* Relative velocity fraction (in units of soundspeed) for merging blackholes, default=1.0 */
-#define BH_CSND_FRAC_BH_MERGE 1.0
+#define BH_CSND_FRAC_BH_MERGE 1.0 /* Relative velocity fraction (in units of soundspeed) for merging blackholes, default=1.0 */
 #endif
 
 

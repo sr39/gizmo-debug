@@ -48,10 +48,15 @@
 #define IO_REDUCED_MODE
 #endif
 #ifndef IO_DISABLE_HDF5
-#define HAVE_HDF5
+#define HAVE_HDF5               /* default to using HDF5 */
 #include <hdf5.h>
 #endif
-
+#if !defined(OUTPUT_POSITIONS_IN_DOUBLE) && defined(HAVE_HDF5)
+#define OUTPUT_POSITIONS_IN_DOUBLE /* recommended to always default to recording positions in double-precision: there's not really a good reason not to do this unless we need to match unformatted binary */
+#endif
+#if !defined(LONG_INTEGER_TIME)
+#define LONG_INTEGER_TIME   /* always recommended: on modern machines the memory overhead cost of this is negligible */
+#endif
 
 
 #define DO_PREPROCESSOR_EXPAND_(VAL)  VAL ## 1
@@ -215,6 +220,10 @@
 
 
 #ifdef FIRE_PHYSICS_DEFAULTS
+#if !(CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(FIRE_PHYSICS_DEFAULTS)) /* no numerical value is set, so set one as our 'default' */
+#undef FIRE_PHYSICS_DEFAULTS
+#define FIRE_PHYSICS_DEFAULTS 2             /*! defaults currently to FIRE-2 baseline */
+#endif
 #define COOLING                             /*! master switch for cooling */
 #define COOL_LOW_TEMPERATURES               /*! include low-temperature (<1e4 K) cooling */
 #define COOL_METAL_LINES_BY_SPECIES         /*! include high-temperature metal-line cooling, species-by-species */
@@ -232,14 +241,14 @@
 #define GALSF_FB_FIRE_RT_LOCALRP            /*! turn on local radiation pressure coupling to gas - account for local multiple-scattering and isotropic local absorption */
 #define GALSF_FB_FIRE_RT_LONGRANGE          /*! continuous acceleration from starlight (uses luminosity tree) to propagate FIRE RT */
 #define GALSF_FB_FIRE_RT_UVHEATING          /*! use estimate of local spectral information from FIRE RT for photoionization and photoelectric heating */
-#define GALSF_FB_FIRE_RPROCESS 4            /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
+//#define GALSF_FB_FIRE_RPROCESS 4          /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
 #if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
-#define ADAPTIVE_GRAVSOFT_FORGAS
+#define ADAPTIVE_GRAVSOFT_FORGAS            /*! default choice is adaptive force softening for gas, but not stars [since ambiguously defined] */
 #endif
 #if !defined(OUTPUT_POSITIONS_IN_DOUBLE)
-#define OUTPUT_POSITIONS_IN_DOUBLE
+#define OUTPUT_POSITIONS_IN_DOUBLE          /*! need to output positions in double, otherwise get some real problems */
 #endif
 #if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
 #define ALLOW_IMBALANCED_GASPARTICLELOAD
@@ -262,8 +271,9 @@
 // currently uses default settings above, but keep this here for future use //
 #endif
 #if (FIRE_PHYSICS_DEFAULTS == 3)
+#define COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
 #undef PROTECT_FROZEN_FIRE  /* undefine protections to test new code */
-#undef GALSF_SFR_VIRIAL_SF_CRITERION    /* can't be used reliably with effective EOS, will give bogus results */
+#undef GALSF_SFR_VIRIAL_SF_CRITERION 
 #define GALSF_SFR_VIRIAL_SF_CRITERION 4 /*! sink-particle like self-gravity requirement for star formation: slightly more sophisticated version per Mike */
 #endif
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
@@ -345,7 +355,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 
 
-#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
+#ifdef STARFORGE_PHYSICS_DEFAULTS /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
 #define SINGLE_STAR_SINK_DYNAMICS
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #define ADAPTIVE_GRAVSOFT_FORGAS
@@ -360,12 +370,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define BH_OUTPUT_GASSWALLOW //save accretion histories
 #define BH_OUTPUT_FORMATION_PROPERTIES //save at-formation properties of sink particles
 //#define GALSF_SFR_IMF_VARIATION // save gas properties at sink formation time
-#ifdef SLOPE2_SINKS //Slope2 sinks, this should give dN/dM~M^-2 in isoT sims
-#define BH_DEBUG_DISABLE_MERGERS
-#define BH_ALPHADISK_ACCRETION (1.2)
-#else
 #define BH_ALPHADISK_ACCRETION (1.0e6)
-#endif
 #ifdef GRAIN_FLUID
 #define BH_GRAVCAPTURE_NONGAS
 #endif
@@ -435,6 +440,8 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 #ifdef SINGLE_STAR_FB_JETS
 #define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
+#define MAINTAIN_TREE_IN_REARRANGE // don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed
+#define SINGLE_STAR_FB_JETS_POWER_FACTOR 1.0 //scales the amount of accretion power going into jets, we eject (1-All.BAL_f_accretion) fraction of the accreted mass at SINGLE_STAR_FB_JETS_POWER_FACTOR times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.BAL_f_accretion)
 #endif
 
 #ifdef SINGLE_STAR_PROMOTION
@@ -791,25 +798,19 @@ int network_integrate( double temp, double rho, const double *x, double *dx, dou
 #define MYSORT_DATAINDEX qsort
 #endif
 
-// compiler specific data alignment hints
-// XLC compiler
-/*
-#if defined(__xlC__)
+#ifndef DISABLE_MEMORY_MANAGER // compiler specific data alignment hints: use only with memory manager as malloc'd memory is not sufficiently aligned
+// (experimenting right now with removing this, as many compilers internal AVX optimizations appear to be doing marginally better, and can resolve crashes on some compilers)
+#if defined(__xlC__) // XLC compiler
 #define ALIGN(n) __attribute__((__aligned__(n)))
-// GNU compiler 
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) // GNU compiler
 #define ALIGN(n) __attribute__((__aligned__(n)))
-// Intel Compiler
-#elif defined(__INTEL_COMPILER)
-// GNU Intel Compiler
+#elif defined(__INTEL_COMPILER) // Intel Compiler
 #define ALIGN(n) __declspec(align(n))
-// Unknown Compiler
-#else
-#define ALIGN(n) 
 #endif
- */
-#define ALIGN(n) // experimenting right now with removing this, as many compilers internal AVX optimizations appear to be doing marginally better, and can resolve crashes on some compilers
-
+#endif
+#ifndef ALIGN // Unknown Compiler or using default malloc
+#define ALIGN(n)
+#endif
 
 #define ASSIGN_ADD(x,y,mode) (mode == 0 ? (x=y) : (x+=y))
 
@@ -2232,6 +2233,9 @@ extern ALIGN(32) struct particle_data
     MyFloat OldJerk[3];
     short int AccretedThisTimestep;     /*!< flag to decide whether to stick with the KDK step for stability reasons, e.g. when actively accreting */
 #endif
+#ifdef COUNT_MASS_IN_GRAVTREE
+    MyFloat TreeMass;  /*!< Mass seen by the particle as it sums up the gravitational force from the tree - should be equal to total mass, a useful debug diagnostic  */
+#endif    
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL)
     MyFloat Potential;		/*!< gravitational potential */
 #if defined(EVALPOTENTIAL) && defined(PMGRID)
@@ -2389,6 +2393,9 @@ extern ALIGN(32) struct particle_data
     MyFloat BH_MinPot;
 #endif
 #endif  /* if defined(BLACK_HOLES) */
+#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+    MyFloat MencInRcrit;
+#endif
     
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
@@ -2412,10 +2419,9 @@ extern ALIGN(32) struct particle_data
 #endif  
 #endif
 
-#if ( (!defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)) && defined(SINGLE_STAR_FB_RT_HEATING) )
+#if ( (!defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)) && (defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_JETS)) )
 #ifndef SINGLE_STAR_PROMOTION
-//#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 1 //default
-#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 0 //default
+#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 1 //default PS evolution based on ORION module
 #else
 #define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 0 // the promotion module is incompatible with the evolution model from ORION we use in SINGLE_STAR_PROTOSTELLAR_EVOLUTION 1, so we revert to the simpler one
 #endif 
@@ -2960,6 +2966,9 @@ extern struct gravdata_out
     MyLongDouble Acc[3];
 #ifdef RT_USE_TREECOL_FOR_NH
     MyDouble ColumnDensityBins[RT_USE_TREECOL_FOR_NH];
+#endif
+#ifdef COUNT_MASS_IN_GRAVTREE
+    MyLongDouble TreeMass;
 #endif    
 #ifdef RT_OTVET
     MyLongDouble ET[N_RT_FREQ_BINS][6];
@@ -2974,6 +2983,9 @@ extern struct gravdata_out
 #endif 
 #ifdef BH_COMPTON_HEATING
     MyLongDouble RadFluxAGN;
+#endif
+#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+    MyLongDouble MencInRcrit;
 #endif
 #ifdef EVALPOTENTIAL
     MyLongDouble Potential;
