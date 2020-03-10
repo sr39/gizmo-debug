@@ -914,8 +914,9 @@ void rearrange_particle_sequence(void)
                 sphsave = SphP[i];
                 SphP[i] = SphP[j];
                 SphP[j] = sphsave;  /* have the gas particle take its sph pointer with it */
+#ifdef MAINTAIN_TREE_IN_REARRANGE		
                 swap_treewalk_pointers(i,j);
-                
+#endif                
 #ifdef CHIMES /* swap chimes-specific 'gasvars' structure which is separate from SphP */
                 gasVarsSave = ChimesGasVars[i]; ChimesGasVars[i] = ChimesGasVars[j]; ChimesGasVars[j] = gasVarsSave;
                 /* Old particle (now at position j) is no longer a gas particle, so delete its abundance array. */
@@ -947,7 +948,9 @@ void rearrange_particle_sequence(void)
                 
                 P[i] = P[N_gas - 1];
                 SphP[i] = SphP[N_gas - 1];
+#ifdef MAINTAIN_TREE_IN_REARRANGE		
                 swap_treewalk_pointers(i, N_gas-1);
+#endif		
                 /* swap with properties of last gas particle (i-- below will force a check of this so its ok) */
                 
 #ifdef CHIMES
@@ -957,8 +960,10 @@ void rearrange_particle_sequence(void)
 #endif
                 
                 P[N_gas - 1] = P[NumPart - 1]; /* redirect the final gas pointer to go to the final particle (BH) */
+#ifdef MAINTAIN_TREE_IN_REARRANGE		
                 swap_treewalk_pointers(N_gas - 1, NumPart-1);
                 remove_particle_from_treewalk(NumPart - 1);
+#endif		
                 N_gas--; /* shorten the total N_gas count */
                 count_gaselim++; /* record that a BH was eliminated */
             }
@@ -968,8 +973,10 @@ void rearrange_particle_sequence(void)
                 P[i] = P[NumPart - 1]; /* re-directs pointer for this particle to pointer at final particle -- so we
                                         swap the two; note that ordering -does not- matter among the non-SPH particles
                                         so its fine if this mixes up the list ordering of different particle types */
+#ifdef MAINTAIN_TREE_IN_REARRANGE		
                 swap_treewalk_pointers(i, NumPart - 1);
                 remove_particle_from_treewalk(NumPart - 1);
+#endif		
             }
             
             NumPart--;
