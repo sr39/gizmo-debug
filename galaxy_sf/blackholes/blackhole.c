@@ -166,7 +166,7 @@ double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r
     if(V_j<0 || isnan(V_j)) {V_j=0;}
     double sph_area = fabs(V_i*V_i*dwk + V_j*V_j*dwk_j); // effective face area //
     wk = 0.5 * (1. - 1./sqrt(1. + sph_area / (M_PI*r*r))); // corresponding geometric weight //
-#if !defined(BH_PUSHAREA)
+#if defined(BH_FB_VOLUMEWEIGHTED)
     wk = 0.5 * (V_j/V_i) * (V_i*wk + V_j*wk_j); // weight in the limit N_particles >> 1 for equal-mass particles (accounts for self-shielding if some in dense disk)
 #endif
 #if defined(BH_FB_COLLIMATED)
@@ -175,18 +175,6 @@ double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r
 #endif
     if((wk <= 0)||(isnan(wk))) return 0; // no point in going further, there's no physical weight here
     return wk;
-
-#if 0
-    /* optionally below: Nathan Roth's estimate of angular dependence for the momentum flux vs angle for a torus-type configuration */
-    double b0,c0,f;
-    // nathans 'B' and 'C' functions //
-    b0=8.49403/(1.17286+hR);
-    c0=64.4254/(2.5404+hR);
-    f=1-(1+c0*exp(-b0*M_PI/2))/(1+c0*exp(-b0*(M_PI/2-theta)));
-    return P[j].Hsml*P[j].Hsml * f;
-    /* H^2 gives the fraction of the solid angle subtended by the particle (normalized by distance),
-     the 'f' function gives the dForce/dOmega weighting from the radiative transfer calculations */
-#endif
 }
 
 
@@ -204,21 +192,9 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
 #if defined(BH_FB_COLLIMATED)
     double cos_theta = fabs((dx*bh_angle[0] + dy*bh_angle[1] + dz*bh_angle[2])/sqrt(r2*(bh_angle[0]*bh_angle[0]+bh_angle[1]*bh_angle[1]+bh_angle[2]*bh_angle[2]))); if(!isfinite(cos_theta)) {cos_theta=1;}
     double wt_normalized = 0.0847655*exp(4.5*cos_theta*cos_theta); // ~exp(-x^2/2*hR^2), normalized appropriately to give the correct total flux, for hR~0.3
-    //double costheta2=cos_theta*cos_theta, eps2=0.25; /* eps_width^2 is approximate with in radians of 'core' of jet */
-    //double wt_normalized = 5.33709 * eps_width_jet * (eps_width_jet + costheta2) / ((eps_width_jet + 1) * (eps_width_jet + (1-costheta2)));
     return bh_lum_input * wt_normalized; // ~exp(-x^2/2*hR^2), normalized appropriately to give the correct total flux, for hR~0.3
 #endif
     return bh_lum_input;
-
-#if 0
-    double hRe=hR, y; if(hRe<0.1) hRe=0.1; if(hRe>0.5) hRe=0.5;
-    y = -1.0 / (0.357-10.839*hRe+142.640*hRe*hRe-713.928*hRe*hRe*hRe+1315.132*hRe*hRe*hRe*hRe); y = 1.441 + (-6.42+9.92*hRe) * (exp(cos_theta*cos_theta*y)-exp(y)) / (1-exp(y));  // approximation to nathans fits
-    //double A=5.57*exp(-hRe/0.52);double B=19.0*exp(-hRe/0.21);double C0=20.5+20.2/(1+exp((hRe-0.25)/0.035));
-    //y = 1.441 + A*((1+C0*exp(-B*1.5708))/(1+C0*exp(-B*(1.5708-acos(cos_theta))))-1); // this is nathan's fitting function (fairly expensive with large number of exp calls and arc_cos
-    //y=0.746559 - 9.10916*(-0.658128+exp(-0.418356*cos_theta*cos_theta)); // this is normalized so the total flux is L/(4pi*r*r) and assumed monochromatic IR
-    if(y>1.441) y=1.441; if(y<-5.0) y=-5.0; y*=2.3026; // so we can take exp, instead of pow //
-    return exp(y) * bh_lum_input;
-#endif
 }
 
 #endif /* end of #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) */
