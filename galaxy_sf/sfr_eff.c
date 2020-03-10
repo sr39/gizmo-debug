@@ -766,15 +766,6 @@ void star_formation_parent_routine(void)
             fflush(FdSfr); // can flush it, because only occuring on master steps anyways
         } // thistask==0
     }
-
-#if 0
-    if(tot_converted+tot_spawned > 0) // TO: Don't call rearrange_particle_sequence(). This makes the cell array inconsistent with the tree
-    {
-        //rearrange_particle_sequence(); force_treebuild(NumPart, NULL); // TreeReconstructFlag = 0; // block of (more expensive) calls to completely rebuild the tree if we convert anything
-        //TreeReconstructFlag = 1; // alternatively, we can simply delay the rebuild, but note that it will be needed, by setting the TreeReconstructFlag
-    }
-#endif
-    
     CPU_Step[CPU_COOLINGSFR] += measure_time();
 } /* end of main sfr_cooling routine!!! */
 

@@ -362,24 +362,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
       ChimesGasVars[j].abundances[abunIndex] = ChimesGasVars[i].abundances[abunIndex]; 
 #endif 
 
-    // TO: we will reconstruct time bins anyway. We don't have to update the active particle list here 
-#if 0
-    /* the particle needs to be 'born active' and added to the active set */
-    NextActiveParticle[j] = FirstActiveParticle; FirstActiveParticle = j; NumForceUpdate++;
-    /* likewise add it to the counters that register how many particles are in each timebin */
-    TimeBinCount[P[j].TimeBin]++; if(P[i].Type==0) {TimeBinCountSph[P[j].TimeBin]++;}
-    PrevInTimeBin[j] = i; NextInTimeBin[j] = NextInTimeBin[i]; if(NextInTimeBin[i] >= 0) {PrevInTimeBin[NextInTimeBin[i]] = j;}
-    NextInTimeBin[i] = j; if(LastInTimeBin[P[i].TimeBin] == i) {LastInTimeBin[P[i].TimeBin] = j;}
-#endif
     // need to assign new particle a unique ID:
-    /*
-        -- old method -- we gave it a bit-flip from the original particle to signify the split 
-        (problem is, this will eventually roll over into itself and/or overlap, and/or overflow buffers, if we allow multiple splits)
-    unsigned int bits;
-    int SPLIT_GENERATIONS = 4;
-    for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++);
-    P[i].ID += ((MyIDType) 1 << (sizeof(MyIDType) * 8 - bits));
-    */
     // new method: preserve the original "ID" field, but assign a unique -child- ID: this is unique up to ~32 *GENERATIONS* of repeated splitting!
     P[j].ID_child_number = P[i].ID_child_number + (MyIDType)(1 << ((int)P[i].ID_generation)); // particle 'i' retains its child number; this ensures uniqueness
     P[i].ID_generation = P[i].ID_generation + 1;
