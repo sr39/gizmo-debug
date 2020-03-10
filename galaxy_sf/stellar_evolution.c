@@ -469,7 +469,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
     }
 
 #elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
-    /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */    a
+    /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */    
     double frad = 0.18; //limit for forming radiative barrier, based on Offner+MckKee 2011 source code
     double fk = 0.5; //fraction of kinetic energy that is radiated away in the inner disk before reaching the surface, using default ORION value here as it is not a GIZMO input parameter
     double f_acc = 0.5; //fraction of accretion power that is radiated away instead of being used to drive winds, using default ORION value here as it is not a GIZMO input parameter
@@ -484,7 +484,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
     double mdot_m_solar_per_year = mdot * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/All.UnitTime_in_s*SEC_PER_YEAR; // accretion rate in msolar/yr
     double m_solar = mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
     double m_initial = DMAX(1.e-37 , (mass - dm)); // mass before accretion
-    int stage = BPP(n).ProtoStellarStage; / *what stage of stellar evolution the particle is in 0: pre collapse, 1: no burning, 2: fixed Tc burnig, 3: variable Tc burning, 4: shell burning, 5: main sequence, see Offner 2009 Appendix B*/
+    int stage = BPP(n).ProtoStellarStage; /*what stage of stellar evolution the particle is in 0: pre collapse, 1: no burning, 2: fixed Tc burnig, 3: variable Tc burning, 4: shell burning, 5: main sequence, see Offner 2009 Appendix B*/
     if (stage == 0) {//set the radius for the pre-collapse phase according to Eq B1 in Offner 2009, this overwrites the original prescription from sfr_eff.c
         BPP(n).ProtoStellarRadius_inSolar = DMAX(2.5 * pow(mdot_m_solar_per_year*1e5,0.33),2.0); //radius always at least 2 R_sun
     }
