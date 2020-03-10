@@ -42,6 +42,10 @@ struct INPUT_STRUCT_NAME
 #if defined(BH_RETURN_ANGMOM_TO_GAS)
     MyFloat BH_Specific_AngMom[3], angmom_norm_topass_in_swallowloop;
 #endif
+#if defined(BH_RETURN_BFLUX)
+    MyFloat B[3];
+    MyFloat kernel_norm_topass_in_swallowloop;
+#endif    
 }
 *DATAIN_NAME, *DATAGET_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
@@ -74,6 +78,10 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
     for(k=0;k<3;k++) {in->BH_Specific_AngMom[k] = BPP(i).BH_Specific_AngMom[k];}
     in->angmom_norm_topass_in_swallowloop = BlackholeTempInfo[j_tempinfo].angmom_norm_topass_in_swallowloop;
 #endif
+#if defined(BH_RETURN_BFLUX)
+    for(k=0;k<3;k++) {in->B[k] = BPP(i).B[k];}
+    in->kernel_norm_topass_in_swallowloop = BlackholeTempInfo[j_tempinfo].kernel_norm_topass_in_swallowloop;
+#endif    
 }
 
 
@@ -90,6 +98,10 @@ struct OUTPUT_STRUCT_NAME
 #if defined(BH_FOLLOW_ACCRETED_COM)
     MyDouble accreted_centerofmass[3];
 #endif
+#if defined(BH_RETURN_BFLUX)
+    MyDouble accreted_B[3];
+//    MyDouble accreted_Phi; 
+#endif    
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
     MyDouble accreted_J[3];
 #endif
@@ -119,6 +131,10 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 #if defined(BH_FOLLOW_ACCRETED_COM)
     for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_centerofmass[k], out->accreted_centerofmass[k], mode);}
 #endif
+#if defined(BH_RETURN_BFLUX)
+    for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_B[k], out->accreted_B[k], mode);}
+//    ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_Phi, out->accreted_Phi, mode);
+#endif    
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
     for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_J[k], out->accreted_J[k], mode);}
 #endif
@@ -183,7 +199,25 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     out.accreted_J[0]-=P[j].Mass*(dpos[1]*dlv[2] - dpos[2]*dlv[1]); out.accreted_J[1]-=P[j].Mass*(dpos[2]*dlv[0] - dpos[0]*dlv[2]); out.accreted_J[2]-=P[j].Mass*(dpos[0]*dlv[1] - dpos[1]*dlv[0]);
                 }
 #endif
-                
+#if defined(BH_RETURN_BFLUX) // do a kernel-weighted redistribution of the magnetic flux in the sink into surrounding particles
+                if((P[j].Type == 0) && (local.kernel_norm_topass_in_swallowloop > 0)){
+                    double wk, dwk, u=0; for(k=0;k<3;k++) {u+=dpos[k]*dpos[k];}
+                    double hinv=1/h_i, hinv3;
+                    hinv3=hinv*hinv*hinv; 
+                    u=sqrt(u)/h_i; if(u<1) {
+                        kernel_main(u,1., 1.,&wk,&dwk,-1);
+                    } else {wk=dwk=0;}
+                    
+                    double dB, b_fraction_toreturn = DMIN(0.1, local.Dt / (local.Mass / local.Mdot)) * wk / local.kernel_norm_topass_in_swallowloop; // return a fraction dt/t_accretion of the total flux, with simple kernel weighting for each particle
+                    for(k=0; k<3;k++) {
+                        dB = b_fraction_toreturn * local.B[k]; printf("B=%g dB=%g b_sink=%g dt=%g mdot=%g\n",SphP[j].BPred[k], dB, local.B[k], local.Dt, local.Mdot);
+                        SphP[j].B[k] +=  dB;
+                        SphP[j].BPred[k] +=  dB;
+                        out.accreted_B[k] -= dB;                        
+                    }
+                    printf("\n");
+                }
+#endif                
                 /* we've found a particle to be swallowed.  This could be a BH merger, DM particle, or baryon w/ feedback */
                 if(P[j].SwallowID == local.ID && P[j].Mass > 0)
                 {   /* accreted quantities to be added [regardless of particle type] */
@@ -216,6 +250,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #if defined(BH_FOLLOW_ACCRETED_COM)
                     for(k=0;k<3;k++) {out.accreted_centerofmass[k] += FLT(mcount_for_conserve * dpos[k]);}
 #endif
+#ifdef BH_RETURN_BFLUX
+                    for(k=0;k<3;k++) {out.accreted_B[k] += FLT(SphP[j].BPred[k]);}
+#endif                    
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
                     out.accreted_J[0] += FLT(mcount_for_conserve * ( dpos[1]*dvel[2] - dpos[2]*dvel[1] ));
                     out.accreted_J[1] += FLT(mcount_for_conserve * ( dpos[2]*dvel[0] - dpos[0]*dvel[2] ));
