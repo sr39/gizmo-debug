@@ -299,7 +299,7 @@ void calculate_non_standard_physics(void)
     {
         spawn_bh_wind_feedback();
         rearrange_particle_sequence();
-        
+
         MaxUnSpanMassBH=MaxUnSpanMassBH_global=0.;
     }
 #endif
@@ -498,29 +498,22 @@ void make_list_of_active_particles(void)
     int i, n, prev;
     /* make a link list with the particles in the active time bins */
     FirstActiveParticle = -1;
-    
+
     for(n = 0, prev = -1; n < TIMEBINS; n++)
     {
         if(TimeBinActive[n])
         {
             for(i = FirstInTimeBin[n]; i >= 0; i = NextInTimeBin[i])
             {
-                if(P[i].Mass <= 0)
-                    continue;
-                
-                if(prev == -1)
-                    FirstActiveParticle = i;
-                
-                if(prev >= 0)
-                    NextActiveParticle[prev] = i;
-                
+                if(P[i].Mass <= 0) {continue;}
+                if(prev == -1) {FirstActiveParticle = i;}
+                if(prev >= 0) {NextActiveParticle[prev] = i;}
                 prev = i;
             }
         }
     }
     
-    if(prev >= 0)
-        NextActiveParticle[prev] = -1;
+    if(prev >= 0) {NextActiveParticle[prev] = -1;}
 }
 
 
