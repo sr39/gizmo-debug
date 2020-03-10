@@ -299,9 +299,7 @@ void calculate_non_standard_physics(void)
     {
         spawn_bh_wind_feedback();
         rearrange_particle_sequence();
-#ifndef SINGLE_STAR_SINK_DYNAMICS
-        force_treebuild(NumPart, NULL);
-#endif
+
         MaxUnSpanMassBH=MaxUnSpanMassBH_global=0.;
     }
 #endif
@@ -500,29 +498,22 @@ void make_list_of_active_particles(void)
     int i, n, prev;
     /* make a link list with the particles in the active time bins */
     FirstActiveParticle = -1;
-    
+
     for(n = 0, prev = -1; n < TIMEBINS; n++)
     {
         if(TimeBinActive[n])
         {
             for(i = FirstInTimeBin[n]; i >= 0; i = NextInTimeBin[i])
             {
-                if(P[i].Mass <= 0)
-                    continue;
-                
-                if(prev == -1)
-                    FirstActiveParticle = i;
-                
-                if(prev >= 0)
-                    NextActiveParticle[prev] = i;
-                
+                if(P[i].Mass <= 0) {continue;}
+                if(prev == -1) {FirstActiveParticle = i;}
+                if(prev >= 0) {NextActiveParticle[prev] = i;}
                 prev = i;
             }
         }
     }
     
-    if(prev >= 0)
-        NextActiveParticle[prev] = -1;
+    if(prev >= 0) {NextActiveParticle[prev] = -1;}
 }
 
 
@@ -853,7 +844,7 @@ void write_cpu_log(void)
   if(ThisTask == 0)
     {
       fprintf(FdCPU, "Step %lld, Time: %g, CPUs: %d\n",(long long) All.NumCurrentTiStep, All.Time, NTask);
-      fprintf(FdCPU, "Nactive=%lld, Imbal(Max/Mean)=%g \n", (long long) GlobNumForceUpdate, max_CPU_Step[0]/(MIN_REAL_NUMBER + avg_CPU_Step[0]));
+      fprintf(FdCPU, "Nactive=%lld, Imbal(Max/Mean)=%g \n", (long long) GlobNumForceUpdate, (max_CPU_Step[0]/(MIN_REAL_NUMBER + avg_CPU_Step[0])-1.)*NTask+1.);
       fprintf(FdCPU,
 	      "total         %10.2f  %5.1f%%\n"
 	      "tree+gravity  %10.2f  %5.1f%%\n"

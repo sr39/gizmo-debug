@@ -211,7 +211,7 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
             {
                 j = ngblist[n];
 #ifdef BH_WAKEUP_GAS
-                if (local.Timebin < P[j].LowestBHTimeBin) {P[j].LowestBHTimeBin = local.Timebin;}
+                if (local.TimeBin < P[j].LowestBHTimeBin) {P[j].LowestBHTimeBin = local.TimeBin;}
 #endif
                 if( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != local.ID) )
                 {

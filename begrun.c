@@ -47,17 +47,13 @@ void begrun(void)
 #endif
   if(ThisTask == 0)
     {
-     printf("\nRunning on %d MPI tasks.\n", NTask);
+     printf("Running on %d MPI tasks.\n", NTask);
 #ifdef _OPENMP
 #pragma omp parallel private(tid)
       {
 #pragma omp master
-	printf("\nUsing %d OpenMP threads\n", omp_get_num_threads());
-
+	printf("Using %d OpenMP threads\n", omp_get_num_threads());
 	tid = omp_get_thread_num();
-	/*
-	   printf("Hello from thread = %d\n", tid);
-	 */
       }
 #endif
 
@@ -2388,8 +2384,7 @@ void read_parameter_file(char *fname)
     
 #ifdef PTHREADS_NUM_THREADS
 #ifdef _OPENMP
-    if(ThisTask == 0)
-        printf("PTHREADS_NUM_THREADS is incompatible with enabling OpenMP in the compiler options \n");
+    if(ThisTask == 0) {printf("PTHREADS_NUM_THREADS is incompatible with enabling OpenMP in the compiler options \n");}
     endrun(0);
 #endif
 #endif

@@ -56,6 +56,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
     
     /* certain particles should never enter the loop: check for these */
     if(local.Mass <= 0) return 0;
+    if(local.Density <= 0) return 0;
 #ifdef GALSF_SUBGRID_WINDS
     if(local.DelayTime > 0) {return 0;}
 #endif
@@ -70,13 +71,6 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
     hinv_j=hinv3_j=hinv4_j=0;
     V_i = local.Mass / local.Density;
     Particle_Size_i = pow(V_i,1./NUMDIMS) * All.cf_atime; // in physical, used below in some routines //
-    double Amax_i = MAX_REAL_NUMBER;
-#if (NUMDIMS==2)
-    Amax_i = 2. * sqrt(V_i/M_PI);
-#endif
-#if (NUMDIMS==3)
-    Amax_i = M_PI * pow((3.*V_i)/(4.*M_PI), 2./3.);
-#endif    
     dt_hydrostep = local.Timestep * All.Timebase_interval / All.cf_hubble_a; /* (physical) timestep */
     out.MaxSignalVel = kernel.sound_i;
     kernel_mode = 0; /* need dwk and wk */
@@ -144,7 +138,12 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
             for(n = 0; n < numngb; n++)
             {
                 j = ngblist[n];
-                
+                if(P[j].Mass <= 0) continue;
+                if(SphP[j].Density <= 0) continue;
+#ifdef GALSF_SUBGRID_WINDS
+                if(SphP[j].DelayTime > 0) continue; /* no hydro forces for decoupled wind particles */
+#endif
+
                 /* check if I need to compute this pair-wise interaction from "i" to "j", or skip it and let it be computed from "j" to "i" */
                 integertime TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
                 int j_is_active_for_fluxes = 0;
@@ -157,11 +156,6 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                     if(local.Pos[n0] < P[j].Pos[n0]) continue;
                 }
                 if(TimeBinActive[P[j].TimeBin]) {j_is_active_for_fluxes = 1;}
-#endif
-                if(P[j].Mass <= 0) continue;
-                if(SphP[j].Density <= 0) continue;
-#ifdef GALSF_SUBGRID_WINDS
-                if(SphP[j].DelayTime > 0) continue; /* no hydro forces for decoupled wind particles */
 #endif
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
@@ -208,7 +202,8 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 kernel.dv[1] = local.Vel[1] - VelPred_j[1];
                 kernel.dv[2] = local.Vel[2] - VelPred_j[2];
                 kernel.rho_ij_inv = 2.0 / (local.Density + SphP[j].Density);
-                
+                double Particle_Size_j = Get_Particle_Size(j) * All.cf_atime; /* physical units */
+
                 /* --------------------------------------------------------------------------------- */
                 /* sound speed, relative velocity, and signal velocity computation */
                 kernel.sound_j = Particle_effective_soundspeed_i(j);

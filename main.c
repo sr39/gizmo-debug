@@ -78,13 +78,10 @@ int main(int argc, char **argv)
 #pragma omp master
     {
       maxThreads = omp_get_num_threads();
-      if(ThisTask == 0)
-	printf("Using %d OpenMP threads\n", maxThreads);
     }
   }
 #elif defined(PTHREADS_NUM_THREADS)
-  if(ThisTask == 0)
-    printf("Using %d POSIX threads\n", maxThreads);
+  if(ThisTask == 0) {printf("Using %d POSIX threads\n", maxThreads);}
 #endif
 
   for(PTask = 0; NTask > (1 << PTask); PTask++);

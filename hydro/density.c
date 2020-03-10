@@ -68,7 +68,11 @@ int density_isactive(int n)
         if(All.ComovingIntegrationOn==0) // only do stellar age evaluation if we have to //
         {
             double star_age = evaluate_stellar_age_Gyr(P[n].StellarAge);
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES)
+            if(star_age < 0.0035) return 1;
+#else
             if(star_age < 0.035) return 1;
+#endif
         }
 #endif
     }
@@ -634,6 +638,9 @@ void density(void)
                     // if we're finding this for feedback routines, there isn't any good reason to search beyond a modest physical radius //
                     double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
                     maxsoft = 2.0 / unitlength_in_kpc;
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES) && (defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL))
+                    if(P[i].SNe_ThisTimeStep>0 || P[i].MassReturn_ThisTimeStep>0 || All.Time==All.TimeBegin) {maxsoft=2.0/unitlength_in_kpc;} else {maxsoft=0.1/unitlength_in_kpc;};
+#endif
 #endif
                     desnumngbdev = desnumngb / 2; // enforcing exact number not important
                 }
@@ -702,7 +709,7 @@ void density(void)
                 {
                     /* ok we have reached the desired number of neighbors: save the condition number for next timestep */
                     if(ConditionNumber > 1e6 * (double)CONDITION_NUMBER_DANGER) {
-                        PRINT_WARNING("Warning: Condition number=%g CNum_prevtimestep=%g Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g\n",
+                        PRINT_WARNING("Condition number=%g CNum_prevtimestep=%g Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g\n",
                                ConditionNumber,SphP[i].ConditionNumber,PPP[i].NumNgb,desnumngb,PPP[i].Hsml,All.MinHsml,All.MaxHsml);}
                     SphP[i].ConditionNumber = ConditionNumber;
                 }
@@ -1020,8 +1027,8 @@ void density(void)
             {
                 double rho_igm = All.OmegaBaryon*(All.HubbleParam*HUBBLE_CGS)*(All.HubbleParam*HUBBLE_CGS)*(3./(8.*M_PI*GRAVITY_G)) * DMIN(All.cf_a3inv, 1000.);
                 double rho_gas = DMAX( SphP[i].Density , All.DesNumNgb*P[i].Mass/(4.*M_PI/3.*PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml) )* All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;
-                if(P[i].Type == 0 && rho_gas < 0.001*rho_igm) {P[i].Mass = 0;}
-                if(P[i].Type != 0 && SphP[i].Density > 0 & rho_gas < 1.e-6*rho_igm) {P[i].Mass = 0;}
+                if(P[i].Type == 0 && rho_gas < 1.e-6*rho_igm) {P[i].Mass = 0;}
+                if(P[i].Type != 0 && SphP[i].Density > 0 & rho_gas < 1.e-9*rho_igm) {P[i].Mass = 0;}
             }
 #endif
 #ifdef BLACK_HOLES

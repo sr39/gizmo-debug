@@ -189,7 +189,7 @@ void rt_diffusion_cg_solve(void)
             if(iter >= 1 && (res <= ACCURACY * sum || iter >= MAX_ITER)) {done_key[k]=1; ndone++;}
         }
         iter++;
-        if(iter > MAX_ITER) {terminate("failed to converge in CG iteration \n");}
+        if(iter > MAX_ITER) {terminate("failed to converge in CG iteration");}
     }
     while(ndone < N_RT_FREQ_BINS);
     
