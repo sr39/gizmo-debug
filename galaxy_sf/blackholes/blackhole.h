@@ -55,9 +55,12 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
     MyLongDouble accreted_momentum[3];        /*!< accreted linear momentum */
 #endif
+#if defined(BH_RETURN_BFLUX)
+    MyLongDouble accreted_B[3]; 
+#endif    
 #if defined(BH_FOLLOW_ACCRETED_COM)
     MyLongDouble accreted_centerofmass[3];    /*!< accreted center-of-mass */
-#endif
+#endif    
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
     MyLongDouble accreted_J[3];               /*!< accreted angular momentum */
 #endif
@@ -68,6 +71,9 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat angmom_prepass_sum_for_passback[3]; /*!< Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013 */
     MyFloat angmom_norm_topass_in_swallowloop;  /*!< corresponding scalar normalization calculated from the vector above */
 #endif
+#if defined(BH_RETURN_BFLUX)
+    MyFloat kernel_norm_topass_in_swallowloop;
+#endif    
 }
 *BlackholeTempInfo;
 
