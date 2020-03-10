@@ -1644,16 +1644,14 @@ void force_add_star_to_tree(int igas, int istar)
 {
     int no;
     no = Nextnode[igas];
-    Nextnode[igas] = istar;
-    Nextnode[istar] = no;
-    Father[istar] = Father[igas];
-#ifdef SINGLE_STAR_FB_JETS
-    // update father node properties for opening criteria
+    Nextnode[igas] = istar; // insert new particle into linked list
+    Nextnode[istar] = no; // order correctly
+    Father[istar] = Father[igas]; // set parent node to be the same
+    // update parent node properties [maximum softening, speed] for opening criteria
     Extnodes[Father[igas]].hmax = DMAX(Extnodes[Father[igas]].hmax, P[igas].Hsml);
     double vmax = Extnodes[Father[igas]].vmax;
-    int k; for(k=0; k<3; k++){ if(fabs(P[istar].Vel[k]) > vmax) vmax = fabs(P[istar].Vel[k]); }
+    int k; for(k=0; k<3; k++) {if(fabs(P[istar].Vel[k]) > vmax) {vmax = fabs(P[istar].Vel[k]);}}
     Extnodes[Father[igas]].vmax = vmax;    
-#endif        
 }
 
 
