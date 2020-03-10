@@ -2233,6 +2233,9 @@ extern ALIGN(32) struct particle_data
     MyFloat OldJerk[3];
     short int AccretedThisTimestep;     /*!< flag to decide whether to stick with the KDK step for stability reasons, e.g. when actively accreting */
 #endif
+#ifdef COUNT_MASS_IN_GRAVTREE
+    MyFloat TreeMass;  /*!< Mass seen by the particle as it sums up the gravitational force from the tree - should be equal to total mass, a useful debug diagnostic  */
+#endif    
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL)
     MyFloat Potential;		/*!< gravitational potential */
 #if defined(EVALPOTENTIAL) && defined(PMGRID)
@@ -2960,6 +2963,9 @@ extern struct gravdata_out
     MyLongDouble Acc[3];
 #ifdef RT_USE_TREECOL_FOR_NH
     MyDouble ColumnDensityBins[RT_USE_TREECOL_FOR_NH];
+#endif
+#ifdef COUNT_MASS_IN_GRAVTREE
+    MyLongDouble TreeMass;
 #endif    
 #ifdef RT_OTVET
     MyLongDouble ET[N_RT_FREQ_BINS][6];
