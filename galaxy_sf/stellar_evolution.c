@@ -477,12 +477,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
     //We can convert the GIZMO parameters into their ORION versions, FWIND=(1.0-All.BAL_f_accretion) and f_acc = (1.0-All.BAL_f_accretion)*SINGLE_STAR_FB_JETS_POWER_FACTOR.
     f_acc = (1.0-All.BAL_f_accretion)*SINGLE_STAR_FB_JETS_POWER_FACTOR/All.BAL_f_accretion; //But we need to be careful because the f_acc here only sees the modified mdot = All.BAL_f_accretion * mdot_now_ind, so we need to divide with All.BAL_f_accretion. For our nominal All.BAL_f_accretion=0.7 and SINGLE_STAR_FB_JETS_POWER_FACTOR=1 this yields 0.42, not that far from the ORION value of 0.5
 #endif
-<<<<<<< HEAD
-    const double max_rel_dr = 0.01; //Maximum relative change in radius per step, if the change over a single timestep is larger than this than we subcycle the evolution of the stellar radius
-=======
-
     double max_rel_dr = 0.01; //Maximum relative change in radius per step, if the change over a single timestep is larger than this than we subcycle the evolution of the stellar radius
->>>>>>> origin/bh_spawn_debug
     double mass = BPP(n).BH_Mass; //mass of star/protostar at the end of the timestep
     double mass_D = BPP(n).Mass_D; //amount of D in the protostar
     double mdot = BPP(n).BH_Mdot; //accretion rate, shorter to write it this way
@@ -490,8 +485,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
     double m_solar = mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
     double m_initial = DMAX(1.e-37 , (mass - dm)); // mass before accretion
     int stage = BPP(n).ProtoStellarStage; / *what stage of stellar evolution the particle is in 0: pre collapse, 1: no burning, 2: fixed Tc burnig, 3: variable Tc burning, 4: shell burning, 5: main sequence, see Offner 2009 Appendix B*/
-    if (stage == 0){
-        //set the radius for the pre-collapse phase according to Eq B1 in Offner 2009, this overwrites the original prescription from sfr_eff.c
+    if (stage == 0) {//set the radius for the pre-collapse phase according to Eq B1 in Offner 2009, this overwrites the original prescription from sfr_eff.c
         BPP(n).ProtoStellarRadius_inSolar = DMAX(2.5 * pow(mdot_m_solar_per_year*1e5,0.33),2.0); //radius always at least 2 R_sun
     }
     double r = BPP(n).ProtoStellarRadius_inSolar * SOLAR_RADIUS/All.UnitLength_in_cm; // star radius in code units
