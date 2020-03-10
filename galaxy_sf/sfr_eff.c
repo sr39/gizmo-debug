@@ -365,9 +365,7 @@ double get_starformation_rate(int i)
     if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;} // restrict to local density/potential maxima //
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 8)
-#ifndef SLOPE2_SINKS
     if(P[i].BH_Ngb_Flag) {rateOfSF=0;} // particle cannot be 'seen' by -any- sink as a potential interacting neighbor //
-#endif
     if(P[i].min_dist_to_bh < 1.24*Get_Particle_Size(i)) {rateOfSF=0;} // particle does not see a sink within a volume = 8x=2^3 times its cell volume [set coefficient =1.86 for 27x=3^3 its cell volume] //
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
@@ -602,9 +600,6 @@ void star_formation_parent_routine(void)
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)		
                 double bh_mu=2.0*get_random_number(P[i].ID+3)-1.0, bh_phi=2*M_PI*get_random_number(P[i].ID+4), bh_sin=sqrt(1-bh_mu*bh_mu);
                 double spin_prefac = All.G * P[i].BH_Mass / C_LIGHT_CODE; // assume initially maximally-spinning BH with random orientation
-#ifdef SLOPE2_SINKS
-                spin_prefac = sqrt(All.G * P[i].Mass * All.ForceSoftening[5]); // assume material is initially in a circular orbit at the resolution limit
-#endif
                 P[i].BH_Specific_AngMom[0]=spin_prefac*bh_sin*cos(bh_phi); P[i].BH_Specific_AngMom[1]= spin_prefac * bh_sin*sin(bh_phi); P[i].BH_Specific_AngMom[2]=spin_prefac * bh_mu;
 #endif
 #ifdef BH_COUNTPROGS
@@ -766,15 +761,6 @@ void star_formation_parent_routine(void)
             fflush(FdSfr); // can flush it, because only occuring on master steps anyways
         } // thistask==0
     }
-
-#if 0
-    if(tot_converted+tot_spawned > 0) // TO: Don't call rearrange_particle_sequence(). This makes the cell array inconsistent with the tree
-    {
-        //rearrange_particle_sequence(); force_treebuild(NumPart, NULL); // TreeReconstructFlag = 0; // block of (more expensive) calls to completely rebuild the tree if we convert anything
-        //TreeReconstructFlag = 1; // alternatively, we can simply delay the rebuild, but note that it will be needed, by setting the TreeReconstructFlag
-    }
-#endif
-    
     CPU_Step[CPU_COOLINGSFR] += measure_time();
 } /* end of main sfr_cooling routine!!! */
 

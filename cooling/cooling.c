@@ -629,13 +629,14 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     {
         double NH_SS_z;
         if(gJH0>0)
-            NH_SS_z = NH_SS*pow(local_gammamultiplier*gJH0/1.0e-12,0.66)*pow(10.,0.173*(logT-4.));
+            {NH_SS_z = NH_SS*pow(local_gammamultiplier*gJH0/1.0e-12,0.66)*pow(10.,0.173*(logT-4.));}
         else
-            NH_SS_z = NH_SS*pow(10.,0.173*(logT-4.));
+            {NH_SS_z = NH_SS*pow(10.,0.173*(logT-4.));}
         double q_SS = nHcgs/NH_SS_z;
-        shieldfac = 1./(1.+q_SS*(1.+q_SS/2.*(1.+q_SS/3.*(1.+q_SS/4.*(1.+q_SS/5.*(1.+q_SS/6.*q_SS))))));
-#ifdef COOL_LOW_TEMPERATURES
-        if(logT < Tmin+1) shieldfac *= (logT-Tmin); // make cutoff towards Tmin more continuous //
+#ifdef COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
+        shieldfac = 0.98 / pow(1 + pow(q_SS,1.64), 2.28) + 0.02 / pow(1 + q_SS, 0.84); // from Rahmati et al. 2012: gives gentler cutoff at high densities
+#else
+        shieldfac = 1./(1.+q_SS*(1.+q_SS/2.*(1.+q_SS/3.*(1.+q_SS/4.*(1.+q_SS/5.*(1.+q_SS/6.*q_SS)))))); // this is exp(-q) down to ~1e-5, then a bit shallower, but more than sufficient approximation here //
 #endif
 #ifdef GALSF_EFFECTIVE_EQS
         shieldfac = 1; // self-shielding is implicit in the sub-grid model already //
@@ -673,15 +674,6 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         geH0 = flow * GammaeH0[j] + fhi * GammaeH0[j + 1];
         geHe0 = flow * GammaeHe0[j] + fhi * GammaeHe0[j + 1];
         geHep = flow * GammaeHep[j] + fhi * GammaeHep[j + 1];
-#ifdef COOL_LOW_TEMPERATURES
-        // make cutoff towards Tmin more continuous //
-        if(logT < Tmin+1) {
-            geH0 *= (logT-Tmin);
-            geHe0 *= (logT-Tmin);
-            geHep *= (logT-Tmin);
-        }
-#endif
-        
         fac_noneq_cgs = (dt * All.UnitTime_in_s / All.HubbleParam) * necgs; // factor needed below to asses whether timestep is larger/smaller than recombination time
         if(necgs <= 1.e-25 || J_UV == 0)
         {
@@ -908,7 +900,11 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     else
         NH_SS_z=NH_SS*pow(10.,0.173*(logT-4.));
     double q_SS = nHcgs/NH_SS_z;
-    shieldfac = 1./(1.+q_SS*(1.+q_SS/2.*(1.+q_SS/3.*(1.+q_SS/4.*(1.+q_SS/5.*(1.+q_SS/6.*q_SS))))));
+#ifdef COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
+    shieldfac = 0.98 / pow(1 + pow(q_SS,1.64), 2.28) + 0.02 / pow(1 + q_SS, 0.84); // from Rahmati et al. 2012: gives gentler cutoff at high densities
+#else
+    shieldfac = 1./(1.+q_SS*(1.+q_SS/2.*(1.+q_SS/3.*(1.+q_SS/4.*(1.+q_SS/5.*(1.+q_SS/6.*q_SS)))))); // this is exp(-q) down to ~1e-5, then a bit shallower, but more than sufficient approximation here //
+#endif
 #ifdef GALSF_EFFECTIVE_EQS
     shieldfac = 1; // self-shielding is implicit in the sub-grid model already //
 #endif
@@ -1114,6 +1110,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         {
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
             double photoelec = SphP[target].RadFluxUV;
+#ifdef COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
+            if(gJH0>0 && shieldfac>0) {photoelec += sqrt(shieldfac) * (gJH0 / 2.29e-10);} // uvb contribution //
+#endif
 #endif
 #ifdef RT_PHOTOELECTRIC
             double photoelec = SphP[target].E_gamma[RT_FREQ_BIN_PHOTOELECTRIC] * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * All.UnitPressure_in_cgs * All.HubbleParam*All.HubbleParam / 3.9e-14; // convert to Habing field //

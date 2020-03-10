@@ -2496,8 +2496,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             for(i = 0; i < 6; i++)
             {
                 typelist[i] = 0;
-                if(All.MassTable[i] == 0 && header.npart[i] > 0)
-                    typelist[i] = 1;
+                if(All.MassTable[i] == 0 && header.npart[i] > 0) {typelist[i] = 1;}
             }
             return ntot_withmasses;
             break;
@@ -2580,16 +2579,14 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_TURB_DIFF_COEFF:
         case IO_DYNERROR:
         case IO_DYNERRORDEFAULT:
-            for(i = 1; i < 6; i++)
-                typelist[i] = 0;
+            for(i = 1; i < 6; i++) {typelist[i] = 0;}
             return ngas;
             break;
             
         case IO_AGE:
             for(i = 0; i < 6; i++)
 #ifdef BLACK_HOLES
-                if(i != 4 && i != 5)
-                    typelist[i] = 0;
+                if(i != 4 && i != 5) {typelist[i] = 0;}
             return nstars + header.npart[5];
 #else
             if(i != 4)
@@ -2630,8 +2627,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             
         case IO_TRUENGB:
             nngb = ngas;
-            for(i = 1; i < 4; i++)
-                typelist[i] = 0;
+            for(i = 1; i < 4; i++) {typelist[i] = 0;}
             typelist[4] = 0;
 #ifdef BLACK_HOLES
             nngb += header.npart[5];
@@ -2687,7 +2683,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
 	      typelist[3] = 0; 
 	    } 
 	  else 
-	    nngb += header.npart[2] + header.npart[3]; 
+	    {nngb += header.npart[2] + header.npart[3]; }
 	  return nngb; 
 	  break; 
 
@@ -2714,7 +2710,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
 	      typelist[3] = 0; 
 	    } 
 	  else 
-	    nngb += header.npart[2] + header.npart[3]; 
+	    nngb += {header.npart[2] + header.npart[3];}
 	  return nngb; 
 	  break; 
 
