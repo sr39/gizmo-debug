@@ -805,80 +805,85 @@ void merge_particles_ij(int i, int j)
   This routine swaps the location of two pointers/indices (either to a node or to a particle) in the treewalk needed for neighbor searches and gravity.
   This should be run if you are messing around with the indices of things but don't intend to do a whole treebuild after. - MYG
  */ 
+
 void swap_treewalk_pointers(int i, int j){
-    printf("swapping particle %d and %d in the tree\n", i, j);
-    int no, next_node;
-    int previous_node_i, previous_node_j;
-
-    if((Nextnode[i] == j) ||( Nextnode[j] == i)){ // handle it as a separate case if one points to the other, less confusing
-        if(Nextnode[j] == i){ // swap i and j so that we can assume i points to j
-            no = i;
-            i = j;
-            j = no;
+    printf("swapping %d and %d\n", i, j);
+    // walk the tree and any time we see a nextnode or sibling set to i, swap it to j and vice versa
+    int no, next, pre_sibling_i=-1, pre_sibling_j=-1, previous_node_i, previous_node_j;
+    no = All.MaxPart;
+    //  double m1=0;
+//    printf("Nextnode[%d]=%d, Nextnode[%d]=%d\n",i,Nextnode[i], j, Nextnode[j]);
+    
+    while(no >= 0){ // walk the whole tree, starting from the root node (=All.MaxPart)
+//        printf("no=%d/%d\n", no, All.MaxPart);
+        if(no < All.MaxPart) { // we got a particle
+            next=Nextnode[no];
+            if(no != i && no != j){ // don't mess with Nextnodes if looking at i or j - handle that separately
+                if(next == i) {printf("swapping %d's nextnode from %d to %d\n", no, i, j); Nextnode[no] = j; previous_node_i = no;}
+                else if(next == j) {printf("swapping %d's nextnode from %d to %d\n", no, j, i); Nextnode[no] = i; previous_node_j = no;}
+            }
+//            m1 += P[no].Mass;
+            no = next;
+        } else if(no < All.MaxPart+MaxNodes)  { // we have a node
+            next = Nodes[no].u.d.nextnode;
+            if(next == i) { previous_node_i = no; Nodes[no].u.d.nextnode = j;}
+//                printf("swapping %d's nextnode from %d to %d\n", no, i, j);}
+            else if(next == j) { previous_node_j = no; Nodes[no].u.d.nextnode = i;}
+//                printf("swapping %d's nextnode from %d to %d\n", no, j, i);}            
+            if(Nodes[no].u.d.sibling == i) {Nodes[no].u.d.sibling = j; pre_sibling_i = no;}
+//                printf("swapping %d's sibling from %d to %d\n", no, i, j);}
+            else if(Nodes[no].u.d.sibling == j) { Nodes[no].u.d.sibling = i; pre_sibling_j = no;}
+//                printf("swapping %d's sibling from %d to %d\n", no, j, i);}
+            //      m1 += Nodes[no].u.d.mass;
+            no = next;
+        } else { // pseudoparticle
+            next = Nextnode[no - MaxNodes];
+            if(next==i) {Nextnode[no-MaxNodes] = j;}
+            else if(next == j) {Nextnode[no-MaxNodes] = i;}
+            no = next;
         }
-        
-        next_node = Father[i];
-        do{ // first walk the tree until we get to the node before i
-            no = next_node;
-            if(no < All.MaxPart) {next_node = Nextnode[no];}
-            else {next_node = Nodes[no].u.d.nextnode;}
-        } while (next_node != i);
-       
-        // now make the node pointing to i, point to j
-        if(no < All.MaxPart) { Nextnode[no] = j;} else {Nodes[no].u.d.nextnode = j;}
-
-        // now swap i's and j's nextnodes and fathers
+    }
+    
+    if(Nextnode[i] == j){ // handle case if i->j
         Nextnode[i] = Nextnode[j];
         Nextnode[j] = i;
-
-        no = Father[j]; // save j's father node
-        Father[j] = Father[i]; // j's father node is now i's
-        Father[i] = no; // and i's is now j's - the fathers are now swapped.
-    } else { // neither i nor j points to the other
-        // First we get the node that points to i, and make it point to j
-        next_node = Father[i];
-        do{ // first walk the tree until we get to the node before i
-            no = next_node;
-            if(no < All.MaxPart) {next_node = Nextnode[no];}
-            else {next_node = Nodes[no].u.d.nextnode;}
-        } while (next_node != i);
-        previous_node_i = no;
-        if(previous_node_i < All.MaxPart) {Nextnode[previous_node_i] = j;} else {Nodes[previous_node_i].u.d.nextnode = j;} 
-
-        // Then we get the node that points to j, and make it point to i
-        next_node = Father[j];
-        do{ // first walk the tree until we get to the node before j
-            no = next_node;
-            if(no < All.MaxPart) {next_node = Nextnode[no];}
-            else {next_node = Nodes[no].u.d.nextnode;}
-        } while (next_node != j);
-        previous_node_j = no;
-        if(previous_node_j < All.MaxPart) {Nextnode[previous_node_j] = i;} else {Nodes[previous_node_j].u.d.nextnode = i;}      // j's previous node now points to i instead of j    
-        // Next we swap the respective father nodes
-        no = Father[j]; // save j's father node
-        Father[j] = Father[i]; // j's father node is now i's
-        Father[i] = no; // and i's is now j's - the fathers are now swapped.
-    
-        // Finally, swap i's and j's respective Nextnode's, the pointer that they each point to in the treewalk
+    } else if (Nextnode[j] == i) { // if j->i
+        Nextnode[j] = Nextnode[i];
+        Nextnode[i] = j;
+    } else { // neither i->j nor j->i
         no = Nextnode[i];
         Nextnode[i] = Nextnode[j];
         Nextnode[j] = no;
     }
+//    printf("Nextnode[%d]=%d, Nextnode[%d]=%d\n",i,Nextnode[i], j, Nextnode[j]);
+    no = Father[i];
+    Father[i] = Father[j];
+    Father[j] = no;
 }
+
 
 /*!
   This routine deletes a particle from the linked list for the treewalk, preserving the lists's integrity. This must be run if you are deleting particles but don't want to do a while treebuild after. - MYG
 */
-void remove_particle_from_treewalkwalk(int i){
-    int no, next_node;
-    next_node = Father[i];
-    do{ // first walk the tree until we get to the node before i
-        no = next_node;
-        if(no < All.MaxPart) {next_node = Nextnode[no];}
-        else {next_node = Nodes[no].u.d.nextnode;}
-    } while (next_node != i);
-    
-    if(no < All.MaxPart) { Nextnode[no] = Nextnode[i];} else {Nodes[no].u.d.nextnode = Nextnode[i];}  // take the node that pointed to i, and make it point to i's next node instead 
+void remove_particle_from_treewalk(int i){
+//    printf("removing particle %d from the tree\n", i);
+    int no, next;
+    no = All.MaxPart;
+    while(no >= 0){ // walk the tree to find anything that might point to i and redirect it to i's nextnode
+        if(no < All.MaxPart){
+            next = Nextnode[no];
+            if(Nextnode[no] == i) {Nextnode[no] = Nextnode[i];}
+        } else if (no < All.MaxPart+MaxNodes){
+            next = Nodes[no].u.d.nextnode;
+            if(next == i) {Nodes[no].u.d.nextnode = Nextnode[i];}
+            if(Nodes[no].u.d.sibling == i) {Nodes[no].u.d.sibling = Nextnode[i];}
+        } else {
+            next = Nextnode[no - MaxNodes];
+            if(next == i) {Nextnode[no - MaxNodes] = Nextnode[i];}
+        }
+        no = next;
+    }
+//    printf("removed particle %d from the tree\n", i);
 }
 
 /*! This is an important routine used throughout -- any time particle masses are variable OR particles can
@@ -983,6 +988,7 @@ void rearrange_particle_sequence(void)
                 
                 P[N_gas - 1] = P[NumPart - 1]; /* redirect the final gas pointer to go to the final particle (BH) */
                 swap_treewalk_pointers(N_gas - 1, NumPart-1);
+                remove_particle_from_treewalk(NumPart - 1);
                 N_gas--; /* shorten the total N_gas count */
                 count_gaselim++; /* record that a BH was eliminated */
             }
@@ -993,8 +999,8 @@ void rearrange_particle_sequence(void)
                                         swap the two; note that ordering -does not- matter among the non-SPH particles
                                         so its fine if this mixes up the list ordering of different particle types */
                 swap_treewalk_pointers(i, NumPart - 1);
+                remove_particle_from_treewalk(NumPart - 1);
             }
-            remove_particle_from_treewalk(NumPart - 1);
             
             NumPart--;
             i--;

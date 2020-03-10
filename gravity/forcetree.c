@@ -1647,6 +1647,13 @@ void force_add_star_to_tree(int igas, int istar)
     Nextnode[igas] = istar;
     Nextnode[istar] = no;
     Father[istar] = Father[igas];
+#ifdef SINGLE_STAR_FB_JETS
+    // update father node properties for opening criteria
+    Extnodes[Father[igas]].hmax = DMAX(Extnodes[Father[igas]].hmax, P[igas].Hsml);
+    double vmax = Extnodes[Father[igas]].vmax;
+    int k; for(k=0; k<3; k++){ if(fabs(P[istar].Vel[k]) > vmax) vmax = fabs(P[istar].Vel[k]); }
+    Extnodes[Father[igas]].vmax = vmax;    
+#endif        
 }
 
 
