@@ -564,7 +564,7 @@ void force_update_node_recursive(int no, int sib, int father)
         }
         
         last = no;
-        
+
 #ifdef RT_USE_TREECOL_FOR_NH
         MyFloat gasmass = 0;
 #endif            
@@ -1683,7 +1683,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double r2, dx, dy, dz, mass, r, fac, u, h=0, h_inv, h3_inv, xtmp; xtmp=0;
 #ifdef RT_USE_TREECOL_FOR_NH
     double gasmass, angular_bin_size = 4*M_PI / RT_USE_TREECOL_FOR_NH, treecol_angular_bins[RT_USE_TREECOL_FOR_NH] = {0};
-
 #endif    
 #ifdef COMPUTE_JERK_IN_GRAVTREE
     double dvx, dvy, dvz;
@@ -1699,6 +1698,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double eff_dist, rcut, asmth, asmthfac, rcut2, dist;
     dist = 0;
 #endif
+#ifdef COUNT_MASS_IN_GRAVTREE
+    MyFloat tree_mass = 0;
+#endif    
     MyLongDouble acc_x, acc_y, acc_z;
     // cache some global vars in local vars to help compiler with alias analysis
     int maxPart = All.MaxPart;
@@ -2616,6 +2618,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if(r < r_for_total_menclosed) {m_enc_in_rcrit += mass;}
 #endif
 
+#ifdef COUNT_MASS_IN_GRAVTREE
+            tree_mass += mass;
+#endif            
 #ifdef RT_USE_TREECOL_FOR_NH
             if(gasmass>0){
                 int bin; // Here we do a simple six-bin angular binning scheme
@@ -2762,7 +2767,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef RT_USE_TREECOL_FOR_NH
         int k;
         for(k=0; k < RT_USE_TREECOL_FOR_NH; k++) P[target].ColumnDensityBins[k] = treecol_angular_bins[k];
-#endif	
+#endif
+#ifdef COUNT_MASS_IN_GRAVTREE
+        P[target].TreeMass = tree_mass;
+#endif        
 #ifdef RT_OTVET
         if(valid_gas_particle_for_rt) {int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {SphP[target].ET[k][k_et] = RT_ET[k][k_et];}} else {if(P[target].Type==0) {int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {SphP[target].ET[k][k_et]=0;}}}
 #endif
@@ -2821,6 +2829,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         GravDataResult[target].Acc[0] = acc_x;
         GravDataResult[target].Acc[1] = acc_y;
         GravDataResult[target].Acc[2] = acc_z;
+#ifdef COUNT_MASS_IN_GRAVTREE
+        GravDataResult[target].TreeMass = tree_mass;
+#endif
 #ifdef RT_USE_TREECOL_FOR_NH
         int k;
         for(k=0; k < RT_USE_TREECOL_FOR_NH; k++) GravDataResult[target].ColumnDensityBins[k] = treecol_angular_bins[k];

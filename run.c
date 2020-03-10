@@ -299,8 +299,6 @@ void calculate_non_standard_physics(void)
     {
         spawn_bh_wind_feedback();
         rearrange_particle_sequence();
-        reconstruct_timebins();
-        make_list_of_active_particles();
         
         MaxUnSpanMassBH=MaxUnSpanMassBH_global=0.;
     }
