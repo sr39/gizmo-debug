@@ -471,15 +471,15 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 #elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
     /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */
     
-    const double frad = 0.18; //limit for forming radiative barrier, based on Offner+MckKee 2011 source code
-    const double fk = 0.5; //fraction of kinetic energy that is radiated away in the inner disk before reaching the surface, using default ORION value here as it is not a GIZMO input parameter
-    const double f_acc = 0.5; //fraction of accretion power that is radiated away instead of being used to drive winds, using default ORION value here as it is not a GIZMO input parameter
+    double frad = 0.18; //limit for forming radiative barrier, based on Offner+MckKee 2011 source code
+    double fk = 0.5; //fraction of kinetic energy that is radiated away in the inner disk before reaching the surface, using default ORION value here as it is not a GIZMO input parameter
+    double f_acc = 0.5; //fraction of accretion power that is radiated away instead of being used to drive winds, using default ORION value here as it is not a GIZMO input parameter
 #ifdef SINGLE_STAR_FB_JETS
     //We ca convert the GIZMo parameters into their ORION versions, FWIND=(1.0-All.BAL_f_accretion) and f_acc = (1.0-All.BAL_f_accretion)*SINGLE_STAR_FB_JETS_POWER_FACTOR. 
     f_acc = (1.0-All.BAL_f_accretion)*SINGLE_STAR_FB_JETS_POWER_FACTOR/All.BAL_f_accretion; //But we need to be careful because the f_acc here only sees the modified mdot = All.BAL_f_accretion * mdot_now_ind, so we need to divide with All.BAL_f_accretion. For our nominal All.BAL_f_accretion=0.7 and SINGLE_STAR_FB_JETS_POWER_FACTOR=1 this yields 0.42, not that far from the ORION value of 0.5
 #endif
 
-    const double max_rel_dr = 0.01; //Maximum relative change in radius per step, if the change over a single timestep is larger than this than we subcycle the evolution of the stellar radius
+    double max_rel_dr = 0.01; //Maximum relative change in radius per step, if the change over a single timestep is larger than this than we subcycle the evolution of the stellar radius
     double mass = BPP(n).BH_Mass; //mass of star/protostar at the end of the timestep
     double mass_D = BPP(n).Mass_D; //amount of D in the protostar
     double mdot = BPP(n).BH_Mdot; //accretion rate, shorter to write it this way

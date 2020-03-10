@@ -466,8 +466,12 @@ void spawn_bh_wind_feedback(void)
     }
     MPI_Allreduce(&n_particles_split, &MPI_n_particles_split, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     if(MPI_n_particles_split>0){
-      TreeReconstructFlag = 1; 
-      if(ThisTask == 0) {printf(" ..BH-Spawn Event: %d particles spawned \n", MPI_n_particles_split);}
+#ifdef SINGLE_STAR_FB_JETS        
+        All.NumForcesSinceLastDomainDecomp +=  All.TreeDomainUpdateFrequency * All.TotNumPart/100; // we can insert spawned particles in the tree, but still a good idea to rebuild the tree every now and then, so we make the next domain+treebuild come a bit sooner; additional cost should be small
+#else        
+        TreeReconstructFlag = 1; // otherwise just wipe and rebuild the tree next chance you get - more expensive but more accurate
+#endif        
+        if(ThisTask == 0) {printf(" ..BH-Spawn Event: %d particles spawned \n", MPI_n_particles_split);}
     }
 
     /* rearrange_particle_sequence -must- be called immediately after this routine! */
