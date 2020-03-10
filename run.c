@@ -299,9 +299,8 @@ void calculate_non_standard_physics(void)
     {
         spawn_bh_wind_feedback();
         rearrange_particle_sequence();
-//#ifndef SINGLE_STAR_SINK_DYNAMICS
-//        force_treebuild(NumPart, NULL); // not needed [we think] if we use TreeReconstructFlag to force a new domain decomp+build before next timestep
-//#endif
+        reconstruct_timebins();
+        make_list_of_active_particles();
         
         MaxUnSpanMassBH=MaxUnSpanMassBH_global=0.;
     }
