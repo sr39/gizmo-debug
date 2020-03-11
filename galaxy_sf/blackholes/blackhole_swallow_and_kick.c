@@ -208,14 +208,13 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                         kernel_main(u,1., 1.,&wk,&dwk,-1);
                     } else {wk=dwk=0;}
                     
-                    double dB, b_fraction_toreturn = DMIN(0.1, local.Dt / (local.Mass / local.Mdot)) * wk / local.kernel_norm_topass_in_swallowloop; // return a fraction dt/t_accretion of the total flux, with simple kernel weighting for each particle
+                    double dB, b_fraction_toreturn = DMIN(0.1, local.Dt / (local.BH_Mass_AlphaDisk / local.Mdot)) * wk / local.kernel_norm_topass_in_swallowloop; // return a fraction dt/t_accretion of the total flux, with simple kernel weighting for each particle
                     for(k=0; k<3;k++) {
-                        dB = b_fraction_toreturn * local.B[k]; printf("B=%g dB=%g b_sink=%g dt=%g mdot=%g\n",SphP[j].BPred[k], dB, local.B[k], local.Dt, local.Mdot);
+                        dB = b_fraction_toreturn * local.B[k];
                         SphP[j].B[k] +=  dB;
                         SphP[j].BPred[k] +=  dB;
                         out.accreted_B[k] -= dB;                        
                     }
-                    printf("\n");
                 }
 #endif                
                 /* we've found a particle to be swallowed.  This could be a BH merger, DM particle, or baryon w/ feedback */
