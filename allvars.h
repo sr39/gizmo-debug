@@ -399,8 +399,8 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define GALSF_SFR_VIRIAL_SF_CRITERION 4
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
-#ifndef SINGLE_STAR_FIND_BINARIES
-#define SINGLE_STAR_FIND_BINARIES
+#ifndef SINGLE_STAR_TIMESTEPPING
+#define SINGLE_STAR_TIMESTEPPING
 #endif
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 32)
@@ -2400,7 +2400,7 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
     MyFloat min_xyz_to_bh[3];
-#if defined(SINGLE_STAR_FIND_BINARIES) || defined(SINGLE_STAR_TIMESTEPPING)
+#if defined(SINGLE_STAR_FIND_BINARIES) || (SINGLE_STAR_TIMESTEPPING > 0)
     MyDouble min_bh_t_orbital; //orbital time for binary
     MyDouble comp_dx[3]; //position offset of binary companion - this will be evolved in the Kepler solution while we use the Pos attribute to track the binary COM
     MyDouble comp_dv[3]; //velocity offset of binary companion - this will be evolved in the Kepler solution while we use the Vel attribute to track the binary COM velocity
