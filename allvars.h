@@ -355,7 +355,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 
 
-#ifdef STARFORGE_PHYSICS_DEFAULTS /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
+#ifdef SINGLE_STAR_DEFAULTS /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
 #define SINGLE_STAR_SINK_DYNAMICS
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #define ADAPTIVE_GRAVSOFT_FORGAS
