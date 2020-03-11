@@ -191,23 +191,20 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                 if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dvel[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
 
+#if defined(BH_RETURN_ANGMOM_TO_GAS) || defined(BH_RETURN_BFLUX)                
+                double wk, dwk, u=0; for(k=0;k<3;k++) {u+=dpos[k]*dpos[k];}
+                u=sqrt(u)/h_i; if(u<1) { kernel_main(u,1., 1.,&wk,&dwk,-1); } else {wk=dwk=0;} 
+#endif                
 #if defined(BH_RETURN_ANGMOM_TO_GAS) /* this should go here [right before the loop that accretes it back onto the BH] */
                 if(P[j].Type == 0)
                 {
                     double dlv[3]; dlv[0]=local.BH_Specific_AngMom[1]*dpos[2]-local.BH_Specific_AngMom[2]*dpos[1]; dlv[1]=local.BH_Specific_AngMom[2]*dpos[0]-local.BH_Specific_AngMom[0]*dpos[2]; dlv[2]=local.BH_Specific_AngMom[0]*dpos[1]-local.BH_Specific_AngMom[1]*dpos[0];
-                    for(k=0;k<3;k++) {dlv[k] *= local.angmom_norm_topass_in_swallowloop; P[j].Vel[k]+=dlv[k]; SphP[j].VelPred[k]+=dlv[k]; out.accreted_momentum[k]-=P[j].Mass*dlv[k];}
+                    for(k=0;k<3;k++) {dlv[k] *= wk * local.angmom_norm_topass_in_swallowloop; P[j].Vel[k]+=dlv[k]; SphP[j].VelPred[k]+=dlv[k]; out.accreted_momentum[k]-=P[j].Mass*dlv[k];}
                     out.accreted_J[0]-=P[j].Mass*(dpos[1]*dlv[2] - dpos[2]*dlv[1]); out.accreted_J[1]-=P[j].Mass*(dpos[2]*dlv[0] - dpos[0]*dlv[2]); out.accreted_J[2]-=P[j].Mass*(dpos[0]*dlv[1] - dpos[1]*dlv[0]);
                 }
 #endif
 #if defined(BH_RETURN_BFLUX) // do a kernel-weighted redistribution of the magnetic flux in the sink into surrounding particles
-                if((P[j].Type == 0) && (local.kernel_norm_topass_in_swallowloop > 0)){
-                    double wk, dwk, u=0; for(k=0;k<3;k++) {u+=dpos[k]*dpos[k];}
-                    double hinv=1/h_i, hinv3;
-                    hinv3=hinv*hinv*hinv; 
-                    u=sqrt(u)/h_i; if(u<1) {
-                        kernel_main(u,1., 1.,&wk,&dwk,-1);
-                    } else {wk=dwk=0;}
-                    
+                if((P[j].Type == 0) && (local.kernel_norm_topass_in_swallowloop > 0)){                    
                     double dB, b_fraction_toreturn = DMIN(0.1, local.Dt / (local.BH_Mass_AlphaDisk / local.Mdot)) * wk / local.kernel_norm_topass_in_swallowloop; // return a fraction dt/t_accretion of the total flux, with simple kernel weighting for each particle
                     for(k=0; k<3;k++) {
                         dB = b_fraction_toreturn * local.B[k];

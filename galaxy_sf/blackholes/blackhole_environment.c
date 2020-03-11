@@ -198,7 +198,7 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
 #ifdef BH_ACCRETE_NEARESTFIRST
     out.BH_dr_to_NearestGasNeighbor = MAX_REAL_NUMBER; // initialize large value
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (BH_GRAVACCRETION == 8) || defined(BH_RETURN_BFLUX)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (BH_GRAVACCRETION == 8) || defined(BH_RETURN_BFLUX) || defined(BH_RETURN_ANGMOM_TO_GAS)
     MyFloat wk, dwk, u; // initialized here to prevent some annoying compiler warnings
 #endif
     /* Now start the actual neighbor computation for this particle */
@@ -270,12 +270,14 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
 #if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
                         for(k=0;k<3;k++) {out.BH_SurroundingGasVel[k] += wt*dv[k];}
 #endif
+#if defined(BH_RETURN_ANGMOM_TO_GAS) || defined(BH_RETURN_BFLUX)
+                        u=sqrt(u)/h_i; if(u<1) {kernel_main(u,1., 1.,&wk,&dwk,-1);} else {wk=dwk=0;} // spline weighting function for conserved quantity return
+#endif                        
 #if defined(BH_RETURN_ANGMOM_TO_GAS) /* We need a normalization factor for angular momentum feedback so we will go over all the neighbours */
                         double r2j=dP[0]*dP[0]+dP[1]*dP[1]+dP[2]*dP[2], Lrj=local.BH_Specific_AngMom[0]*dP[0]+local.BH_Specific_AngMom[1]*dP[1]+local.BH_Specific_AngMom[2]*dP[2];
-                        for(k=0;k<3;k++) {out.angmom_prepass_sum_for_passback[k] += wt*(local.BH_Specific_AngMom[k]*r2j - dP[k]*Lrj);}
+                        for(k=0;k<3;k++) {out.angmom_prepass_sum_for_passback[k] += wk * wt*(local.BH_Specific_AngMom[k]*r2j - dP[k]*Lrj);} // this is now kernel-weighted so that the kicks fall off smoothly as r approaches H
 #endif
-#if defined(BH_RETURN_BFLUX)
-                        u=sqrt(u)/h_i; if(u<1) {kernel_main(u,1., 1.,&wk,&dwk,-1);} else {wk=dwk=0;}
+#if defined(BH_RETURN_BFLUX)                        
                         out.kernel_norm_topass_in_swallowloop += wk;
 #endif                  
 #if (BH_GRAVACCRETION == 8)
