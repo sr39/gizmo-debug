@@ -729,6 +729,9 @@ void force_update_node_recursive(int no, int sib, int father)
                     vs[2] += (pa->Mass * pa->Vel[2]);
 #ifdef RT_USE_TREECOL_FOR_NH
                     if(pa->Type == 0) gasmass += pa->Mass;
+#ifdef BH_ALPHADISK_ACCRETION
+                    if(pa->Type == 5) gasmass += BPP(p).BH_Mass_AlphaDisk; // gas at the inner edge of a disk should not see a hole due to the sink
+#endif                    
 #endif		    
 #ifdef RT_USE_GRAVTREE
                     double lum[N_RT_FREQ_BINS];
@@ -1965,6 +1968,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 mass = P[no].Mass;
 #ifdef RT_USE_TREECOL_FOR_NH
                 if(P[no].Type == 0) gasmass = P[no].Mass;
+#ifdef BH_ALPHADISK_ACCRETION
+                if(P[no].Type == 5) gasmass = BPP(no).BH_Mass_AlphaDisk; // gas at the inner edge of a disk should not see a hole due to the sink
+#endif                
 #endif                
                 /* only proceed if the mass is positive and there is separation! */
                 if((r2 > 0) && (mass > 0))

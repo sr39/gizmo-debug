@@ -575,6 +575,9 @@ void star_formation_parent_routine(void)
 #endif                
 #ifdef GRAIN_FLUID
                 P[i].BH_Dust_Mass = 0;
+#endif
+#ifdef BH_RETURN_BFLUX
+                P[i].B[0] = P[i].B[1] = P[i].B[2] = 0;
 #endif                
                 TreeReconstructFlag = 1;
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
