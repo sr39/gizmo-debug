@@ -355,7 +355,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 
 
-#ifdef STARFORGE_PHYSICS_DEFAULTS /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
+#ifdef SINGLE_STAR_DEFAULTS /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
 #define SINGLE_STAR_SINK_DYNAMICS
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #define ADAPTIVE_GRAVSOFT_FORGAS
@@ -399,8 +399,8 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define GALSF_SFR_VIRIAL_SF_CRITERION 4
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
-#ifndef SINGLE_STAR_FIND_BINARIES
-#define SINGLE_STAR_FIND_BINARIES
+#ifndef SINGLE_STAR_TIMESTEPPING
+#define SINGLE_STAR_TIMESTEPPING
 #endif
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 32)
@@ -2373,6 +2373,9 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_FOLLOW_ACCRETED_ANGMOM
     MyFloat BH_Specific_AngMom[3];
 #endif
+#ifdef BH_RETURN_BFLUX
+    MyDouble B[3];
+#endif    
 #ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK
     MyFloat Mgas_in_Kernel;
     MyFloat Jgas_in_Kernel[3];
@@ -2397,7 +2400,7 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
     MyFloat min_xyz_to_bh[3];
-#if defined(SINGLE_STAR_FIND_BINARIES) || defined(SINGLE_STAR_TIMESTEPPING)
+#if defined(SINGLE_STAR_FIND_BINARIES) || (SINGLE_STAR_TIMESTEPPING > 0)
     MyDouble min_bh_t_orbital; //orbital time for binary
     MyDouble comp_dx[3]; //position offset of binary companion - this will be evolved in the Kepler solution while we use the Pos attribute to track the binary COM
     MyDouble comp_dv[3]; //velocity offset of binary companion - this will be evolved in the Kepler solution while we use the Vel attribute to track the binary COM velocity
