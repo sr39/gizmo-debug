@@ -381,7 +381,8 @@ void set_blackhole_mdot(int i, int n, double dt)
 #ifdef SINGLE_STAR_SINK_DYNAMICS
         double reff = All.SofteningTable[5], Gm_i = 1./(All.G*P[n].Mass);
 #if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
-        reff = P[n].SinkRadius, Gm_i = 1./(All.G*2.*All.MinMassForParticleMerger); // effectively setting the value to the freefall time the particle has when it forms, for both 'size' of disk and 'effective mass' (for dynamical time below)
+        double cs_min = 2e4 / All.UnitVelocity_in_cm_per_s;
+        reff = All.G*2.*All.MinMassForParticleMerger/(cs_min*cs_min), Gm_i = 1./(All.G*2.*All.MinMassForParticleMerger); // effectively setting the value to the freefall time the particle has when it forms, for both 'size' of disk and 'effective mass' (for dynamical time below)
 #endif
         t_acc_disk = sqrt(reff*reff*reff * Gm_i); // dynamical time at radius "reff", essentially fastest-possible accretion time
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM) && defined(BH_MDOT_FROM_ALPHAMODEL)
