@@ -353,7 +353,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif // CHIMES_METAL_DEPLETION 
 #endif // CHIMES 
 
-
+#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE //QoL flag so that we don't need to replace every config file just yet, will be removed later
+#define SINGLE_STAR_DEFAULTS
+#endif
 
 #ifdef SINGLE_STAR_DEFAULTS /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
 #define LONGIDS
