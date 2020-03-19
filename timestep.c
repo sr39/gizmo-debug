@@ -1061,7 +1061,7 @@ integertime get_timestep(int p,		/*!< particle index */
              (int) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type], P[p].Mass,P[p].Type);
 #else
             PRINT_WARNING("Part-ID=%llu  dt=%g dtc=%g ac=%g agrav=%g ahydro=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g m=%g type=%d\n",
-             (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type], P[p].Mass,P[p].Type);
+	    (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type], P[p].Mass,P[p].Type);
 #endif // ndef LONGIDS
 #ifdef SINGLE_STAR_DEFAULTS //extra info for single star runs
             PRINT_WARNING("Part-ID=%llu min_dist_to_bh=%g cs_est=%g u_int=%g Pressure=%g",  (MyIDType) P[p].ID, P[p].min_dist_to_bh, sqrt(convert_internalenergy_soundspeed2(p, SphP[p].InternalEnergy)), SphP[p].InternalEnergy, SphP[p].Pressure);
