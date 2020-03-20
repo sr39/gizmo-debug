@@ -1818,6 +1818,11 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
 
         case IO_GENERATION_ID:
+#ifdef BH_WIND_SPAWN  //we use this to store progenitor info so this needs to be able to handle any valid ID, rather than the usual 0-32
+            bytes_per_blockelement = sizeof(MyIDType);
+            break;
+#endif            
+
         case IO_BHPROGS:
         case IO_TRUENGB:
         case IO_AGS_NGBS:
@@ -2142,6 +2147,13 @@ int get_datatype_in_block(enum iofields blocknr)
             break;
 
         case IO_GENERATION_ID:
+#if defined(BH_WIND_SPAWN) && defined(LONGIDS) //we use this to store progenitor info so this needs to be able to handle any valid ID, rather than the usual 0-32       
+            typekey = 2;		/* native long long */
+#else
+            typekey = 0;		/* native int */
+#endif            
+            break;
+            
         case IO_TRUENGB:
         case IO_BHPROGS:
         case IO_GRAINTYPE:
