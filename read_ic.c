@@ -916,6 +916,12 @@ void read_file(char *fname, int readTask, int lastTask)
 #ifdef PIC_MHD
                    && blocknr != IO_GRAINTYPE
 #endif
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+                   && blocknr != IO_R_PROTOSTAR
+                   && blocknr != IO_MASS_D_PROTOSTAR
+                   && blocknr != IO_STAGE_PROTOSTAR
+                   && blocknr != IO_LUM_SINGLESTAR
+#endif
                    )
 #if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
                     if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_SHEET_ORIENTATION))
