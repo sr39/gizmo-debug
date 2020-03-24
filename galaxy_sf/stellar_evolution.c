@@ -630,9 +630,13 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
         printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: 0 rel_dr: 0 dm: %g dm_D: 0 Tc: 0 Pc: 0 rhoc: 0 beta: 0 dt: %g n_ad: 0 lum_int: 0 lum_I: 0 lum_D: 0 age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: 0 n_subcycle: 0 PS_end\n",All.Time, P[n].ID,BPP(n).BH_Mass*(All.UnitMass_in_g / SOLAR_MASS),BPP(n).ProtoStellarRadius_inSolar,BPP(n).ProtoStellarStage, BPP(n).BH_Mdot*(All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/All.UnitTime_in_s*SEC_PER_YEAR , dm* (All.UnitMass_in_g / SOLAR_MASS), dt*All.UnitTime_in_Megayears, (All.Time-P[n].ProtoStellarAge)*All.UnitTime_in_Megayears, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk*(All.UnitMass_in_g / SOLAR_MASS), BPP(n).SinkRadius );
     }
 #endif
+}
 
-/* Let's get the wind mass loss rate for MS stars */
 #if defined(SINGLE_STAR_FB_WINDS)
+double singlestar_single_star_wind_mdot(int n){
+/* Let's get the wind mass loss rate for MS stars */
+    double wind_mass_loss_rate=0; //mass loss rate in code units
+    double m_solar = mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
     if (BPP(n).ProtoStellarStage == 5){ //MS only
         /*Use Vink 2001 model, which should capture metallicity dependence and is more accurate than CAK*/
         // We are assuming that METALS are also on
@@ -651,11 +655,12 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
             //Mass loss rate using Vink 2001 Eq 25
             logmdot_wind = -6.688 + 2.21*log10(BPP(n).StarLuminosity_Solar/1.0e5) - 1.339*log10(m_solar/30.) - 1.601*log10(v_esc_over_terminal/2.0) + 1.07*log10(T_eff/2.0e4) + 0.85*log10(ZZ);
         }
-        BPP(n).Wind_mass_loss_rate = pow(10.0,logmdot_wind) * WIND_MASS_LOSS_RATE_REDUCTION_FACTOR * (SOLAR_MASS/SEC_PER_YEAR*All.UnitMass_in_g/All.UnitTime_in_s); //reducing the rate to be more in line with observations, see Nathan Smith 2014, conversion to code units from Msun/yr
+        wind_mass_loss_rate = pow(10.0,logmdot_wind) * WIND_MASS_LOSS_RATE_REDUCTION_FACTOR * (SOLAR_MASS/SEC_PER_YEAR*All.UnitMass_in_g/All.UnitTime_in_s); //reducing the rate to be more in line with observations, see Nathan Smith 2014, conversion to code units from Msun/yr
     }
+    return wind_mass_loss_rate;
+}
 #endif
 
-}
 
 
 #if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1) /* Functions for protosteller evolution model based on Offner 2009 */
