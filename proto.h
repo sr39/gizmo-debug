@@ -523,7 +523,9 @@ double ps_radius_MS_in_solar(double m);
 double ps_lum_Hayashi_BB(double m, double r);
 #endif
 #endif
-
+#if defined(SINGLE_STAR_FB_WINDS)
+double singlestar_single_star_wind_mdot(int n);
+#endif
 
 #ifdef GRAIN_FLUID
 void apply_grain_dragforce(void);

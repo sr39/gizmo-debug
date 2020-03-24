@@ -776,7 +776,7 @@ void blackhole_final_operations(void)
 #endif
 #ifdef SINGLE_STAR_FB_WINDS
         if (P[n].ProtoStellarStage == 5){ //for MS stars we have winds and no jets
-            dm_wind = P[n].Wind_mass_loss_rate * dt; //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep
+            dm_wind = singlestar_single_star_wind_mdot(n) * dt; //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep
             BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
         }
 #endif
