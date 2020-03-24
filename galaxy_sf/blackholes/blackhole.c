@@ -762,7 +762,7 @@ void blackhole_final_operations(void)
         /* DAA: for wind spawning, we only need to subtract the BAL wind mass from BH_Mass (or BH_Mass_AlphaDisk) --> wind mass subtracted from P.Mass in blackhole_spawn_particle_wind_shell()  */
         double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
 #ifdef SINGLE_STAR_FB_JETS
-        if((P[n].BH_Mass * All.UnitMass_in_g / (All.HubbleParam*SOLAR_MASS) < 0.01) || P[n].Mass < 7*All.MinMassForParticleMerger) dm_wind = 0; // no jets launched yet if <0.01msun or if we haven't accreted enough to get a reliable jet direction
+        if((P[n].BH_Mass * All.UnitMass_in_g / (All.HubbleParam*SOLAR_MASS) < 0.01) || P[n].Mass < 7*All.MinMassForParticleMerger) {dm_wind = 0;} // no jets launched yet if <0.01msun or if we haven't accreted enough to get a reliable jet direction
 #endif
         if(dm_wind > P[n].Mass) {dm_wind = P[n].Mass;}
 #if defined(BH_ALPHADISK_ACCRETION)
@@ -773,6 +773,12 @@ void blackhole_final_operations(void)
 #ifndef BH_DEBUG_FIX_MASS
         BPP(n).BH_Mass -= dm_wind;
 #endif 
+#endif
+#ifdef SINGLE_STAR_FB_WINDS
+        if (P[n].ProtoStellarStage == 5){ //for MS stars we have winds and no jets
+            dm_wind = P[n].Wind_mass_loss_rate * dt; //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep
+            BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
+        }
 #endif
         BPP(n).unspawned_wind_mass += dm_wind;
         if(BPP(n).unspawned_wind_mass>MaxUnSpanMassBH) {MaxUnSpanMassBH=BPP(n).unspawned_wind_mass;}
