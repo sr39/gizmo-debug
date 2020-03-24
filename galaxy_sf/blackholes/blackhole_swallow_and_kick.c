@@ -199,7 +199,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                 if(P[j].Type == 0)
                 {
                     double dlv[3]; dlv[0]=local.BH_Specific_AngMom[1]*dpos[2]-local.BH_Specific_AngMom[2]*dpos[1]; dlv[1]=local.BH_Specific_AngMom[2]*dpos[0]-local.BH_Specific_AngMom[0]*dpos[2]; dlv[2]=local.BH_Specific_AngMom[0]*dpos[1]-local.BH_Specific_AngMom[1]*dpos[0];
-                    for(k=0;k<3;k++) {dlv[k] *= wk * local.angmom_norm_topass_in_swallowloop; P[j].Vel[k]+=dlv[k]; SphP[j].VelPred[k]+=dlv[k]; out.accreted_momentum[k]-=P[j].Mass*dlv[k];}
+                    for(k=0;k<3;k++) {dlv[k] *= wk * local.angmom_norm_topass_in_swallowloop; P[j].Vel[k]+=dlv[k]; SphP[j].VelPred[k]+=dlv[k]; P[j].dp[k]+=P[j].Mass*dlv[k]; out.accreted_momentum[k]-=P[j].Mass*dlv[k];}
                     out.accreted_J[0]-=P[j].Mass*(dpos[1]*dlv[2] - dpos[2]*dlv[1]); out.accreted_J[1]-=P[j].Mass*(dpos[2]*dlv[0] - dpos[0]*dlv[2]); out.accreted_J[2]-=P[j].Mass*(dpos[0]*dlv[1] - dpos[1]*dlv[0]);
                 }
 #endif
@@ -284,7 +284,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif
                         bin = P[j].TimeBin; TimeBin_BH_mass[bin] -= BPP(j).BH_Mass; TimeBin_BH_dynamicalmass[bin] -= P[j].Mass; TimeBin_BH_Mdot[bin] -= BPP(j).BH_Mdot;
                         if(BPP(j).BH_Mass > 0) {TimeBin_BH_Medd[bin] -= BPP(j).BH_Mdot / BPP(j).BH_Mass;}
-                        P[j].Mass = 0; BPP(j).BH_Mass = 0; BPP(j).BH_Mdot = 0;
+                        P[j].Mass = 0; BPP(j).BH_Mass = 0; BPP(j).BH_Mdot = 0; 
 #ifdef GALSF
                         out.Accreted_Age = P[j].StellarAge;
 #endif
@@ -321,6 +321,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                         SphP[j].MassTrue *= (1-f_accreted);
 #endif
+                        for(k=0; k<3; k++) {P[j].dp[k] *= (1-f_accreted);}
 
 #ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
                         double v_kick=All.BAL_v_outflow, dir[3]; for(k=0;k<3;k++) {dir[k]=dpos[k];} // DAA: default direction is radially outwards
