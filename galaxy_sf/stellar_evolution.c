@@ -636,7 +636,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 double singlestar_single_star_wind_mdot(int n){
 /* Let's get the wind mass loss rate for MS stars */
     double wind_mass_loss_rate=0; //mass loss rate in code units
-    double m_solar = mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
+    double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
     if (BPP(n).ProtoStellarStage == 5){ //MS only
         /*Use Vink 2001 model, which should capture metallicity dependence and is more accurate than CAK*/
         // We are assuming that METALS are also on

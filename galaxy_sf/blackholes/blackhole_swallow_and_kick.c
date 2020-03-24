@@ -724,10 +724,10 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #if defined(SINGLE_STAR_FB_WINDS) //Get wind velocities for MS stars
         if (P[i].ProtoStellarStage == 5){ //Only MS stars launch winds
             double T_eff = 5814.33 * pow( P[i].StarLuminosity_Solar/(P[i].ProtoStellarRadius_inSolar*P[i].ProtoStellarRadius_inSolar), 0.25 ); //effective temperature in K
-            double ZZ = BPP(n).Metallicity[0]/All.SolarAbundances[0]; //relative metallicity to solar
+            double ZZ = P[i].Metallicity[0]/All.SolarAbundances[0]; //relative metallicity to solar
             /*Using Eq 2 of Leitherer 1992*/
             double ln_v_kms = 1.23 - 0.3*log(P[i].StarLuminosity_Solar) + 0.55*log(P[i].Mass * (All.UnitMass_in_g / SOLAR_MASS)) + 0.64*log(T_eff) + 0.13*log(ZZ);
-            v_magnitude = pow(2.71828,ln_v_kms) * 1e5/UnitVelocity_in_cm_per_s; //convert to code units from km/s
+            v_magnitude = pow(2.71828,ln_v_kms) * 1e5/All.UnitVelocity_in_cm_per_s; //convert to code units from km/s
         }
 #endif
         
