@@ -869,6 +869,13 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
             
         case IO_VDIV:		/* Divergence of Vel */
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    for(k = 0; k < 3; k++)
+                        *fp++ = P[pindex].Particle_DivVel;
+                    n++;
+                }
             break;
             
         case IO_VROT:		/* Velocity Curl */
@@ -3075,19 +3082,13 @@ int blockpresent(enum iofields blocknr)
         case IO_VRMS:
         case IO_VBULK:
         case IO_TRUENGB:
-            return 0;
-            break;
-            
         case IO_VRAD:
         case IO_VTAN:
-            return 0;
-            break;
-            
-        case IO_VDIV:
         case IO_VROT:
             return 0;
             break;
             
+        case IO_VDIV:
         case IO_VORT:
 #if defined(TURB_DRIVING) || defined(OUTPUT_VORTICITY)
             return 1;
