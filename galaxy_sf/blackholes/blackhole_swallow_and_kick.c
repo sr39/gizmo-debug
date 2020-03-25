@@ -682,21 +682,29 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
             /* positions: uniformly sample unit sphere, and rotate into preferred coordinate system for use below */
 #ifdef SINGLE_STAR_FB_JETS
             // when doing jets we sample positions from a 30 degree cone. This helps to avoid disrupting the disk in less well-resolved runs
-            phi=2.*M_PI*get_random_number(j+1+ThisTask), cos_theta=1-0.133975*get_random_number(j+3+2*ThisTask); // first sample cos(theta) uniformly between 0 and 30deg
-            if(get_random_number(j+4+2*ThisTask) > 0.5) cos_theta = -cos_theta; // 50/50 chance of switching from north to south pole
-            sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
-#else
+            if (P[i].ProtoStellarStage < 5){ //Not a MS star
+                phi=2.*M_PI*get_random_number(j+1+ThisTask), cos_theta=1-0.133975*get_random_number(j+3+2*ThisTask); // first sample cos(theta) uniformly between 0 and 30deg
+                if(get_random_number(j+4+2*ThisTask) > 0.5) cos_theta = -cos_theta; // 50/50 chance of switching from north to south pole
+                sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
+            }
+            else
+#endif
+            {
             // sample positions uniformly on the sphere
             phi=2.*M_PI*get_random_number(j+1+ThisTask), cos_theta=2.*(get_random_number(j+3+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
-#endif
-            
-            /* velocities (determined by wind velocity) */
+            }
+            /* velocities (determined by wind velocity direction) */
             veldir[0]=sin_theta*cos_phi; veldir[1]=sin_theta*sin_phi; veldir[2]=cos_theta; // default to velocity pointed radially away from BH
 #if defined(BH_DEBUG_SPAWN_JET_TEST) || defined(SINGLE_STAR_FB_JETS) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK) || defined(BH_FB_COLLIMATED)
-            double theta0=0.01, thetamax=30.*(M_PI/180.); // "flattening parameter" and max opening angle of jet velocity distribution from Matzner & McKee 1999, sets the collimation of the jets
-            double jet_theta=atan(theta0*tan(get_random_number(j+7+5*ThisTask)*atan(sqrt(1+theta0*theta0)*tan(thetamax)/theta0))/sqrt(1+theta0*theta0)); // biased sampling to get collimation
-            if(cos_theta<0) {jet_theta=M_PI-jet_theta;} // determines 'up' or 'down' based on which hemisphere particle is in
-            veldir[0]=sin(jet_theta)*cos_phi; veldir[1]=sin(jet_theta)*sin_phi; veldir[2]=cos(jet_theta);//relative direction of velocity compared to BH_Specific_AngMom
+#if defined(SINGLE_STAR_FB_JETS)
+            if (P[i].ProtoStellarStage < 5) //Only pre-MS stars launch polar jets
+#endif
+            {
+                double theta0=0.01, thetamax=30.*(M_PI/180.); // "flattening parameter" and max opening angle of jet velocity distribution from Matzner & McKee 1999, sets the collimation of the jets
+                double jet_theta=atan(theta0*tan(get_random_number(j+7+5*ThisTask)*atan(sqrt(1+theta0*theta0)*tan(thetamax)/theta0))/sqrt(1+theta0*theta0)); // biased sampling to get collimation
+                if(cos_theta<0) {jet_theta=M_PI-jet_theta;} // determines 'up' or 'down' based on which hemisphere particle is in
+                veldir[0]=sin(jet_theta)*cos_phi; veldir[1]=sin(jet_theta)*sin_phi; veldir[2]=cos(jet_theta);//relative direction of velocity compared to BH_Specific_AngMom
+            }
 #endif
         } else { // just take the antipodal points for the coords and velocity we had before so we get exact conservation when spawning multiples of 2
             cos_phi = -cos_phi;
@@ -713,12 +721,18 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
         v_magnitude = sqrt(SINGLE_STAR_FB_JETS_POWER_FACTOR * All.G * P[i].BH_Mass / (R_star_solar_launch * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // SINGLE_STAR_FB_JETS_POWER_FACTOR times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
 #endif
+#if defined(SINGLE_STAR_FB_WINDS) //Get wind velocities for MS stars
+        if (P[i].ProtoStellarStage == 5){ //Only MS stars launch winds
+            v_magnitude = singlestar_single_star_wind_velocity(i);
+        }
+#endif
         
         // actually lay down position and velocities using coordinate basis
         for(k=0;k<3;k++) {
             P[j].Pos[k]=P[i].Pos[k] + (sin_theta*cos_phi*jx[k] + sin_theta*sin_phi*jy[k] + cos_theta*jz[k])*d_r;
             P[j].Vel[k]=P[i].Vel[k] + (veldir[0]*jx[k]+veldir[1]*jy[k]+veldir[2]*jz[k])*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];
         }
+        //printf("ID: %llu x: %g %g %g dr: %g cos_theta: %g cos_phi: %g jx: %g %g %g\n", P[j].ID,P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],d_r,cos_theta, cos_phi, jx[0],jx[1],jx[2]);
         
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
