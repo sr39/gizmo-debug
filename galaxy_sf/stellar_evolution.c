@@ -659,6 +659,16 @@ double singlestar_single_star_wind_mdot(int n){
     }
     return wind_mass_loss_rate;
 }
+
+
+double singlestar_single_star_wind_velocity(int n){
+/* Let's get the wind velocity for MS stars */
+    double T_eff = 5814.33 * pow( P[n].StarLuminosity_Solar/(P[n].ProtoStellarRadius_inSolar*P[n].ProtoStellarRadius_inSolar), 0.25 ); //effective temperature in K
+    double ZZ = P[n].Metallicity[0]/All.SolarAbundances[0]; //relative metallicity to solar
+    /*Using Eq 2 of Leitherer 1992*/
+    double ln_v_kms = 1.23 - 0.3*log(P[n].StarLuminosity_Solar) + 0.55*log(P[n].Mass * (All.UnitMass_in_g / SOLAR_MASS)) + 0.64*log(T_eff) + 0.13*log(ZZ);
+    return (pow(2.71828,ln_v_kms) * 1e5/All.UnitVelocity_in_cm_per_s); //convert to code units from km/s
+}
 #endif
 
 

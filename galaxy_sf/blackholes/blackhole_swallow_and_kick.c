@@ -687,12 +687,11 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
                 sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
             }
             else
-#else
+#endif
             {
             // sample positions uniformly on the sphere
             phi=2.*M_PI*get_random_number(j+1+ThisTask), cos_theta=2.*(get_random_number(j+3+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
             }
-#endif
             /* velocities (determined by wind velocity direction) */
             veldir[0]=sin_theta*cos_phi; veldir[1]=sin_theta*sin_phi; veldir[2]=cos_theta; // default to velocity pointed radially away from BH
 #if defined(BH_DEBUG_SPAWN_JET_TEST) || defined(SINGLE_STAR_FB_JETS) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK) || defined(BH_FB_COLLIMATED)
@@ -723,11 +722,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
 #if defined(SINGLE_STAR_FB_WINDS) //Get wind velocities for MS stars
         if (P[i].ProtoStellarStage == 5){ //Only MS stars launch winds
-            double T_eff = 5814.33 * pow( P[i].StarLuminosity_Solar/(P[i].ProtoStellarRadius_inSolar*P[i].ProtoStellarRadius_inSolar), 0.25 ); //effective temperature in K
-            double ZZ = P[i].Metallicity[0]/All.SolarAbundances[0]; //relative metallicity to solar
-            /*Using Eq 2 of Leitherer 1992*/
-            double ln_v_kms = 1.23 - 0.3*log(P[i].StarLuminosity_Solar) + 0.55*log(P[i].Mass * (All.UnitMass_in_g / SOLAR_MASS)) + 0.64*log(T_eff) + 0.13*log(ZZ);
-            v_magnitude = pow(2.71828,ln_v_kms) * 1e5/All.UnitVelocity_in_cm_per_s; //convert to code units from km/s
+            v_magnitude = singlestar_single_star_wind_velocity(i);
         }
 #endif
         
@@ -736,6 +731,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
             P[j].Pos[k]=P[i].Pos[k] + (sin_theta*cos_phi*jx[k] + sin_theta*sin_phi*jy[k] + cos_theta*jz[k])*d_r;
             P[j].Vel[k]=P[i].Vel[k] + (veldir[0]*jx[k]+veldir[1]*jy[k]+veldir[2]*jz[k])*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];
         }
+        //printf("ID: %llu x: %g %g %g dr: %g cos_theta: %g cos_phi: %g jx: %g %g %g\n", P[j].ID,P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],d_r,cos_theta, cos_phi, jx[0],jx[1],jx[2]);
         
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
