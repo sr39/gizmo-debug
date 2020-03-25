@@ -630,8 +630,47 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
         printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: 0 rel_dr: 0 dm: %g dm_D: 0 Tc: 0 Pc: 0 rhoc: 0 beta: 0 dt: %g n_ad: 0 lum_int: 0 lum_I: 0 lum_D: 0 age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: 0 n_subcycle: 0 PS_end\n",All.Time, P[n].ID,BPP(n).BH_Mass*(All.UnitMass_in_g / SOLAR_MASS),BPP(n).ProtoStellarRadius_inSolar,BPP(n).ProtoStellarStage, BPP(n).BH_Mdot*(All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/All.UnitTime_in_s*SEC_PER_YEAR , dm* (All.UnitMass_in_g / SOLAR_MASS), dt*All.UnitTime_in_Megayears, (All.Time-P[n].ProtoStellarAge)*All.UnitTime_in_Megayears, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk*(All.UnitMass_in_g / SOLAR_MASS), BPP(n).SinkRadius );
     }
 #endif
-
 }
+
+#if defined(SINGLE_STAR_FB_WINDS)
+double singlestar_single_star_wind_mdot(int n){
+/* Let's get the wind mass loss rate for MS stars */
+    double wind_mass_loss_rate=0; //mass loss rate in code units
+    double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
+    if (BPP(n).ProtoStellarStage == 5){ //MS only
+        /*Use Vink 2001 model, which should capture metallicity dependence and is more accurate than CAK*/
+        // We are assuming that METALS are also on
+        double ZZ = BPP(n).Metallicity[0]/All.SolarAbundances[0]; //relative metallicity to solar
+        double T_eff = 5814.33 * pow( BPP(n).StarLuminosity_Solar/(BPP(n).ProtoStellarRadius_inSolar*BPP(n).ProtoStellarRadius_inSolar), 0.25 ); //effective temperature in K
+        double v_esc_over_terminal; // ratio of terminal wind velocity over escape velocity from the star
+        double logmdot_wind; // log10(Mdot / (Msun/yr))
+        if (T_eff > 2.25e4){
+            v_esc_over_terminal = 2.6; // high T, e.g. O stars, early B stars
+            //Mass loss rate using Vink 2001 Eq 24
+            logmdot_wind = -6.697 + 2.194*log10(BPP(n).StarLuminosity_Solar/1.0e5) - 1.313*log10(m_solar/30.) - 1.226*log10(v_esc_over_terminal/2.0) + 0.933*log10(T_eff/4.0e4) - 10.92*pow(log10(T_eff/4.0e4),2.0) + 0.85*log10(ZZ);
+        }
+        else{
+            if ( T_eff > 1.25e4 ){v_esc_over_terminal = 1.3;} //later B stars}
+            else{ v_esc_over_terminal = 0.7;} //other stars
+            //Mass loss rate using Vink 2001 Eq 25
+            logmdot_wind = -6.688 + 2.21*log10(BPP(n).StarLuminosity_Solar/1.0e5) - 1.339*log10(m_solar/30.) - 1.601*log10(v_esc_over_terminal/2.0) + 1.07*log10(T_eff/2.0e4) + 0.85*log10(ZZ);
+        }
+        wind_mass_loss_rate = pow(10.0,logmdot_wind) * WIND_MASS_LOSS_RATE_REDUCTION_FACTOR * (SOLAR_MASS/SEC_PER_YEAR)/(All.UnitMass_in_g/All.UnitTime_in_s); //reducing the rate to be more in line with observations, see Nathan Smith 2014, conversion to code units from Msun/yr
+    }
+    return wind_mass_loss_rate;
+}
+
+
+double singlestar_single_star_wind_velocity(int n){
+/* Let's get the wind velocity for MS stars */
+    double T_eff = 5814.33 * pow( P[n].StarLuminosity_Solar/(P[n].ProtoStellarRadius_inSolar*P[n].ProtoStellarRadius_inSolar), 0.25 ); //effective temperature in K
+    double ZZ = P[n].Metallicity[0]/All.SolarAbundances[0]; //relative metallicity to solar
+    /*Using Eq 2 of Leitherer 1992*/
+    double ln_v_kms = 1.23 - 0.3*log(P[n].StarLuminosity_Solar) + 0.55*log(P[n].Mass * (All.UnitMass_in_g / SOLAR_MASS)) + 0.64*log(T_eff) + 0.13*log(ZZ);
+    return (pow(2.71828,ln_v_kms) * 1e5/All.UnitVelocity_in_cm_per_s); //convert to code units from km/s
+}
+#endif
+
 
 
 #if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1) /* Functions for protosteller evolution model based on Offner 2009 */
