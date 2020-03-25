@@ -197,7 +197,7 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
     p /= 1 + Z_u + 0.5*Z_u*Z_u; // quadratic expansion of exponential cutoff: probability drops as Z^(-2) rather than exp(-Z), saturates at 1
 #else
     surfacedensity = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; /* this gives the Sobolev-estimated column density of -gas- alone */
-    if(surfacedensity>0.1) {p *= (1-exp(-surfacedensity/surfacedensity_threshold_cgs)) * exp(-Z_in_solar/Z_threshold_solar);} /* apply threshold metallicity and density cutoff */
+    if(surfacedensity>0.1*surfacedensity_threshold_cgs) {p *= (1-exp(-surfacedensity/surfacedensity_threshold_cgs)) * exp(-Z_in_solar/Z_threshold_solar);} else {p=0;} /* apply threshold metallicity and density cutoff */
 #endif
 #endif
     if(p > 12.) {p=1;} else {if(p > 1.e-4) {p=1-exp(-p);}}
