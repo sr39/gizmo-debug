@@ -525,6 +525,7 @@ double ps_lum_Hayashi_BB(double m, double r);
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
 double singlestar_single_star_wind_mdot(int n);
+double singlestar_single_star_wind_velocity(int n);
 #endif
 
 #ifdef GRAIN_FLUID
