@@ -369,7 +369,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
 //#define BH_ACCRETE_NEARESTFIRST
 #define DEVELOPER_MODE
-#define IO_SUPPRESS_TIMEBIN_STDOUT 16 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
+//#define IO_SUPPRESS_TIMEBIN_STDOUT 16 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define BH_OUTPUT_GASSWALLOW //save accretion histories
 #define BH_OUTPUT_FORMATION_PROPERTIES //save at-formation properties of sink particles
 //#define GALSF_SFR_IMF_VARIATION // save gas properties at sink formation time
