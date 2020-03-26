@@ -2442,7 +2442,7 @@ extern ALIGN(32) struct particle_data
     MyFloat StarLuminosity_Solar; /*the total luminosity of the star in L_solar units*/ //IO flag IO_LUM_SINGLESTAR
 #endif
 #ifdef SINGLE_STAR_FB_WINDS
-    MyFloat Wind_mass_loss_rate; //mass loss rate for MS stars
+    MyFloat Wind_direction[6]; //direction of wind launches, to reduce anisotropy launches go along a random axis then a random perpendicular one, then one perpendicular to both
 #endif
     
 #if defined(DM_SIDM)
