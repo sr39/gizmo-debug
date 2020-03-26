@@ -869,6 +869,13 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
             
         case IO_VDIV:		/* Divergence of Vel */
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    for(k = 0; k < 3; k++)
+                        *fp++ = P[pindex].Particle_DivVel;
+                    n++;
+                }
             break;
             
         case IO_VROT:		/* Velocity Curl */
@@ -1827,10 +1834,11 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_TRUENGB:
         case IO_AGS_NGBS:
         case IO_GRAINTYPE:
+            bytes_per_blockelement = sizeof(int);
+            break;
         case IO_EOSCOMP:
             bytes_per_blockelement = sizeof(int);
             break;
-            
         case IO_MASS:
         case IO_BH_DIST:
         case IO_SECONDORDERMASS:
@@ -1889,6 +1897,8 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_R_PROTOSTAR:
         case IO_MASS_D_PROTOSTAR:
         case IO_STAGE_PROTOSTAR:
+            bytes_per_blockelement = sizeof(int);
+            break;
         case IO_LUM_SINGLESTAR:
         case IO_CAUSTIC_COUNTER:
         case IO_FLOW_DETERMINANT:
@@ -2160,6 +2170,11 @@ int get_datatype_in_block(enum iofields blocknr)
         case IO_EOSCOMP:
             typekey = 0;		/* native int */
             break;
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+        case IO_STAGE_PROTOSTAR:
+            typekey = 0;		/* native int */
+            break;
+#endif            
             
         default:
             typekey = 1;		/* native MyOutputFloat */
@@ -3067,19 +3082,13 @@ int blockpresent(enum iofields blocknr)
         case IO_VRMS:
         case IO_VBULK:
         case IO_TRUENGB:
-            return 0;
-            break;
-            
         case IO_VRAD:
         case IO_VTAN:
-            return 0;
-            break;
-            
-        case IO_VDIV:
         case IO_VROT:
             return 0;
             break;
             
+        case IO_VDIV:
         case IO_VORT:
 #if defined(TURB_DRIVING) || defined(OUTPUT_VORTICITY)
             return 1;

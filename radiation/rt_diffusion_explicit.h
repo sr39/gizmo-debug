@@ -88,16 +88,22 @@
 #endif
             
             // now we need to add the advective flux. note we do this after the limiters above, since those are designed for the diffusive terms, and this is simpler and more stable. we do this zeroth order (super-diffusive, but that's fine for our purposes)
-            double fluxlim_i=1, fluxlim_j=1, v_Area_dot_rt=0; for(k=0;k<3;k++) {v_Area_dot_rt += v_frame[k] * Face_Area_Vec[k];}
+            double cmag_adv=0, fluxlim_i=1, fluxlim_j=1, v_Area_dot_rt=0; for(k=0;k<3;k++) {v_Area_dot_rt += v_frame[k] * Face_Area_Vec[k];}
             double scalar_ij_phys = 2.*scalar_i*scalar_j/(scalar_i+scalar_j) * All.cf_a3inv; // use harmonic mean here, to weight lower value
 #ifdef RT_FLUXLIMITER
             fluxlim_i = local.RT_DiffusionCoeff[k_freq] * local.Density * local.Kappa_RT[k_freq] / C_LIGHT_CODE_REDUCED; fluxlim_j = SphP[j].Lambda_FluxLim[k_freq];
 #endif
-            cmag += -v_Area_dot_rt * scalar_ij_phys * ((4./3.)*(0.5*(fluxlim_i+fluxlim_j)) - 1.); // need to be careful with the sign here. since this is an oriented area and A points from j to i, need to flip the sign here. the 1/3 owes to the fact that this is really the --pressure-- term for FLD-like methods, the energy term is implicitly part of the flux already if we're actually doing this correctly //
+            cmag_adv += -v_Area_dot_rt * scalar_ij_phys * ((4./3.)*(0.5*(fluxlim_i+fluxlim_j)) - 1.); // need to be careful with the sign here. since this is an oriented area and A points from j to i, need to flip the sign here. the 1/3 owes to the fact that this is really the --pressure-- term for FLD-like methods, the energy term is implicitly part of the flux already if we're actually doing this correctly //
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
-            for(k=0;k<3;k++) {cmag -= (v_frame[k]-0.5*(local.Vel[k]+SphP[j].VelPred[k])/All.cf_atime) * scalar_ij_phys * Face_Area_Vec[k];}
+            for(k=0;k<3;k++) {cmag_adv -= (v_frame[k]-0.5*(local.Vel[k]+SphP[j].VelPred[k])/All.cf_atime) * scalar_ij_phys * Face_Area_Vec[k];}
 #endif
-            cmag += fabs(v_Area_dot_rt) * (scalar_j-scalar_i); // hll (rusanov) flux to stabilize
+            cmag_adv += fabs(v_Area_dot_rt) * (scalar_j-scalar_i); // hll (rusanov) flux to stabilize and smooth flow
+            if(fabs(cmag_adv)>0) // now limit the advective flux like we limit other fluxes
+            {
+                double cmag_max = 0.5 * DMAX(1,0.5*(tau_c_i[k_freq]+tau_c_j)) * (fabs(v_Area_dot_rt/Face_Area_Norm)/c_light) * fabs(cmag); /* the 0.5 factor gives better result for the outflow test */
+                if(fabs(cmag_adv) > cmag_max) {cmag_adv *= cmag_max/fabs(cmag_adv);}
+                cmag += cmag_adv;
+            }
             
             cmag *= dt_hydrostep; // all in physical units //
             if(fabs(cmag) > 0)
@@ -186,8 +192,14 @@
             double renormerFAC = DMIN(1.,fabs(cos_theta_face_flux*cos_theta_face_flux * q * hll_corr));            
             
             // now we need to add the advective flux. note we do this after the limiters above, since those are designed for the diffusive terms, and this is simpler and more stable. we do this zeroth order (super-diffusive, but that's fine for our purposes)
-            double v_Area_dot_rt=0; for(k=0;k<3;k++) {v_Area_dot_rt += v_frame[k] * Face_Area_Vec[k];}
-            cmag += -v_Area_dot_rt*2.*scalar_i*scalar_j/(scalar_i+scalar_j) + 0.5*fabs(v_Area_dot_rt)*(scalar_j-scalar_i); // need to be careful with the sign here. since this is an oriented area and A points from j to i, need to flip the sign here //
+            double cmag_adv=0, v_Area_dot_rt=0; for(k=0;k<3;k++) {v_Area_dot_rt += v_frame[k] * Face_Area_Vec[k];}
+            cmag_adv += -v_Area_dot_rt*2.*scalar_i*scalar_j/(scalar_i+scalar_j) + 0.5*fabs(v_Area_dot_rt)*(scalar_j-scalar_i); // need to be careful with the sign here. since this is an oriented area and A points from j to i, need to flip the sign here //
+            if(fabs(cmag_adv)>0) // now limit the advective flux like we limit other fluxes
+            {
+                double cmag_max = 0.5 * DMAX(1,0.5*(tau_c_i[k_freq]+tau_c_j)) * (fabs(v_Area_dot_rt/Face_Area_Norm)/c_light) * fabs(cmag); /* the 0.5 factor gives better result for the outflow test */
+                if(fabs(cmag_adv) > cmag_max) {cmag_adv *= cmag_max/fabs(cmag_adv);}
+                cmag += cmag_adv;
+            }
 
             /* flux-limiter to ensure flow is always down the local gradient [no 'uphill' flow] */
             double f_direct = -Face_Area_Norm * c_hll * d_scalar * renormerFAC; // simple HLL term for frame moving at 1/2 inter-particle velocity: here not limited [physical units] //
@@ -223,7 +235,6 @@
                 if(f_direct != 0)
                 {
                     thold_hll = 1.0 * fabs(cmag_flux[k]) / fabs(f_direct); // coefficient of 0.5-1: 0.5=longer-lasting shadows, more 'memory' effect/shape distortion of HII regions; 1=fill in shadows faster, less HII distortion
-//                    thold_hll = 0.5 * fabs(cmag_flux[k]) / fabs(f_direct); // coefficient of 0.5-1: 0.5=longer-lasting shadows, more 'memory' effect/shape distortion of HII regions; 1=fill in shadows faster, less HII distortion
                     if(thold_hll < hll_mult_dmin) {hll_mult_dmin = thold_hll;}
                 }
             }

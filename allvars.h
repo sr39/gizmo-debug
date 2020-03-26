@@ -441,10 +441,11 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #endif
 
-#ifdef SINGLE_STAR_FB_JETS
+#if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS)
 #define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
 #define MAINTAIN_TREE_IN_REARRANGE // don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed
 #define SINGLE_STAR_FB_JETS_POWER_FACTOR 1.0 //scales the amount of accretion power going into jets, we eject (1-All.BAL_f_accretion) fraction of the accreted mass at SINGLE_STAR_FB_JETS_POWER_FACTOR times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.BAL_f_accretion)
+#define WIND_MASS_LOSS_RATE_REDUCTION_FACTOR 0.33 //reducing the mass loss rate due to winds to be more in line with observations, see Nathan Smith 2014
 #endif
 
 #ifdef SINGLE_STAR_PROMOTION
@@ -2439,7 +2440,9 @@ extern ALIGN(32) struct particle_data
     int ProtoStellarStage; /*Track the stage of protostellar evolution, 0: pre collapse, 1: no burning, 2: fixed Tc burning, 3: variable Tc burning, 4: shell burning, 5: main sequence, see Offner 2009 Appendix B*/ //IO flag IO_STAGE_PROTOSTAR
     MyFloat Mass_D; /* Mass of gas in the protostar that still contains D to burn */ // IO flag IO_MASS_D_PROTOSTAR
     MyFloat StarLuminosity_Solar; /*the total luminosity of the star in L_solar units*/ //IO flag IO_LUM_SINGLESTAR
-    
+#endif
+#ifdef SINGLE_STAR_FB_WINDS
+    MyFloat Wind_direction[6]; //direction of wind launches, to reduce anisotropy launches go along a random axis then a random perpendicular one, then one perpendicular to both
 #endif
     
 #if defined(DM_SIDM)
