@@ -1052,6 +1052,12 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt > dt_min && dt_min > 0) dt = 1.01 * dt_min;
         }
 #endif
+#ifdef SINGLE_STAR_FB_SNE
+        if (P[n].ProtoStellarStage == 6){ //Star going supernova
+            //Let's make the timestep as low as possible but still safe from the smallest allowable timestep to avoid crashing
+            dt = DMIN(dt,All.MinSizeTimestep * 10);
+        }
+#endif 
     } // if(P[p].Type == 5)
 
 #ifdef BH_DEBUG_SPAWN_JET_TEST /* PFH: need to write this in a way that does not make assumptions about units/problem structure */

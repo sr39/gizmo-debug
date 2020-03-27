@@ -309,6 +309,13 @@ void init(void)
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
 #endif
+#if defined(SINGLE_STAR_FB_SNE)
+            P[i].Mass_final = P[i].Mass; //best guess, only matters if we restart in the middle of spawning an SN 
+#endif
+#if defined(SINGLE_STAR_FB_WINDS)
+            P[i].wind_mode = 0; //this will make singlestar_single_star_wind_mdot reset it
+            int kw; for(kw=0;kw<6;kw++) {P[i].Wind_direction[kw] = 0;} //in this case we will spawn the first few winds randomly
+#endif
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
             P[i].SNe_ThisTimeStep = 0;
 #endif

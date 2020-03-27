@@ -728,6 +728,11 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
             v_magnitude = singlestar_single_star_wind_velocity(i);
         }
 #endif
+#if defined(SINGLE_STAR_FB_SNE)
+        if (P[i].ProtoStellarStage == 6){ //This star is about to go SNe
+            v_magnitude = singlestar_single_star_SN_velocity(i);
+        }
+#endif
         double dx_u[3]; //unit vector containing the relative displacement from the sink
         for(k=0;k<3;k++) {
             dx_u[k] = (sin_theta*cos_phi*jx[k] + sin_theta*sin_phi*jy[k] + cos_theta*jz[k]);
@@ -736,31 +741,47 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         if (P[i].ProtoStellarStage == 5){//MS only
             //Direction of wind launches is set to reduce anisotropy. First pair launches go along a random axis then a random perpendicular one, then one perpendicular to both
             double dx_u_orig[3];
+            double wind_norm=0;
+            for(k=0;k<3;k++) {wind_norm += P[i].Wind_direction[k]*P[i].Wind_direction[k];} //used later to check if we have a valid direction
             switch ((j - (NumPart + num_already_spawned)) % 6) //
             {
                 case 0: for(k=0;k<3;k++) {P[i].Wind_direction[k] = dx_u[k];} break; //store direction of launch
                 case 1: break; // nothing to be done
                 //The next wind particle pair is spawned perpendicular to the previous pair
                 case 2: //do same as for 3
-                case 3: for(k=0;k<3;k++) {dx_u_orig[k] = dx_u[k];} //store the random direction we got previously
-                        //set the direction perpendicuar to both the current and the previous axis (wind_direction x dx_u_orig)
-                        dx_u[0] = P[i].Wind_direction[1]*dx_u_orig[2] - P[i].Wind_direction[2]*dx_u_orig[1];
-                        dx_u[1] = P[i].Wind_direction[2]*dx_u_orig[0] - P[i].Wind_direction[0]*dx_u_orig[2];
-                        dx_u[2] = P[i].Wind_direction[0]*dx_u_orig[1] - P[i].Wind_direction[1]*dx_u_orig[0];
-                        for(k=0;k<3;k++) {P[i].Wind_direction[k+3] = dx_u[k];} //store direction of launch (we are doing it twice, but it is not really an issue)
+                case 3: if (wind_norm>=0.99){ //Check to make sure we have a valid direction (i.e. it is not saved to snapshots), if not we just go with a radndom direction
+                            for(k=0;k<3;k++) {dx_u_orig[k] = dx_u[k];} //store the random direction we got previously
+                            //set the direction perpendicuar to both the current and the previous axis (wind_direction x dx_u_orig)
+                            dx_u[0] = P[i].Wind_direction[1]*dx_u_orig[2] - P[i].Wind_direction[2]*dx_u_orig[1];
+                            dx_u[1] = P[i].Wind_direction[2]*dx_u_orig[0] - P[i].Wind_direction[0]*dx_u_orig[2];
+                            dx_u[2] = P[i].Wind_direction[0]*dx_u_orig[1] - P[i].Wind_direction[1]*dx_u_orig[0];
+                            for(k=0;k<3;k++) {P[i].Wind_direction[k+3] = dx_u[k];} //store direction of launch (we are doing it twice, but it is not really an issue)
+                        }
                 break;
                 //The next final particle pair is spawned perpendicular to the previous two pairs
                 case 4: //do same as for 5
-                case 5: //set the direction perpendicuar to the previous two axes (Wind_direction[0:3] x Wind_direction[4:6])
-                        dx_u[0] = P[i].Wind_direction[1]*P[i].Wind_direction[5] - P[i].Wind_direction[2]*P[i].Wind_direction[4];
-                        dx_u[1] = P[i].Wind_direction[2]*P[i].Wind_direction[3] - P[i].Wind_direction[0]*P[i].Wind_direction[5];
-                        dx_u[2] = P[i].Wind_direction[0]*P[i].Wind_direction[4] - P[i].Wind_direction[1]*P[i].Wind_direction[3];
+                case 5: if (wind_norm>=0.99){ //Check to make sure we have a valid direction (i.e. it is not saved to snapshots), if not we just go with a radndom direction
+                            //set the direction perpendicuar to the previous two axes (Wind_direction[0:3] x Wind_direction[4:6])
+                            dx_u[0] = P[i].Wind_direction[1]*P[i].Wind_direction[5] - P[i].Wind_direction[2]*P[i].Wind_direction[4];
+                            dx_u[1] = P[i].Wind_direction[2]*P[i].Wind_direction[3] - P[i].Wind_direction[0]*P[i].Wind_direction[5];
+                            dx_u[2] = P[i].Wind_direction[0]*P[i].Wind_direction[4] - P[i].Wind_direction[1]*P[i].Wind_direction[3];
+                        }
                 break;
             }
             if ((j - (NumPart + num_already_spawned)) % 6 == 5){for(k=0;k<3;k++) {dx_u[k] *= -1.0;}} //-1 flip not covered previously for this case 
             for(k=0;k<3;k++) {veldir[k] = dx_u[k];} //launch radially
             
         }
+#endif
+#if defined(SINGLE_STAR_FB_SNE)
+    //Get direction from All.SN_Ejecta_Direction[:][0:3], which should be already initialized by singlestar_single_star_SN_init_directions from stellar_evolution.c
+    if (P[i].ProtoStellarStage == 6){//SN only
+        int dir_ind = (j - (NumPart + num_already_spawned)) % SINGLE_STAR_FB_SNE_N_EJECTA;
+        for(k=0;k<3;k++) {
+            dx_u[k] = All.SN_Ejecta_Direction[dir_ind][k];//use directions pre-computed to isotropically cover a sphere with SINGLE_STAR_FB_SNE_N_EJECTA particles
+            veldir[k] = dx_u[k];//launch radially
+        } 
+    }
 #endif
         
         // actually lay down position and velocities using coordinate basis
