@@ -524,7 +524,7 @@ double ps_lum_Hayashi_BB(double m, double r);
 #endif
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
-double singlestar_single_star_wind_mdot(int n);
+double singlestar_single_star_wind_mdot(int n, int mode);
 double singlestar_single_star_wind_velocity(int n);
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
