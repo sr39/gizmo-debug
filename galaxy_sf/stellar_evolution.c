@@ -642,7 +642,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 #ifdef PS_EVOL_OUTPUT_MOREINFO
     // print out the basic star info
 #if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
-    if (BPP(n).ProtoStellarStage == 5) //only for MS stars, for previous stages we will print out the properties before
+    if (BPP(n).ProtoStellarStage >= 5) //only for MS stars, for previous stages we will print out the properties before
 #endif
     {
         printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: 0 rel_dr: 0 dm: %g dm_D: 0 Tc: 0 Pc: 0 rhoc: 0 beta: 0 dt: %g n_ad: 0 lum_int: 0 lum_I: 0 lum_D: 0 age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: 0 n_subcycle: 0 PS_end\n",All.Time, P[n].ID,BPP(n).BH_Mass*(All.UnitMass_in_g / SOLAR_MASS),BPP(n).ProtoStellarRadius_inSolar,BPP(n).ProtoStellarStage, BPP(n).BH_Mdot*(All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/All.UnitTime_in_s*SEC_PER_YEAR , dm* (All.UnitMass_in_g / SOLAR_MASS), dt*All.UnitTime_in_Megayears, (All.Time-P[n].ProtoStellarAge)*All.UnitTime_in_Megayears, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk*(All.UnitMass_in_g / SOLAR_MASS), BPP(n).SinkRadius );
