@@ -779,10 +779,16 @@ void blackhole_final_operations(void)
 #endif
 #ifdef SINGLE_STAR_FB_WINDS
         if (P[n].ProtoStellarStage == 5){ //for MS stars we have winds and no jets
-            dm_wind = singlestar_single_star_wind_mdot(n) * dt; //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep
+            dm_wind = singlestar_single_star_wind_mdot(n,1) * dt; //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep
             BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
         }
 #endif
+#ifdef SINGLE_STAR_FB_SNE
+        if (P[n].ProtoStellarStage == 6){ //Star old enough to go out with a boom
+            dm_wind = DMIN(SINGLE_STAR_FB_SNE_N_WIND * All.BAL_wind_particle_mass, BPP(n).BH_Mass); //We will spawn partciles to model the SN ejecta, but not more than what we can handle at the same time
+            BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
+        }
+#endif 
         BPP(n).unspawned_wind_mass += dm_wind;
         if(BPP(n).unspawned_wind_mass>MaxUnSpanMassBH) {MaxUnSpanMassBH=BPP(n).unspawned_wind_mass;}
 #endif
