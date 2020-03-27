@@ -1053,9 +1053,11 @@ integertime get_timestep(int p,		/*!< particle index */
         }
 #endif
 #ifdef SINGLE_STAR_FB_SNE
-        if (P[n].ProtoStellarStage == 6){ //Star going supernova
+        if (P[p].ProtoStellarStage == 6){ //Star going supernova
+            printf("Timestep reduced from old timestep %g \n", dt);
             //Let's make the timestep as low as possible but still safe from the smallest allowable timestep to avoid crashing
-            dt = DMIN(dt,All.MinSizeTimestep * 10);
+            dt = DMIN(dt,DMAX(All.MinSizeTimestep,All.Timebase_interval) * 10);
+            printf("New timestep of %g \n", dt);
         }
 #endif 
     } // if(P[p].Type == 5)
