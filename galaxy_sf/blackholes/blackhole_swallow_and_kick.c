@@ -521,12 +521,10 @@ void spawn_bh_wind_feedback(void)
 int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int num_already_spawned )
 {
     double total_mass_in_winds = BPP(i).unspawned_wind_mass;
+    int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass ); /* if we set BH_WIND_SPAWN we presumably wanted to do this in an exactly-conservative manner, which means we want to have an even number here. */
 #ifdef SINGLE_STAR_FB_SNE
-    if (P[i].ProtoStellarStage == 6){
-        int n_particles_split   = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
-    }else
+    if (P[i].ProtoStellarStage == 6){ n_particles_split   = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );}
 #endif
-    {int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass );} /* if we set BH_WIND_SPAWN we presumably wanted to do this in an exactly-conservative manner, which means we want to have an even number here. */
     if((((int)BH_WIND_SPAWN) % 2) == 0) {if(( n_particles_split % 2 ) != 0) {n_particles_split -= 1;}} /* n_particles_split was not even. we'll wait to spawn this last particle, to keep an even number, rather than do it right now and break momentum conservation */
     if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
     int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1)); if((n0max % 2) != 0) {n0max += 1;} // should ensure n0max is always an even number //
@@ -788,14 +786,27 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     //Get direction from All.SN_Ejecta_Direction[:][0:3], which should be already initialized by singlestar_single_star_SN_init_directions from stellar_evolution.c
     if (P[i].ProtoStellarStage == 6){//SN only
         int dir_ind = (j - (NumPart + num_already_spawned)) % SINGLE_STAR_FB_SNE_N_EJECTA;
+        double ux[3],uy[3]={0,1,0},uz[3]; //new random coordinate system 
+        for(k=0;k<3;k++) {uz[k] = dx_u[k];} //store the random direction we got previously
+        //Set up a coordinate system along this random direction, third axes defined by cross product
+        ux[0]=uz[1]*uy[2]-uz[2]*uy[1]; ux[1]=uz[2]*uy[0]-uz[0]*uy[2]; ux[2]=uz[0]*uy[1]-uz[1]*uy[0];
+        uy[0]=ux[1]*uz[2]-ux[2]*uz[1]; uy[1]=ux[2]*uz[0]-ux[0]*uz[2]; uy[2]=ux[0]*uz[1]-ux[1]*uz[0];
+        double u_mag = sqrt(ux[0]*ux[0]+ux[1]*ux[1]+ux[2]*ux[2]);
+        //normalize  ux
+        for(k=0;k<3;k++) {ux[k] /= u_mag;} 
+        //normalize  uy
+        u_mag = sqrt(uy[0]*uy[0]+uy[1]*uy[1]+uy[2]*uy[2]);
+        for(k=0;k<3;k++) {uy[k] /= u_mag;} 
+        //printf("Magnitudes: dx_u %g u %g SN_Ejecta_Direction %g\n", (dx_u[0]*dx_u[0]+dx_u[1]*dx_u[1]+dx_u[2]*dx_u[2]),(ux[0]*ux[0]+ux[1]*ux[1]+ux[2]*ux[2]),(All.SN_Ejecta_Direction[dir_ind][0]*All.SN_Ejecta_Direction[dir_ind][0]+All.SN_Ejecta_Direction[dir_ind][1]*All.SN_Ejecta_Direction[dir_ind][1]+All.SN_Ejecta_Direction[dir_ind][2]*All.SN_Ejecta_Direction[dir_ind][2]));
+        //Particle positioned at one of the regular positions on the randomized coordinate system
         for(k=0;k<3;k++) {
-            dx_u[k] = All.SN_Ejecta_Direction[dir_ind][k];//use directions pre-computed to isotropically cover a sphere with SINGLE_STAR_FB_SNE_N_EJECTA particles
+            dx_u[k] = All.SN_Ejecta_Direction[dir_ind][0] * ux[k] + All.SN_Ejecta_Direction[dir_ind][1] * uy[k] + All.SN_Ejecta_Direction[dir_ind][2] * uz[k];//use directions pre-computed to isotropically cover a sphere with SINGLE_STAR_FB_SNE_N_EJECTA particles
             veldir[k] = dx_u[k];//launch radially
             d_r = DMIN(P[i].SinkRadius, d_r); //launch close to the sink
         } 
+        printf("%d Spawning direction %g %g %g \n", P[j].ID, dx_u[0],dx_u[1],dx_u[2]);
     }
 #endif
-        
         // actually lay down position and velocities using coordinate basis
         for(k=0;k<3;k++) {
             P[j].Pos[k]=P[i].Pos[k] + dx_u[k]*d_r;
@@ -806,9 +817,13 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
         //SphP[j].Density *= 1e-10; SphP[j].Pressure *= 1e-10; PPP[j].Hsml = All.SofteningTable[0];  /* set dummy values: will be re-generated anyways [actually better to use nearest-neighbor values to start] */
-#ifdef SINGLE_STAR_FB_JETS
-        P[j].Hsml = pow(mass_of_new_particle / SphP[j].Density, 1./3);
-        SphP[j].MaxSignalVel = 2*DMAX(v_magnitude, SphP[j].MaxSignalVel); // need this to satisfy the Courant condition in the first timestep after spawn
+#if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)
+        if (P[i].ProtoStellarStage < 6){ 
+            P[j].Hsml = pow(mass_of_new_particle / SphP[j].Density, 1./3);
+            SphP[j].MaxSignalVel = 2*DMAX(v_magnitude, SphP[j].MaxSignalVel);// need this to satisfy the Courant condition in the first timestep after spawn, not used for SN because velocities are ~1% c
+            }else{
+                P[j].Hsml = d_r*sqrt(4.0*M_PI/(double)n_particles_split); //estimate
+            }
 #endif
 #ifdef BH_DEBUG_SPAWN_JET_TEST
         PPP[j].Hsml=5.*d_r; SphP[j].Density=mass_of_new_particle/pow(KERNEL_CORE_SIZE*PPP[j].Hsml,NUMDIMS); /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
