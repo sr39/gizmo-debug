@@ -714,7 +714,10 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
                 double theta0=0.01, thetamax=30.*(M_PI/180.); // "flattening parameter" and max opening angle of jet velocity distribution from Matzner & McKee 1999, sets the collimation of the jets
                 double jet_theta=atan(theta0*tan(get_random_number(j+7+5*ThisTask)*atan(sqrt(1+theta0*theta0)*tan(thetamax)/theta0))/sqrt(1+theta0*theta0)); // biased sampling to get collimation
                 if(cos_theta<0) {jet_theta=M_PI-jet_theta;} // determines 'up' or 'down' based on which hemisphere particle is in
-                veldir[0]=sin(jet_theta)*cos_phi; veldir[1]=sin(jet_theta)*sin_phi; veldir[2]=cos(jet_theta);//relative direction of velocity compared to BH_Specific_AngMom
+                double jet_rel_veldir[3];
+                jet_rel_veldir[0]=sin(jet_theta)*cos_phi; jet_rel_veldir[1]=sin(jet_theta)*sin_phi; jet_rel_veldir[2]=cos(jet_theta);//relative direction of velocity compared to BH_Specific_AngMom
+                for(k=0;k<3;k++) {
+                    veldir[k] = jet_rel_veldir[0]*jx[k]+jet_rel_veldir[1]*jy[k]+jet_rel_veldir[2]*jz[k]; } //converted from angular momentum relative to into standard coordinates
             }
 #endif
         } else { // just take the antipodal points for the coords and velocity we had before so we get exact conservation when spawning multiples of 2
@@ -802,15 +805,15 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         for(k=0;k<3;k++) {
             dx_u[k] = All.SN_Ejecta_Direction[dir_ind][0] * ux[k] + All.SN_Ejecta_Direction[dir_ind][1] * uy[k] + All.SN_Ejecta_Direction[dir_ind][2] * uz[k];//use directions pre-computed to isotropically cover a sphere with SINGLE_STAR_FB_SNE_N_EJECTA particles
             veldir[k] = dx_u[k];//launch radially
-            d_r = DMIN(P[i].SinkRadius, d_r); //launch close to the sink
-        } 
-        printf("%d Spawning direction %g %g %g \n", P[j].ID, dx_u[0],dx_u[1],dx_u[2]);
+            }
+        d_r = DMIN(P[i].SinkRadius, d_r); //launch close to the sink
+        printf("ID %llu ID_child_number %llu Spawning direction %g %g %g d_r %g \n", P[j].ID,P[j].ID_child_number, dx_u[0],dx_u[1],dx_u[2], d_r);
     }
 #endif
         // actually lay down position and velocities using coordinate basis
         for(k=0;k<3;k++) {
             P[j].Pos[k]=P[i].Pos[k] + dx_u[k]*d_r;
-            P[j].Vel[k]=P[i].Vel[k] + (veldir[0]*jx[k]+veldir[1]*jy[k]+veldir[2]*jz[k])*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];
+            P[j].Vel[k]=P[i].Vel[k] + veldir[k]*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];
         }
         //printf("ID: %llu x: %g %g %g dr: %g cos_theta: %g cos_phi: %g jx: %g %g %g\n", P[j].ID,P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],d_r,cos_theta, cos_phi, jx[0],jx[1],jx[2]);
         
@@ -818,9 +821,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
         //SphP[j].Density *= 1e-10; SphP[j].Pressure *= 1e-10; PPP[j].Hsml = All.SofteningTable[0];  /* set dummy values: will be re-generated anyways [actually better to use nearest-neighbor values to start] */
 #if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)
+        SphP[j].MaxSignalVel = 2*DMAX(v_magnitude, SphP[j].MaxSignalVel);// need this to satisfy the Courant condition in the first timestep after spawn
         if (P[i].ProtoStellarStage < 6){ 
             P[j].Hsml = pow(mass_of_new_particle / SphP[j].Density, 1./3);
-            SphP[j].MaxSignalVel = 2*DMAX(v_magnitude, SphP[j].MaxSignalVel);// need this to satisfy the Courant condition in the first timestep after spawn, not used for SN because velocities are ~1% c
             }else{
                 P[j].Hsml = d_r*sqrt(4.0*M_PI/(double)n_particles_split); //estimate
             }
