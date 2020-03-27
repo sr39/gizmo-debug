@@ -522,7 +522,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 {
     double total_mass_in_winds = BPP(i).unspawned_wind_mass;
 #ifdef SINGLE_STAR_FB_SNE
-    if (P[n].ProtoStellarStage == 6){
+    if (P[i].ProtoStellarStage == 6){
         int n_particles_split   = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
     }else
 #endif
@@ -540,7 +540,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     //double mass_of_new_particle = total_mass_in_winds / n_particles_split; /* don't do this, as can produce particles with extremely large masses; instead wait to spawn */
     double mass_of_new_particle = All.BAL_wind_particle_mass;
 #ifdef SINGLE_STAR_FB_SNE
-    if (P[n].ProtoStellarStage == 6){mass_of_new_particle = 2.*All.MinMassForParticleMerger;}
+    if (P[i].ProtoStellarStage == 6){mass_of_new_particle = 2.*All.MinMassForParticleMerger;}
 #endif
     printf("Task %d wants to create %g mass in wind with %d new particles each of mass %g \n .. splitting BH %d using hydro element %d\n", ThisTask,total_mass_in_winds, n_particles_split, mass_of_new_particle, i, dummy_sph_i_to_clone);
     int k=0; long j;
