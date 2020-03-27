@@ -455,7 +455,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 
 #ifdef SINGLE_STAR_FB_SNE
-#define SINGLE_STAR_FB_SNE_N_EJECTA_POLAR 4 //determines the maximum number of ejecta particles spawned per timestep, see below
+#define SINGLE_STAR_FB_SNE_N_EJECTA_POLAR 2 //determines the maximum number of ejecta particles spawned per timestep, see below
 #define SINGLE_STAR_FB_SNE_N_EJECTA (4*(SINGLE_STAR_FB_SNE_N_EJECTA_POLAR)*((SINGLE_STAR_FB_SNE_N_EJECTA_POLAR)+1)) //Maximum number of ejecta particles spawned per timestep
 #endif
 

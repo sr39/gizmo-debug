@@ -786,8 +786,8 @@ void blackhole_final_operations(void)
 #endif
 #ifdef SINGLE_STAR_FB_SNE
         if (P[n].ProtoStellarStage == 6){ //Star old enough to go out with a boom
-            printf("Spawning SN\n");
-            dm_wind = DMIN(SINGLE_STAR_FB_SNE_N_EJECTA * All.BAL_wind_particle_mass, BPP(n).BH_Mass); //We will spawn partciles to model the SN ejecta, but not more than what we can handle at the same time
+            dm_wind = DMIN(SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger, BPP(n).BH_Mass); //We will spawn particles to model the SN ejecta, but not more than what we can handle at the same time, these particles will have the same mass as gas particles, not like wind particles
+            printf("Spawning SN ejecta of mass %g\n", dm_wind);
             BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
         }
 #endif 

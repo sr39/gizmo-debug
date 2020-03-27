@@ -521,16 +521,27 @@ void spawn_bh_wind_feedback(void)
 int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int num_already_spawned )
 {
     double total_mass_in_winds = BPP(i).unspawned_wind_mass;
-    int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass ); /* if we set BH_WIND_SPAWN we presumably wanted to do this in an exactly-conservative manner, which means we want to have an even number here. */
+#ifdef SINGLE_STAR_FB_SNE
+    if (P[n].ProtoStellarStage == 6){
+        int n_particles_split   = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
+    }else
+#endif
+    {int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass );} /* if we set BH_WIND_SPAWN we presumably wanted to do this in an exactly-conservative manner, which means we want to have an even number here. */
     if((((int)BH_WIND_SPAWN) % 2) == 0) {if(( n_particles_split % 2 ) != 0) {n_particles_split -= 1;}} /* n_particles_split was not even. we'll wait to spawn this last particle, to keep an even number, rather than do it right now and break momentum conservation */
     if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
     int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1)); if((n0max % 2) != 0) {n0max += 1;} // should ensure n0max is always an even number //
+#ifdef SINGLE_STAR_FB_SNE
+    n0max = DMAX(n0max, SINGLE_STAR_FB_SNE_N_EJECTA); //so that we can spawn the number of wind particles we want
+#endif
     if(n_particles_split > n0max) {n_particles_split = n0max;}
     
     
     /* here is where the details of the split are coded, the rest is bookkeeping */
     //double mass_of_new_particle = total_mass_in_winds / n_particles_split; /* don't do this, as can produce particles with extremely large masses; instead wait to spawn */
     double mass_of_new_particle = All.BAL_wind_particle_mass;
+#ifdef SINGLE_STAR_FB_SNE
+    if (P[n].ProtoStellarStage == 6){mass_of_new_particle = 2.*All.MinMassForParticleMerger;}
+#endif
     printf("Task %d wants to create %g mass in wind with %d new particles each of mass %g \n .. splitting BH %d using hydro element %d\n", ThisTask,total_mass_in_winds, n_particles_split, mass_of_new_particle, i, dummy_sph_i_to_clone);
     int k=0; long j;
     if(NumPart + num_already_spawned + n_particles_split >= All.MaxPart)
@@ -780,6 +791,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         for(k=0;k<3;k++) {
             dx_u[k] = All.SN_Ejecta_Direction[dir_ind][k];//use directions pre-computed to isotropically cover a sphere with SINGLE_STAR_FB_SNE_N_EJECTA particles
             veldir[k] = dx_u[k];//launch radially
+            d_r = DMIN(P[i].SinkRadius, d_r); //launch close to the sink
         } 
     }
 #endif
