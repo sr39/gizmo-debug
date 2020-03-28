@@ -831,7 +831,7 @@ integertime get_timestep(int p,		/*!< particle index */
                                              Get_Particle_BField(p,2)*Get_Particle_BField(p,2) +
                                              phi_b_units*phi_b_units) / SphP[p].Density );
 
-            dt_courant = 0.8 * All.CourantFac * (All.cf_atime*L_particle) / vsig1; // 2.0 factor may be added (PFH) //
+            dt_courant = DMIN(dt_courant,0.8 * All.CourantFac * (All.cf_atime*L_particle) / vsig1); // 2.0 factor may be added (PFH) //
             if(dt_courant < dt) {dt = dt_courant;}
 #endif
             
