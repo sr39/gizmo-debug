@@ -614,6 +614,10 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
             if ( age_Gyr > stellar_lifetime(n) ){
                 BPP(n).ProtoStellarStage = 6; //time to explode
                 P[n].Mass_final = P[n].BH_Mass; //record the final mass the star had
+#ifdef BH_ALPHADISK_ACCRETION
+                BPP(n).BH_Mass_AlphaDisk = 0; //probably does not matter, but let's make sure these don't cause issues
+                P[n].Mass = P[n].BH_Mass; 
+#endif
             }
 #endif
         }
