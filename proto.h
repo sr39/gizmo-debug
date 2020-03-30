@@ -529,7 +529,7 @@ double singlestar_single_star_wind_velocity(int n);
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
 double singlestar_single_star_SN_velocity(int n);
-double stellar_lifetime(int n);
+double stellar_lifetime_in_Gyr(int n);
 void singlestar_single_star_SN_init_directions(void);
 #endif
 
