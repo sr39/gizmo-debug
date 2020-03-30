@@ -714,7 +714,7 @@ double stellar_lifetime_in_Gyr(int n){
     //Estimate lifetime of star, using simple MS approximation t/Gyr ~ 9.6 M/L in solar
     double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
     //double l_solar = bh_lum_bol(0,P[i].Mass,i) * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM));
-    return 9.6 * (m_solar / P[i].StarLuminosity_Solar);    
+    return 9.6 * (m_solar / P[n].StarLuminosity_Solar);    
 }
 
 double singlestar_single_star_SN_velocity(int n){
