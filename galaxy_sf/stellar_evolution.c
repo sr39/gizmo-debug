@@ -713,9 +713,10 @@ double singlestar_single_star_wind_velocity(int n){
 double stellar_lifetime(int n){
     double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
     //Estimate lifetime of star, using simple MS approximation t ~ 10 Gyr (M/Msun)^-2.5
-    return ( (1e4/All.UnitTime_in_Megayears) * pow(m_solar,-2.5) );
-    
+    double l_solar = bh_lum_bol(0,P[i].Mass,i) * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM));
+    return 9.6 * (m_solar / l_solar);    
 }
+
 double singlestar_single_star_SN_velocity(int n){
     //Let's try to get the velocity of SN ejecta
     //Simple model: 10^51 erg/SN, distributed evenly among the mass
