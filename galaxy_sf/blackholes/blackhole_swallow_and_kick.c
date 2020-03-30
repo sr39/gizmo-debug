@@ -529,7 +529,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
             n_particles_split = SINGLE_STAR_FB_SNE_N_EJECTA; //we are going to spawn a bunch of low mass particles to take the last bit of mass away
             P[i].Mass = 0; //set mass to zero so that this sink will get cleaned up (TreeReconstructFlag = 1 should be already set in blackhole.c)
 #ifdef BH_ALPHADISK_ACCRETION
-            P[i]..BH_Mass_AlphaDisk = 0; //just to be safe
+            P[i].BH_Mass_AlphaDisk = 0; //just to be safe
 #endif
         }
     }
