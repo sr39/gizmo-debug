@@ -664,7 +664,7 @@ double singlestar_single_star_wind_mdot(int n, int mode){
     double wind_mass_loss_rate=0; //mass loss rate in code units
     double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
     if (m_solar < SINGLE_STAR_FB_WINDS_MIN_MASS){return 0.0;} //no winds for low mass stars
-    if (BPP(n).ProtoStellarStage == 5){ //MS only
+    if (BPP(n).ProtoStellarStage == 5){ //Winds are for MS only
         /*Use Vink 2001 model, which should capture metallicity dependence and is more accurate than CAK*/
         // We are assuming that METALS are also on
         double ZZ = BPP(n).Metallicity[0]/All.SolarAbundances[0]; //relative metallicity to solar
@@ -683,19 +683,19 @@ double singlestar_single_star_wind_mdot(int n, int mode){
             logmdot_wind = -6.688 + 2.21*log10(BPP(n).StarLuminosity_Solar/1.0e5) - 1.339*log10(m_solar/30.) - 1.601*log10(v_esc_over_terminal/2.0) + 1.07*log10(T_eff/2.0e4) + 0.85*log10(ZZ);
         }
         wind_mass_loss_rate = pow(10.0,logmdot_wind) * WIND_MASS_LOSS_RATE_REDUCTION_FACTOR * (SOLAR_MASS/SEC_PER_YEAR)/(All.UnitMass_in_g/All.UnitTime_in_s); //reducing the rate to be more in line with observations, see Nathan Smith 2014, conversion to code units from Msun/yr
-    }
-    //Let's deal with the case of undefined wind mode (just promoted to MS or restart from snapshot)
-    if ( (P[n].wind_mode!=1) && (P[n].wind_mode!=2) ){ //this is a bit of lazy programming but it is quite unlikely for the uninitialized value to be exactly either 1 or 2
-        //Let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
-        double v_wind = singlestar_single_star_wind_velocity(n);
-        double t_wind =sqrt( wind_mass_loss_rate * pow(v_wind,-3.0) * (3.0/(4.0*M_PI*P[n].DensAroundStar)) );
-        double N_wind = wind_mass_loss_rate * t_wind / All.BAL_wind_particle_mass;
-        if ( N_wind >= SINGLE_STAR_FB_WINDS_N_WIND_PARAM ){
-            P[n].wind_mode = 1; //we can spawn enough particles per wind time
-        } else{
-            P[n].wind_mode = 2; //we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
+        //Let's deal with the case of undefined wind mode (just promoted to MS or restart from snapshot)
+        if ( (P[n].wind_mode!=1) && (P[n].wind_mode!=2) ){ //this is a bit of lazy programming but it is quite unlikely for the uninitialized value to be exactly either 1 or 2
+            //Let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
+            double v_wind = singlestar_single_star_wind_velocity(n);
+            double t_wind =sqrt( wind_mass_loss_rate * pow(v_wind,-3.0) * (3.0/(4.0*M_PI*P[n].DensAroundStar)) );
+            double N_wind = wind_mass_loss_rate * t_wind / All.BAL_wind_particle_mass;
+            if ( N_wind >= SINGLE_STAR_FB_WINDS_N_WIND_PARAM ){
+                P[n].wind_mode = 1; //we can spawn enough particles per wind time
+            } else{
+                P[n].wind_mode = 2; //we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
+            }
+            printf("Star %llu has N_wind %g at t %g. Setting wind mode to %d \n",P[n].ID, N_wind, All.Time, P[n].wind_mode);
         }
-        printf("Star %llu has N_wind %g at t %g. Setting wind mode to %d \n",P[n].ID, N_wind, All.Time, P[n].wind_mode);
     }
     return wind_mass_loss_rate;
 }
