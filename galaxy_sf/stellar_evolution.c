@@ -611,7 +611,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 #ifdef  SINGLE_STAR_FB_SNE
             //Check age and see if we need to blow up this star
             double age_Gyr = evaluate_stellar_age_Gyr(P[n].StellarAge);
-            if ( age_Gyr > stellar_lifetime(n) ){
+            if ( age_Gyr > stellar_lifetime_in_Gyr(n) ){
                 BPP(n).ProtoStellarStage = 6; //time to explode
                 P[n].Mass_final = P[n].BH_Mass; //record the final mass the star had
 #ifdef BH_ALPHADISK_ACCRETION
@@ -710,9 +710,9 @@ double singlestar_single_star_wind_velocity(int n){
 #endif
 
 #ifdef  SINGLE_STAR_FB_SNE
-double stellar_lifetime(int n){
+double stellar_lifetime_in_Gyr(int n){
+    //Estimate lifetime of star, using simple MS approximation t/Gyr ~ 9.6 M/L in solar
     double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
-    //Estimate lifetime of star, using simple MS approximation t ~ 10 Gyr (M/Msun)^-2.5
     double l_solar = bh_lum_bol(0,P[i].Mass,i) * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM));
     return 9.6 * (m_solar / l_solar);    
 }
