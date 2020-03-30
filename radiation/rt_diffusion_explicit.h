@@ -93,7 +93,11 @@
 #ifdef RT_FLUXLIMITER
             fluxlim_i = local.RT_DiffusionCoeff[k_freq] * local.Density * local.Kappa_RT[k_freq] / C_LIGHT_CODE_REDUCED; fluxlim_j = SphP[j].Lambda_FluxLim[k_freq];
 #endif
-            cmag_adv += -v_Area_dot_rt * scalar_ij_phys * ((4./3.)*(0.5*(fluxlim_i+fluxlim_j)) - 1.); // need to be careful with the sign here. since this is an oriented area and A points from j to i, need to flip the sign here. the 1/3 owes to the fact that this is really the --pressure-- term for FLD-like methods, the energy term is implicitly part of the flux already if we're actually doing this correctly //
+            double fluxlim_ij = 0.5 * (fluxlim_i+fluxlim_j), fac_fluxlim = (4./3.)*fluxlim_ij - 1.;
+#ifdef RT_RADPRESSURE_IN_HYDRO
+            fac_fluxlim = (fluxlim_ij-1.) - 2.*(fluxlim_ij/3.)*rt_absorb_frac_albedo(j,k_freq); // when P is included in hydro solver, some terms are automatically included, some not, so the pre-factor here needs to be revised
+#endif
+            cmag_adv += -v_Area_dot_rt * scalar_ij_phys * fac_fluxlim; // need to be careful with the sign here. since this is an oriented area and A points from j to i, need to flip the sign here. the 1/3 owes to the fact that this is really the --pressure-- term for FLD-like methods, the energy term is implicitly part of the flux already if we're actually doing this correctly //
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
             for(k=0;k<3;k++) {cmag_adv -= (v_frame[k]-0.5*(local.Vel[k]+SphP[j].VelPred[k])/All.cf_atime) * scalar_ij_phys * Face_Area_Vec[k];}
 #endif
