@@ -535,7 +535,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         n_particles_split   = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
         if (P[i].BH_Mass == 0){ //Last batch to be spawned
             n_particles_split = SINGLE_STAR_FB_SNE_N_EJECTA; //we are going to spawn a bunch of low mass particles to take the last bit of mass away
-            printf("Spawning last ejecta of star %llu with %g mass and %d particles",P[i].ID,total_mass_in_winds,n_particles_split);
+            printf("Spawning last SN ejecta of star %llu with %g mass and %d particles",P[i].ID,total_mass_in_winds,n_particles_split);
             P[i].Mass = 0; //set mass to zero so that this sink will get cleaned up (TreeReconstructFlag = 1 should be already set in blackhole.c)
 #ifdef BH_ALPHADISK_ACCRETION
             P[i].BH_Mass_AlphaDisk = 0; //just to be safe
@@ -851,8 +851,16 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #ifdef BH_DEBUG_SPAWN_JET_TEST
         PPP[j].Hsml=5.*d_r; SphP[j].Density=mass_of_new_particle/pow(KERNEL_CORE_SIZE*PPP[j].Hsml,NUMDIMS); /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
 #endif
-        /* internal energy, determined by desired wind temperature (assume fully ionized primordial gas with gamma=5/3) */
-        SphP[j].InternalEnergy = All.BAL_internal_temperature / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ); SphP[j].InternalEnergyPred = SphP[j].InternalEnergy;
+#if defined(SINGLE_STAR_FB_SNE)
+        if (P[i].ProtoStellarStage == 6){
+            SphP[j].InternalEnergy = All.MinGasTemp / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ) + (1.0-SINGLE_STAR_FB_SNE_KINETIC_ENERGY_FRACTION)/SINGLE_STAR_FB_SNE_KINETIC_ENERGY_FRACTION * pow(singlestar_single_star_SN_velocity(i),2.0); //1-SINGLE_STAR_FB_SNE_KINETIC_ENERGY_FRACTION fraction of the energy in thermal
+        }else
+#endif
+        
+        {/* internal energy, determined by desired wind temperature (assume fully ionized primordial gas with gamma=5/3) */
+        SphP[j].InternalEnergy = All.BAL_internal_temperature / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS );}
+        SphP[j].InternalEnergyPred = SphP[j].InternalEnergy;
+
 
 #if defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
         double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * C_LIGHT_CODE*C_LIGHT_CODE;
