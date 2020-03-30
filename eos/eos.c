@@ -47,9 +47,11 @@ double get_pressure(int i)
     double soundspeed=0, press=0, gamma_eos_index = GAMMA(i); /* get effective adiabatic index */
     press = (gamma_eos_index-1) * SphP[i].InternalEnergyPred * Particle_density_for_energy_i(i); /* ideal gas EOS (will get over-written it more complex EOS assumed) */
     
+    
 #ifdef GALSF_EFFECTIVE_EQS /* modify pressure to 'interpolate' between effective EOS and isothermal, with the Springel & Hernquist 2003 'effective' EOS */
     if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh) {press = All.FactorForSofterEQS * press + (1 - All.FactorForSofterEQS) * All.cf_afac1 * (gamma_eos_index-1) * SphP[i].Density * All.InitGasU;}
 #endif    
+    
     
 #ifdef EOS_HELMHOLTZ /* pass the necessary quantities to wrappers for the Timms EOS */
     struct eos_input eos_in;
@@ -99,6 +101,7 @@ double get_pressure(int i)
     SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (rho * (gamma_eos_index-1.));
 #endif
     
+    
 #ifdef COSMIC_RAYS
     press += Get_Particle_CosmicRayPressure(i);
     /* we will also compute the CR contribution to the effective soundspeed here */
@@ -109,6 +112,18 @@ double get_pressure(int i)
     press += (GAMMA_ALFVEN_CRS-1) * SphP[i].Density * (SphP[i].CosmicRayAlfvenEnergy[0]+SphP[i].CosmicRayAlfvenEnergy[1]);
     soundspeed = sqrt(soundspeed*soundspeed + GAMMA_ALFVEN_CRS*(GAMMA_ALFVEN_CRS-1)*(SphP[i].CosmicRayAlfvenEnergy[0]+SphP[i].CosmicRayAlfvenEnergy[1])/P[i].Mass);
 #endif
+#endif
+    
+    
+#ifdef RT_RADPRESSURE_IN_HYDRO /* add radiation pressure in the Riemann problem directly */
+    int k_freq; double gamma_rad=4./3., fluxlim=1; if(P[i].Mass>0 && SphP[i].Density>0) {for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
+    {
+#ifdef RT_FLUXLIMITER
+        SphP[i].Lambda_FluxLim[k_freq]; // apply flux-limiter
+#endif
+        press += (gamma_rad-1.) * SphP[i].E_gamma_Pred[k_freq] * SphP[i].Density/P[i].Mass;
+        SphP[i].SoundSpeed = sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred + gamma_rad*(gamma_rad-1.) * SphP[i].E_gamma_Pred[k_freq]/P[i].Mass);
+    }}
 #endif
     
     
@@ -127,6 +142,7 @@ double get_pressure(int i)
     press = return_user_desired_target_pressure(i) * (SphP[i].Density / return_user_desired_target_density(i)); // define pressure by reference to 'desired' fluid quantities //
     SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = return_user_desired_target_pressure(i) / ((gamma_eos_index-1) * SphP[i].Density);
 #endif
+    
     
 #ifdef EOS_GENERAL /* need to be sure soundspeed variable is set: if not defined above, set it to the default which is given by the effective gamma */
     if(soundspeed == 0) {SphP[i].SoundSpeed = sqrt(gamma_eos_index * press / Particle_density_for_energy_i(i));} else {SphP[i].SoundSpeed = soundspeed;}
