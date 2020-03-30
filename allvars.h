@@ -441,7 +441,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #endif
 
-#if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS)
+#if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)
 #define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
 #define MAINTAIN_TREE_IN_REARRANGE // don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed
 #define SINGLE_STAR_FB_JETS_POWER_FACTOR 1.0 //scales the amount of accretion power going into jets, we eject (1-All.BAL_f_accretion) fraction of the accreted mass at SINGLE_STAR_FB_JETS_POWER_FACTOR times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.BAL_f_accretion)
