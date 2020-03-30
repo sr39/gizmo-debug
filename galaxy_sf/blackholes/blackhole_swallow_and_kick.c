@@ -475,7 +475,7 @@ void spawn_bh_wind_feedback(void)
         //if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (n_particles_split<1) && (P[i].Type==5))
 
         long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20;
-#ifdef SINGLE_STAR_FB_JETS
+#if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
         if( (P[i].ProtoStellarStage ==6) || ((P[i].Type==5) && (P[i].BH_Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS) > 0.01) && (P[i].Mass > 7*All.MinMassForParticleMerger)) ) // we launch jets/winds/ejecta when we are not in the pre-collapse phase below 0.01msun (Offner 2009) or if we are doing SN
 #else
@@ -692,7 +692,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         /* now set the real hydro variables. */
         /* set the particle ID */ // unsigned int bits; int SPLIT_GENERATIONS = 4; for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++); /* the particle needs an ID: we give it a bit-flip from the original particle to signify the split */     
         P[j].ID = All.AGNWindID; /* update:  We are using a fixed wind ID, to allow for trivial wind particle identification */
-#ifdef SINGLE_STAR_FB_JETS
+#if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_WINDS)
         if(mass_of_new_particle >= All.MinMassForParticleMerger) {P[j].ID = All.AGNWindID + 1;} // this just has the nominal mass resolution, so no special treatment - this avoids the P[i].ID == All.AGNWindID checks throughout the code
 #endif
       
