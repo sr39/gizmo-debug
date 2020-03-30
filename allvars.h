@@ -450,13 +450,14 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define GALSF_FB_MECHANICAL //We will use the FIRE wind module for low mass loss rate stars (spawning leads to issues)
 #define GALSF_FB_FIRE_STELLAREVOLUTION //flag needed to calculate properties
 #define SINGLE_STAR_FB_WINDS_N_WIND_PARAM 1e-3 //Parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds). Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
-#define SINGLE_STAR_FB_WINDS_MIN_MASS 2.0 //Minimum stellar mass to spawn winds
+#define SINGLE_STAR_FB_WINDS_MIN_MASS 2.0 //Minimum stellar mass to have winds
 #endif
 #endif
 
 #ifdef SINGLE_STAR_FB_SNE
 #define SINGLE_STAR_FB_SNE_N_EJECTA_POLAR 6 //determines the maximum number of ejecta particles spawned per timestep, see below
 #define SINGLE_STAR_FB_SNE_N_EJECTA (4*(SINGLE_STAR_FB_SNE_N_EJECTA_POLAR)*((SINGLE_STAR_FB_SNE_N_EJECTA_POLAR)+1)) //Maximum number of ejecta particles spawned per timestep
+#define SINGLE_STAR_FB_SNE_KINETIC_ENERGY_FRACTION 1.0 //fraction of the SN energy in the kinetic energy of particles vs internal
 #endif
 
 

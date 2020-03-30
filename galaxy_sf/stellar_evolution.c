@@ -663,6 +663,7 @@ double singlestar_single_star_wind_mdot(int n, int mode){
     }
     double wind_mass_loss_rate=0; //mass loss rate in code units
     double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
+    if (m_solar < SINGLE_STAR_FB_WINDS_MIN_MASS){return 0.0;} //no winds for low mass stars
     if (BPP(n).ProtoStellarStage == 5){ //MS only
         /*Use Vink 2001 model, which should capture metallicity dependence and is more accurate than CAK*/
         // We are assuming that METALS are also on
@@ -694,6 +695,7 @@ double singlestar_single_star_wind_mdot(int n, int mode){
         } else{
             P[n].wind_mode = 2; //we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
         }
+        printf("Star %llu has N_wind %g at t %g. Setting wind mode to %d \n",P[n].ID, N_wind, All.Time, P[n].wind_mode);
     }
     return wind_mass_loss_rate;
 }
@@ -720,7 +722,7 @@ double stellar_lifetime_in_Gyr(int n){
 double singlestar_single_star_SN_velocity(int n){
     //Let's try to get the velocity of SN ejecta
     //Simple model: 10^51 erg/SN, distributed evenly among the mass
-    return sqrt((2e51/All.UnitEnergy_in_cgs)/P[n].Mass_final); //simple v=sqrt(2E/m)should be fine without relativistic corrections
+    return sqrt(SINGLE_STAR_FB_SNE_KINETIC_ENERGY_FRACTION * (2e51/All.UnitEnergy_in_cgs)/P[n].Mass_final); //simple v=sqrt(2E/m)should be fine without relativistic corrections
 }
 
 void singlestar_single_star_SN_init_directions(void){
