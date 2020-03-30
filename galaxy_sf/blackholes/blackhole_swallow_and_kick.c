@@ -523,7 +523,16 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     double total_mass_in_winds = BPP(i).unspawned_wind_mass;
     int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass ); /* if we set BH_WIND_SPAWN we presumably wanted to do this in an exactly-conservative manner, which means we want to have an even number here. */
 #ifdef SINGLE_STAR_FB_SNE
-    if (P[i].ProtoStellarStage == 6){ n_particles_split   = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );}
+    if (P[i].ProtoStellarStage == 6){
+        n_particles_split   = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
+        if (P[i].BH_Mass == 0){ //Last batch to be spawned
+            n_particles_split = SINGLE_STAR_FB_SNE_N_EJECTA; //we are going to spawn a bunch of low mass particles to take the last bit of mass away
+            P[i].Mass = 0; //set mass to zero so that this sink will get cleaned up (TreeReconstructFlag = 1 should be already set in blackhole.c)
+#ifdef BH_ALPHADISK_ACCRETION
+            P[i]..BH_Mass_AlphaDisk = 0; //just to be safe
+#endif
+        }
+    }
 #endif
     if((((int)BH_WIND_SPAWN) % 2) == 0) {if(( n_particles_split % 2 ) != 0) {n_particles_split -= 1;}} /* n_particles_split was not even. we'll wait to spawn this last particle, to keep an even number, rather than do it right now and break momentum conservation */
     if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
@@ -538,7 +547,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     //double mass_of_new_particle = total_mass_in_winds / n_particles_split; /* don't do this, as can produce particles with extremely large masses; instead wait to spawn */
     double mass_of_new_particle = All.BAL_wind_particle_mass;
 #ifdef SINGLE_STAR_FB_SNE
-    if (P[i].ProtoStellarStage == 6){mass_of_new_particle = 2.*All.MinMassForParticleMerger;}
+    if (P[i].ProtoStellarStage == 6){
+        mass_of_new_particle = total_mass_in_winds/(double) n_particles_split;//ejecta will have the gas mass resolution except the last batch which will lower masses
+        } 
 #endif
     printf("Task %d wants to create %g mass in wind with %d new particles each of mass %g \n .. splitting BH %d using hydro element %d\n", ThisTask,total_mass_in_winds, n_particles_split, mass_of_new_particle, i, dummy_sph_i_to_clone);
     int k=0; long j;
