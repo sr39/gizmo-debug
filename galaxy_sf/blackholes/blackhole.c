@@ -788,6 +788,7 @@ void blackhole_final_operations(void)
         if (P[n].ProtoStellarStage == 6){ //Star old enough to go out with a boom
             if (BPP(n).BH_Mass == 0){
                 TreeReconstructFlag = 1; //rebuild the tree after the SN finished
+                MaxUnSpanMassBH = 2*(BH_WIND_SPAWN)*All.BAL_wind_particle_mass; //a high enough number to ensure that we do spawn winds
             }
             dm_wind = DMIN(SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger, BPP(n).BH_Mass); //We will spawn particles to model the SN ejecta, but not more than what we can handle at the same time, these particles will have the same mass as gas particles, not like wind particles
             printf("Spawning SN ejecta of mass %g from star %llu at time %g\n", dm_wind, P[n].ID, All.Time);
