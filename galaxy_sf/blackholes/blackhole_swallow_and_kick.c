@@ -476,11 +476,19 @@ void spawn_bh_wind_feedback(void)
 
         long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20;
 #ifdef SINGLE_STAR_FB_JETS
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+        if( (P[i].ProtoStellarStage ==6) || ((P[i].Type==5) && (P[i].BH_Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS) > 0.01) && (P[i].Mass > 7*All.MinMassForParticleMerger)) ) // we launch jets/winds/ejecta when we are not in the pre-collapse phase below 0.01msun (Offner 2009) or if we are doing SN
+#else
         if((P[i].Type==5) && (P[i].BH_Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS) > 0.01) && (P[i].Mass > 7*All.MinMassForParticleMerger)) // we're in the pre-collapse phase below 0.01msun, so don't launch jets (Offner 2009)
+#endif
 #endif        
         if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (P[i].Type==5))
         {
+#ifdef SINGLE_STAR_FB_SNE
+            if( (BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*All.BAL_wind_particle_mass) || ( (P[i].ProtoStellarStage == 6) && P[i].BH_Mass == 0) ) //we will spawn the last ejecta for SN no matter how little the mass is there
+#else
             if(BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*All.BAL_wind_particle_mass)
+#endif
             {
                 int j; dummy_gas_tag=-1; double r2=MAX_REAL_NUMBER;
                 for(j=0; j<N_gas; j++) /* find the closest gas particle on the domain to act as the dummy */
@@ -527,6 +535,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         n_particles_split   = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
         if (P[i].BH_Mass == 0){ //Last batch to be spawned
             n_particles_split = SINGLE_STAR_FB_SNE_N_EJECTA; //we are going to spawn a bunch of low mass particles to take the last bit of mass away
+            printf("Spawning last ejecta of star %llu with %g mass and %d particles",P[i].ID,total_mass_in_winds,n_particles_split);
             P[i].Mass = 0; //set mass to zero so that this sink will get cleaned up (TreeReconstructFlag = 1 should be already set in blackhole.c)
 #ifdef BH_ALPHADISK_ACCRETION
             P[i].BH_Mass_AlphaDisk = 0; //just to be safe
@@ -818,7 +827,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
             veldir[k] = dx_u[k];//launch radially
             }
         d_r = DMIN(P[i].SinkRadius, d_r); //launch close to the sink
-        printf("ID %llu ID_child_number %llu Spawning direction %g %g %g d_r %g \n", P[j].ID,P[j].ID_child_number, dx_u[0],dx_u[1],dx_u[2], d_r);
+        //printf("ID %llu ID_child_number %llu Spawning direction %g %g %g d_r %g \n", P[j].ID,P[j].ID_child_number, dx_u[0],dx_u[1],dx_u[2], d_r);
     }
 #endif
         // actually lay down position and velocities using coordinate basis
