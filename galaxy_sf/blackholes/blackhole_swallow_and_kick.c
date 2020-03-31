@@ -535,11 +535,15 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         n_particles_split   = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
         if (P[i].BH_Mass == 0){ //Last batch to be spawned
             n_particles_split = SINGLE_STAR_FB_SNE_N_EJECTA; //we are going to spawn a bunch of low mass particles to take the last bit of mass away
-            printf("Spawning last SN ejecta of star %llu with %g mass and %d particles",P[i].ID,total_mass_in_winds,n_particles_split);
+            printf("Spawning last SN ejecta of star %llu with %g mass and %d particles \n",P[i].ID,total_mass_in_winds,n_particles_split);
             P[i].Mass = 0; //set mass to zero so that this sink will get cleaned up (TreeReconstructFlag = 1 should be already set in blackhole.c)
 #ifdef BH_ALPHADISK_ACCRETION
             P[i].BH_Mass_AlphaDisk = 0; //just to be safe
 #endif
+        }
+        if(n_particles_split<SINGLE_STAR_FB_SNE_N_EJECTA){ return 0;} //we have to wait until we get a full shell
+        else{
+            n_particles_split = n_particles_split - (n_particles_split % SINGLE_STAR_FB_SNE_N_EJECTA); // we only eject full shells, in practice this will be one shell at a time
         }
     }
 #endif
@@ -547,7 +551,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
     int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1)); if((n0max % 2) != 0) {n0max += 1;} // should ensure n0max is always an even number //
 #ifdef SINGLE_STAR_FB_SNE
-    n0max = DMAX(n0max, SINGLE_STAR_FB_SNE_N_EJECTA); //so that we can spawn the number of wind particles we want
+    if (P[i].ProtoStellarStage == 6){n0max = DMAX(n0max, SINGLE_STAR_FB_SNE_N_EJECTA);} //so that we can spawn the number of wind particles we want, by setting BH_WIND_SPAWN high it ispossible to spawn multitudes of SINGLE_STAR_FB_SNE_N_EJECTA, but in practice we usually spawn just one
 #endif
     if(n_particles_split > n0max) {n_particles_split = n0max;}
     
