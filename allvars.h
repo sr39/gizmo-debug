@@ -451,7 +451,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define GALSF_FB_FIRE_STELLAREVOLUTION //flag needed to calculate properties
 #define SINGLE_STAR_FB_WINDS_N_WIND_PARAM 1e-5 //Parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds). Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
 #define SINGLE_STAR_FB_WINDS_MIN_MASS 2.0 //Minimum stellar mass to have winds
-//#define SINGLE_STAR_FB_WINDS_VARIABLE_WIND_MODES //a star can switch between the spawning and the unresolved wind modules (otherwise it is stuck with what it started MS with)
+#define SINGLE_STAR_FB_WINDS_VARIABLE_WIND_MODES //a star can switch between the spawning and the unresolved wind modules (otherwise it is stuck with what it started MS with)
 #endif
 #endif
 
