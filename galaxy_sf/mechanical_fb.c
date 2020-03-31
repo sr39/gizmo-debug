@@ -700,7 +700,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double boostfac_max = DMIN(1000. , v_ejecta_eff/v_cooling_lim); // boost factor cant exceed velocity limiter - if recession vel large, limits boost
                     if(mom_boost_fac > boostfac_max) {mom_boost_fac = boostfac_max;} // apply limiter
                 } else {
+#ifndef SINGLE_STAR_FB_WINDS
                     mom_boost_fac = DMIN(boost_egycon , boost_max); // simply take minimum - nothing fancy for winds
+#endif
                 }
                 
                 /* save summation values for outputs */
