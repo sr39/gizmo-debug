@@ -449,8 +449,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define WIND_MASS_LOSS_RATE_REDUCTION_FACTOR 0.33 //reducing the mass loss rate due to winds to be more in line with observations, see Nathan Smith 2014
 #define GALSF_FB_MECHANICAL //We will use the FIRE wind module for low mass loss rate stars (spawning leads to issues)
 #define GALSF_FB_FIRE_STELLAREVOLUTION //flag needed to calculate properties
-#define SINGLE_STAR_FB_WINDS_N_WIND_PARAM 1e-3 //Parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds). Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
+#define SINGLE_STAR_FB_WINDS_N_WIND_PARAM 1e-5 //Parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds). Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
 #define SINGLE_STAR_FB_WINDS_MIN_MASS 2.0 //Minimum stellar mass to have winds
+//#define SINGLE_STAR_FB_WINDS_VARIABLE_WIND_MODES //a star can switch between the spawning and the unresolved wind modules (otherwise it is stuck with what it started MS with)
 #endif
 #endif
 
