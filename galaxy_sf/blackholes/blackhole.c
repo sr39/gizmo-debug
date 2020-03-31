@@ -785,15 +785,20 @@ void blackhole_final_operations(void)
 #endif
 #ifdef SINGLE_STAR_FB_SNE
         if (P[n].ProtoStellarStage == 6){ //Star old enough to go out with a boom
-            if (BPP(n).BH_Mass == 0){
-                TreeReconstructFlag = 1; //rebuild the tree after the SN finished
-                MaxUnSpanMassBH = 2*(BH_WIND_SPAWN)*All.BAL_wind_particle_mass; //a high enough number to ensure that we do spawn winds
-            }
             double t_clear=P[n].SinkRadius/singlestar_single_star_SN_velocity(n); //time needed spawned wind particles to clear the sink
             double SN_mdot = (SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger)/t_clear; //we spawn SINGLE_STAR_FB_SNE_N_EJECTA per ejected shell, and we can have maximum 1 shell per t_clear
             dm_wind = DMIN(SN_mdot*dt, BPP(n).BH_Mass); //We will spawn particles to model the SN ejecta, but not more than what we can handle at the same time, these particles will have the same mass as gas particles, not like wind particles
             printf("Adding SN ejecta of mass %g from star %llu at time %g, unspawned mass at %g\n", dm_wind, P[n].ID, All.Time, (BPP(n).unspawned_wind_mass+dm_wind));
             BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
+            if (BPP(n).BH_Mass < 0.5*(SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger)){ //less than half a shell mass left in the star
+                //Instead of spawning the last shell with very low mass particles we will make the one before slightly more massive
+                dm_wind += BPP(n).BH_Mass; //add leftover mass to be spawned
+                BPP(n).BH_Mass = 0; //zero out mass
+            }
+            if (BPP(n).BH_Mass == 0){
+                TreeReconstructFlag = 1; //rebuild the tree after the SN finished
+                MaxUnSpanMassBH = DMAX(2*(BH_WIND_SPAWN)*All.BAL_wind_particle_mass,MaxUnSpanMassBH); //a high enough number to ensure that we do spawn winds
+            }
         }
 #endif 
         BPP(n).unspawned_wind_mass += dm_wind;
