@@ -273,7 +273,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     if(All.GasReturnFraction <= 0) return;
     double D_RETURN_FRAC = 0.01; // fraction of particle mass to return on a recycling step //
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-    D_RETURN_FRAC = 1.0e-7; // needs to be much smaller to have quasi-continuous winds on these scales //
+    D_RETURN_FRAC = 1.0e-15; // needs to be much smaller to have quasi-continuous winds on these scales //
     double M_sol = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS); // M in solar
     // /* use a standard scaling from e.g. Castor, Abbot, & Klein */
     // double L_sol = bh_lum_bol(0, P[i].Mass, i) * All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM); // L in solar
