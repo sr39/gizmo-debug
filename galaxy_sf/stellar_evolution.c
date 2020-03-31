@@ -274,7 +274,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     double D_RETURN_FRAC = 0.01; // fraction of particle mass to return on a recycling step //
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     D_RETURN_FRAC = 1.0e-15; // needs to be much smaller to have quasi-continuous winds on these scales //
-    double M_sol = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS); // M in solar
+    //double M_sol = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS); // M in solar
     // /* use a standard scaling from e.g. Castor, Abbot, & Klein */
     // double L_sol = bh_lum_bol(0, P[i].Mass, i) * All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM); // L in solar
     // double gam = DMIN(0.5,3.2e-5*L_sol/M_sol); // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons
@@ -285,7 +285,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     // p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
     /*Use Vink 2001 scaling*/
     double mdot = singlestar_single_star_wind_mdot(i,2);
-    double p = mdot / M_sol; // mass fraction returned in code units
+    double p = mdot / P[i].Mass; // mass fraction returned in code units
     p *= All.GasReturnFraction * dt; // fraction of particle mass expected to return in the timestep //
     p = 1.0 - exp(-p); // need to account for p>1 cases //
     
