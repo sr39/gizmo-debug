@@ -718,9 +718,12 @@ double singlestar_single_star_wind_mdot(int n, int mode){
 double singlestar_WR_lifetime_Gyr(int n){
     //Calculate lifetime for star in Wolf-Rayet Phase
     double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
+    double ZZ = P[n].Metallicity[0]/All.SolarAbundances[0]; //relative metallicity to solar
     if (m_solar<=20.0){return 0.;} //No WR phase below that
     //Using prescription based on Fig 7 from Meynet & Maeder 2005, all >10 Msun star spend the end of their lifetime as WR
-    return DMAX(0.,1e-4*( 3.21262558e-08*pow(m_solar,5) - 1.20817535e-05*pow(m_solar,4) + 1.65937212e-03*pow(m_solar,3) - 1.02688023e-01*m_solar*m_solar + 3.00550366*m_solar - 3.04795643e+01 ));
+    //return DMAX(0.,1e-4*( 3.21262558e-08*pow(m_solar,5) - 1.20817535e-05*pow(m_solar,4) + 1.65937212e-03*pow(m_solar,3) - 1.02688023e-01*m_solar*m_solar + 3.00550366*m_solar - 3.04795643e+01 ));
+    //Simpler prescription from the same plot
+    return DMAX(0., 1.5e-3 * DMIN(1., ((m_solar-20.)/80.)) * pow(ZZ,0.5) );
 }
 
 #endif
