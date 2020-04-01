@@ -452,6 +452,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define SINGLE_STAR_FB_WINDS_N_WIND_PARAM 10 //Parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds). Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
 #define SINGLE_STAR_FB_WINDS_MIN_MASS 2.0 //Minimum stellar mass to have winds
 #define SINGLE_STAR_FB_WINDS_VARIABLE_WIND_MODES //a star can switch between the spawning and the unresolved wind modules (otherwise it is stuck with what it started MS with)
+#define SINGLE_STAR_FB_WINDS_WOLF_RAYET //assumes that O stars turn into WR stars at the end of their lifetime, increasing their mass loss rate
 #endif
 #endif
 

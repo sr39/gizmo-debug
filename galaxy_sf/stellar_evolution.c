@@ -683,6 +683,13 @@ double singlestar_single_star_wind_mdot(int n, int mode){
             logmdot_wind = -6.688 + 2.21*log10(BPP(n).StarLuminosity_Solar/1.0e5) - 1.339*log10(m_solar/30.) - 1.601*log10(v_esc_over_terminal/2.0) + 1.07*log10(T_eff/2.0e4) + 0.85*log10(ZZ);
         }
         wind_mass_loss_rate = pow(10.0,logmdot_wind) * WIND_MASS_LOSS_RATE_REDUCTION_FACTOR * (SOLAR_MASS/SEC_PER_YEAR)/(All.UnitMass_in_g/All.UnitTime_in_s); //reducing the rate to be more in line with observations, see Nathan Smith 2014, conversion to code units from Msun/yr
+#ifdef SINGLE_STAR_FB_WINDS_WOLF_RAYET
+        //Let's try to check if this is a massive star in the Wolf-Rayet phase
+        if( evaluate_stellar_age_Gyr(P[n].StellarAge) > (stellar_lifetime_in_Gyr(n) - singlestar_WR_lifetime_Gyr(n)) ){
+            //Our star is in the WR phase, for now use the simple prescription of having 10x higher wind loss rates based on Smith 2014
+            wind_mass_loss_rate *= 10.0;
+        }
+#endif
         //Let's deal with the case of undefined wind mode (just promoted to MS or restart from snapshot)
 #ifndef SINGLE_STAR_FB_WINDS_VARIABLE_WIND_MODES
         if ( (wind_mass_loss_rate>0) && (P[n].wind_mode!=1) && (P[n].wind_mode!=2) ){ //this is a bit of lazy programming but it is quite unlikely for the uninitialized value to be exactly either 1 or 2
@@ -707,6 +714,17 @@ double singlestar_single_star_wind_mdot(int n, int mode){
     return wind_mass_loss_rate;
 }
 
+#ifdef SINGLE_STAR_FB_WINDS_WOLF_RAYET
+double singlestar_WR_lifetime_Gyr(int n){
+    //Calculate lifetime for star in Wolf-Rayet Phase
+    double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
+    if (m_solar<=20.0){return 0;} //No WR phase below that
+    //Using prescription based on Fig 7 from Meynet & Maeder 2005, all >10 Msun star spend the end of their lifetime as WR
+    return 1e-4*( 3.2e-08*pow(m_solar,5) - 1.2e-05*pow(m_solar,4) + 1.6e-03*pow(m_solar,3) - 0.1*m_solar*m_solar + 3.0*m_solar - 30.4 );
+}
+
+#endif
+
 
 double singlestar_single_star_wind_velocity(int n){
 /* Let's get the wind velocity for MS stars */
@@ -718,14 +736,15 @@ double singlestar_single_star_wind_velocity(int n){
 }
 #endif
 
-#ifdef  SINGLE_STAR_FB_SNE
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
 double stellar_lifetime_in_Gyr(int n){
     //Estimate lifetime of star, using simple MS approximation t/Gyr ~ 9.6 M/L in solar
     double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
     //double l_solar = bh_lum_bol(0,P[i].Mass,i) * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM));
     return 9.6 * (m_solar / P[n].StarLuminosity_Solar);    
 }
-
+#endif
+#ifdef  SINGLE_STAR_FB_SNE
 double singlestar_single_star_SN_velocity(int n){
     //Let's try to get the velocity of SN ejecta
     //Simple model: 10^51 erg/SN, distributed evenly among the mass

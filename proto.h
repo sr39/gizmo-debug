@@ -522,14 +522,17 @@ double ps_lum_MS(double m);
 double ps_radius_MS_in_solar(double m);
 double ps_lum_Hayashi_BB(double m, double r);
 #endif
+double stellar_lifetime_in_Gyr(int n);
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
 double singlestar_single_star_wind_mdot(int n, int mode);
 double singlestar_single_star_wind_velocity(int n);
+#ifdef SINGLE_STAR_FB_WINDS_WOLF_RAYET
+double singlestar_WR_lifetime_Gyr(int n);
+#endif
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
 double singlestar_single_star_SN_velocity(int n);
-double stellar_lifetime_in_Gyr(int n);
 void singlestar_single_star_SN_init_directions(void);
 #endif
 
