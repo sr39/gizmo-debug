@@ -693,12 +693,15 @@ double singlestar_single_star_wind_mdot(int n, int mode){
             double v_wind = singlestar_single_star_wind_velocity(n);
             double t_wind =sqrt( wind_mass_loss_rate * pow(v_wind,-3.0) * (3.0/(4.0*M_PI*P[n].DensAroundStar)) );
             double N_wind = wind_mass_loss_rate * t_wind / All.BAL_wind_particle_mass;
+            int old_wind_mode = P[n].wind_mode;
             if ( N_wind >= SINGLE_STAR_FB_WINDS_N_WIND_PARAM ){
                 P[n].wind_mode = 1; //we can spawn enough particles per wind time
             } else{
                 P[n].wind_mode = 2; //we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
             }
-            printf("Star %llu has Mdot %g and vwind %g leading to N_wind %g at t %g. Setting wind mode to %d \n",P[n].ID,wind_mass_loss_rate,v_wind, N_wind, All.Time, P[n].wind_mode);
+            if (old_wind_mode != P[n].wind_mode){
+                printf("Wind mode change for star %llu to %d at %g. Mdot_wind %g vwind %g N_wind %g N_hsml %g \n",P[n].ID,P[n].wind_mode,All.Time, wind_mass_loss_rate,v_wind, N_wind, P[n].Hsml/(v_wind*(All.BAL_wind_particle_mass/wind_mass_loss_rate)));
+            }
         }
     }
     return wind_mass_loss_rate;
