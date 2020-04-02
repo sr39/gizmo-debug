@@ -1883,13 +1883,14 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 double V_j = P[j].Mass / SphP[j].Density;
                 double Face_Area_Vec[3];                               
                 double wt_i,wt_j; wt_i=V_i; wt_j=V_j;
-#if (SLOPE_LIMITER_TOLERANCE != 2) && !((defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)) || defined(SINGLE_STAR_SINK_DYNAMICS) // unless using the most aggressive reconstruction, we will limit face-area disparity here //
+#if (SLOPE_LIMITER_TOLERANCE != 2) && !((defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)) // unless using the most aggressive reconstruction, we will limit face-area disparity here //
 #if defined(COOLING) || (SLOPE_LIMITER_TOLERANCE==0)
                 if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=2.*V_i*V_j/(V_i+V_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
 #else
                 if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*PPP[j].Hsml+V_j*local.Hsml)/(local.Hsml+PPP[j].Hsml);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = (V_i*PPP[j].Hsml + V_j*local.Hsml) / (local.Hsml+PPP[j].Hsml); // should these be H, or be -effective sizes- //
 #endif
-#endif                
+#endif
+                double Face_Area_Norm = 0;
                 for(k=0;k<3;k++)
                 {
                     /* calculate the face area between the particles (must match what is done in the actual hydro routine! */
@@ -1897,6 +1898,19 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                                      + kernel.wk_j * wt_j * (SphP[j].NV_T[k][0]*kernel.dp[0] + SphP[j].NV_T[k][1]*kernel.dp[1] + SphP[j].NV_T[k][2]*kernel.dp[2]);
                     if(All.ComovingIntegrationOn) {Face_Area_Vec[k] *= All.cf_atime*All.cf_atime;} /* Face_Area_Norm has units of area, need to convert to physical */
                     /* on the first pass, we need to save the face information to be used to correct the gradients; this only needs to be done once */
+                    Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k];
+                }
+                Face_Area_Norm = sqrt(Face_Area_Norm);                
+                
+#if (defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)
+        /* check if face area exceeds maximum geometric allowed limit (can occur when particles with -very- different Hsml interact at the edge of the kernel, limited to geometric max to prevent numerical instability */
+                double Particle_Size_j = Get_Particle_Size(j);
+                double Particle_Size_i = pow(local.Mass/local.GQuant.Density, 1./NUMDIMS); // pow call too expensive?
+                double Amax = DMIN(Get_Particle_Expected_Area(Particle_Size_i) , Get_Particle_Expected_Area(Particle_Size_j)); // minimum of area "i" or area "j": this subroutine takes care of dimensionality, etc. note inputs are all in -physical- units here
+                if(Face_Area_Norm > Amax) {for(k=0;k<3;k++) {Face_Area_Vec[k] = (Amax/Face_Area_Norm) * Face_Area_Vec[k];}} /* set the face area to the maximum limit, and reset the face vector as well [ direction is preserved, just area changes] */
+#endif
+                
+                for(k=0;k<3;k++){
                     if(gradient_iteration == 0)
                     {
                         out.Face_Area[k] += Face_Area_Vec[k];
