@@ -531,7 +531,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     double total_mass_in_winds = BPP(i).unspawned_wind_mass;
     int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass ); /* if we set BH_WIND_SPAWN we presumably wanted to do this in an exactly-conservative manner, which means we want to have an even number here. */
 #ifdef SINGLE_STAR_FB_SNE
-    double ux[3],uy[3]={0,1,0},uz[3]={22,22,22}; //new random coordinate system, we will use it later, we just need to init it before the loop over the spawned particles, uz deliberataly initialized with invalid numbers
+    double ux[3],uy[3]={1,get_random_number(P[i].ID+P[i].ID_child_number+1), get_random_number(P[i].ID+P[i].ID_child_number+2)},uz[3]={22,22,22}; //new random coordinate system, we will use it later, we just need to init it before the loop over the spawned particles, uz deliberataly initialized with invalid numbers
     if (P[i].ProtoStellarStage == 6){
         n_particles_split   = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
         if (P[i].BH_Mass == 0){ //Last batch to be spawned
@@ -822,10 +822,10 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         uy[0]=ux[1]*uz[2]-ux[2]*uz[1]; uy[1]=ux[2]*uz[0]-ux[0]*uz[2]; uy[2]=ux[0]*uz[1]-ux[1]*uz[0];
         double u_mag = sqrt(ux[0]*ux[0]+ux[1]*ux[1]+ux[2]*ux[2]);
         //normalize  ux
-        for(k=0;k<3;k++) {ux[k] /= u_mag;} 
+        for(k=0;k<3;k++) {ux[k] /= u_mag;}
         //normalize  uy
         u_mag = sqrt(uy[0]*uy[0]+uy[1]*uy[1]+uy[2]*uy[2]);
-        for(k=0;k<3;k++) {uy[k] /= u_mag;} 
+        for(k=0;k<3;k++) {uy[k] /= u_mag;}
         //printf("Magnitudes: dx_u %g u %g SN_Ejecta_Direction %g\n", (dx_u[0]*dx_u[0]+dx_u[1]*dx_u[1]+dx_u[2]*dx_u[2]),(ux[0]*ux[0]+ux[1]*ux[1]+ux[2]*ux[2]),(All.SN_Ejecta_Direction[dir_ind][0]*All.SN_Ejecta_Direction[dir_ind][0]+All.SN_Ejecta_Direction[dir_ind][1]*All.SN_Ejecta_Direction[dir_ind][1]+All.SN_Ejecta_Direction[dir_ind][2]*All.SN_Ejecta_Direction[dir_ind][2]));
         //Particle positioned at one of the regular positions on the randomized coordinate system
         for(k=0;k<3;k++) {
