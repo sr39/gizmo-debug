@@ -1056,7 +1056,7 @@ integertime get_timestep(int p,		/*!< particle index */
         if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ){ //Star going supernova, still has mass to eject
             double t_clear=P[p].SinkRadius/singlestar_single_star_SN_velocity(p); //time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
             //Let's make the timestep as low as possible but longer than the time needed for previous ejecta to clear the area and safely above the smallest allowable timestep to avoid crashing
-            dt = DMIN(dt,DMAX(t_clear,DMAX(All.MinSizeTimestep,All.Timebase_interval)* 1.01));
+            dt = DMIN(dt,DMAX(t_clear/2,DMAX(All.MinSizeTimestep,All.Timebase_interval)* 1.01));
             //printf("New timestep of %g, time to clear area is %g\n", dt, t_clear);
         }
 #endif 
