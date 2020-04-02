@@ -533,7 +533,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     int k=0; long j;
 #ifdef SINGLE_STAR_FB_SNE
     double ux[3],uy[3],uz[3]={22,22,22}; //new random coordinate system, we will use it later, we just need to init it before the loop over the spawned particles, uz deliberataly initialized with invalid numbers
-    for(k=0; k<3; k++) {uy[k] = 2*get_random_number(P[i].ID + P[i].child_number + k) - 1;}
+    for(k=0; k<3; k++) {uy[k] = 2*get_random_number(P[i].ID + P[i].ID_child_number + k) - 1;}
     if (P[i].ProtoStellarStage == 6){
         n_particles_split   = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
         if (P[i].BH_Mass == 0){ //Last batch to be spawned
