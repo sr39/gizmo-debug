@@ -306,25 +306,6 @@ integertime get_timestep(int p,		/*!< particle index */
                          double *aphys,	/*!< acceleration (physical units) */
                          int flag	/*!< either 0 for normal operation, or finite timestep to get corresponding aphys */ )
 {
-#ifdef MHDCOOL_DEBUG
-    if((P[p].Type==0) && (P[p].Mass > 0)){
-//        double bmag=0; int k; for(k=0;k<3;k++)// {bmag+=Get_Particle_BField(p,k)*Get_Particle_BField(p,k);}
-//    double v_A = sqrt(bmag/SphP[p].Density);
-    double v_A = 0;
-    double cs = Particle_effective_soundspeed_i(p);
-    double ag=0, ah=0, vmag = 0; int k; for(k=0; k<3; k++) {vmag += P[p].Vel[k]*P[p].Vel[k]; ag += P[p].GravAccel[k]*P[p].GravAccel[k]; ah+= SphP[p].HydroAccel[k]*SphP[p].HydroAccel[k];}
-    vmag = sqrt(vmag);
-    ag = sqrt(ag);
-    ah = sqrt(ah);
-//    if((P[p].ID == 105494)||(P[p].ID==132427)||(P[p].ID == 33797)||(P[p].ID==144336)||(P[p].ID==41585)) {
-//        printf("Particle %ld cs=%g v=%g v_A=%g rho=%g g=%g a_hydro=%g\n", P[p].ID, cs, vmag, v_A, SphP[p].Density, ag, ah);
-//    }
-    if((cs > 1e6) || (v_A > 1e6) || (vmag > 1e6) || (DMAX(ah,ag) > 10*4300*All.G*100/1e-4/1e-4)) {
-        printf("t=%g cs=%g v_A=%g particle %ld with mass %g  density %g, g=%g ah=%g xyz=%g %g %g, v=%g %g %g dist=%g\n",All.Time, cs, v_A, P[p].ID, P[p].Mass, SphP[p].Density, ag, ah, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].Vel[0], P[p].Vel[1], P[p].Vel[2], P[p].min_dist_to_bh);
-        endrun(42069);
-    }
-    }
-#endif
     double ax, ay, az, ac, csnd = 0, dt = All.MaxSizeTimestep, dt_courant = 0, dt_divv = 0;
     integertime ti_step; int k; k=0;
 #ifdef CHEMCOOL
