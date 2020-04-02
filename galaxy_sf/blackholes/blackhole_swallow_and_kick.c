@@ -782,7 +782,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
             double dx_u_orig[3];
             double wind_norm=0;
             for(k=0;k<3;k++) {wind_norm += P[i].Wind_direction[k]*P[i].Wind_direction[k];} //used later to check if we have a valid direction
-            switch (P[i].ID_child_number % 6) //
+            switch ((P[i].ID_child_number-1) % 6) //
             {
                 case 0: for(k=0;k<3;k++) {P[i].Wind_direction[k] = dx_u[k];} break; //store direction of launch
                 case 1: break; // nothing to be done
