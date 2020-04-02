@@ -1883,7 +1883,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 double V_j = P[j].Mass / SphP[j].Density;
                 double Face_Area_Vec[3];                               
                 double wt_i,wt_j; wt_i=V_i; wt_j=V_j;
-#if (SLOPE_LIMITER_TOLERANCE != 2) && !((defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)) // unless using the most aggressive reconstruction, we will limit face-area disparity here //
+#if (SLOPE_LIMITER_TOLERANCE != 2) && !((defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)) || defined(SINGLE_STAR_SINK_DYNAMICS) // unless using the most aggressive reconstruction, we will limit face-area disparity here //
 #if defined(COOLING) || (SLOPE_LIMITER_TOLERANCE==0)
                 if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=2.*V_i*V_j/(V_i+V_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
 #else

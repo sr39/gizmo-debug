@@ -282,12 +282,7 @@ void do_the_cooling_for_particle(int i)
         SphP[i].Pressure = get_pressure(i);
 #ifndef COOLING_OPERATOR_SPLIT
         SphP[i].DtInternalEnergy = 0;
-#endif
-
-#ifdef MHDCOOL_DEBUG       
-        if(unew/uold > 10) printf("WARNING unew=%g uold=%g rho=%g for particle %d\n", unew, uold, SphP[i].Density, P[i].ID);
 #endif        
-        
        
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) 
         /* count off time which has passed since ionization 'clock' */
