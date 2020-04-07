@@ -481,9 +481,8 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
     double frad = 0.18; //limit for forming radiative barrier, based on Offner+MckKee 2011 source code
     double fk = 0.5; //fraction of kinetic energy that is radiated away in the inner disk before reaching the surface, using default ORION value here as it is not a GIZMO input parameter
     double f_acc = 0.5; //fraction of accretion power that is radiated away instead of being used to drive winds, using default ORION value here as it is not a GIZMO input parameter
-#ifdef SINGLE_STAR_FB_JETS
-    //We can convert the GIZMO parameters into their ORION versions, FWIND=(1.0-All.BAL_f_accretion) and f_acc = (1.0-All.BAL_f_accretion)*SINGLE_STAR_FB_JETS_POWER_FACTOR.
-    f_acc = (1.0-All.BAL_f_accretion)*SINGLE_STAR_FB_JETS_POWER_FACTOR/All.BAL_f_accretion; //But we need to be careful because the f_acc here only sees the modified mdot = All.BAL_f_accretion * mdot_now_ind, so we need to divide with All.BAL_f_accretion. For our nominal All.BAL_f_accretion=0.7 and SINGLE_STAR_FB_JETS_POWER_FACTOR=1 this yields 0.42, not that far from the ORION value of 0.5
+#ifdef SINGLE_STAR_FB_JETS //We can convert the GIZMO parameters into their ORION versions, FWIND=(1.0-All.BAL_f_accretion) and .
+    f_acc = (1.0-All.BAL_f_accretion)*SINGLE_STAR_FB_JETS/All.BAL_f_accretion; //But we need to be careful because the f_acc here only sees the modified mdot = All.BAL_f_accretion * mdot_now_ind, so we need to divide with All.BAL_f_accretion. For our nominal All.BAL_f_accretion=0.7 and 'muliplier'=1 this yields 0.42, not that far from the ORION value of 0.5
 #endif
     double max_rel_dr = 0.01; //Maximum relative change in radius per step, if the change over a single timestep is larger than this than we subcycle the evolution of the stellar radius
     double mass = BPP(n).BH_Mass; //mass of star/protostar at the end of the timestep
@@ -657,13 +656,18 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 #if defined(SINGLE_STAR_FB_WINDS)
 double singlestar_single_star_wind_mdot(int n, int mode){
 /* Let's get the wind mass loss rate for MS stars. n is the index of the particle (P[n]). mode is 1 when called by the wind spawning routine (blackhole.c) and 2 if called by the FIRE wind module (in this file, mechanical_fb_calculate_eventrates_Winds). The function decides which type of wind feedback is appropriate for the current star and will only give a nonzero mdot to one of these */
+    double wind_mass_loss_rate_reduction_factor = 0.33; // reducing the mass loss rate due to winds to be more in line with observations, see Nathan Smith 2014
+    double minimum_stellarmass_for_winds_solar  = 2.0;  // minimum stellar mass allowed to have winds
+    int    model_wolf_rayet_phase_explicitily   = 1;    // assumes that O stars turn into WR stars at the end of their lifetime, increasing their mass loss rate
+    int    n_particles_for_discrete_wind_spawn  = 10;   // parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds) -- particle number required to trigger 'explicit' spawn module. Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
+
     if ( (mode!=P[n].wind_mode) && ( (P[n].wind_mode==1) || (P[n].wind_mode==2)) ){
         //In this case the particle has a defined wind mode that is different than the module calling this routine 
         return 0;
     }
     double wind_mass_loss_rate=0; //mass loss rate in code units
     double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
-    if (m_solar < SINGLE_STAR_FB_WINDS_MIN_MASS){return 0.0;} //no winds for low mass stars
+    if (m_solar < single_star_fb_winds_min_mass_solar){return 0.0;} //no winds for low mass stars
     if (BPP(n).ProtoStellarStage == 5){ //Winds are for MS only
         /*Use Vink 2001 model, which should capture metallicity dependence and is more accurate than CAK*/
         // We are assuming that METALS are also on
@@ -682,26 +686,16 @@ double singlestar_single_star_wind_mdot(int n, int mode){
             //Mass loss rate using Vink 2001 Eq 25
             logmdot_wind = -6.688 + 2.21*log10(BPP(n).StarLuminosity_Solar/1.0e5) - 1.339*log10(m_solar/30.) - 1.601*log10(v_esc_over_terminal/2.0) + 1.07*log10(T_eff/2.0e4) + 0.85*log10(ZZ);
         }
-        wind_mass_loss_rate = pow(10.0,logmdot_wind) * WIND_MASS_LOSS_RATE_REDUCTION_FACTOR * (SOLAR_MASS/SEC_PER_YEAR)/(All.UnitMass_in_g/All.UnitTime_in_s); //reducing the rate to be more in line with observations, see Nathan Smith 2014, conversion to code units from Msun/yr
-#ifdef SINGLE_STAR_FB_WINDS_WOLF_RAYET
-        //Let's try to check if this is a massive star in the Wolf-Rayet phase
-        if( evaluate_stellar_age_Gyr(P[n].StellarAge) > (stellar_lifetime_in_Gyr(n) - singlestar_WR_lifetime_Gyr(n)) ){
-            //Our star is in the WR phase, for now use the simple prescription of having 10x higher wind loss rates based on Smith 2014
-            wind_mass_loss_rate *= 10.0;
-        }
-#endif
+        wind_mass_loss_rate = wind_mass_loss_rate_reduction_factor * pow(10.0,logmdot_wind) * (SOLAR_MASS/SEC_PER_YEAR)/(All.UnitMass_in_g/All.UnitTime_in_s); //reducing the rate to be more in line with observations, see Nathan Smith 2014, conversion to code units from Msun/yr
+        if(model_wolf_rayet_phase_explicitily) {if(evaluate_stellar_age_Gyr(P[n].StellarAge) > (stellar_lifetime_in_Gyr(n)-singlestar_WR_lifetime_Gyr(n))){wind_mass_loss_rate*=10;} //Our star is in the WR phase, for now use the simple prescription of having 10x higher wind loss rates based on Smith 2014
         //Let's deal with the case of undefined wind mode (just promoted to MS or restart from snapshot)
-#ifndef SINGLE_STAR_FB_WINDS_VARIABLE_WIND_MODES
-        if ( (wind_mass_loss_rate>0) && (P[n].wind_mode!=1) && (P[n].wind_mode!=2) ){ //this is a bit of lazy programming but it is quite unlikely for the uninitialized value to be exactly either 1 or 2
-#else
         if (wind_mass_loss_rate>0){
-#endif
             //Let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
             double v_wind = singlestar_single_star_wind_velocity(n);
             double t_wind =sqrt( wind_mass_loss_rate * pow(v_wind,-3.0) * (3.0/(4.0*M_PI*P[n].DensAroundStar)) );
             double N_wind = wind_mass_loss_rate * t_wind / All.BAL_wind_particle_mass;
             int old_wind_mode = P[n].wind_mode;
-            if ( N_wind >= SINGLE_STAR_FB_WINDS_N_WIND_PARAM ){
+            if ( N_wind >= n_particles_for_discrete_wind_spawn ){
                 P[n].wind_mode = 1; //we can spawn enough particles per wind time
             } else{
                 P[n].wind_mode = 2; //we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
@@ -714,19 +708,13 @@ double singlestar_single_star_wind_mdot(int n, int mode){
     return wind_mass_loss_rate;
 }
 
-#ifdef SINGLE_STAR_FB_WINDS_WOLF_RAYET
-double singlestar_WR_lifetime_Gyr(int n){
-    //Calculate lifetime for star in Wolf-Rayet Phase
+double singlestar_WR_lifetime_Gyr(int n){ //Calculate lifetime for star in Wolf-Rayet Phase
     double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
     double ZZ = P[n].Metallicity[0]/All.SolarAbundances[0]; //relative metallicity to solar
     if (m_solar<=20.0){return 0.;} //No WR phase below that
     //Using prescription based on Fig 7 from Meynet & Maeder 2005, all >10 Msun star spend the end of their lifetime as WR
-    //return DMAX(0.,1e-4*( 3.21262558e-08*pow(m_solar,5) - 1.20817535e-05*pow(m_solar,4) + 1.65937212e-03*pow(m_solar,3) - 1.02688023e-01*m_solar*m_solar + 3.00550366*m_solar - 3.04795643e+01 ));
-    //Simpler prescription from the same plot
     return DMAX(0., 1.5e-3 * DMIN(1., ((m_solar-20.)/80.)) * pow(ZZ,0.5) );
 }
-
-#endif
 
 
 double singlestar_single_star_wind_velocity(int n){
@@ -748,16 +736,14 @@ double stellar_lifetime_in_Gyr(int n){
 }
 #endif
 #ifdef  SINGLE_STAR_FB_SNE
-double singlestar_single_star_SN_velocity(int n){
-    //Let's try to get the velocity of SN ejecta
-    //Simple model: 10^51 erg/SN, distributed evenly among the mass
-    return sqrt(SINGLE_STAR_FB_SNE_KINETIC_ENERGY_FRACTION * (2e51/All.UnitEnergy_in_cgs)/P[n].Mass_final); //simple v=sqrt(2E/m)should be fine without relativistic corrections
+double singlestar_single_star_SN_velocity(int n){ // Initial velocity of SNe ejecta: 10^51 erg/SN, distributed evenly among the mass
+    return sqrt(SINGLE_STAR_FB_SNE * (2e51/All.UnitEnergy_in_cgs)/P[n].Mass_final); //simple v=sqrt(2E/m)should be fine without relativistic corrections
 }
 
 void singlestar_single_star_SN_init_directions(void){
     /* routine to initialize the distribution of spawned wind particles during SNe. This is essentially a copy of the function rt_init_intensity_directions() in rt_utilities.c */
-    int n_polar = SINGLE_STAR_FB_SNE_N_EJECTA_POLAR;
-    if(n_polar < 1) {printf("Number of SN ehecta particles is invalid (<1). Terminating.\n"); endrun(53463431);}
+    int n_polar = SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT;
+    if(n_polar < 1) {printf("Number of SN ejecta particles is invalid (<1). Terminating.\n"); endrun(53463431);}
     double mu[n_polar]; int i,j,k,l,n=0,n_oct=n_polar*(n_polar+1)/2,n_tot=8*n_oct;
     double SN_Ejecta_Direction_tmp[n_oct][3];
     for(j=0;j<n_polar;j++) {mu[j] = sqrt( (j + 1./6.) / (n_polar - 1./2.) );}
