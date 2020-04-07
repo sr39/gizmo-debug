@@ -467,7 +467,8 @@ void set_blackhole_mdot(int i, int n, double dt)
 */
     mdot_eff = mdot; /* even if we are using gravcapture, and alpha-disk, then it's actually this we want to use [the rate of material depleting out of the disk, which is the rate of total angular momentum loss in the disk ] */
     for(k=0;k<3;k++) {jmag+=BlackholeTempInfo[i].angmom_prepass_sum_for_passback[k]*BlackholeTempInfo[i].angmom_prepass_sum_for_passback[k]; lmag+=BPP(n).BH_Specific_AngMom[k]*BPP(n).BH_Specific_AngMom[k];}
-    if(jmag>0 && lmag>0) {BlackholeTempInfo[i].angmom_norm_topass_in_swallowloop = P[n].Mass * sqrt(lmag) * mdot_eff * dt / sqrt(jmag);} /* this should be in units such that, times CODE radius+(code=physical) ang-mom, gives CODE velocity: looks ok at present */
+    double t_acc = BPP(n).BH_Mass_AlphaDisk/BPP(n).BH_Mdot;
+    if(jmag>0 && lmag>0) {BlackholeTempInfo[i].angmom_norm_topass_in_swallowloop = P[n].Mass * sqrt(lmag) * (dt/t_acc)  / sqrt(jmag);} /* this should be in units such that, times CODE radius+(code=physical) ang-mom, gives CODE velocity: looks ok at present */
 #endif
     
     /* alright, now we can FINALLY set the BH accretion rate */
@@ -678,8 +679,15 @@ void blackhole_final_operations(void)
     for(i=0; i<N_active_loc_BHs; i++)
     {
         n = BlackholeTempInfo[i].index;
+        int update_bh_moments = 0; // flag whether to go into the block below updating conserved quantities like mass, momentum, etc
+        if(P[n].Mass > 0){
+            if((BlackholeTempInfo[i].accreted_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass_alphadisk>0)) { update_bh_moments = 1;}
+#ifdef BH_FOLLOW_ACCRETED_ANGMOM
+            for(k=0; k<3; k++) {if(BlackholeTempInfo[i].accreted_J[k] != 0) {update_bh_moments = 1;}}
+#endif
+        }
         
-        if(((BlackholeTempInfo[i].accreted_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass_alphadisk>0)) && P[n].Mass > 0)
+        if(update_bh_moments)
         {
 #ifdef HERMITE_INTEGRATION
             P[n].AccretedThisTimestep = 1;
@@ -689,7 +697,10 @@ void blackhole_final_operations(void)
             m_new = P[n].Mass + BlackholeTempInfo[i].accreted_BH_Mass + BlackholeTempInfo[i].accreted_BH_Mass_alphadisk;
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM) && !defined(BH_REPOSITION_ON_POTMIN)
-            for(k=0;k<3;k++) {P[n].Vel[k] = (P[n].Vel[k]*m_new+ BlackholeTempInfo[i].accreted_momentum[k]) / m_new;} 
+            for(k=0;k<3;k++) {
+                P[n].dp[k] += P[n].Vel[k]*(m_new - P[n].Mass) + BlackholeTempInfo[i].accreted_momentum[k];
+                P[n].Vel[k] = (P[n].Vel[k]*m_new+ BlackholeTempInfo[i].accreted_momentum[k]) / m_new;;
+            }
 #endif
 #if defined(BH_FOLLOW_ACCRETED_COM) && !defined(BH_REPOSITION_ON_POTMIN)
             for(k=0;k<3;k++) {P[n].Pos[k] = (P[n].Pos[k]*m_new + BlackholeTempInfo[i].accreted_centerofmass[k]) / m_new;}
@@ -762,7 +773,7 @@ void blackhole_final_operations(void)
         /* DAA: for wind spawning, we only need to subtract the BAL wind mass from BH_Mass (or BH_Mass_AlphaDisk) --> wind mass subtracted from P.Mass in blackhole_spawn_particle_wind_shell()  */
         double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
 #ifdef SINGLE_STAR_FB_JETS
-        if((P[n].BH_Mass * All.UnitMass_in_g / (All.HubbleParam*SOLAR_MASS) < 0.01) || P[n].Mass < 7*All.MinMassForParticleMerger) dm_wind = 0; // no jets launched yet if <0.01msun or if we haven't accreted enough to get a reliable jet direction
+        if((P[n].BH_Mass * All.UnitMass_in_g / (All.HubbleParam*SOLAR_MASS) < 0.01) || P[n].Mass < 7*All.MinMassForParticleMerger) {dm_wind = 0;} // no jets launched yet if <0.01msun or if we haven't accreted enough to get a reliable jet direction
 #endif
         if(dm_wind > P[n].Mass) {dm_wind = P[n].Mass;}
 #if defined(BH_ALPHADISK_ACCRETION)
@@ -774,6 +785,30 @@ void blackhole_final_operations(void)
         BPP(n).BH_Mass -= dm_wind;
 #endif 
 #endif
+#ifdef SINGLE_STAR_FB_WINDS
+        if (P[n].ProtoStellarStage == 5){ //for MS stars we have winds and no jets
+            dm_wind = singlestar_single_star_wind_mdot(n,1) * dt; //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep
+            BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
+        }
+#endif
+#ifdef SINGLE_STAR_FB_SNE
+        if (P[n].ProtoStellarStage == 6){ //Star old enough to go out with a boom
+            double t_clear=P[n].SinkRadius/singlestar_single_star_SN_velocity(n); //time needed spawned wind particles to clear the sink
+            double SN_mdot = (SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger)/t_clear; //we spawn SINGLE_STAR_FB_SNE_N_EJECTA per ejected shell, and we can have maximum 1 shell per t_clear
+            dm_wind = DMIN(SN_mdot*dt, BPP(n).BH_Mass); //We will spawn particles to model the SN ejecta, but not more than what we can handle at the same time, these particles will have the same mass as gas particles, not like wind particles
+            printf("Adding SN ejecta of mass %g from star %llu at time %g, unspawned mass at %g\n", dm_wind, P[n].ID, All.Time, (BPP(n).unspawned_wind_mass+dm_wind));
+            BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
+            if (BPP(n).BH_Mass < 0.5*(SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger)){ //less than half a shell mass left in the star
+                //Instead of spawning the last shell with very low mass particles we will make the one before slightly more massive
+                dm_wind += BPP(n).BH_Mass; //add leftover mass to be spawned
+                BPP(n).BH_Mass = 0; //zero out mass
+            }
+            if (BPP(n).BH_Mass == 0){
+                TreeReconstructFlag = 1; //rebuild the tree after the SN finished
+                MaxUnSpanMassBH = DMAX(2*(BH_WIND_SPAWN)*All.BAL_wind_particle_mass,MaxUnSpanMassBH); //a high enough number to ensure that we do spawn winds
+            }
+        }
+#endif 
         BPP(n).unspawned_wind_mass += dm_wind;
         if(BPP(n).unspawned_wind_mass>MaxUnSpanMassBH) {MaxUnSpanMassBH=BPP(n).unspawned_wind_mass;}
 #endif

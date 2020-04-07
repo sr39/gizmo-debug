@@ -46,8 +46,13 @@ void determine_where_SNe_occur(void)
         P[i].MassReturn_ThisTimeStep=0;
         P[i].RProcessEvent_ThisTimeStep=0;
 #endif
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+        if(P[i].Type != 5) {continue;} //Sink particles are stars
+        if(P[i].ProtoStellarStage < 5) {continue;} //We need to have started MS to have winds or SN
+#else
         if(All.ComovingIntegrationOn) {if(P[i].Type != 4) {continue;}} // in cosmological simulations, 'stars' have particle type=4
         if(All.ComovingIntegrationOn==0) {if((P[i].Type<2)||(P[i].Type>4)) {continue;}} // in non-cosmological sims, types 2,3,4 are valid 'stars'
+#endif
         if(P[i].Mass<=0) {continue;}
 #ifndef WAKEUP
         dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; // dloga to dt_physical
@@ -695,7 +700,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double boostfac_max = DMIN(1000. , v_ejecta_eff/v_cooling_lim); // boost factor cant exceed velocity limiter - if recession vel large, limits boost
                     if(mom_boost_fac > boostfac_max) {mom_boost_fac = boostfac_max;} // apply limiter
                 } else {
+#ifndef SINGLE_STAR_FB_WINDS
                     mom_boost_fac = DMIN(boost_egycon , boost_max); // simply take minimum - nothing fancy for winds
+#endif
                 }
                 
                 /* save summation values for outputs */
