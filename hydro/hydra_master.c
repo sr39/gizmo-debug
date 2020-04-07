@@ -770,7 +770,7 @@ void hydro_final_operations_and_cleanup(void)
             // = du/dlna -3*(gamma-1)*u ; then dlna/dt = H(z) =  All.cf_hubble_a //
             
             
-#if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_EVOLVE_FLUX) //#elif defined(RT_COMPGRAD_EDDINGTON_TENSOR) /* // -- moved for OTVET+FLD to drift-kick operation to deal with limiters more accurately -- // */
+#if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_EVOLVE_FLUX) && !defined(RT_RADPRESSURE_IN_HYDRO) //#elif defined(RT_COMPGRAD_EDDINGTON_TENSOR) /* // -- moved for OTVET+FLD to drift-kick operation to deal with limiters more accurately -- // */
             /* calculate the radiation pressure force */
             double radacc[3],fluxcorr; radacc[0]=radacc[1]=radacc[2]=0;  int kfreq;
             for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++)
@@ -789,7 +789,7 @@ void hydro_final_operations_and_cleanup(void)
                     work_band += radacc[k] * vel_i[k] * P[i].Mass; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit -- note that we have to be careful about the RSOL factors here! //
                 }
                 SphP[i].Dt_E_gamma[kfreq] += (2.*f_kappa_abs-1.)*work_band;
-                SphP[i].DtInternalEnergy -= 2.*f_kappa_abs*work_band;
+                SphP[i].DtInternalEnergy -= 2.*f_kappa_abs*work_band / P[i].Mass;
             }
             for(k=0;k<3;k++)
             {
@@ -800,7 +800,16 @@ void hydro_final_operations_and_cleanup(void)
 #endif
             } 
 #endif
-
+#ifdef RT_RADPRESSURE_IN_HYDRO
+            int kfreq; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {
+                double fac = (1./3.) * SphP[i].E_gamma_Pred[kfreq] * P[i].Particle_DivVel*All.cf_a2inv * (1.-2.*rt_absorb_frac_albedo(i,kfreq));
+#ifdef RT_FLUXLIMITER
+                fac *= SphP[i].Lambda_FluxLim[kfreq]; // apply flux-limiter
+#endif
+                SphP[i].Dt_E_gamma[kfreq] -= fac; SphP[i].DtInternalEnergy += fac / P[i].Mass; /* exact energy conservation */
+            }
+#endif
+            
             
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME)) /* update the metal masses from exchange */
             for(k=0;k<NUM_METAL_SPECIES;k++) {P[i].Metallicity[k] = DMAX(P[i].Metallicity[k] + SphP[i].Dyield[k] / P[i].Mass , 0.01*P[i].Metallicity[k]);}

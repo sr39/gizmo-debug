@@ -679,7 +679,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             double de_emission_minus_absorption = (ef - (e0 + dt_e_gamma_band * dt_entr)); // total change, relative to what we would get with just advection (positive = net energy increase in the gas)
             if((dt_entr <= 0) || (de_abs <= 0)) {de_abs = 0;}
             
-#if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX)
+#if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX) && !defined(RT_RADPRESSURE_IN_HYDRO)
             // for OTVET/FLD methods, need to apply radiation pressure term here so can limit this b/c just based on a gradient which is not flux-limited [as in hydro operators] //
             {
                 double radacc[3]={0}, rmag=0, vel_i[3], L_particle = Get_Particle_Size(i)*All.cf_atime; // particle effective size/slab thickness
