@@ -467,7 +467,8 @@ void set_blackhole_mdot(int i, int n, double dt)
 */
     mdot_eff = mdot; /* even if we are using gravcapture, and alpha-disk, then it's actually this we want to use [the rate of material depleting out of the disk, which is the rate of total angular momentum loss in the disk ] */
     for(k=0;k<3;k++) {jmag+=BlackholeTempInfo[i].angmom_prepass_sum_for_passback[k]*BlackholeTempInfo[i].angmom_prepass_sum_for_passback[k]; lmag+=BPP(n).BH_Specific_AngMom[k]*BPP(n).BH_Specific_AngMom[k];}
-    if(jmag>0 && lmag>0) {BlackholeTempInfo[i].angmom_norm_topass_in_swallowloop = P[n].Mass * sqrt(lmag) * mdot_eff * dt / sqrt(jmag);} /* this should be in units such that, times CODE radius+(code=physical) ang-mom, gives CODE velocity: looks ok at present */
+    double t_acc = BPP(n).BH_Mass_AlphaDisk/BPP(n).BH_Mdot;
+    if(jmag>0 && lmag>0) {BlackholeTempInfo[i].angmom_norm_topass_in_swallowloop = P[n].Mass * sqrt(lmag) * (dt/t_acc)  / sqrt(jmag);} /* this should be in units such that, times CODE radius+(code=physical) ang-mom, gives CODE velocity: looks ok at present */
 #endif
     
     /* alright, now we can FINALLY set the BH accretion rate */
@@ -678,8 +679,15 @@ void blackhole_final_operations(void)
     for(i=0; i<N_active_loc_BHs; i++)
     {
         n = BlackholeTempInfo[i].index;
+        int update_bh_moments = 0; // flag whether to go into the block below updating conserved quantities like mass, momentum, etc
+        if(P[n].Mass > 0){
+            if((BlackholeTempInfo[i].accreted_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass_alphadisk>0)) { update_bh_moments = 1;}
+#ifdef BH_FOLLOW_ACCRETED_ANGMOM
+            for(k=0; k<3; k++) {if(BlackholeTempInfo[i].accreted_J[k] != 0) {update_bh_moments = 1;}}
+#endif
+        }
         
-        if(((BlackholeTempInfo[i].accreted_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass_alphadisk>0)) && P[n].Mass > 0)
+        if(update_bh_moments)
         {
 #ifdef HERMITE_INTEGRATION
             P[n].AccretedThisTimestep = 1;
