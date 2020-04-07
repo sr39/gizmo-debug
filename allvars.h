@@ -3257,8 +3257,7 @@ enum iofields
   IO_TURB_DIFF_COEFF,
   IO_DYNERROR,
   IO_DYNERRORDEFAULT, 
-#ifdef CHIMES 
-  IO_CHIMES_ABUNDANCES, 
+  IO_CHIMES_ABUNDANCES,
   IO_CHIMES_MU, 
   IO_CHIMES_REDUCED, 
   IO_CHIMES_NH,
@@ -3267,7 +3266,6 @@ enum iofields
   IO_CHIMES_FLUX_ION, 
   IO_CHIMES_STAR_DENS,
   IO_CHIMES_DELAY_HII, 
-#endif 
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };
 
