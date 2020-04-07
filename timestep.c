@@ -342,7 +342,7 @@ integertime get_timestep(int p,		/*!< particle index */
         az += All.cf_a2inv * P[p].GravPM[2];
 #endif
 #if defined(TIDAL_TIMESTEP_CRITERION)
-#if defined(RT_USE_GRAVTREE)
+#if defined(RT_USE_GRAVTREE) && !defined(SINGLE_STAR_FB_RT_HEATING)
         if(P[p].Type>0) // strictly this is better for accuracy, but not necessary
 #endif
         ax = ay = az = 0.0; // we're getting our gravitational timestep criterion from the tidal tensor, but still want to do the accel criterion for other forces
@@ -812,7 +812,7 @@ integertime get_timestep(int p,		/*!< particle index */
                                              Get_Particle_BField(p,2)*Get_Particle_BField(p,2) +
                                              phi_b_units*phi_b_units) / SphP[p].Density );
 
-            dt_courant = 0.8 * All.CourantFac * (All.cf_atime*L_particle) / vsig1; // 2.0 factor may be added (PFH) //
+            dt_courant = DMIN(dt_courant,0.8 * All.CourantFac * (All.cf_atime*L_particle) / vsig1); // 2.0 factor may be added (PFH) //
             if(dt_courant < dt) {dt = dt_courant;}
 #endif
             
@@ -1033,6 +1033,14 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt > dt_min && dt_min > 0) dt = 1.01 * dt_min;
         }
 #endif
+#ifdef SINGLE_STAR_FB_SNE
+        if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ){ //Star going supernova, still has mass to eject
+            double t_clear=P[p].SinkRadius/singlestar_single_star_SN_velocity(p); //time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
+            //Let's make the timestep as low as possible but longer than the time needed for previous ejecta to clear the area and safely above the smallest allowable timestep to avoid crashing
+            dt = DMIN(dt,DMAX(t_clear/2,DMAX(All.MinSizeTimestep,All.Timebase_interval)* 1.01));
+            //printf("New timestep of %g, time to clear area is %g\n", dt, t_clear);
+        }
+#endif 
     } // if(P[p].Type == 5)
 
 #ifdef BH_DEBUG_SPAWN_JET_TEST /* PFH: need to write this in a way that does not make assumptions about units/problem structure */

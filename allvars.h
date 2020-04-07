@@ -363,7 +363,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #define ADAPTIVE_GRAVSOFT_FORGAS
 #define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
-#define BH_RETURN_ANGMOM_TO_GAS
+//#define BH_RETURN_ANGMOM_TO_GAS
 #define SINGLE_STAR_TIMESTEPPING 0
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
@@ -441,11 +441,28 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #endif
 
-#ifdef SINGLE_STAR_FB_JETS
+#if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)
 #define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
 #define MAINTAIN_TREE_IN_REARRANGE // don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed
 #define SINGLE_STAR_FB_JETS_POWER_FACTOR 1.0 //scales the amount of accretion power going into jets, we eject (1-All.BAL_f_accretion) fraction of the accreted mass at SINGLE_STAR_FB_JETS_POWER_FACTOR times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.BAL_f_accretion)
+#if defined(SINGLE_STAR_FB_WINDS)
+#define WIND_MASS_LOSS_RATE_REDUCTION_FACTOR 0.33 //reducing the mass loss rate due to winds to be more in line with observations, see Nathan Smith 2014
+#define GALSF_FB_MECHANICAL //We will use the FIRE wind module for low mass loss rate stars (spawning leads to issues)
+#define GALSF_FB_FIRE_STELLAREVOLUTION //flag needed to calculate properties
+#define SINGLE_STAR_FB_WINDS_N_WIND_PARAM 10 //Parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds). Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
+#define SINGLE_STAR_FB_WINDS_MIN_MASS 2.0 //Minimum stellar mass to have winds
+#define SINGLE_STAR_FB_WINDS_VARIABLE_WIND_MODES //a star can switch between the spawning and the unresolved wind modules (otherwise it is stuck with what it started MS with)
+#define SINGLE_STAR_FB_WINDS_WOLF_RAYET //assumes that O stars turn into WR stars at the end of their lifetime, increasing their mass loss rate
 #endif
+#endif
+
+#ifdef SINGLE_STAR_FB_SNE
+#define SINGLE_STAR_FB_SNE_N_EJECTA_POLAR 6 //determines the maximum number of ejecta particles spawned per timestep, see below
+#define SINGLE_STAR_FB_SNE_N_EJECTA (4*(SINGLE_STAR_FB_SNE_N_EJECTA_POLAR)*((SINGLE_STAR_FB_SNE_N_EJECTA_POLAR)+1)) //Maximum number of ejecta particles spawned per timestep
+#define SINGLE_STAR_FB_SNE_KINETIC_ENERGY_FRACTION 1.0 //fraction of the SN energy in the kinetic energy of particles vs internal
+#endif
+
+
 
 #ifdef SINGLE_STAR_PROMOTION
 #define GALSF_FB_MECHANICAL // allow SNe + winds in promoted stars [at end of main sequence lifetimes]
@@ -473,6 +490,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
 #define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
 #define LONG_INTEGER_TIME // timestep hierarchy can be very deep in these problems; want to be able to follow brief close encounters
+#define RANDOMIZE_GRAVTREE // move the top tree node around randomly so that treeforce errors are not correlated between one treebuild and another
 #endif
 #ifdef HERMITE_INTEGRATION
 #define COMPUTE_JERK_IN_GRAVTREE /* needs to be computed in order to do the Hermite integration */
@@ -1931,6 +1949,10 @@ extern struct global_data_all_processes
     double RT_Intensity_Direction[N_RT_INTENSITY_BINS][3];
 #endif
 
+#ifdef SINGLE_STAR_FB_SNE
+    double SN_Ejecta_Direction[SINGLE_STAR_FB_SNE_N_EJECTA][3];
+#endif
+
 #if defined(RT_CHEM_PHOTOION) && !(defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF))
     double IonizingLuminosityPerSolarMass_cgs;
     double star_Teff;
@@ -2212,7 +2234,11 @@ extern ALIGN(32) struct particle_data
     short int TimeBin;
     MyIDType ID;                    /*! < unique ID of particle (assigned at beginning of the simulation) */
     MyIDType ID_child_number;       /*! < child number for particles 'split' from main (retain ID, get new child number) */
+#ifndef BH_WIND_SPAWN
     int ID_generation;              /*! < generation (need to track for particle-splitting to ensure each 'child' gets a unique child number */
+#else
+    MyIDType ID_generation;
+#endif    
     
     integertime Ti_begstep;         /*!< marks start of current timestep of particle on integer timeline */
     integertime Ti_current;         /*!< current time of the particle */
@@ -2432,10 +2458,16 @@ extern ALIGN(32) struct particle_data
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION    
     MyFloat ProtoStellarAge; /*!< record the proto-stellar age instead of age */
     MyFloat ProtoStellarRadius_inSolar; /*!< protostellar radius (also tracks evolution from protostar to ZAMS star) */
-    int ProtoStellarStage; /*Track the stage of protostellar evolution, 0: pre collapse, 1: no burning, 2: fixed Tc burning, 3: variable Tc burning, 4: shell burning, 5: main sequence, see Offner 2009 Appendix B*/ //IO flag IO_STAGE_PROTOSTAR
+    int ProtoStellarStage; /*Track the stage of protostellar evolution, 0: pre collapse, 1: no burning, 2: fixed Tc burning, 3: variable Tc burning, 4: shell burning, 5: main sequence, 6: supernova, see Offner 2009 Appendix B*/ //IO flag IO_STAGE_PROTOSTAR
     MyFloat Mass_D; /* Mass of gas in the protostar that still contains D to burn */ // IO flag IO_MASS_D_PROTOSTAR
     MyFloat StarLuminosity_Solar; /*the total luminosity of the star in L_solar units*/ //IO flag IO_LUM_SINGLESTAR
-    
+#endif
+#ifdef SINGLE_STAR_FB_WINDS
+    MyFloat Wind_direction[6]; //direction of wind launches, to reduce anisotropy launches go along a random axis then a random perpendicular one, then one perpendicular to both.
+    int wind_mode; //tells what kind of wind model to use, 1 for particle spawning and 2 for using the FIRE wind module
+#endif
+#ifdef  SINGLE_STAR_FB_SNE
+    MyFloat Mass_final; //final mass of the star before going SN (Since this is not saved to snapshots, hard restarts in the middle of spawning an SN will do weird things)
 #endif
     
 #if defined(DM_SIDM)

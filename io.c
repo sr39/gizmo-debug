@@ -1825,14 +1825,20 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
 
         case IO_GENERATION_ID:
+#ifdef BH_WIND_SPAWN  //we use this to store progenitor info so this needs to be able to handle any valid ID, rather than the usual 0-32
+            bytes_per_blockelement = sizeof(MyIDType);
+            break;
+#endif            
+
         case IO_BHPROGS:
         case IO_TRUENGB:
         case IO_AGS_NGBS:
         case IO_GRAINTYPE:
+            bytes_per_blockelement = sizeof(int);
+            break;
         case IO_EOSCOMP:
             bytes_per_blockelement = sizeof(int);
             break;
-            
         case IO_MASS:
         case IO_BH_DIST:
         case IO_SECONDORDERMASS:
@@ -1891,6 +1897,8 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_R_PROTOSTAR:
         case IO_MASS_D_PROTOSTAR:
         case IO_STAGE_PROTOSTAR:
+            bytes_per_blockelement = sizeof(int);
+            break;
         case IO_LUM_SINGLESTAR:
         case IO_CAUSTIC_COUNTER:
         case IO_FLOW_DETERMINANT:
@@ -2149,12 +2157,24 @@ int get_datatype_in_block(enum iofields blocknr)
             break;
 
         case IO_GENERATION_ID:
+#if defined(BH_WIND_SPAWN) && defined(LONGIDS) //we use this to store progenitor info so this needs to be able to handle any valid ID, rather than the usual 0-32       
+            typekey = 2;		/* native long long */
+#else
+            typekey = 0;		/* native int */
+#endif            
+            break;
+            
         case IO_TRUENGB:
         case IO_BHPROGS:
         case IO_GRAINTYPE:
         case IO_EOSCOMP:
             typekey = 0;		/* native int */
             break;
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+        case IO_STAGE_PROTOSTAR:
+            typekey = 0;		/* native int */
+            break;
+#endif            
             
         default:
             typekey = 1;		/* native MyOutputFloat */
