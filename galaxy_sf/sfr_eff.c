@@ -262,7 +262,7 @@ double get_starformation_rate(int i)
     double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i);
     tau_fmol *= (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]);
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(GALSF_SFR_VIRIAL_SF_CRITERION)
-#if (GALSF_SFR_VIRIAL_SF_CRITERION < 2)
+#if (GALSF_SFR_VIRIAL_SF_CRITERION < 0)
     if(SphP[i].Density*All.cf_a3inv > 100.*All.PhysDensThresh) {tau_fmol=-1;} // PFH: note the this is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
 #endif
 #endif
