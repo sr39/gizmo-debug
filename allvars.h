@@ -363,16 +363,13 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #define ADAPTIVE_GRAVSOFT_FORGAS
 #define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
-//#define BH_RETURN_ANGMOM_TO_GAS
 #define SINGLE_STAR_TIMESTEPPING 0
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
-//#define BH_ACCRETE_NEARESTFIRST
 #define DEVELOPER_MODE
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define BH_OUTPUT_GASSWALLOW //save accretion histories
 #define BH_OUTPUT_FORMATION_PROPERTIES //save at-formation properties of sink particles
-//#define GALSF_SFR_IMF_VARIATION // save gas properties at sink formation time
 #define BH_ALPHADISK_ACCRETION (1.0e6)
 #ifdef GRAIN_FLUID
 #define BH_GRAVCAPTURE_NONGAS
@@ -444,22 +441,22 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)
 #define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
 #define MAINTAIN_TREE_IN_REARRANGE // don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed
-#define SINGLE_STAR_FB_JETS_POWER_FACTOR 1.0 //scales the amount of accretion power going into jets, we eject (1-All.BAL_f_accretion) fraction of the accreted mass at SINGLE_STAR_FB_JETS_POWER_FACTOR times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.BAL_f_accretion)
+#if !(CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(SINGLE_STAR_FB_JETS)) /* no numerical value is set, so set one as our 'default' */
+#undef SINGLE_STAR_FB_JETS
+#define SINGLE_STAR_FB_JETS 1 // scales the amount of accretion power going into jets, we eject (1-All.BAL_f_accretion) fraction of the accreted mass at this value times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.BAL_f_accretion)
+#endif
 #if defined(SINGLE_STAR_FB_WINDS)
-#define WIND_MASS_LOSS_RATE_REDUCTION_FACTOR 0.33 //reducing the mass loss rate due to winds to be more in line with observations, see Nathan Smith 2014
 #define GALSF_FB_MECHANICAL //We will use the FIRE wind module for low mass loss rate stars (spawning leads to issues)
 #define GALSF_FB_FIRE_STELLAREVOLUTION //flag needed to calculate properties
-#define SINGLE_STAR_FB_WINDS_N_WIND_PARAM 10 //Parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds). Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
-#define SINGLE_STAR_FB_WINDS_MIN_MASS 2.0 //Minimum stellar mass to have winds
-#define SINGLE_STAR_FB_WINDS_VARIABLE_WIND_MODES //a star can switch between the spawning and the unresolved wind modules (otherwise it is stuck with what it started MS with)
-#define SINGLE_STAR_FB_WINDS_WOLF_RAYET //assumes that O stars turn into WR stars at the end of their lifetime, increasing their mass loss rate
 #endif
-#endif
-
 #ifdef SINGLE_STAR_FB_SNE
-#define SINGLE_STAR_FB_SNE_N_EJECTA_POLAR 6 //determines the maximum number of ejecta particles spawned per timestep, see below
-#define SINGLE_STAR_FB_SNE_N_EJECTA (4*(SINGLE_STAR_FB_SNE_N_EJECTA_POLAR)*((SINGLE_STAR_FB_SNE_N_EJECTA_POLAR)+1)) //Maximum number of ejecta particles spawned per timestep
-#define SINGLE_STAR_FB_SNE_KINETIC_ENERGY_FRACTION 1.0 //fraction of the SN energy in the kinetic energy of particles vs internal
+#if !(CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(SINGLE_STAR_FB_SNE)) /* no numerical value is set, so set one as our 'default' */
+#undef SINGLE_STAR_FB_SNE
+#define SINGLE_STAR_FB_SNE 1 // fraction of the SN energy in the kinetic energy of particles vs internal
+#endif
+#define SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT 6 //determines the maximum number of ejecta particles spawned per timestep, see below
+#define SINGLE_STAR_FB_SNE_N_EJECTA (4*(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)*((SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)+1)) //Maximum number of ejecta particles spawned per timestep
+#endif
 #endif
 
 
