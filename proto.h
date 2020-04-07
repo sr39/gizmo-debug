@@ -527,9 +527,7 @@ double stellar_lifetime_in_Gyr(int n);
 #if defined(SINGLE_STAR_FB_WINDS)
 double singlestar_single_star_wind_mdot(int n, int mode);
 double singlestar_single_star_wind_velocity(int n);
-#ifdef SINGLE_STAR_FB_WINDS_WOLF_RAYET
 double singlestar_WR_lifetime_Gyr(int n);
-#endif
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
 double singlestar_single_star_SN_velocity(int n);
