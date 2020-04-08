@@ -457,9 +457,13 @@ void set_blackhole_mdot(int i, int n, double dt)
 #endif
     
 #if defined(BH_RETURN_ANGMOM_TO_GAS) /* pre-calculate some quantities for 'angular momentum feedback' here, these have to be based on the mdot estimator above */
-    double jmag=0,lmag=0,mdot_eff=mdot; BlackholeTempInfo[i].angmom_norm_topass_in_swallowloop=0;
+    double jmag=0,lmag=0,mdot_eff=mdot,return_timescale,angmom_toreturn; BlackholeTempInfo[i].angmom_norm_topass_in_swallowloop=0;
     for(k=0;k<3;k++) {jmag+=BlackholeTempInfo[i].angmom_prepass_sum_for_passback[k]*BlackholeTempInfo[i].angmom_prepass_sum_for_passback[k]; lmag+=BPP(n).BH_Specific_AngMom[k]*BPP(n).BH_Specific_AngMom[k];}
-    if(jmag>0 && lmag>0) {BlackholeTempInfo[i].angmom_norm_topass_in_swallowloop = sqrt(lmag/jmag) * mdot_eff*dt;} /* this should be in units such that, times CODE radius and (code=physical) ang-mom, gives CODE velocity: looks ok at present */
+    lmag = P[n].Mass * sqrt(lmag); // this stores the magnitude of the _total_ angular momentum (mass * length * vel) internal to the sink
+    return_timescale = P[n].Mass / mdot_eff; // rate of angular momentum return is (total angular momentum) / (return timescale) - here set to (total mass / mdot). Set this for your desired prescription.
+    angmom_toreturn = lmag * DMIN(0.5, dt/return_timescale); // the actual angular momentum we will return this timestep (with a mild limiter so we don't dump it all at once)
+    angmom_toreturn = DMIN(angmom_toreturn, 0.1 * All.G * (P[n].Mass+BlackholeTempInfo[i].Mgas_in_Kernel) * BlackholeTempInfo[i].Mgas_in_Kernel / DMAX(P[n].Hsml, All.ForceSoftening[5]) * dt); // this limiter explicitly ensures that we never apply a torquing force that is comparable in magnitude to the gravitational force: L < (small fraction) * G Mtot Mgas / R * dt (ie. torque is less than torque needed to change the orbit within an orbital time)
+    if(jmag>0 && lmag>0) {BlackholeTempInfo[i].angmom_norm_topass_in_swallowloop = angmom_toreturn / sqrt(jmag);} /* this should be in units such that, times CODE radius and (code=physical) ang-mom, gives CODE velocity: looks ok at present */
 #endif
     
     /* alright, now we can FINALLY set the BH accretion rate */
