@@ -48,6 +48,9 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
     MyFloat BH_SurroundingGasVel[3];
 #endif
+#ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK
+    MyFloat BH_SurroundingGasCOM[3];
+#endif
 #if (BH_GRAVACCRETION == 8)
     MyFloat hubber_mdot_vr_estimator, hubber_mdot_disk_estimator, hubber_mdot_bondi_limiter;
 #endif

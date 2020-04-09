@@ -476,6 +476,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 /* Update the BH_Mass and the BH_Mass_AlphaDisk */
 void set_blackhole_new_mass(int i, int n, double dt)
 {
+    int k;
     if(BPP(n).BH_Mdot <= 0) {BPP(n).BH_Mdot=0;} /* check unphysical values */
 
     /* before mass update, track angular momentum in disk for 'smoothed' accretion case [using continuous accretion rate and specific AM of all material in kernel around BH] */
@@ -484,7 +485,7 @@ void set_blackhole_new_mass(int i, int n, double dt)
 #ifdef BH_ALPHADISK_ACCRETION
     dm_acc_for_j = BlackholeTempInfo[i].mdot_alphadisk * dt; m_tot_for_j = BPP(n).BH_Mass + BPP(n).BH_Mass_AlphaDisk;
 #endif
-    int k; for(k=0;k<3;k++) {BPP(n).BH_Specific_AngMom[k] = (m_tot_for_j*BPP(n).BH_Specific_AngMom[k] + dm_acc_for_j*BlackholeTempInfo[i].Jgas_in_Kernel[k]/(MIN_REAL_NUMBER + BlackholeTempInfo[i].Mgas_in_Kernel)) / (m_tot_for_j + dm_acc_for_j);}
+    for(k=0;k<3;k++) {BPP(n).BH_Specific_AngMom[k] = (m_tot_for_j*BPP(n).BH_Specific_AngMom[k] + dm_acc_for_j*BlackholeTempInfo[i].Jgas_in_Kernel[k]/(MIN_REAL_NUMBER + BlackholeTempInfo[i].Mgas_in_Kernel)) / (m_tot_for_j + dm_acc_for_j);}
 #endif
 
 /*  for BH_WIND_CONTINUOUS or BH_WIND_SPAWN
@@ -509,9 +510,15 @@ void set_blackhole_new_mass(int i, int n, double dt)
     BPP(n).BH_Mass += BPP(n).BH_Mdot * dt;
 #endif
 #endif // #else BH_ALPHADISK_ACCRETION
-#ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK //store Mgas_in_Kernel and Jgas_in_Kernel
+#ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK 
+    double mtot = BlackholeTempInfo[i].Mgas_in_Kernel + BPP(n).Mass;
+    for(k=0; k<3; k++) { BlackholeTempInfo[i].BH_SurroundingGasCOM[k] /= mtot;} // this now stores the COM of the sink-gas system, relative to the sink position
+    for(k=0; k<3; k++) {
+        // We need the angular momentum in the COM frame of the sink-gas system, so must apply the correction -r x p. This is negligible when MBH >> Mgas but important when Mgas > MBH, e.g. low-mass stars at modest mass resolution
+        BlackholeTempInfo[i].Jgas_in_Kernel[k] -= (BlackholeTempInfo[i].Mgas_in_Kernel/mtot) * BlackholeTempInfo[i].Mgas_in_Kernel * (BlackholeTempInfo[i].BH_SurroundingGasCOM[(k+1)%3]*BlackholeTempInfo[i].BH_SurroundingGasVel[(k+2)%3] - BlackholeTempInfo[i].BH_SurroundingGasCOM[(k+2)%3]*BlackholeTempInfo[i].BH_SurroundingGasVel[(k+1)%3]);
+        BPP(n).Jgas_in_Kernel[k] = BlackholeTempInfo[i].Jgas_in_Kernel[k] + BPP(n).Mass * BPP(n).BH_Specific_AngMom[k]; // this stores the _total_ angular momentum (sink + gas) in the COM frame of the sink-gas system, including internal to the sink
+    }
     BPP(n).Mgas_in_Kernel=BlackholeTempInfo[i].Mgas_in_Kernel;
-    {int jk; for(jk=0;jk<3;jk++) {BPP(n).Jgas_in_Kernel[jk]=BlackholeTempInfo[i].Jgas_in_Kernel[jk];}}
 #endif
 
 }
