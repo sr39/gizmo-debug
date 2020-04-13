@@ -599,7 +599,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
             BPP(n).ProtoStellarStage += stage_increase;
             BPP(n).StellarAge = All.Time; //store the time of the last promotion
             if (BPP(n).ProtoStellarStage == 5){
-                P[i].Mass_MS = P[i].BH_Mass; //store the mass at which we reached the main sequence
+                P[n].Mass_MS = P[n].BH_Mass; //store the mass at which we reached the main sequence
             }
 #ifdef PS_EVOL_OUTPUT_MOREINFO
             //Debug message
