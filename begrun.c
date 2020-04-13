@@ -731,6 +731,15 @@ void open_outputfiles(void)
     }
 #endif
 
+#ifdef SINGLE_STAR_FB_SNE
+  sprintf(buf, "%s%s", All.OutputDir, "SN_details.txt");
+  if(!(FdBhSNDetails = fopen(buf, mode)))
+    {
+      printf("error in opening file '%s'\n", buf);
+      endrun(1);
+    }
+#endif
+
 #ifdef BLACK_HOLES
   sprintf(buf, "%s%s", All.OutputDir, "blackholes.txt");
   if(!(FdBlackHoles = fopen(buf, mode)))

@@ -617,6 +617,9 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
                 BPP(n).BH_Mass_AlphaDisk = 0; //probably does not matter, but let's make sure these don't cause issues
                 P[n].Mass = P[n].BH_Mass; 
 #endif
+                //Save properties of SN progenitor
+                fprintf(FdBhSNDetails, "%g %u %g %g %g %g %g %g %g \n", All.Time, P[n].ID, P[n].BH_Mass, P[n].Pos[0], P[n].Pos[1],P[n].Pos[2],P[n].Vel[0], P[n].Vel[1],P[n].Vel[2]);
+                fflush(FdBhSNDetails);
             }
 #endif
         }
