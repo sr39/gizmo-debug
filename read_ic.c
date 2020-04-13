@@ -440,6 +440,12 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
             
+        case IO_MASS_MS_SINGLESTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; n++) {P[offset + n].Mass_MS = *fp++;}
+#endif
+            break;
+            
         case IO_STAGE_PROTOSTAR:
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].ProtoStellarStage = *ip_int++;}
@@ -919,6 +925,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
                    && blocknr != IO_R_PROTOSTAR
                    && blocknr != IO_MASS_D_PROTOSTAR
+                   && blocknr != IO_MASS_MS_SINGLESTAR
                    && blocknr != IO_STAGE_PROTOSTAR
                    && blocknr != IO_LUM_SINGLESTAR
 #endif
