@@ -27,6 +27,9 @@ int addFB_evaluate_active_check(int i, int fb_loop_iteration)
     if(P[i].MassReturn_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==1) return 1;}
     if(P[i].RProcessEvent_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==2) return 1;}
 #endif
+#ifdef SINGLE_STAR_FB_WINDS
+    if(P[i].wind_mode != 2 || P[i].ProtoStellarStage != 5) return 0;
+#endif    
     return 0;
 }
 
@@ -406,7 +409,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     P[j].Vel[k] += q;
                     SphP[j].VelPred[k] += q;
                 }
-                
+
 #ifdef PM_HIRES_REGION_CLIPPING
                 dP=0; for(k=0;k<3;k++) dP+=P[j].Vel[k]*P[j].Vel[k]; dP=sqrt(dP);
                 if(dP>5.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) P[j].Mass=0;
@@ -700,7 +703,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double boostfac_max = DMIN(1000. , v_ejecta_eff/v_cooling_lim); // boost factor cant exceed velocity limiter - if recession vel large, limits boost
                     if(mom_boost_fac > boostfac_max) {mom_boost_fac = boostfac_max;} // apply limiter
                 } else {
-#ifndef SINGLE_STAR_FB_WINDS
+#ifndef MECHANICAL_FB_MOMENTUM_ONLY
                     mom_boost_fac = DMIN(boost_egycon , boost_max); // simply take minimum - nothing fancy for winds
 #endif
                 }
@@ -727,13 +730,19 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double r_eff_ij = kernel.r - Get_Particle_Size(j);
                 if(r_eff_ij > RsneKPC) {d_Egy_internal *= RsneKPC_3 / (r_eff_ij*r_eff_ij*r_eff_ij);}
                 d_Egy_internal /= P[j].Mass; // convert to specific internal energy, finally //
+#ifndef MECHANICAL_FB_MOMENTUM_ONLY
                 if(d_Egy_internal > 0) {SphP[j].InternalEnergy += d_Egy_internal; SphP[j].InternalEnergyPred += d_Egy_internal; E_coupled += d_Egy_internal;}
+#endif                 
                 
 #ifdef PM_HIRES_REGION_CLIPPING
                 double dP=0; for(k=0;k<3;k++) dP+=P[j].Vel[k]*P[j].Vel[k]; dP=sqrt(dP);
                 if(dP>5.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) P[j].Mass=0;
                 if(dP>1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) for(k=0;k<3;k++) P[j].Vel[k]*=(1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s)/dP;
 #endif
+#ifdef SINGLE_STAR_FB_WINDS
+                SphP[j].wakeup = 1;
+                NeedToWakeupParticles_local = 1;
+#endif          
             } // for(n = 0; n < numngb; n++)
         } // while(startnode >= 0)
         

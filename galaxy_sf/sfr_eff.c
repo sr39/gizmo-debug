@@ -620,7 +620,7 @@ void star_formation_parent_routine(void)
                 //if (P[i].Mass < (0.01* SOLAR_MASS / All.UnitMass_in_g) ){ P[i].ProtoStellarStage = 0;} //starts at "pre-collapse" stage
                 //else{ P[i].ProtoStellarStage = 1;} //start at the "no burn" phase
                 P[i].Mass_D = P[i].Mass; //Initially all the gas has Deuterium
-                P[i].Mass_MS = 0; //init as zero, does not mean anything while we are in the protostellar stage
+                P[i].ZAMS_Mass = 0; //init as zero, does not mean anything while we are in the protostellar stage
                 P[i].StarLuminosity_Solar = 0; //Start with zero luminosity
 		        if (P[i].Mass < 0.012 * SOLAR_MASS / All.UnitMass_in_g) {P[i].ProtoStellarRadius_inSolar =  5.24 * pow(P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS, 1./3);} // constant density
                     else {P[i].ProtoStellarRadius_inSolar = 10. * (P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS);} // M propto R above this mass

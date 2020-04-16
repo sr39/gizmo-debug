@@ -359,7 +359,8 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 #ifdef SINGLE_STAR_DEFAULTS /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
 #define LONGIDS
-#define OUTPUT_IN_DOUBLEPRECISION
+#define OUTPUT_POSITIONS_IN_DOUBLE
+#define INPUT_POSITIONS_IN_DOUBLE
 #define SINGLE_STAR_SINK_DYNAMICS
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #define ADAPTIVE_GRAVSOFT_FORGAS
@@ -448,6 +449,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
 #define GALSF_FB_MECHANICAL //We will use the FIRE wind module for low mass loss rate stars (spawning leads to issues)
+#define MECHANICAL_FB_MOMENTUM_ONLY
 #define GALSF_FB_FIRE_STELLAREVOLUTION //flag needed to calculate properties
 #endif
 #ifdef SINGLE_STAR_FB_SNE
@@ -2462,7 +2464,7 @@ extern ALIGN(32) struct particle_data
     int ProtoStellarStage; /*Track the stage of protostellar evolution, 0: pre collapse, 1: no burning, 2: fixed Tc burning, 3: variable Tc burning, 4: shell burning, 5: main sequence, 6: supernova, see Offner 2009 Appendix B*/ //IO flag IO_STAGE_PROTOSTAR
     MyFloat Mass_D; /* Mass of gas in the protostar that still contains D to burn */ // IO flag IO_MASS_D_PROTOSTAR
     MyFloat StarLuminosity_Solar; /*the total luminosity of the star in L_solar units*/ //IO flag IO_LUM_SINGLESTAR
-    MyFloat Mass_MS; /*The mass the star has when reaching the main sequence */ //IO flag IO_MASS_MS_SINGLESTAR
+    MyFloat ZAMS_Mass; /*The mass the star has when reaching the main sequence */ //IO flag IO_ZAMS_MASS
 #endif
 #ifdef SINGLE_STAR_FB_WINDS
     MyFloat Wind_direction[6]; //direction of wind launches, to reduce anisotropy launches go along a random axis then a random perpendicular one, then one perpendicular to both.
@@ -3156,7 +3158,7 @@ enum iofields
   IO_BHDUSTMASS,
   IO_R_PROTOSTAR,
   IO_MASS_D_PROTOSTAR,
-  IO_MASS_MS_SINGLESTAR,
+  IO_ZAMS_MASS,
   IO_STAGE_PROTOSTAR,
   IO_LUM_SINGLESTAR,
   IO_BHPROGS,

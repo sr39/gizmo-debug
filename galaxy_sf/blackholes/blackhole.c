@@ -789,14 +789,17 @@ void blackhole_final_operations(void)
 #endif 
 #endif
 #ifdef SINGLE_STAR_FB_WINDS
-        if (P[n].ProtoStellarStage == 5){ //for MS stars we have winds and no jets
-            dm_wind = singlestar_single_star_wind_mdot(n,1) * dt; //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep
-            BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
-        }
+       if (P[n].ProtoStellarStage == 5){ //for MS stars we have winds and no jets
+           double mdot_wind = single_star_wind_mdot(n);
+           if(P[n].wind_mode == 1){
+               dm_wind = mdot_wind * dt; //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep
+               BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
+           }
+       }
 #endif
 #ifdef SINGLE_STAR_FB_SNE
         if (P[n].ProtoStellarStage == 6){ //Star old enough to go out with a boom
-            double t_clear=P[n].SinkRadius/singlestar_single_star_SN_velocity(n); // time needed spawned wind particles to clear the sink
+            double t_clear=P[n].SinkRadius/single_star_SN_velocity(n); // time needed spawned wind particles to clear the sink
             double SN_mdot = (SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger)/t_clear; // we spawn SINGLE_STAR_FB_SNE_N_EJECTA per ejected shell, and we can have maximum 1 shell per t_clear
             dm_wind = DMIN(SN_mdot*dt, BPP(n).BH_Mass); // We will spawn particles to model the SN ejecta, but not more than what we can handle at the same time, these particles will have the same mass as gas particles, not like wind particles
             printf("Adding SN ejecta of mass %g from star %llu at time %g, unspawned mass at %g\n", dm_wind, P[n].ID, All.Time, (BPP(n).unspawned_wind_mass+dm_wind));
