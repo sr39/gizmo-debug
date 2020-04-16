@@ -1110,12 +1110,12 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
             
-        case IO_MASS_MS_SINGLESTAR:
+        case IO_ZAMS_MASS:
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = BPP(pindex).Mass_MS;
+                    *fp++ = BPP(pindex).ZAMS_Mass;
                     n++;
                 }
 #endif
@@ -1899,7 +1899,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_BHMDOT:
         case IO_R_PROTOSTAR:
         case IO_MASS_D_PROTOSTAR:
-        case IO_MASS_MS_SINGLESTAR:
+        case IO_ZAMS_MASS:
         case IO_LUM_SINGLESTAR:
         case IO_CAUSTIC_COUNTER:
         case IO_FLOW_DETERMINANT:
@@ -2191,7 +2191,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_BHMDOT:
         case IO_R_PROTOSTAR:
         case IO_MASS_D_PROTOSTAR:
-        case IO_MASS_MS_SINGLESTAR:
+        case IO_ZAMS_MASS:
         case IO_STAGE_PROTOSTAR:
         case IO_LUM_SINGLESTAR:
         case IO_BHPROGS:
@@ -2615,7 +2615,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_BHMDOT:
         case IO_R_PROTOSTAR:
         case IO_MASS_D_PROTOSTAR:
-        case IO_MASS_MS_SINGLESTAR:
+        case IO_ZAMS_MASS:
         case IO_STAGE_PROTOSTAR:
         case IO_LUM_SINGLESTAR:
         case IO_BHPROGS:
@@ -3125,7 +3125,7 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
             
-        case IO_MASS_MS_SINGLESTAR:
+        case IO_ZAMS_MASS:
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
             return 1;
 #else
@@ -3682,7 +3682,7 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_MASS_D_PROTOSTAR:
             strncpy(label, "PSMD", 4);
             break;
-        case IO_MASS_MS_SINGLESTAR:
+        case IO_ZAMS_MASS:
             strncpy(label, "PSMS", 4);
             break;
         case IO_LUM_SINGLESTAR:
@@ -4144,8 +4144,8 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_MASS_D_PROTOSTAR:
             strcpy(buf, "Mass_D");
             break;
-        case IO_MASS_MS_SINGLESTAR:
-            strcpy(buf, "Mass_Mass_MS");
+        case IO_ZAMS_MASS:
+            strcpy(buf, "ZAMS_Mass");
             break;
         case IO_STAGE_PROTOSTAR:
             strcpy(buf, "ProtoStellarStage");

@@ -390,7 +390,7 @@ void begrun(void)
 #endif
 
 #ifdef  SINGLE_STAR_FB_SNE
-    singlestar_single_star_SN_init_directions();
+    single_star_SN_init_directions();
 #endif
 #ifdef RADTRANSFER
 #if defined(RT_EVOLVE_INTENSITIES)

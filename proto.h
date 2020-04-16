@@ -525,13 +525,13 @@ double ps_lum_Hayashi_BB(double m, double r);
 double stellar_lifetime_in_Gyr(int n);
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
-double singlestar_single_star_wind_mdot(int n, int mode);
-double singlestar_single_star_wind_velocity(int n);
+double single_star_wind_mdot(int n);
+double single_star_wind_velocity(int n);
 double singlestar_WR_lifetime_Gyr(int n);
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
-double singlestar_single_star_SN_velocity(int n);
-void singlestar_single_star_SN_init_directions(void);
+double single_star_SN_velocity(int n);
+void single_star_SN_init_directions(void);
 #endif
 
 #ifdef GRAIN_FLUID

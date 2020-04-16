@@ -750,11 +750,11 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
 #if defined(SINGLE_STAR_FB_WINDS) //Get wind velocities for MS stars
         if (P[i].ProtoStellarStage == 5){ //Only MS stars launch winds
-            v_magnitude = singlestar_single_star_wind_velocity(i);
+            v_magnitude = single_star_wind_velocity(i);
         }
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
-        if (P[i].ProtoStellarStage == 6){v_magnitude = singlestar_single_star_SN_velocity(i);} // This star is about to go SNe
+        if (P[i].ProtoStellarStage == 6){v_magnitude = single_star_SN_velocity(i);} // This star is about to go SNe
 #endif
         double dx_u[3]; for(k=0;k<3;k++) {dx_u[k] = (sin_theta*cos_phi*jx[k] + sin_theta*sin_phi*jy[k] + cos_theta*jz[k]);} // unit vector containing the relative displacement from the sink
 #ifdef SINGLE_STAR_FB_WINDS
@@ -790,7 +790,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
             
         }
 #endif
-#if defined(SINGLE_STAR_FB_SNE) //Get direction from All.SN_Ejecta_Direction[:][0:3], which should be already initialized by singlestar_single_star_SN_init_directions from stellar_evolution.c
+#if defined(SINGLE_STAR_FB_SNE) //Get direction from All.SN_Ejecta_Direction[:][0:3], which should be already initialized by single_star_SN_init_directions from stellar_evolution.c
     if (P[i].ProtoStellarStage == 6){//SN only
         int dir_ind = (j - (NumPart + num_already_spawned)) % SINGLE_STAR_FB_SNE_N_EJECTA;
         if( (dir_ind==0) || (uz[0]==22) ) {for(k=0;k<3;k++) {uz[k] = dx_u[k];}} //either uz is not set or we need to set a new random direction, store the random direction we got previously
@@ -824,7 +824,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
         if (P[i].ProtoStellarStage == 6) {
-            SphP[j].InternalEnergy = All.MinGasTemp / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ) + (1.0-SINGLE_STAR_FB_SNE)/SINGLE_STAR_FB_SNE * pow(singlestar_single_star_SN_velocity(i),2.0);
+            SphP[j].InternalEnergy = All.MinGasTemp / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ) + (1.0-SINGLE_STAR_FB_SNE)/SINGLE_STAR_FB_SNE * pow(single_star_SN_velocity(i),2.0);
         } else
 #endif
         {SphP[j].InternalEnergy = All.BAL_internal_temperature / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS );} /* internal energy, determined by desired wind temperature (assume fully ionized primordial gas with gamma=5/3) */
