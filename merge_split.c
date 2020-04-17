@@ -118,7 +118,7 @@ void merge_and_split_particles(void)
             in which case we clip its mass down or split it to prevent the most problematic contamination artifacts */
         if(((P[i].Type==2)||(P[i].Type==3)||(P[i].Type==5))&&(TimeBinActive[P[i].TimeBin]))
         {
-#ifdef BLACKHOLES
+#ifdef BLACK_HOLES
             if(P[i].Type==5) continue;
 #endif
             /* do a neighbor loop ON THE SAME DOMAIN to determine the neighbors */
@@ -155,7 +155,7 @@ void merge_and_split_particles(void)
                 {
                     j = Ngblist[n];
                     if(j == i) {if(numngb_inbox > 1) continue;}
-#ifdef BLACKHOLES
+#ifdef BLACK_HOLES
                     if((P[j].Type == 2) || (P[j].Type == 3))
 #else
                     if((P[j].Type == 2) || (P[j].Type == 3) || (P[j].Type == 5))

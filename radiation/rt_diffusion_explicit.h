@@ -45,7 +45,7 @@
                 double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv; // (1/(code volume*code length))
                 grad_dot_x_ij += grad * kernel.dp[k];
                 grad = MINMOD_G( grad , grad_direct );
-#if defined(GALSF) || defined(COOLING) || defined(BLACKHOLES)
+#if defined(GALSF) || defined(COOLING) || defined(BLACK_HOLES)
                 double grad_direct_vs_abs_fac = 2.0;
 #else
                 double grad_direct_vs_abs_fac = 5.0;
