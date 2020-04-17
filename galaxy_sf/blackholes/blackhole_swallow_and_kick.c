@@ -191,9 +191,12 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                 if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dvel[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
 
-#if defined(BH_RETURN_ANGMOM_TO_GAS) || defined(BH_RETURN_BFLUX)                
-                double wk, dwk, u=0; for(k=0;k<3;k++) {u+=dpos[k]*dpos[k];}
-                u=sqrt(u)/h_i; if(u<1) { kernel_main(u,1., 1.,&wk,&dwk,-1); } else {wk=dwk=0;} 
+#if defined(BH_RETURN_ANGMOM_TO_GAS) || defined(BH_RETURN_BFLUX)
+                double wk, dwk, u=0;
+                if(P[j].Type == 0){
+                    for(k=0;k<3;k++) {u+=dpos[k]*dpos[k];}
+                    u=sqrt(u)/DMAX(h_i, P[j].Hsml); if(u<1) { kernel_main(u,1., 1.,&wk,&dwk,-1); } else {wk=dwk=0;}
+                }
 #endif                
 #if defined(BH_RETURN_ANGMOM_TO_GAS) /* this should go here [right before the loop that accretes it back onto the BH] */
                 if(P[j].Type == 0)
