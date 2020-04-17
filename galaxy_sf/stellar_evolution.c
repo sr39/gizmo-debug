@@ -667,7 +667,7 @@ double singlestar_single_star_wind_mdot(int n, int mode){
     }
     double wind_mass_loss_rate=0; //mass loss rate in code units
     double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
-    if (m_solar < single_star_fb_winds_min_mass_solar){return 0.0;} //no winds for low mass stars
+    if (m_solar < minimum_stellarmass_for_winds_solar){return 0.0;} //no winds for low mass stars
     if (BPP(n).ProtoStellarStage == 5){ //Winds are for MS only
         /*Use Vink 2001 model, which should capture metallicity dependence and is more accurate than CAK*/
         // We are assuming that METALS are also on
@@ -687,7 +687,7 @@ double singlestar_single_star_wind_mdot(int n, int mode){
             logmdot_wind = -6.688 + 2.21*log10(BPP(n).StarLuminosity_Solar/1.0e5) - 1.339*log10(m_solar/30.) - 1.601*log10(v_esc_over_terminal/2.0) + 1.07*log10(T_eff/2.0e4) + 0.85*log10(ZZ);
         }
         wind_mass_loss_rate = wind_mass_loss_rate_reduction_factor * pow(10.0,logmdot_wind) * (SOLAR_MASS/SEC_PER_YEAR)/(All.UnitMass_in_g/All.UnitTime_in_s); //reducing the rate to be more in line with observations, see Nathan Smith 2014, conversion to code units from Msun/yr
-        if(model_wolf_rayet_phase_explicitily) {if(evaluate_stellar_age_Gyr(P[n].StellarAge) > (stellar_lifetime_in_Gyr(n)-singlestar_WR_lifetime_Gyr(n))){wind_mass_loss_rate*=10;} //Our star is in the WR phase, for now use the simple prescription of having 10x higher wind loss rates based on Smith 2014
+        if(model_wolf_rayet_phase_explicitily) {if(evaluate_stellar_age_Gyr(P[n].StellarAge) > (stellar_lifetime_in_Gyr(n)-singlestar_WR_lifetime_Gyr(n))){wind_mass_loss_rate*=10;}} //Our star is in the WR phase, for now use the simple prescription of having 10x higher wind loss rates based on Smith 2014
         //Let's deal with the case of undefined wind mode (just promoted to MS or restart from snapshot)
         if (wind_mass_loss_rate>0){
             //Let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
