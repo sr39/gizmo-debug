@@ -990,7 +990,7 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_accr = All.MinMassForParticleMerger / BPP(p).BH_Mdot;
 #ifdef SINGLE_STAR_FB_JETS
             dt_accr = DMIN(dt_accr, All.BAL_wind_particle_mass / BPP(p).BH_Mdot);
-#endif            
+#endif
 #endif
         } // if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
 #ifdef BH_SEED_GROWTH_TESTS
@@ -1022,12 +1022,8 @@ integertime get_timestep(int p,		/*!< particle index */
             double dt_ff = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest
             if(dt > dt_ff && dt_ff > 0) {dt = 1.01 * dt_ff;}
 		
-            double L_particle = Get_Particle_Size(p);
-            double v_gas = P[p].BH_SurroundingGasVel;
-#ifdef SINGLE_STAR_FB_WINDS
-            v_gas = DMAX(v_gas, single_star_wind_velocity(p)); // probably overly strict, subject to revision
-#endif            
-            double dt_cour_sink = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / v_gas;
+            double L_particle = Get_Particle_Size(p);           
+            double dt_cour_sink = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / P[p].BH_SurroundingGasVel;
             if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
         }
         if(P[p].StellarAge == All.Time)
@@ -1042,7 +1038,13 @@ integertime get_timestep(int p,		/*!< particle index */
             double t_clear=P[p].SinkRadius/single_star_SN_velocity(p); // time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
             dt = DMIN(dt,DMAX(t_clear/2,DMAX(All.MinSizeTimestep,All.Timebase_interval)* 1.01)); // Let's make the timestep as low as possible but longer than the time needed for previous ejecta to clear the area and safely above the smallest allowable timestep to avoid crashing
         }
-#endif      
+#endif
+#ifdef SINGLE_STAR_FB_WINDS
+        if(P[p].ProtoStellarStage == 5) {
+            double dt_spawn = All.BAL_wind_particle_mass / single_star_wind_mdot(p);
+            if(dt > dt_spawn) dt = 1.01 * dt_spawn;
+        }
+#endif                    
     } // if(P[p].Type == 5)
 
 #ifdef BH_DEBUG_SPAWN_JET_TEST /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
