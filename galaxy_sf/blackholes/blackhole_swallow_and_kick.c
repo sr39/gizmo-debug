@@ -518,6 +518,80 @@ void spawn_bh_wind_feedback(void)
 }
 
 
+void get_random_orthonormal_basis(int seed, double *nx, double *ny, double *nz){
+    double phi, cos_theta, sin_theta, sin_phi, cos_phi;
+    phi=2.*M_PI*get_random_number(seed+1+ThisTask), cos_theta=2.*(get_random_number(seed+3+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
+    /* velocities (determined by wind velocity direction) */
+    nz[0]=sin_theta*cos_phi; nz[1]=sin_theta*sin_phi; nz[2]=cos_theta; // random z axis
+
+    double dot_product, norm=0; int k;
+    while(norm==0){ // necessary in case ny is parallel to nz - believe it or not this happened once!
+        phi=2.*M_PI*get_random_number(seed+4+ThisTask), cos_theta=2.*(get_random_number(seed+5+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
+        ny[0]=sin_theta*cos_phi; ny[1]=sin_theta*sin_phi; ny[2]=cos_theta; // random y axis, needs to have its z component deprojected
+        // do Gram-Schmidt to get an orthonormal basis            
+        for(k=0; k<3; k++) {dot_product += ny[k] * nz[k];}
+        for(k=0; k<3; k++) {ny[k] -= dot_product * nz[k]; norm += ny[k]*ny[k];} // deproject component along z
+        if(norm==0) continue;
+        norm = 1./sqrt(norm); for(k=0; k<3; k++) {ny[k] *= norm;}
+    }
+    nx[0] = ny[1]*nz[2] - ny[2]*nz[1];
+    nx[1] = ny[2]*nz[0] - ny[0]*nz[2];
+    nx[2] = ny[0]*nz[1] - ny[1]*nz[0];
+    return;
+}
+
+/* Convenience function to compute the direction to launch a wind particle                                      */
+/*                                                                                                              */
+/* i - index of particle doing the spawning                                                                     */
+/* num_spawned_this_call - how many we have already spawned in this call of blackhole_spawn_particle_wind_shell */
+/* mode - 0 for random, 1 for collimated, 2 for isotropized random, 3 for angular grid                          */
+/* ny, nz - shape (3,) arrays containing 2 vectors in the fixed orthonormal basis - for collimated winds, nz    */
+/*          is the axis                                                                                         */
+/* dir - shape (3,) array containing the direction - pass as an input to remember the previous direction        */
+
+void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double *ny, double *nz, double *veldir){
+    int k;
+    if(num_spawned_this_call % 2) { // every second particle is spawned in the opposite direction to the last, conserving momentum and COM
+        for(k=0; k<3;k++) {veldir[k] = -veldir[k];}
+        return; // we're done
+    }
+    
+    double nx[3] = {ny[1]*nz[2] - ny[2]*nz[1], ny[2]*nz[0] - ny[0]*nz[2], ny[0]*nz[1] - ny[1]*nz[0]};
+    
+    // now do the actual direction based on the mode we're in
+    double phi, cos_theta, sin_theta, sin_phi, cos_phi;
+    if(mode==0){ // fully random
+        /* positions: uniformly sample unit sphere, and rotate into preferred coordinate system for use below */
+        phi=2.*M_PI*get_random_number(num_spawned_this_call+1+ThisTask), cos_theta=2.*(get_random_number(num_spawned_this_call+3+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
+        /* velocities (determined by wind velocity direction) */
+        veldir[0]=sin_theta*cos_phi; veldir[1]=sin_theta*sin_phi; veldir[2]=cos_theta; // default to velocity pointed radially away from BH    
+    } else if (mode==1){ // collimated
+        double theta0=0.01, thetamax=30.*(M_PI/180.); // "flattening parameter" and max opening angle of jet velocity distribution from Matzner & McKee 1999, sets the collimation of the jets
+        double theta=atan(theta0*tan(get_random_number(num_spawned_this_call+7+5*ThisTask)*atan(sqrt(1+theta0*theta0)*tan(thetamax)/theta0))/sqrt(1+theta0*theta0)); // biased sampling to get collimation
+        phi=2.*M_PI*get_random_number(num_spawned_this_call+1+ThisTask);
+        cos_theta = cos(theta), sin_theta=sin(theta), sin_phi=sin(phi), cos_phi=cos(phi);
+        for(k=0;k<3;k++) {veldir[k] = sin_theta*cos_phi*nx[k] + sin_theta*sin_phi*ny[k] + cos_theta*nz[k];} //converted from angular momentum relative to into standard coordinates
+    }
+#ifdef SINGLE_STAR_FB_WINDS
+    else if (mode==2){ //random 3-axis isotropized - spawn along z axis, then y, then x
+        if((P[i].ID_child_number % 6) == 0) { // need to generate a brand new coordinate frame
+            get_random_orthonormal_basis(P[i].ID_child_number, nx, ny, nz);            
+            for(k=0; k<3; k++) {veldir[k] = nz[k]; P[i].Wind_direction[k]=nx[k]; P[i].Wind_direction[k+3]=ny[k];}
+        }
+        else if((P[i].ID_child_number % 6) == 2) {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k];}}
+        else {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k+3];}}
+    }
+#endif
+#ifdef SINGLE_STAR_FB_SNE
+    else { // angular grid
+        int dir_ind = num_spawned_this_call % SINGLE_STAR_FB_SNE_N_EJECTA;
+        for(k=0;k<3;k++) { //Particle positioned at one of the regular positions on the randomized coordinate system
+            veldir[k] = All.SN_Ejecta_Direction[dir_ind][0] * nx[k] + All.SN_Ejecta_Direction[dir_ind][1] * ny[k] + All.SN_Ejecta_Direction[dir_ind][2] * nz[k];//use directions pre-computed to isotropically cover a sphere with SINGLE_STAR_FB_SNE_N_EJECTA particles
+        }
+    }
+#endif    
+    return;          
+}
 
 
 /*! this code copies what was used in merge_split.c for the gas particle split case */
@@ -528,8 +602,6 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     int k=0; long j;
     
 #ifdef SINGLE_STAR_FB_SNE
-    double ux[3],uy[3],uz[3]={22,22,22}; // new random coordinate system, we will use it later, we just need to init it before the loop over the spawned particles, uz deliberataly initialized with invalid numbers
-    for(k=0; k<3; k++) {uy[k] = 2*get_random_number(P[i].ID + P[i].ID_child_number + k) - 1;}
     if (P[i].ProtoStellarStage == 6){
         n_particles_split = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
         if (P[i].BH_Mass == 0){ //Last batch to be spawned
@@ -576,17 +648,8 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #ifdef BH_DEBUG_SPAWN_JET_TEST
     d_r = DMIN(d_r , 0.01); /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
 #endif
-    double jz[3]={0,0,1},jy[3]={0,1,0},jx[3]={1,0,0};  /* set up a coordinate system [xyz if we don't have any other information */
-#ifdef BH_FOLLOW_ACCRETED_ANGMOM  /* use local angular momentum to estimate preferred directions/coordinates for spawning */
-#ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK // Jgas stores total angmom in COM frame of sink-gas system; use this for direction
-    double Jtot=0; for(k=0;k<3;k++) {Jtot+=P[i].Jgas_in_Kernel[k]*P[i].Jgas_in_Kernel[k];}
-    if(Jtot>0) {Jtot=1/sqrt(Jtot); for(k=0;k<3;k++) {jz[k]=P[i].Jgas_in_Kernel[k]*Jtot;}}
-#else
-    double Jtot=0; for(k=0;k<3;k++) {Jtot+=P[i].BH_Specific_AngMom[k]*P[i].BH_Specific_AngMom[k];}
-    if(Jtot>0) {Jtot=1/sqrt(Jtot); for(k=0;k<3;k++) {jz[k]=P[i].BH_Specific_AngMom[k]*Jtot;}}
-#endif
-    Jtot=jz[1]*jz[1]+jz[2]*jz[2]; if(Jtot>0) {Jtot=1/sqrt(Jtot); jy[1]=jz[2]*Jtot; jy[2]=-jz[1]*Jtot;}
-    jx[0]=jz[1]*jy[2]-jz[2]*jy[1]; jx[1]=jz[2]*jy[0]-jz[0]*jy[2]; jx[2]=jz[0]*jy[1]-jz[1]*jy[0];
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS 
+    d_r = DMIN(P[i].SinkRadius, d_r); //launch close to the sink
 #endif
     long bin, bin_0; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;} /* gives minimum active timebin of any particle */
     bin_0 = bin; int i0 = i; /* save minimum timebin, also save ID of BH particle for use below */    
@@ -595,8 +658,44 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     bin = bin_0; i0 = dummy_sph_i_to_clone; /* make this particle active on the minimum timestep, and order with respect to the cloned particle */
 #endif
 
-    double phi, cos_theta, sin_theta, sin_phi, cos_phi, jet_theta, veldir[3]; // random angles for initial positions, possibly to be reused
+    double veldir[3]; // velocity direction to spawn in - declare outside the loop so we remember it from the last iteration
+
+    int mode = 0; // 0 if doing totally random directions, 1 if collimated, 2 for 3-axis isotropized, and 3 if using an angular grid
+
+// now do the logic to decide which mode to use to decide the direction
+#if defined(BH_DEBUG_SPAWN_JET_TEST) || defined(SINGLE_STAR_FB_JETS) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK) || defined(BH_FB_COLLIMATED)
+#if defined(SINGLE_STAR_FB_JETS)
+    if (P[i].ProtoStellarStage < 5) //Only pre-MS stars launch polar jets
+#endif
+    {mode = 1;} // collimated mode
+#endif
+#ifdef SINGLE_STAR_FB_WINDS
+    if(P[i].ProtoStellarStage == 5) {mode = 2;} // winds use 3-axis isotropized directions
+#endif
+#ifdef SINGLE_STAR_FB_SNE
+    if(P[i].ProtoStellarStage == 6) {mode = 3;} // SNe use an angular grid
+#endif
+
+// based on the mode we're in, let's pick a fixed orthonormal basis that all spawned elements are aware of
+    double jz[3]={0,0,1},jy[3]={0,1,0},jx[3]={1,0,0};  /* set up a coordinate system [xyz if we don't have any other information */
+#ifdef BH_FOLLOW_ACCRETED_ANGMOM  /* use local angular momentum to estimate preferred directions/coordinates for spawning */    
+    if(mode==1){ // set up so that the z axis is the angular momentum vector
+#ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK // Jgas stores total angmom in COM frame of sink-gas system; use this for direction
+        double Jtot=0; for(k=0;k<3;k++) {Jtot+=P[i].Jgas_in_Kernel[k]*P[i].Jgas_in_Kernel[k];}
+        if(Jtot>0) {Jtot=1/sqrt(Jtot); for(k=0;k<3;k++) {jz[k]=P[i].Jgas_in_Kernel[k]*Jtot;}}
+#else
+        double Jtot=0; for(k=0;k<3;k++) {Jtot+=P[i].BH_Specific_AngMom[k]*P[i].BH_Specific_AngMom[k];}
+        if(Jtot>0) {Jtot=1/sqrt(Jtot); for(k=0;k<3;k++) {jz[k]=P[i].BH_Specific_AngMom[k]*Jtot;}}
+#endif
+        Jtot=jz[1]*jz[1]+jz[2]*jz[2]; if(Jtot>0) {Jtot=1/sqrt(Jtot); jy[1]=jz[2]*Jtot; jy[2]=-jz[1]*Jtot;}
+        jx[0]=jz[1]*jy[2]-jz[2]*jy[1]; jx[1]=jz[2]*jy[0]-jz[0]*jy[2]; jx[2]=jz[0]*jy[1]-jz[1]*jy[0];
+    }
+#endif
     
+    if(mode == 3){ // if doing an angular grid, need some fixed coordinates to orient it, but want to switch em up each time to avoid artifacts
+        get_random_orthonormal_basis(P[i].ID_child_number, jx, jy, jz);
+    }
+
     /* create the  new particles to be added to the end of the particle list :
         i is the BH particle tag, j is the new "spawed" particle's location, dummy_sph_i_to_clone is a dummy SPH particle's tag to be used to init the wind particle */
     for(j = NumPart + num_already_spawned; j < NumPart + num_already_spawned + n_particles_split; j++)
@@ -705,40 +804,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         P[i].Mass -= P[j].Mass; /* make sure the operation is mass conserving! */
 #endif
         BPP(i).unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
+
+
         
-        if((j - (NumPart + num_already_spawned) + 1) % 2) { // if we're an even number, generate a brand new random coord and velocity direction
-            /* positions: uniformly sample unit sphere, and rotate into preferred coordinate system for use below */
-#ifdef SINGLE_STAR_FB_JETS // when doing jets we sample positions from a 30 degree cone. This helps to avoid disrupting the disk in less well-resolved runs
-            if (P[i].ProtoStellarStage < 5){ //Not a MS star
-                phi=2.*M_PI*get_random_number(j+1+ThisTask), cos_theta=1-0.133975*get_random_number(j+3+2*ThisTask); // first sample cos(theta) uniformly between 0 and 30deg
-                if(get_random_number(j+4+2*ThisTask) > 0.5) cos_theta = -cos_theta; // 50/50 chance of switching from north to south pole
-                sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
-            }
-            else
-#endif
-            { // sample positions uniformly on the sphere
-            phi=2.*M_PI*get_random_number(j+1+ThisTask), cos_theta=2.*(get_random_number(j+3+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
-            }
-            /* velocities (determined by wind velocity direction) */
-            veldir[0]=sin_theta*cos_phi; veldir[1]=sin_theta*sin_phi; veldir[2]=cos_theta; // default to velocity pointed radially away from BH
-            
-            
-#if defined(BH_DEBUG_SPAWN_JET_TEST) || defined(SINGLE_STAR_FB_JETS) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK) || defined(BH_FB_COLLIMATED)
-#if defined(SINGLE_STAR_FB_JETS)
-            if (P[i].ProtoStellarStage < 5) //Only pre-MS stars launch polar jets
-#endif
-            {
-                double theta0=0.01, thetamax=30.*(M_PI/180.); // "flattening parameter" and max opening angle of jet velocity distribution from Matzner & McKee 1999, sets the collimation of the jets
-                double jet_theta=atan(theta0*tan(get_random_number(j+7+5*ThisTask)*atan(sqrt(1+theta0*theta0)*tan(thetamax)/theta0))/sqrt(1+theta0*theta0)); // biased sampling to get collimation
-                if(cos_theta<0) {jet_theta=M_PI-jet_theta;} // determines 'up' or 'down' based on which hemisphere particle is in
-                double jet_rel_veldir[3];
-                jet_rel_veldir[0]=sin(jet_theta)*cos_phi; jet_rel_veldir[1]=sin(jet_theta)*sin_phi; jet_rel_veldir[2]=cos(jet_theta);//relative direction of velocity compared to BH_Specific_AngMom
-                for(k=0;k<3;k++) {veldir[k] = jet_rel_veldir[0]*jx[k]+jet_rel_veldir[1]*jy[k]+jet_rel_veldir[2]*jz[k]; } //converted from angular momentum relative to into standard coordinates
-            }
-#endif
-        } else { // just take the antipodal points for the coords and velocity we had before so we get exact conservation when spawning multiples of 2
-            cos_phi = -cos_phi; cos_theta = -cos_theta; sin_phi = -sin_phi; veldir[0] = -veldir[0], veldir[1] = -veldir[1], veldir[2] = -veldir[2];
-        }
 
         double v_magnitude = All.BAL_v_outflow * All.cf_atime; // velocity of the jet
 #ifdef SINGLE_STAR_FB_JETS
@@ -748,67 +816,21 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
         v_magnitude = sqrt(SINGLE_STAR_FB_JETS * All.G * P[i].BH_Mass / (R_star_solar_launch * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
 #endif
-#if defined(SINGLE_STAR_FB_WINDS) //Get wind velocities for MS stars
+#ifdef SINGLE_STAR_FB_WINDS //Get wind velocities for MS stars
         if (P[i].ProtoStellarStage == 5){ //Only MS stars launch winds
-            v_magnitude = single_star_wind_velocity(i);
+        v_magnitude = single_star_wind_velocity(i);
         }
 #endif
-#if defined(SINGLE_STAR_FB_SNE)
+#ifdef SINGLE_STAR_FB_SNE
         if (P[i].ProtoStellarStage == 6){v_magnitude = single_star_SN_velocity(i);} // This star is about to go SNe
 #endif
-        double dx_u[3]; for(k=0;k<3;k++) {dx_u[k] = (sin_theta*cos_phi*jx[k] + sin_theta*sin_phi*jy[k] + cos_theta*jz[k]);} // unit vector containing the relative displacement from the sink
-#ifdef SINGLE_STAR_FB_WINDS
-        if (P[i].ProtoStellarStage == 5){ //Direction of wind launches is set to reduce anisotropy. First pair launches go along a random axis then a random perpendicular one, then one perpendicular to both
-            double dx_u_orig[3], wind_norm=0; for(k=0;k<3;k++) {wind_norm += P[i].Wind_direction[k]*P[i].Wind_direction[k];} //used later to check if we have a valid direction
-            switch ((P[i].ID_child_number-1) % 6) //
-            {
-                case 0: for(k=0;k<3;k++) {P[i].Wind_direction[k] = dx_u[k];} break; //store direction of launch
-                case 1: break; // nothing to be done
-                //The next wind particle pair is spawned perpendicular to the previous pair
-                case 2: //do same as for 3
-                case 3: if (wind_norm>=0.99){ //Check to make sure we have a valid direction (i.e. it is not saved to snapshots), if not we just go with a radndom direction
-                            for(k=0;k<3;k++) {dx_u_orig[k] = dx_u[k];} //store the random direction we got previously
-                            //set the direction perpendicuar to both the current and the previous axis (wind_direction x dx_u_orig)
-                            dx_u[0] = P[i].Wind_direction[1]*dx_u_orig[2] - P[i].Wind_direction[2]*dx_u_orig[1];
-                            dx_u[1] = P[i].Wind_direction[2]*dx_u_orig[0] - P[i].Wind_direction[0]*dx_u_orig[2];
-                            dx_u[2] = P[i].Wind_direction[0]*dx_u_orig[1] - P[i].Wind_direction[1]*dx_u_orig[0];
-                            for(k=0;k<3;k++) {P[i].Wind_direction[k+3] = dx_u[k];} //store direction of launch (we are doing it twice, but it is not really an issue)
-                        }
-                break;
-                //The next final particle pair is spawned perpendicular to the previous two pairs
-                case 4: //do same as for 5
-                case 5: if (wind_norm>=0.99){ //Check to make sure we have a valid direction (i.e. it is not saved to snapshots), if not we just go with a radndom direction
-                            //set the direction perpendicuar to the previous two axes (Wind_direction[0:3] x Wind_direction[4:6])
-                            dx_u[0] = P[i].Wind_direction[1]*P[i].Wind_direction[5] - P[i].Wind_direction[2]*P[i].Wind_direction[4];
-                            dx_u[1] = P[i].Wind_direction[2]*P[i].Wind_direction[3] - P[i].Wind_direction[0]*P[i].Wind_direction[5];
-                            dx_u[2] = P[i].Wind_direction[0]*P[i].Wind_direction[4] - P[i].Wind_direction[1]*P[i].Wind_direction[3];
-                        }
-                break;
-            }
-            if ((j - (NumPart + num_already_spawned)) % 6 == 5){for(k=0;k<3;k++) {dx_u[k] *= -1.0;}} //-1 flip not covered previously for this case 
-            for(k=0;k<3;k++) {veldir[k] = dx_u[k];} //launch radially
-            
-        }
-#endif
-#if defined(SINGLE_STAR_FB_SNE) //Get direction from All.SN_Ejecta_Direction[:][0:3], which should be already initialized by single_star_SN_init_directions from stellar_evolution.c
-    if (P[i].ProtoStellarStage == 6){//SN only
-        int dir_ind = (j - (NumPart + num_already_spawned)) % SINGLE_STAR_FB_SNE_N_EJECTA;
-        if( (dir_ind==0) || (uz[0]==22) ) {for(k=0;k<3;k++) {uz[k] = dx_u[k];}} //either uz is not set or we need to set a new random direction, store the random direction we got previously
-        //Set up a coordinate system along this random direction, third axes defined by cross product
-        ux[0]=uz[1]*uy[2]-uz[2]*uy[1]; ux[1]=uz[2]*uy[0]-uz[0]*uy[2]; ux[2]=uz[0]*uy[1]-uz[1]*uy[0];
-        uy[0]=ux[1]*uz[2]-ux[2]*uz[1]; uy[1]=ux[2]*uz[0]-ux[0]*uz[2]; uy[2]=ux[0]*uz[1]-ux[1]*uz[0];
-        double u_mag = sqrt(ux[0]*ux[0]+ux[1]*ux[1]+ux[2]*ux[2]); for(k=0;k<3;k++) {ux[k] /= u_mag;} //normalize  ux
-        u_mag = sqrt(uy[0]*uy[0]+uy[1]*uy[1]+uy[2]*uy[2]); for(k=0;k<3;k++) {uy[k] /= u_mag;} //normalize  uy
-        for(k=0;k<3;k++) { //Particle positioned at one of the regular positions on the randomized coordinate system
-            dx_u[k] = All.SN_Ejecta_Direction[dir_ind][0] * ux[k] + All.SN_Ejecta_Direction[dir_ind][1] * uy[k] + All.SN_Ejecta_Direction[dir_ind][2] * uz[k];//use directions pre-computed to isotropically cover a sphere with SINGLE_STAR_FB_SNE_N_EJECTA particles
-            veldir[k] = dx_u[k];} //launch radially
-        d_r = DMIN(P[i].SinkRadius, d_r); //launch close to the sink
-    }
-#endif
+
+        get_wind_spawn_direction(i, j - (NumPart + num_already_spawned), mode, jy, jz, veldir);
+        
         // actually lay down position and velocities using coordinate basis
         for(k=0;k<3;k++)
         {
-            P[j].Pos[k]=P[i].Pos[k] + dx_u[k]*d_r;
+            P[j].Pos[k]=P[i].Pos[k] + veldir[k]*d_r;
             P[j].Vel[k]=P[i].Vel[k] + veldir[k]*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];
         }
         
