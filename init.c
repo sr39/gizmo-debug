@@ -314,7 +314,10 @@ void init(void)
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
             P[i].wind_mode = 0; //this will make single_star_wind_mdot reset it
-            int kw; for(kw=0;kw<6;kw++) {P[i].Wind_direction[kw] = 0;} //in this case we will spawn the first few winds randomly
+            double nx[3], ny[3], nz[3];
+            get_random_orthonormal_basis(P[i].ID,nx,ny,nz);
+            int kw; for(kw=0;kw<3;kw++) {P[i].Wind_direction[kw] = nx[kw]; P[i].Wind_direction[kw+3] = ny[kw];
+} 
 #endif
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
             P[i].SNe_ThisTimeStep = 0;

@@ -551,20 +551,17 @@ void get_random_orthonormal_basis(int seed, double *nx, double *ny, double *nz){
 
 void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double *ny, double *nz, double *veldir){
     int k;
-    if(num_spawned_this_call % 2) { // every second particle is spawned in the opposite direction to the last, conserving momentum and COM
+    if((mode != 3) && (num_spawned_this_call % 2)) { // every second particle is spawned in the opposite direction to the last, conserving momentum and COM
         for(k=0; k<3;k++) {veldir[k] = -veldir[k];}
         return; // we're done
     }
     
     double nx[3] = {ny[1]*nz[2] - ny[2]*nz[1], ny[2]*nz[0] - ny[0]*nz[2], ny[0]*nz[1] - ny[1]*nz[0]};
-    
     // now do the actual direction based on the mode we're in
     double phi, cos_theta, sin_theta, sin_phi, cos_phi;
     if(mode==0){ // fully random
-        /* positions: uniformly sample unit sphere, and rotate into preferred coordinate system for use below */
         phi=2.*M_PI*get_random_number(num_spawned_this_call+1+ThisTask), cos_theta=2.*(get_random_number(num_spawned_this_call+3+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
-        /* velocities (determined by wind velocity direction) */
-        veldir[0]=sin_theta*cos_phi; veldir[1]=sin_theta*sin_phi; veldir[2]=cos_theta; // default to velocity pointed radially away from BH    
+        veldir[0]=sin_theta*cos_phi; veldir[1]=sin_theta*sin_phi; veldir[2]=cos_theta;
     } else if (mode==1){ // collimated
         double theta0=0.01, thetamax=30.*(M_PI/180.); // "flattening parameter" and max opening angle of jet velocity distribution from Matzner & McKee 1999, sets the collimation of the jets
         double theta=atan(theta0*tan(get_random_number(num_spawned_this_call+7+5*ThisTask)*atan(sqrt(1+theta0*theta0)*tan(thetamax)/theta0))/sqrt(1+theta0*theta0)); // biased sampling to get collimation
@@ -574,11 +571,11 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
     }
 #ifdef SINGLE_STAR_FB_WINDS
     else if (mode==2){ //random 3-axis isotropized - spawn along z axis, then y, then x
-        if((P[i].ID_child_number % 6) == 0) { // need to generate a brand new coordinate frame
-            get_random_orthonormal_basis(P[i].ID_child_number, nx, ny, nz);            
+        if(((P[i].ID_child_number-1) % 6) == 0) { // need to generate a brand new coordinate frame
+            get_random_orthonormal_basis(P[i].ID_child_number, nx, ny, nz);
             for(k=0; k<3; k++) {veldir[k] = nz[k]; P[i].Wind_direction[k]=nx[k]; P[i].Wind_direction[k+3]=ny[k];}
         }
-        else if((P[i].ID_child_number % 6) == 2) {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k];}}
+        else if(((P[i].ID_child_number-1) % 6) == 2) {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k];}}
         else {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k+3];}}
     }
 #endif
@@ -659,9 +656,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
 
     double veldir[3]; // velocity direction to spawn in - declare outside the loop so we remember it from the last iteration
-
     int mode = 0; // 0 if doing totally random directions, 1 if collimated, 2 for 3-axis isotropized, and 3 if using an angular grid
-
 // now do the logic to decide which mode to use to decide the direction
 #if defined(BH_DEBUG_SPAWN_JET_TEST) || defined(SINGLE_STAR_FB_JETS) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK) || defined(BH_FB_COLLIMATED)
 #if defined(SINGLE_STAR_FB_JETS)
@@ -690,8 +685,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         Jtot=jz[1]*jz[1]+jz[2]*jz[2]; if(Jtot>0) {Jtot=1/sqrt(Jtot); jy[1]=jz[2]*Jtot; jy[2]=-jz[1]*Jtot;}
         jx[0]=jz[1]*jy[2]-jz[2]*jy[1]; jx[1]=jz[2]*jy[0]-jz[0]*jy[2]; jx[2]=jz[0]*jy[1]-jz[1]*jy[0];
     }
-#endif
-    
+#endif   
     if(mode == 3){ // if doing an angular grid, need some fixed coordinates to orient it, but want to switch em up each time to avoid artifacts
         get_random_orthonormal_basis(P[i].ID_child_number, jx, jy, jz);
     }
@@ -804,9 +798,6 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         P[i].Mass -= P[j].Mass; /* make sure the operation is mass conserving! */
 #endif
         BPP(i).unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
-
-
-        
 
         double v_magnitude = All.BAL_v_outflow * All.cf_atime; // velocity of the jet
 #ifdef SINGLE_STAR_FB_JETS
