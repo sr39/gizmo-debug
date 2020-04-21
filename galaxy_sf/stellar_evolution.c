@@ -678,7 +678,7 @@ double single_star_wind_mdot(int n){
     if (wind_mass_loss_rate>0){       
         double dt_spawn = BH_WIND_SPAWN * All.BAL_wind_particle_mass/wind_mass_loss_rate * All.UnitTime_in_s / SEC_PER_YEAR; // time between spawns
         int old_wind_mode = P[n].wind_mode;
-        if (dt_spawn > max_t_spawn_yr){
+        if (dt_spawn < max_t_spawn_yr){
             P[n].wind_mode = 1; //we can spawn enough particles per wind time
         } else{
             P[n].wind_mode = 2; //we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
