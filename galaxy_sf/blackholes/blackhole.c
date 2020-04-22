@@ -147,7 +147,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 
 
 
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (defined(SINGLE_STAR_FB_WINDS) && defined(BH_THERMALFEEDBACK))
 /* weight function for local (short-range) coupling terms from the black hole, including the single-scattering radiation pressure and the bal winds */
 double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r, double H_bh)
 {
