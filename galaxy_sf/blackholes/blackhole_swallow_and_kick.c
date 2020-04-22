@@ -36,9 +36,12 @@ struct INPUT_STRUCT_NAME
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (defined(SINGLE_STAR_FB_WINDS) && defined(BH_THERMALFEEDBACK))
     MyFloat BH_disk_hr, BH_angle_weighted_kernel_sum;
 #endif
+#if (defined(BH_THERMALFEEDBACK) && defined(SINGLE_STAR_FB_WINDS))
+    MyFloat Energy_to_couple;
+#endif    
 #if defined(BH_RETURN_ANGMOM_TO_GAS)
     MyFloat BH_Specific_AngMom[3], angmom_norm_topass_in_swallowloop;
 #endif
@@ -67,6 +70,8 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     in->BH_disk_hr = P[i].BH_disk_hr;
+#endif
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (defined(SINGLE_STAR_FB_WINDS) && defined(BH_THERMALFEEDBACK))    
     in->BH_angle_weighted_kernel_sum = BlackholeTempInfo[j_tempinfo].BH_angle_weighted_kernel_sum;
 #endif
 #ifndef WAKEUP
@@ -81,7 +86,13 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 #if defined(BH_RETURN_BFLUX)
     for(k=0;k<3;k++) {in->B[k] = BPP(i).B[k];}
     in->kernel_norm_topass_in_swallowloop = BlackholeTempInfo[j_tempinfo].kernel_norm_topass_in_swallowloop;
-#endif    
+#endif
+#if (defined(BH_THERMALFEEDBACK) && defined(SINGLE_STAR_FB_WINDS))
+    if(P[i].wind_mode == 2){
+        double v = single_star_wind_velocity(i);
+        in->Energy_to_couple = 0.5 * single_star_wind_mdot(i) * v * v * (in->Dt);
+    } else {in->Energy_to_couple = 0;}
+#endif        
 }
 
 
@@ -197,7 +208,16 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     for(k=0;k<3;k++) {u+=dpos[k]*dpos[k];}
                     u=sqrt(u)/DMAX(h_i, P[j].Hsml); if(u<1) { kernel_main(u,1., 1.,&wk,&dwk,-1); } else {wk=dwk=0;}
                 }
-#endif                
+#endif
+#if (defined(SINGLE_STAR_FB_WINDS) && defined(BH_THERMALFEEDBACK))
+                if((P[j].Type == 0)){
+                    double r=0; for(k=0;k<3;k++) {r+=dpos[k]*dpos[k];}; r=sqrt(r);
+                    double frac = bh_angleweight_localcoupling(j,0,0,r,h_i) / local.BH_angle_weighted_kernel_sum;
+                    //SphP[j].InternalEnergy += bh_angleweight_localcoupling(j,0,0,r,h_i) / local.BH_angle_weighted_kernel_sum  * local.Energy_to_couple/P[j].Mass; //(wk/local.kernel_norm_topass_in_swallowloop)
+                    SphP[j].Injected_BH_Energy += bh_angleweight_localcoupling(j,0,0,r,h_i) / local.BH_angle_weighted_kernel_sum  * local.Energy_to_couple; //(wk/local.kernel_norm_topass_in_swallowloop)
+                    SphP[j].wakeup = 1; NeedToWakeupParticles_local = 1;
+                }
+#endif                                
 #if defined(BH_RETURN_ANGMOM_TO_GAS) /* this should go here [right before the loop that accretes it back onto the BH] */
                 if(P[j].Type == 0)
                 {

@@ -39,7 +39,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #if defined(BH_GRAVACCRETION) && (BH_GRAVACCRETION == 0)
     MyFloat MgasBulge_in_Kernel, MstarBulge_in_Kernel;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (defined(SINGLE_STAR_FB_WINDS) && defined(BH_THERMALFEEDBACK))
     MyFloat GradRho_in_Kernel[3], BH_angle_weighted_kernel_sum;
 #endif
 #ifdef BH_DYNFRICTION

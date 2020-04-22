@@ -448,6 +448,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define SINGLE_STAR_FB_JETS 1 // scales the amount of accretion power going into jets, we eject (1-All.BAL_f_accretion) fraction of the accreted mass at this value times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.BAL_f_accretion)
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
+//#define BH_THERMALFEEDBACK // flag for pure thermal injection - use either this or the 3 flags below for momentum injection
 #define GALSF_FB_MECHANICAL //We will use the FIRE wind module for low mass loss rate stars (spawning leads to issues)
 #define MECHANICAL_FB_MOMENTUM_ONLY
 #define GALSF_FB_FIRE_STELLAREVOLUTION //flag needed to calculate properties
