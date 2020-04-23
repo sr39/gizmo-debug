@@ -450,7 +450,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #if defined(SINGLE_STAR_FB_WINDS)
 //#define BH_THERMALFEEDBACK // flag for pure thermal injection - use either this or the 3 flags below for momentum injection
 #define GALSF_FB_MECHANICAL //We will use the FIRE wind module for low mass loss rate stars (spawning leads to issues)
-#define MECHANICAL_FB_MOMENTUM_ONLY
+//#define MECHANICAL_FB_MOMENTUM_ONLY // enable with GALSF_FB_MECHANICAL to couple only mass and momentum in winds
 #define GALSF_FB_FIRE_STELLAREVOLUTION //flag needed to calculate properties
 #endif
 #ifdef SINGLE_STAR_FB_SNE

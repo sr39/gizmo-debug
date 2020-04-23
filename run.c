@@ -276,7 +276,19 @@ void calculate_non_standard_physics(void)
     /***** black hole accretion and feedback *****/
     CPU_Step[CPU_MISC] += measure_time();
     blackhole_accretion();
-    CPU_Step[CPU_BLACKHOLES] += measure_time();
+    
+#ifdef BH_WIND_SPAWN
+    double MaxUnSpanMassBH_global;
+    MPI_Allreduce(&MaxUnSpanMassBH, &MaxUnSpanMassBH_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    if(MaxUnSpanMassBH_global > (BH_WIND_SPAWN)*All.BAL_wind_particle_mass)
+    {
+        spawn_bh_wind_feedback();
+        rearrange_particle_sequence();
+
+        MaxUnSpanMassBH=MaxUnSpanMassBH_global=0.;
+    }
+#endif    
+    CPU_Step[CPU_BLACKHOLES] += measure_time();    
 #endif
     
     
@@ -292,17 +304,6 @@ void calculate_non_standard_physics(void)
             All.TimeNextOnTheFlyFoF += All.TimeBetOnTheFlyFoF;
     }
 #endif // ifdef FOF
-#ifdef BH_WIND_SPAWN
-    double MaxUnSpanMassBH_global;
-    MPI_Allreduce(&MaxUnSpanMassBH, &MaxUnSpanMassBH_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-    if(MaxUnSpanMassBH_global > (BH_WIND_SPAWN)*All.BAL_wind_particle_mass)
-    {
-        spawn_bh_wind_feedback();
-        rearrange_particle_sequence();
-
-        MaxUnSpanMassBH=MaxUnSpanMassBH_global=0.;
-    }
-#endif
 #endif // ifdef BLACK_HOLES or GALSF_SUBGRID_WINDS
     
     
