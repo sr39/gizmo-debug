@@ -677,7 +677,7 @@ double single_star_wind_mdot(int n){
     //Let's deal with the case of undefined wind mode (just promoted to MS or restart from snapshot)
     if (wind_mass_loss_rate>0){
 //        Let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
-        double v_wind = singlestar_single_star_wind_velocity(n);
+        double v_wind = single_star_wind_velocity(n);
         double t_wind =sqrt( wind_mass_loss_rate * (3.0/(4.0*M_PI*P[n].DensAroundStar)) / (v_wind*v_wind*v_wind));
         double N_wind = wind_mass_loss_rate * t_wind / All.BAL_wind_particle_mass;
         
