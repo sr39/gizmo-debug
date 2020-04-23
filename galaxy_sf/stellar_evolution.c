@@ -654,7 +654,7 @@ double single_star_wind_mdot(int n){
 /* Let's get the wind mass loss rate for MS stars. n is the index of the particle (P[n]). mode is 1 when called by the wind spawning routine (blackhole.c) and 2 if called by the FIRE wind module (in this file, mechanical_fb_calculate_eventrates_Winds). The function decides which type of wind feedback is appropriate for the current star and will only give a nonzero mdot to one of these */
     double minimum_stellarmass_for_winds_solar  = 2.0;  // minimum stellar mass allowed to have winds
     int    model_wolf_rayet_phase_explicitly   = 1;    // assumes that O stars turn into WR stars at the end of their lifetime, increasing their mass loss rate
-    double max_t_spawn_yr = 1e4; // maximum time between spawns, above which we use local injection
+    double n_particles_for_discrete_wind_spawn  = 1e-2;   // parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds) -- particle number required to trigger 'explicit' spawn module. Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
     
     double wind_mass_loss_rate=0; //mass loss rate in code units
     if (P[n].Type != 5) {return 0;}
@@ -675,10 +675,14 @@ double single_star_wind_mdot(int n){
     
     if(model_wolf_rayet_phase_explicitly) {if(evaluate_stellar_age_Gyr(P[n].StellarAge) > (stellar_lifetime_in_Gyr(n)-singlestar_WR_lifetime_Gyr(n))){wind_mass_loss_rate*=10;}} //Our star is in the WR phase, for now use the simple prescription of having 10x higher wind loss rates based on Smith 2014
     //Let's deal with the case of undefined wind mode (just promoted to MS or restart from snapshot)
-    if (wind_mass_loss_rate>0){       
-        double dt_spawn = BH_WIND_SPAWN * All.BAL_wind_particle_mass/wind_mass_loss_rate * All.UnitTime_in_s / SEC_PER_YEAR; // time between spawns
+    if (wind_mass_loss_rate>0){
+//        Let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
+        double v_wind = singlestar_single_star_wind_velocity(n);
+        double t_wind =sqrt( wind_mass_loss_rate * (3.0/(4.0*M_PI*P[n].DensAroundStar)) / (v_wind*v_wind*v_wind));
+        double N_wind = wind_mass_loss_rate * t_wind / All.BAL_wind_particle_mass;
+        
         int old_wind_mode = P[n].wind_mode;
-        if (dt_spawn < max_t_spawn_yr){
+        if (N_wind >= n_particles_for_discrete_wind_spawn){
             P[n].wind_mode = 1; //we can spawn enough particles per wind time
         } else{
             P[n].wind_mode = 2; //we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
