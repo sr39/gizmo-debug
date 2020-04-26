@@ -111,21 +111,17 @@ void begrun(void)
 #ifdef BOX_PERIODIC
   boxSize = All.BoxSize;
   boxHalf = 0.5 * All.BoxSize;
-  inverse_boxSize = 1. / boxSize;
 #ifdef BOX_LONG_X
-  boxHalf_X = boxHalf * BOX_LONG_X;
-  boxSize_X = boxSize * BOX_LONG_X;
-  inverse_boxSize_X = 1. / boxSize_X;
+    boxSize_X = boxSize * BOX_LONG_X;
+    boxHalf_X = 0.5 * boxSize_X;
 #endif
 #ifdef BOX_LONG_Y
-  boxHalf_Y = boxHalf * BOX_LONG_Y;
-  boxSize_Y = boxSize * BOX_LONG_Y;
-  inverse_boxSize_Y = 1. / boxSize_Y;
+    boxSize_Y = boxSize * BOX_LONG_Y;
+    boxHalf_Y = 0.5 * boxSize_Y;
 #endif
 #ifdef BOX_LONG_Z
-  boxHalf_Z = boxHalf * BOX_LONG_Z;
-  boxSize_Z = boxSize * BOX_LONG_Z;
-  inverse_boxSize_Z = 1. / boxSize_Z;
+    boxSize_Z = boxSize * BOX_LONG_Z;
+    boxHalf_Z = 0.5 * boxSize_Z;
 #endif
 #endif
     
@@ -137,6 +133,59 @@ void begrun(void)
 #endif
     calc_shearing_box_pos_offset();
 #endif
+
+    /* begin pre-definitions for special boundaries */
+#if defined(BOX_REFLECT_X) || defined(BOX_REFLECT_Y) || defined(BOX_REFLECT_Z) || defined(BOX_OUTFLOW_X) || defined(BOX_OUTFLOW_Y) || defined(BOX_OUTFLOW_Z)
+    special_boundary_condition_xyz_def_reflect[0]=special_boundary_condition_xyz_def_reflect[1]=special_boundary_condition_xyz_def_reflect[2]=BOX_VALUE_FOR_NOTHING_SPECIAL_BOUNDARY_; /* sets arbitrary value code for 'nothing special' */
+    special_boundary_condition_xyz_def_outflow[0]=special_boundary_condition_xyz_def_outflow[1]=special_boundary_condition_xyz_def_outflow[2]=BOX_VALUE_FOR_NOTHING_SPECIAL_BOUNDARY_; /* sets arbitrary value code for 'nothing special' */
+
+#if defined(BOX_REFLECT_X)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_REFLECT_X)
+    special_boundary_condition_xyz_def_reflect[0] = BOX_REFLECT_X; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_reflect[0] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+#if defined(BOX_REFLECT_Y)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_REFLECT_Y)
+    special_boundary_condition_xyz_def_reflect[1] = BOX_REFLECT_Y; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_reflect[1] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+#if defined(BOX_REFLECT_Z)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_REFLECT_Z)
+    special_boundary_condition_xyz_def_reflect[2] = BOX_REFLECT_Z; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_reflect[2] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+
+#if defined(BOX_OUTFLOW_X)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_OUTFLOW_X)
+    special_boundary_condition_xyz_def_outflow[0] = BOX_OUTFLOW_X; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_outflow[0] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+#if defined(BOX_OUTFLOW_Y)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_OUTFLOW_Y)
+    special_boundary_condition_xyz_def_outflow[1] = BOX_OUTFLOW_Y; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_outflow[1] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+#if defined(BOX_OUTFLOW_Z)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_OUTFLOW_Z)
+    special_boundary_condition_xyz_def_outflow[2] = BOX_OUTFLOW_Z; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_outflow[2] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+
+#endif /* end set of clauses to deal with causal flags for special boundary conditions */
+
+    
     
 
   random_generator = gsl_rng_alloc(gsl_rng_ranlxd1);

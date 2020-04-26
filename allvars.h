@@ -1284,35 +1284,42 @@ typedef MyDouble MyBigFloat;
 #endif
 
 #ifdef BOX_PERIODIC
-extern MyDouble boxSize, boxHalf, inverse_boxSize;
+extern MyDouble boxSize, boxHalf;
+#else
+#define boxSize (All.BoxSize)
+#define boxHalf (0.5*All.BoxSize)
+#endif
 #ifdef BOX_LONG_X
-extern MyDouble boxSize_X, boxHalf_X, inverse_boxSize_X;
+extern MyDouble boxSize_X, boxHalf_X;
 #else
 #define boxSize_X boxSize
 #define boxHalf_X boxHalf
-#define inverse_boxSize_X inverse_boxSize
 #endif
 #ifdef BOX_LONG_Y
-extern MyDouble boxSize_Y, boxHalf_Y, inverse_boxSize_Y;
+extern MyDouble boxSize_Y, boxHalf_Y;
 #else
 #define boxSize_Y boxSize
 #define boxHalf_Y boxHalf
-#define inverse_boxSize_Y inverse_boxSize
 #endif
 #ifdef BOX_LONG_Z
-extern MyDouble boxSize_Z, boxHalf_Z, inverse_boxSize_Z;
+extern MyDouble boxSize_Z, boxHalf_Z;
 #else
 #define boxSize_Z boxSize
 #define boxHalf_Z boxHalf
-#define inverse_boxSize_Z inverse_boxSize
 #endif
-#endif
-
 
 #ifdef BOX_SHEARING
 extern MyDouble Shearing_Box_Vel_Offset;
 extern MyDouble Shearing_Box_Pos_Offset;
 #endif
+
+#if defined(BOX_REFLECT_X) || defined(BOX_REFLECT_Y) || defined(BOX_REFLECT_Z) || defined(BOX_OUTFLOW_X) || defined(BOX_OUTFLOW_Y) || defined(BOX_OUTFLOW_Z)
+#define BOX_DEFINED_SPECIAL_XYZ_BOUNDARY_CONDITIONS_ARE_ACTIVE 1 /* flag to let the code know to use everything below */
+extern short int special_boundary_condition_xyz_def_reflect[3];
+extern short int special_boundary_condition_xyz_def_outflow[3];
+#define BOX_VALUE_FOR_NOTHING_SPECIAL_BOUNDARY_ 20 /* define a dummy value we won't have the user set for reference below */
+#endif
+
 
 
 /****************************************************************************************************************************/
@@ -1373,6 +1380,21 @@ z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
 #define NGB_PERIODIC_BOX_LONG_Y(x,y,z,sign) (fabs(y))
 #define NGB_PERIODIC_BOX_LONG_Z(x,y,z,sign) (fabs(z))
 #endif
+
+
+
+/* this function, like the NEAREST and NGB_PERIODIC functions above, does -velocity wrapping- for periodic boundary
+    conditions. this is currently only relevant for shearing boxes, where the box ends in the '0' axis direction have
+    systematically different (shear-periodic instead of periodic) velocities associated, so the box needs to be able to
+    know how to wrap them. this takes the vector of positions of particle "i" pos_i (the particle "seeing" particle j),
+    particle j position pos_j, the velocity difference vector dv_ij=v_i-v_j. last  dv_sign_flipped = 1 if dv_ij=v_i-v_j,
+    but dv_sign_flipped=-1 if dv_ij=v_j-v_i (flipped from normal order) */
+#ifdef BOX_SHEARING
+#define NGB_SHEARBOX_BOUNDARY_VELCORR_(pos_i,pos_j,dv_ij,dv_sign_flipped) (dv_ij[BOX_SHEARING_PHI_COORDINATE] += dv_sign_flipped*Shearing_Box_Vel_Offset * ((pos_i[0]-pos_j[0]>boxHalf_X)?(1):((pos_i[0]-pos_j[0]<-boxHalf_X)?(-1):(0)))
+#else
+#define NGB_SHEARBOX_BOUNDARY_VELCORR_(pos_i,pos_j,dv_ij,dv_sign_flipped)
+#endif
+
 
 #define FACT1 0.366025403785	/* FACT1 = 0.5 * (sqrt(3)-1) */
 #define FACT2 0.86602540        /* FACT2 = 0.5 * sqrt(3) */
