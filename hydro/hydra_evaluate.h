@@ -184,12 +184,10 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #ifdef BOX_SHEARING
                 /* in a shearing box, need to set dv appropriately for the shearing boundary conditions */
                 MyDouble VelPred_j[3]; for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
-                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+                NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,VelPred_j,-1); /* wrap velocities for shearing boxes if needed */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 MyDouble ParticleVel_j[3]; for(k=0;k<3;k++) {ParticleVel_j[k]=SphP[j].VelPred[k];}
-                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {ParticleVel_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {ParticleVel_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+                NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,ParticleVel_j,-1); /* wrap velocities for shearing boxes if needed */
 #endif
 #else
                 /* faster to just set a pointer directly */

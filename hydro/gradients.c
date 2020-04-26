@@ -2028,17 +2028,10 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if(swap_to_j) {MINMAX_CHECK(-dp,GasGradDataPasser[j].Minima.Pressure,GasGradDataPasser[j].Maxima.Pressure);}
 
 #ifdef TURB_DIFF_DYNAMIC
-                    double dv_bar[3]; /* Need to calculate the filtered velocity gradient for the filtered shear */
-                    for (k = 0; k < 3; k++) {
-                        dv_bar[k] = SphP[j].Velocity_bar[k] - local.GQuant.Velocity_bar[k];
-#ifdef SHEARING_BOX
-                        if (k == SHEARING_BOX_PHI_COORDINATE) {
-                            if (local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dv_bar[k] -= Shearing_Box_Vel_Offset;}
-                            if (local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dv_bar[k] += Shearing_Box_Vel_Offset;}}
-#endif
-                        MINMAX_CHECK(dv_bar[k], out.Minima.Velocity_bar[k], out.Maxima.Velocity_bar[k]);
-                        if (swap_to_j) {MINMAX_CHECK(-dv_bar[k], GasGradDataPasser[j].Minima.Velocity_bar[k], GasGradDataPasser[j].Maxima.Velocity_bar[k]);}
-                    }
+                    double dv_bar[3]; for(k=0;k<3;k++) {dv_bar[k] = SphP[j].Velocity_bar[k] - local.GQuant.Velocity_bar[k];} /* Need to calculate the filtered velocity gradient for the filtered shear */
+                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dv_bar,-1); /* wrap velocities for shearing boxes if needed */
+                    for(k=0;k<3;k++) {MINMAX_CHECK(dv_bar[k], out.Minima.Velocity_bar[k], out.Maxima.Velocity_bar[k]);
+                        if (swap_to_j) {MINMAX_CHECK(-dv_bar[k], GasGradDataPasser[j].Minima.Velocity_bar[k], GasGradDataPasser[j].Maxima.Velocity_bar[k]);}}
 #endif
 
 #if defined(KERNEL_CRK_FACES)
@@ -2080,17 +2073,9 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     }
 #endif
                     
-                    double dv[3];
-                    for(k=0;k<3;k++)
-                    {
-                        dv[k] = SphP[j].VelPred[k] - local.GQuant.Velocity[k];
-#ifdef BOX_SHEARING
-                        if(k==BOX_SHEARING_PHI_COORDINATE)
-                        {
-                            if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[k] -= Shearing_Box_Vel_Offset;}
-                            if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[k] += Shearing_Box_Vel_Offset;}
-                        }
-#endif
+                    double dv[3]; for(k=0;k<3;k++) {dv[k] = SphP[j].VelPred[k] - local.GQuant.Velocity[k];}
+                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dv,-1); /* wrap velocities for shearing boxes if needed */
+                    for(k=0;k<3;k++) {
                         MINMAX_CHECK(dv[k],out.Minima.Velocity[k],out.Maxima.Velocity[k]);
                         if(swap_to_j) {MINMAX_CHECK(-dv[k],GasGradDataPasser[j].Minima.Velocity[k],GasGradDataPasser[j].Maxima.Velocity[k]);}
                     }

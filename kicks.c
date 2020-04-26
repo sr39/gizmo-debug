@@ -336,19 +336,29 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
         }
 
  
-        /* check for reflecting boundaries: if so, do the reflection! */
-#if defined(BOX_REFLECT_X) || defined(BOX_REFLECT_Y) || defined(BOX_REFLECT_Z)
-        double box_upper[3]; box_upper[0]=box_upper[1]=box_upper[2]=1;
+        /* check for reflecting or outflow or otherwise special boundaries: if so, do the reflection/boundary! */
+#if defined(BOX_REFLECT_X) || defined(BOX_REFLECT_Y) || defined(BOX_REFLECT_Z) || defined(BOX_OUTFLOW_X) || defined(BOX_OUTFLOW_Y) || defined(BOX_OUTFLOW_Z)
+        double box_upper[3]; box_upper[0]=box_upper[1]=box_upper[2]=All.BoxSize;
 #ifdef BOX_PERIODIC
-        box_upper[0]=boxSize_X; box_upper[1]=boxSize_Y; box_upper[2]=boxSize_Z;
+        box_upper[0]=boxSize_X; box_upper[1]=boxSize_Y; box_upper[2]=boxSize_Z; /* everything is pre-defined for us */
+#else
+#ifdef BOX_LONG_X
+        box_upper[0] *= BOX_LONG_X; /* stretch box as needed */
+#endif
+#ifdef BOX_LONG_X
+        box_upper[1] *= BOX_LONG_Y; /* stretch box as needed */
+#endif
+#ifdef BOX_LONG_X
+        box_upper[2] *= BOX_LONG_Z; /* stretch box as needed */
+#endif
 #endif
         for(j = 0; j < 3; j++)
         {
-            /* skip the non-reflecting boundaries */
-#ifndef BOX_REFLECT_X
+            /* skip the non-special boundaries */
+#if !defined(BOX_REFLECT_X) && !defined(BOX_OUTFLOW_X)
             if(j==0) continue;
 #endif
-#ifndef BOX_REFLECT_Y
+#if !defined(BOX_REFLECT_X) && !defined(BOX_OUTFLOW_X)
             if(j==1) continue;
 #endif
 #ifndef BOX_REFLECT_Z
@@ -379,8 +389,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 //for(j=0;j<3;j++) {P[i].Vel[j] *= exp(-0.15);} // coefficient is constant per-timestep: adjust to make as aggressive or weak as desired //
 #endif
 
-                for(j = 0; j < 3; j++)
-                    SphP[i].VelPred[j] = P[i].Vel[j];//(mass_old*v_old[j] + dp[j]) / mass_new;
+                for(j=0; j<3; j++) {SphP[i].VelPred[j] = P[i].Vel[j];}//(mass_old*v_old[j] + dp[j]) / mass_new;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 P[i].Mass = SphP[i].MassTrue; //mass_old + SphP[i].DtMass * dt_hydrokick;
 #endif
@@ -534,3 +543,34 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 #endif
 }
 
+    
+    
+void apply_special_boundary_conditions(int i, int mode)
+{
+#if BOX_DEFINED_SPECIAL_XYZ_BOUNDARY_CONDITIONS_ARE_ACTIVE
+    double box_upper[3]; int j;
+    box_upper[0]=boxSize_X; box_upper[1]=boxSize_Y; box_upper[2]=boxSize_Z;
+    for(j=0; j<3; j++)
+    {
+        if(P[i].Pos[j] <= 0)
+        {
+            if(special_boundary_condition_xyz_def_reflect[j] == 0 || special_boundary_condition_xyz_def_reflect[j] == -1)
+            {
+                if(P[i].Vel[j]<0) {P[i].Vel[j]=-P[i].Vel[j]; if(P[i].Type==0) {SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;} if(mode==1) {dp[j]+=2*P[i].Vel[j]*mass_new;}}
+                P[i].Pos[j]=(0.+((double)P[i].ID)*1.e-9)*box_upper[j];
+            }
+            if(special_boundary_condition_xyz_def_outflow[j] == 0 || special_boundary_condition_xyz_def_outflow[j] == -1) {P[i].Mass=0;}
+        }
+        else if (P[i].Pos[j] >= box_upper[j])
+        {
+            if(special_boundary_condition_xyz_def_reflect[j] == 0 || special_boundary_condition_xyz_def_reflect[j] == 1)
+            {
+                if(P[i].Vel[j]>0) {P[i].Vel[j]=-P[i].Vel[j]; if(P[i].Type==0) {SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;} if(mode==1) {dp[j]+=2*P[i].Vel[j]*mass_new;}}
+                P[i].Pos[j]=box_upper[j]*(1.-((double)P[i].ID)*1.e-9);
+            }
+            if(special_boundary_condition_xyz_def_outflow[j] == 0 || special_boundary_condition_xyz_def_outflow[j] == 1) {P[i].Mass=0;}
+        }
+    }
+#endif
+    return;
+}
