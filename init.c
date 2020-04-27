@@ -377,7 +377,7 @@ void init(void)
                 P[i].Vel[GRAV_DIRECTION_RDI] -= w0;
 #endif // closes rdi_testproblem
             }
-            P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
+            P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Grain_AccelTimeMin = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
 #if defined(GRAIN_BACKREACTION)
             P[i].Grain_DeltaMomentum[0]=P[i].Grain_DeltaMomentum[1]=P[i].Grain_DeltaMomentum[2]=0;
 #endif

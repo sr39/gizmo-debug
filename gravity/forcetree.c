@@ -83,7 +83,7 @@ extern pthread_mutex_t mutex_nexport, mutex_partnodedrift;
 
 
 #ifdef BOX_PERIODIC
-/*! Size of 3D lock-up table for Ewald correction force */
+/*! Size of 3D look-up table for Ewald correction force */
 #define EN  64
 /*! 3D lock-up table for Ewald correction to force and potential. Only one
  *  octant is stored, the rest constructed by using the symmetry
