@@ -227,7 +227,20 @@ void drift_particle(int i, integertime time1)
             
             SphP[i].Density *= exp(-divv_fac);
             double etmp = SphP[i].InternalEnergyPred + SphP[i].DtInternalEnergy * dt_entr;
+#if defined(RADTRANSFER) && defined(RT_EVOLVE_ENERGY) /* block here to deal with tricky cases where radiation energy density is -much- larger than thermal */ 
+            int kfreq; double erad_tot=0,emin=0,enew=0,demin=0,dErad=0; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad_tot+=SphP[i].E_gamma_Pred[kfreq];}
+            if(erad_tot > 0)
+            {
+                demin=0.025*SphP[i].InternalEnergyPred; emin=0.025*(erad_tot+SphP[i].InternalEnergyPred*P[i].Mass); enew=DMAX(erad_tot+dEnt*P[i].Mass,emin);
+                dEnt=(enew-erad_tot)/P[i].Mass; if(dEnt<demin) {dErad=dEnt-demin; dEnt=demin;}
+                if(dErad<-0.975*erad_tot) {dErad=-0.975*erad_tot;}
+                SphP[i].InternalEnergyPred = dEnt; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {SphP[i].E_gamma_Pred[kfreq] *= 1 + dErad/erad_tot;}
+            } else {
+                if(etmp<0.5*SphP[i].InternalEnergyPred) {SphP[i].InternalEnergyPred *= 0.5;} else {SphP[i].InternalEnergyPred=etmp;}
+            }
+#else
             if(etmp<0.5*SphP[i].InternalEnergyPred) {SphP[i].InternalEnergyPred *= 0.5;} else {SphP[i].InternalEnergyPred=etmp;}
+#endif
             if(SphP[i].InternalEnergyPred<All.MinEgySpec) SphP[i].InternalEnergyPred=All.MinEgySpec;
             
 #ifdef HYDRO_PRESSURE_SPH

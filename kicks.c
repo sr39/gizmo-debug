@@ -297,7 +297,20 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             }
 #endif // closes ENERGY_ENTROPY_SWITCH_IS_ACTIVE
             
+#ifdef RADTRANSFER /* block here to deal with tricky cases where radiation energy density is -much- larger than thermal */
+            int kfreq; double erad_tot=0,emin=0,enew=0,demin=0,dErad=0; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad_tot+=SphP[i].E_gamma[kfreq];}
+            if(erad_tot > 0)
+            {
+                demin=0.025*SphP[i].InternalEnergy; emin=0.025*(erad_tot+SphP[i].InternalEnergy*P[i].Mass); enew=DMAX(erad_tot+dEnt*P[i].Mass,emin);
+                dEnt=(enew-erad_tot)/P[i].Mass; if(dEnt<demin) {dErad=dEnt-demin; dEnt=demin;}
+                if(dErad<-0.975*erad_tot) {dErad=-0.975*erad_tot;}
+                SphP[i].InternalEnergy = dEnt; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {SphP[i].E_gamma[kfreq] *= 1 + dErad/erad_tot;}
+            } else {
+                if(dEnt < 0.5*SphP[i].InternalEnergy) {SphP[i].InternalEnergy *= 0.5;} else {SphP[i].InternalEnergy = dEnt;}
+            }
+#else
             if(dEnt < 0.5*SphP[i].InternalEnergy) {SphP[i].InternalEnergy *= 0.5;} else {SphP[i].InternalEnergy = dEnt;}
+#endif
             check_particle_for_temperature_minimum(i); /* if we've fallen below the minimum temperature, force the 'floor' */
         }
         

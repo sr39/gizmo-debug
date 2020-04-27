@@ -503,6 +503,10 @@ integertime get_timestep(int p,		/*!< particle index */
         csnd = sqrt(csnd);
         double L_particle = Get_Particle_Size(p);
         dt_courant = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / csnd;
+#if defined(GRAIN_BACKREACTION)
+        double tstop_tLarmor_min = All.CourantFac * P[p].Grain_AccelTimeMin;
+        if(tstop_tLarmor_min < dt_courant) {dt_courant = tstop_tLarmor_min;}
+#endif
 #ifdef PIC_MHD
         if(P[p].Grain_SubType==3)
         {

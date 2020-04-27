@@ -2380,6 +2380,7 @@ extern ALIGN(32) struct particle_data
     MyFloat Gas_Density;
     MyFloat Gas_InternalEnergy;
     MyFloat Gas_Velocity[3];
+    MyFloat Grain_AccelTimeMin;
 #if defined(GRAIN_BACKREACTION)
     MyFloat Grain_DeltaMomentum[3];
 #endif

@@ -102,7 +102,7 @@ void apply_grain_dragforce(void)
                 /* this external_forcing parameter includes additional grain-specific forces. note that -anything- which imparts an
                  identical acceleration onto gas and dust will cancel in the terms in t_stop, and just act like a 'normal' acceleration
                  on the dust. for this reason the gravitational acceleration doesn't need to enter our 'external_forcing' parameter */
-                double external_forcing[3]={0};
+                double external_forcing[3]={0}; P[i].Grain_AccelTimeMin = 1./(MIN_REAL_NUMBER + tstop_inv);
 #ifdef GRAIN_LORENTZFORCE
                 if(grain_subtype == 1)
                 {
@@ -123,6 +123,7 @@ void apply_grain_dragforce(void)
 #endif
                     /* now apply the boris integrator */
                     double lorentz_coeff = (0.5*dt) * bmag * grain_charge_cinv; // dimensionless half-timestep term for boris integrator //
+                    if(lorentz_coeff != 0) {P[i].Grain_AccelTimeMin = 1./(1./P[i].Grain_AccelTimeMin + lorentz_coeff/(MIN_REAL_NUMBER+dt));}
                     double v_m[3]={0}, v_t[3]={0}, v_p[3]={0}, vcrosst[3]={0};
                     for(k=0;k<3;k++) {v_m[k] = dv[k] + 0.5*efield_coeff*efield[k];} // half-step from E-field
                     /* cross-product for rotation */
@@ -180,6 +181,7 @@ void apply_grain_dragforce(void)
                 for(k=0;k<3;k++) {bhat[k]=P[i].Gas_B[k]; bmag+=bhat[k]*bhat[k]; v_g[k]=P[i].Gas_Velocity[k]/reduced_C;} /* get magnitude and unit vector for B */
                 if(bmag>0) {bmag=sqrt(bmag); for(k=0;k<3;k++) {bhat[k]/=bmag;}} else {bmag=0;} /* take it correctly assuming its non-zero */
                 double efield_coeff = (0.5*dt) * charge_to_mass_ratio_dimensionless * bmag * lorentz_units; // dimensionless half-timestep term for boris integrator //
+                if(efield_coeff != 0) {P[i].Grain_AccelTimeMin = 1./(1./P[i].Grain_AccelTimeMin + efield_coeff/(MIN_REAL_NUMBER+dt));}
                 efield[0] = -v_g[1]*bhat[2] + v_g[2]*bhat[1]; efield[1] = -v_g[2]*bhat[0] + v_g[0]*bhat[2]; efield[2] = -v_g[0]*bhat[1] + v_g[1]*bhat[0]; /* efield term, but with magnitude of B factored out for units above */
                 double v_0[3],v0[3],vf[3],v2=0; for(k=0;k<3;k++) {v0[k]=P[i].Vel[k]; v2+=v0[k]*v0[k];}
                 if(v2 >= reduced_C*reduced_C) {PRINT_WARNING("VELOCITY HAS EXCEEDED THE SPEED OF LIGHT. BAD.");}
