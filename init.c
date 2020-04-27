@@ -765,8 +765,7 @@ void init(void)
     
     All.Ti_Current = 0;
     
-    if(RestartFlag != 3 && RestartFlag != 5)
-        setup_smoothinglengths();
+    if(RestartFlag != 3 && RestartFlag != 5) {setup_smoothinglengths();}
     
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     if(RestartFlag != 3 && RestartFlag != 5) {ags_setup_smoothinglengths();}
@@ -1095,20 +1094,15 @@ void setup_smoothinglengths(void)
 #endif
         {
                 no = Father[i];
-                
-                while(10 * All.DesNumNgb * P[i].Mass > Nodes[no].u.d.mass)
+                while(2 * All.DesNumNgb * P[i].Mass > Nodes[no].u.d.mass)
                 {
                     p = Nodes[no].u.d.father;
-                    
-                    if(p < 0)
-                        break;
-                    
+                    if(p < 0) {break;}
                     no = p;
                 }
                 
                 if((RestartFlag == 0)||(P[i].Type != 0)) // if Restartflag==2, use the saved Hsml of the gas as initial guess //
                 {
-                    
 #ifndef INPUT_READ_HSML
 #if NUMDIMS == 3
                     PPP[i].Hsml = pow(3.0 / (4 * M_PI) * All.DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 0.333333) * Nodes[no].len;
@@ -1120,35 +1114,27 @@ void setup_smoothinglengths(void)
                     PPP[i].Hsml = All.DesNumNgb * (P[i].Mass / Nodes[no].u.d.mass) * Nodes[no].len;
 #endif
 #ifndef SELFGRAVITY_OFF
-                    if(All.SofteningTable[0] != 0)
+                    if(All.SofteningTable[P[i].Type] != 0)
                     {
-                        if((PPP[i].Hsml>100.*All.SofteningTable[0])||(PPP[i].Hsml<=0.01*All.SofteningTable[0])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
-                            PPP[i].Hsml = All.SofteningTable[0];
+                        if((PPP[i].Hsml>100.*All.SofteningTable[P[i].Type])||(PPP[i].Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
+                            {PPP[i].Hsml = All.SofteningTable[P[i].Type];}
                     }
 #else
-                    if((Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) PPP[i].Hsml = 1.0;
+                    if((Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}
 #endif
 #endif // INPUT_READ_HSML
                 } // closes if((RestartFlag == 0)||(P[i].Type != 0))
             }
     }
-    
+    if((RestartFlag==0 || RestartFlag==2) && All.ComovingIntegrationOn) {for(i=0;i<N_gas;i++) {PPP[i].Hsml *= pow(All.Omega0/All.OmegaBaryon,1./NUMDIMS);}} /* correct (crudely) for baryon fraction, used in the estimate above for Hsml */
     
 #ifdef BLACK_HOLES
-    if(RestartFlag == 0 || RestartFlag == 2)
-    {
-        for(i = 0; i < NumPart; i++)
-            if(P[i].Type == 5)
-                PPP[i].Hsml = All.SofteningTable[5];
-    }
+    if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {if(P[i].Type == 5) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}}}
 #endif
     
 #ifdef GRAIN_FLUID
-    if(RestartFlag == 0 || RestartFlag == 2)
-    {
-        for(i = 0; i < NumPart; i++)
-            if(P[i].Type > 0) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}
-    }
+    //if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {if(P[i].Type > 0) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}}}
+    if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {PPP[i].Hsml *= pow(2.,1./NUMDIMS);}} /* very rough correction assuming comparable numbers of dust and gas elements */
 #endif
  
     density();    
