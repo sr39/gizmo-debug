@@ -468,24 +468,26 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
         SphP[i].MassTrue -= SphP[j].MassTrue;
 #endif
 #ifdef COSMIC_RAYS
-        SphP[j].CosmicRayEnergy = mass_of_new_particle * SphP[i].CosmicRayEnergy; SphP[i].CosmicRayEnergy -= SphP[j].CosmicRayEnergy;
-        SphP[j].CosmicRayEnergyPred = mass_of_new_particle * SphP[i].CosmicRayEnergyPred; SphP[i].CosmicRayEnergyPred -= SphP[j].CosmicRayEnergyPred;
-        SphP[j].DtCosmicRayEnergy = mass_of_new_particle * SphP[i].DtCosmicRayEnergy; SphP[i].DtCosmicRayEnergy -= SphP[j].DtCosmicRayEnergy;
+        int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {
+            SphP[j].CosmicRayEnergy[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRayEnergy[k_CRegy]; SphP[i].CosmicRayEnergy[k_CRegy] -= SphP[j].CosmicRayEnergy[k_CRegy];
+            SphP[j].CosmicRayEnergyPred[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRayEnergyPred[k_CRegy]; SphP[i].CosmicRayEnergyPred[k_CRegy] -= SphP[j].CosmicRayEnergyPred[k_CRegy];
+            SphP[j].DtCosmicRayEnergy[k_CRegy] = mass_of_new_particle * SphP[i].DtCosmicRayEnergy[k_CRegy]; SphP[i].DtCosmicRayEnergy[k_CRegy] -= SphP[j].DtCosmicRayEnergy[k_CRegy];
 #ifdef COSMIC_RAYS_M1
-        for(k=0;k<3;k++)
-        {
-            SphP[j].CosmicRayFlux[k] = mass_of_new_particle * SphP[i].CosmicRayFlux[k]; SphP[i].CosmicRayFlux[k] -= SphP[j].CosmicRayFlux[k];
-            SphP[j].CosmicRayFluxPred[k] = mass_of_new_particle * SphP[i].CosmicRayFluxPred[k]; SphP[i].CosmicRayFluxPred[k] -= SphP[j].CosmicRayFluxPred[k];
-        }
+            for(k=0;k<3;k++)
+            {
+                SphP[j].CosmicRayFlux[k_CRegy][k] = mass_of_new_particle * SphP[i].CosmicRayFlux[k_CRegy][k]; SphP[i].CosmicRayFlux[k_CRegy][k] -= SphP[j].CosmicRayFlux[k_CRegy][k];
+                SphP[j].CosmicRayFluxPred[k_CRegy][k] = mass_of_new_particle * SphP[i].CosmicRayFluxPred[k_CRegy][k]; SphP[i].CosmicRayFluxPred[k_CRegy][k] -= SphP[j].CosmicRayFluxPred[k_CRegy][k];
+            }
 #endif
 #ifdef COSMIC_RAYS_ALFVEN
-        for(k=0;k<2;k++)
-        {
-            SphP[j].CosmicRayAlfvenEnergy[k] = mass_of_new_particle * SphP[i].CosmicRayAlfvenEnergy[k]; SphP[i].CosmicRayAlfvenEnergy[k] -= SphP[j].CosmicRayAlfvenEnergy[k];
-            SphP[j].CosmicRayAlfvenEnergyPred[k] = mass_of_new_particle * SphP[i].CosmicRayAlfvenEnergyPred[k]; SphP[i].CosmicRayAlfvenEnergyPred[k] -= SphP[j].CosmicRayAlfvenEnergyPred[k];
-            SphP[j].DtCosmicRayAlfvenEnergy[k] = mass_of_new_particle * SphP[i].DtCosmicRayAlfvenEnergy[k]; SphP[i].DtCosmicRayAlfvenEnergy[k] -= SphP[j].DtCosmicRayAlfvenEnergy[k];
-        }
+            for(k=0;k<2;k++)
+            {
+                SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k] = mass_of_new_particle * SphP[i].CosmicRayAlfvenEnergy[k_CRegy][k]; SphP[i].CosmicRayAlfvenEnergy[k_CRegy][k] -= SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k];
+                SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k] = mass_of_new_particle * SphP[i].CosmicRayAlfvenEnergyPred[k_CRegy][k]; SphP[i].CosmicRayAlfvenEnergyPred[k_CRegy][k] -= SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k];
+                SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] = mass_of_new_particle * SphP[i].DtCosmicRayAlfvenEnergy[k_CRegy][k]; SphP[i].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k];
+            }
 #endif
+        }
 #endif
         
         /* use a better particle shift based on the moment of inertia tensor to place new particles in the direction which is less well-sampled */
@@ -754,24 +756,27 @@ void merge_particles_ij(int i, int j)
         P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k]; /* metal-mass conserving */
 #endif
 #ifdef COSMIC_RAYS
-    SphP[j].CosmicRayEnergy += SphP[i].CosmicRayEnergy;
-    SphP[j].CosmicRayEnergyPred += SphP[i].CosmicRayEnergyPred;
-    SphP[j].DtCosmicRayEnergy += SphP[i].DtCosmicRayEnergy;
-#ifdef COSMIC_RAYS_M1
-    for(k=0;k<3;k++)
+    int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
-        SphP[j].CosmicRayFlux[k] += SphP[i].CosmicRayFlux[k];
-        SphP[j].CosmicRayFluxPred[k] += SphP[i].CosmicRayFluxPred[k];
-    }
+        SphP[j].CosmicRayEnergy[k_CRegy] += SphP[i].CosmicRayEnergy[k_CRegy];
+        SphP[j].CosmicRayEnergyPred[k_CRegy] += SphP[i].CosmicRayEnergyPred[k_CRegy];
+        SphP[j].DtCosmicRayEnergy[k_CRegy] += SphP[i].DtCosmicRayEnergy[k_CRegy];
+#ifdef COSMIC_RAYS_M1
+        for(k=0;k<3;k++)
+        {
+            SphP[j].CosmicRayFlux[k_CRegy][k] += SphP[i].CosmicRayFlux[k_CRegy][k];
+            SphP[j].CosmicRayFluxPred[k_CRegy][k] += SphP[i].CosmicRayFluxPred[k_CRegy][k];
+        }
 #endif
 #ifdef COSMIC_RAYS_ALFVEN
-    for(k=0;k<3;k++)
-    {
-        SphP[j].CosmicRayAlfvenEnergy[k] += SphP[i].CosmicRayAlfvenEnergy[k];
-        SphP[j].CosmicRayAlfvenEnergyPred[k] += SphP[i].CosmicRayAlfvenEnergyPred[k];
-        SphP[j].DtCosmicRayAlfvenEnergy[k] += SphP[i].DtCosmicRayAlfvenEnergy[k];
-    }
+        for(k=0;k<3;k++)
+        {
+            SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k] += SphP[i].CosmicRayAlfvenEnergy[k_CRegy][k];
+            SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k] += SphP[i].CosmicRayAlfvenEnergyPred[k_CRegy][k];
+            SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] += SphP[i].DtCosmicRayAlfvenEnergy[k_CRegy][k];
+        }
 #endif
+    }
 #endif
     
     /* finally zero out the particle mass so it will be deleted */

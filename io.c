@@ -597,10 +597,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < NUM_METAL_SPECIES; k++)
-                    {
-                        fp[k] = P[pindex].Metallicity[k];
-                    }
+                    for(k=0;k<NUM_METAL_SPECIES;k++) {fp[k] = P[pindex].Metallicity[k];}
                     fp += NUM_METAL_SPECIES;
                     n++;
                 }
@@ -913,7 +910,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = SphP[pindex].CosmicRayEnergyPred;
+                    for(k=0;k<N_CR_PARTICLE_BINS;k++) {fp[k] = SphP[pindex].CosmicRayEnergyPred[k];}
+                    fp += N_CR_PARTICLE_BINS;
                     n++;
                 }
 #endif
@@ -925,7 +923,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = SphP[pindex].CosmicRayDiffusionCoeff;
+                    for(k=0;k<N_CR_PARTICLE_BINS;k++) {fp++ = SphP[pindex].CosmicRayDiffusionCoeff[k];}
+                    fp += N_CR_PARTICLE_BINS;
                     n++;
                 }
 #endif
@@ -937,8 +936,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 2; k++)
-                        *fp++ = SphP[pindex].CosmicRayAlfvenEnergyPred[k];
+                    for(k=0;k<2;k++) {int k2; for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {fp[N_CR_PARTICLE_BINS*k + k2] = SphP[pindex].CosmicRayAlfvenEnergyPred[k2][k];}}
+                    fp += 2*N_CR_PARTICLE_BINS;
                     n++;
                 }
 #endif
@@ -1866,8 +1865,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_STRESSBULK:
         case IO_SHEARCOEFF:
         case IO_TSTP:
-        case IO_COSMICRAY_ENERGY:
-        case IO_COSMICRAY_KAPPA:
         case IO_DIVB:
         case IO_VRMS:
         case IO_VRAD:
@@ -1937,11 +1934,24 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = sizeof(MyOutputFloat);
             break;
             
-        case IO_COSMICRAY_ALFVEN:
+
+        case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_KAPPA:
+#ifdef COSMIC_RAYS
             if(mode)
-                bytes_per_blockelement = 2 * sizeof(MyInputFloat);
+                bytes_per_blockelement = (N_CR_PARTICLE_BINS) * sizeof(MyInputFloat);
             else
-                bytes_per_blockelement = 2 * sizeof(MyOutputFloat);
+                bytes_per_blockelement = (N_CR_PARTICLE_BINS) * sizeof(MyOutputFloat);
+#endif
+            break;
+
+        case IO_COSMICRAY_ALFVEN:
+#ifdef COSMIC_RAYS_ALFVEN
+            if(mode)
+                bytes_per_blockelement = (2 * N_CR_PARTICLE_BINS) * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = (2 * N_CR_PARTICLE_BINS) * sizeof(MyOutputFloat);
+#endif
             break;
 
         case IO_IMF:
@@ -1956,9 +1966,9 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_RADGAMMA:
 #ifdef RADTRANSFER
             if(mode)
-                bytes_per_blockelement = N_RT_FREQ_BINS * sizeof(MyInputFloat);
+                bytes_per_blockelement = (N_RT_FREQ_BINS) * sizeof(MyInputFloat);
             else
-                bytes_per_blockelement = N_RT_FREQ_BINS * sizeof(MyOutputFloat);
+                bytes_per_blockelement = (N_RT_FREQ_BINS) * sizeof(MyOutputFloat);
 #endif
             break;
             
@@ -2162,8 +2172,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_VRAD:
         case IO_VDIV:
         case IO_VROT:
-        case IO_COSMICRAY_ENERGY:
-        case IO_COSMICRAY_KAPPA:
         case IO_DIVB:
         case IO_ABVC:
         case IO_AMDC:
@@ -2229,8 +2237,19 @@ int get_values_per_blockelement(enum iofields blocknr)
             values = 1;
             break;
 
+        case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_KAPPA:
+            values = 0;
+#ifdef COSMIC_RAYS
+            values = N_CR_PARTICLE_BINS;
+#endif
+            break;
+
         case IO_COSMICRAY_ALFVEN:
             values = 2;
+#ifdef COSMIC_RAYS_ALFVEN
+            values = (2*N_CR_PARTICLE_BINS);
+#endif
             break;
 
         case IO_CBE_MOMENTS:

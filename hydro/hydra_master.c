@@ -121,12 +121,12 @@ struct Conserved_var_Riemann
 #endif
 #endif
 #ifdef COSMIC_RAYS
-    MyDouble CosmicRayPressure;
+    MyDouble CosmicRayPressure[N_CR_PARTICLE_BINS];
 #ifdef COSMIC_RAYS_M1
-    MyDouble CosmicRayFlux[3];
+    MyDouble CosmicRayFlux[N_CR_PARTICLE_BINS][3];
 #endif
 #ifdef COSMIC_RAYS_ALFVEN
-    MyDouble CosmicRayAlfvenEnergy[2];
+    MyDouble CosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];
 #endif
 #endif
 };
@@ -206,7 +206,7 @@ struct INPUT_STRUCT_NAME
 #endif
 #endif
 #if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_M1)
-        MyDouble CosmicRayPressure[3];
+        MyDouble CosmicRayPressure[N_CR_PARTICLE_BINS][3];
 #endif
 #if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
         MyDouble Metallicity[NUM_METAL_SPECIES][3];
@@ -286,13 +286,13 @@ struct INPUT_STRUCT_NAME
 #endif // MAGNETIC //
 
 #ifdef COSMIC_RAYS
-    MyDouble CosmicRayPressure;
-    MyDouble CosmicRayDiffusionCoeff;
+    MyDouble CosmicRayPressure[N_CR_PARTICLE_BINS];
+    MyDouble CosmicRayDiffusionCoeff[N_CR_PARTICLE_BINS];
 #ifdef COSMIC_RAYS_M1
-    MyDouble CosmicRayFlux[3];
+    MyDouble CosmicRayFlux[N_CR_PARTICLE_BINS][3];
 #endif
 #ifdef COSMIC_RAYS_ALFVEN
-    MyDouble CosmicRayAlfvenEnergy[2];
+    MyDouble CosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];
 #endif
 #endif
     
@@ -368,9 +368,9 @@ struct OUTPUT_STRUCT_NAME
 #endif // MAGNETIC //
     
 #ifdef COSMIC_RAYS
-    MyDouble DtCosmicRayEnergy;
+    MyDouble DtCosmicRayEnergy[N_CR_PARTICLE_BINS];
 #ifdef COSMIC_RAYS_ALFVEN
-    MyDouble DtCosmicRayAlfvenEnergy[2];
+    MyDouble DtCosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];
 #endif
 #endif
 
@@ -445,7 +445,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #endif
 #endif
 #if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_M1)
-        in->Gradients.CosmicRayPressure[k] = SphP[i].Gradients.CosmicRayPressure[k];
+        for(j=0;j<N_CR_PARTICLE_BINS;j++) {in->Gradients.CosmicRayPressure[j][k] = SphP[i].Gradients.CosmicRayPressure[j][k];}
 #endif
 #if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
         for(j=0;j<NUM_METAL_SPECIES;j++) {in->Gradients.Metallicity[j][k] = SphP[i].Gradients.Metallicity[j][k];}
@@ -491,8 +491,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #endif
 
 #ifdef CHIMES_TURB_DIFF_IONS  
-    for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) 
-      in->ChimesNIons[k] = SphP[i].ChimesNIons[k]; 
+    for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) {in->ChimesNIons[k] = SphP[i].ChimesNIons[k]; }
 #endif 
     
 #ifdef TURB_DIFFUSION
@@ -526,14 +525,17 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #endif // MAGNETIC //
     
 #ifdef COSMIC_RAYS
-    in->CosmicRayPressure = Get_Particle_CosmicRayPressure(i);
-    in->CosmicRayDiffusionCoeff = SphP[i].CosmicRayDiffusionCoeff;
+    for(j=0;j<N_CR_PARTICLE_BINS;j++)
+    {
+        in->CosmicRayPressure[j] = Get_Particle_CosmicRayPressure(i,j);
+        in->CosmicRayDiffusionCoeff[j] = SphP[i].CosmicRayDiffusionCoeff[j];
 #ifdef COSMIC_RAYS_M1
-    for(k=0;k<3;k++) {in->CosmicRayFlux[k] = SphP[i].CosmicRayFluxPred[k];}
+        for(k=0;k<3;k++) {in->CosmicRayFlux[j][k] = SphP[i].CosmicRayFluxPred[j][k];}
 #endif
 #ifdef COSMIC_RAYS_ALFVEN
-    for(k=0;k<2;k++) {in->CosmicRayAlfvenEnergy[k] = SphP[i].CosmicRayAlfvenEnergyPred[k];}
+        for(k=0;k<2;k++) {in->CosmicRayAlfvenEnergy[j][k] = SphP[i].CosmicRayAlfvenEnergyPred[j][k];}
 #endif
+    }
 #endif
 
 #ifdef EOS_ELASTIC
@@ -611,10 +613,13 @@ static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int
 #endif // MAGNETIC //
 
 #ifdef COSMIC_RAYS
-    SphP[i].DtCosmicRayEnergy += out->DtCosmicRayEnergy;
+    for(k=0;k<N_CR_PARTICLE_BINS;k++)
+    {
+        SphP[i].DtCosmicRayEnergy[k] += out->DtCosmicRayEnergy[k];
 #ifdef COSMIC_RAYS_ALFVEN
-    for(k=0;k<2;k++) {SphP[i].DtCosmicRayAlfvenEnergy[k] += out->DtCosmicRayAlfvenEnergy[k];}
+        int kAlf; for(kAlf=0;kAlf<2;kAlf++) {SphP[i].DtCosmicRayAlfvenEnergy[k][kAlf] += out->DtCosmicRayAlfvenEnergy[k][kAlf];}
 #endif
+    }
 #endif
 }
 
@@ -732,18 +737,21 @@ void hydro_final_operations_and_cleanup(void)
 #if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_STREAMING) && !defined(COSMIC_RAYS_ALFVEN)
             /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
                 (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
-            double cr_vstream_loss_velocity = Get_CosmicRayStreamingVelocity(i), v_st_eff = SphP[i].CosmicRayDiffusionCoeff / (GAMMA_COSMICRAY * Get_CosmicRayGradientLength(i) + MIN_REAL_NUMBER); // maximum possible streaming speed from combined diffusivity
-            cr_vstream_loss_velocity = DMIN(cr_vstream_loss_velocity , v_st_eff); // if upper-limit to streaming is less than nominal 'default' v_stream/loss term, this should be lower too
+            double vstream_0 = Get_CosmicRayStreamingVelocity(i), vA=10.*vstream_0;
 #ifdef MAGNETIC /* account for the fact that the loss term is always [or below] the Alfven speed, regardless of the bulk streaming speed */
-            double vA=0; int k; for(k=0;k<3;k++) {vA += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+            vA=0; for(k=0;k<3;k++) {vA += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+            vA = All.cf_afac3 * sqrt(All.cf_afac1 * vA/ (All.cf_atime * SphP[i].Density));
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
             vA /= Get_Gas_Ionized_Fraction(i); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
-            vA = All.cf_afac3 * sqrt(All.cf_afac1 * vA/ (All.cf_atime * SphP[i].Density)); cr_vstream_loss_velocity = DMIN(vA, cr_vstream_loss_velocity);
 #endif
-            double cr_stream_cool = fabs(GAMMA_COSMICRAY_MINUS1 * cr_vstream_loss_velocity / Get_CosmicRayGradientLength(i));
-            SphP[i].DtCosmicRayEnergy -= SphP[i].CosmicRayEnergyPred * cr_stream_cool;
-            SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred * cr_stream_cool;
+            vstream_0 = DMIN(vA, vstream_0);
+            for(k=0;k<N_CR_PARTICLE_BINS;k++)
+            {
+                double L_cr = Get_CosmicRayGradientLength(i,k), v_st_eff = SphP[i].CosmicRayDiffusionCoeff[k] / (GAMMA_COSMICRAY * L_cr + MIN_REAL_NUMBER); // maximum possible streaming speed from combined diffusivity
+                double cr_stream_cool = fabs(GAMMA_COSMICRAY_MINUS1 * DMIN(v_st_eff, vstream_0) / L_cr); // if upper-limit to streaming is less than nominal 'default' v_stream/loss term, this should be lower too
+                SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * cr_stream_cool; SphP[i].DtInternalEnergy[k] += SphP[i].CosmicRayEnergyPred[k] * cr_stream_cool;
+            }
 #endif // CRs
             
             
@@ -956,10 +964,13 @@ void hydro_force_initial_operations_preloop(void)
 #endif
 #endif // magnetic //
 #ifdef COSMIC_RAYS
-            SphP[i].DtCosmicRayEnergy = 0;
+            for(k=0;k<N_CR_PARTICLE_BINS;k++)
+            {
+                SphP[i].DtCosmicRayEnergy[k] = 0;
 #ifdef COSMIC_RAYS_ALFVEN
-            for(k=0;k<2;k++) {SphP[i].DtCosmicRayAlfvenEnergy[k] = 0;}
+                int kAlf; for(kAlf=0;kAlf<2;kAlf++) {SphP[i].DtCosmicRayAlfvenEnergy[k][kAlf] = 0;}
 #endif
+            }
 #endif
 #ifdef WAKEUP
             PPPZ[i].wakeup = 0;

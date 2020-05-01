@@ -404,13 +404,16 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #endif
 #endif
 #ifdef COSMIC_RAYS
-        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
+        for(kf=0;kf<N_RT_FREQ_BINS;kf++)
+        {
+            SphP[i].CosmicRayEnergyPred[kf] = SphP[i].CosmicRayEnergy[kf];
 #ifdef COSMIC_RAYS_M1
-        for(k=0;k<3;k++) {SphP[i].CosmicRayFluxPred[k] = SphP[i].CosmicRayFlux[k];}
+            for(k=0;k<3;k++) {SphP[i].CosmicRayFluxPred[kf][k] = SphP[i].CosmicRayFlux[kf][k];}
 #endif
 #ifdef COSMIC_RAYS_ALFVEN
-        for(k=0;k<2;k++) {SphP[i].CosmicRayAlfvenEnergyPred[k] = SphP[i].CosmicRayAlfvenEnergy[k];}
+            for(k=0;k<2;k++) {SphP[i].CosmicRayAlfvenEnergyPred[kf][k] = SphP[i].CosmicRayAlfvenEnergy[kf][k];}
 #endif
+        }
 #endif
         
 #if defined(RT_EVOLVE_ENERGY)

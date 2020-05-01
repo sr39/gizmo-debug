@@ -377,7 +377,7 @@ void init(void)
                 P[i].Vel[GRAV_DIRECTION_RDI] -= w0;
 #endif // closes rdi_testproblem
             }
-            P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Grain_AccelTimeMin = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
+            P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0; P[i].Grain_AccelTimeMin = MAX_REAL_NUMBER;
 #if defined(GRAIN_BACKREACTION)
             P[i].Grain_DeltaMomentum[0]=P[i].Grain_DeltaMomentum[1]=P[i].Grain_DeltaMomentum[2]=0;
 #endif
@@ -643,7 +643,7 @@ void init(void)
 #endif
 #endif
 #ifdef COSMIC_RAYS
-        if(RestartFlag == 0) {SphP[i].CosmicRayEnergy = 0;}
+        if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRayEnergy[j] = 0;}}
 #endif
 #ifdef MAGNETIC
 #if defined MHD_B_SET_IN_PARAMS
@@ -801,7 +801,7 @@ void init(void)
         // re-match the predicted and initial velocities and B-field values, just to be sure //
         for(j=0;j<3;j++) SphP[i].VelPred[j]=P[i].Vel[j];
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION==0)
-        for(j=0;j<3;j++) {SphP[i].ParticleVel[k] = 0;} // set these to zero and forget them, for the rest of the run //
+        for(j=0;j<3;j++) {SphP[i].ParticleVel[j] = 0;} // set these to zero and forget them, for the rest of the run //
 #endif
         
 #ifdef MAGNETIC
@@ -809,24 +809,16 @@ void init(void)
         for(j=0;j<3;j++) {SphP[i].BPred[j]=SphP[i].B[j]; SphP[i].DtB[j]=0;}
 #endif
 #ifdef COSMIC_RAYS
-        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
-        SphP[i].CosmicRayDiffusionCoeff = 0;
-        SphP[i].DtCosmicRayEnergy = 0;
-#ifdef COSMIC_RAYS_M1
-        for(j=0;j<3;j++) 
+        for(k=0;k<N_CR_PARTICLE_BINS;k++)
         {
-            SphP[i].CosmicRayFlux[j]=0;
-            SphP[i].CosmicRayFluxPred[j]=0;
-        }
+            SphP[i].CosmicRayEnergyPred[k]=SphP[i].CosmicRayEnergy[k]; SphP[i].CosmicRayDiffusionCoeff[k]=0; SphP[i].DtCosmicRayEnergy[k]=0;
+#ifdef COSMIC_RAYS_M1
+            for(j=0;j<3;j++) {SphP[i].CosmicRayFlux[k][j]=0; SphP[i].CosmicRayFluxPred[k][j]=0;}
 #endif
 #ifdef COSMIC_RAYS_ALFVEN
-        for(j=0;j<2;j++)
-        {
-            SphP[i].CosmicRayAlfvenEnergy[j]=0;
-            SphP[i].CosmicRayAlfvenEnergyPred[j]=0;
-            SphP[i].DtCosmicRayAlfvenEnergy[j]=0;
-        }
+            for(j=0;j<2;j++) {SphP[i].CosmicRayAlfvenEnergy[k][j]=0; SphP[i].CosmicRayAlfvenEnergyPred[k][j]=0; SphP[i].DtCosmicRayAlfvenEnergy[k][j]=0;}
 #endif
+        }
 #endif
 #if defined(EOS_ELASTIC)
         if(RestartFlag != 1)

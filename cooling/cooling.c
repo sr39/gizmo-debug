@@ -238,21 +238,7 @@ void do_the_cooling_for_particle(int i)
         
 
 #if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_COOLING)
-        /* cosmic ray interactions affecting the -thermal- temperature of the gas are included in the actual cooling/heating functions; 
-            they are solved implicitly above. however we need to account for energy losses of the actual cosmic ray fluid, here. The 
-            timescale for this is reasonably long, so we can treat it semi-explicitly, as we do here.
-            -- We use the estimate for combined hadronic + Coulomb losses from Volk 1996, Ensslin 1997, as updated in Guo & Oh 2008: */
-        double ne_cgs = ((0.78 + 0.22*SphP[i].Ne*HYDROGEN_MASSFRAC) / PROTONMASS) * (SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam);
-        double CR_coolingrate_perunitenergy = -7.51e-16 * ne_cgs * (All.UnitTime_in_s / All.HubbleParam); // converts cgs to code units //
-        if(dtime > 0)
-        {
-            double q_CR_cool = exp(CR_coolingrate_perunitenergy * dtime);
-            if(CR_coolingrate_perunitenergy * dtime < -20.) {q_CR_cool = 0;}
-            SphP[i].CosmicRayEnergyPred *= q_CR_cool; SphP[i].CosmicRayEnergy *= q_CR_cool;
-#ifdef COSMIC_RAYS_M1
-            int kCR; for(kCR=0;kCR<3;kCR++) {SphP[i].CosmicRayFlux[kCR] *= q_CR_cool; SphP[i].CosmicRayFluxPred[kCR] *= q_CR_cool;}
-#endif
-        }
+        CR_cooling_and_losses(i, SphP[i].Ne, SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam/PROTONMASS, dtime*All.UnitTime_in_s/All.HubbleParam );
 #endif
 
         
@@ -1060,16 +1046,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         
 
 #if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_COOLING)
-        /* cosmic ray heating, from Guo & Oh 2008: this scales proportional to the electron number density and
-         cosmic ray energy density, both of which we quickly evaluate here (make sure we convert to the correct per-atom units)
-         - note that only 1/6 of the hadronic cooling is thermalized, according to their calculation, while all the Coulomb losses heat */
-        if(SphP[target].CosmicRayEnergyPred > 0)
-        {
-            Heat += 1.0e-16 * (0.98 + 1.65*n_elec*HYDROGEN_MASSFRAC) / nHcgs *
-                ((SphP[target].CosmicRayEnergyPred / P[target].Mass * SphP[target].Density * All.cf_a3inv) *
-                 (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam));
-        }
-#else 
+        Heat += CR_gas_heating(target, n_elec, nHcgs);
+#else
 #ifdef COOL_LOW_TEMPERATURES
         /* if COSMIC_RAYS is not enabled, but low-temperature cooling is on, we account for the CRs as a heating source using
          a more approximate expression (assuming the mean background of the Milky Way clouds) */

@@ -372,14 +372,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(loop_iteration == 2) continue; // for r-process, nothing left here to bother coupling //
 #endif
 #endif
-#if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
-                /* inject cosmic rays */
-                SphP[j].CosmicRayEnergy += pnorm * CR_energy_to_inject;
-                SphP[j].CosmicRayEnergyPred += pnorm * CR_energy_to_inject;
-#ifdef COSMIC_RAYS_M1
-                double dflux = -pnorm * CR_energy_to_inject * COSMIC_RAYS_M1 / kernel.r; // add free-streaming flux of these CRs to the neighbor cells (so initial flux is correct and not from gradient which can suppress transport)
-                for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dflux*kernel.dp[k]; SphP[j].CosmicRayFluxPred[k]+=dflux*kernel.dp[k];}
-#endif
+#if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) /* inject cosmic rays */
+                double crdir[3]; for(k=0;k<3;k++) {crdir[k]=-kernel.dp[k]/kernel.r;}
+                inject_cosmic_rays(pnorm * CR_energy_to_inject, local.SNe_v_ejecta, loop_iteration, j, crdir);
 #endif
                 /* inject the post-shock energy and momentum (convert to specific units as needed first) */
                 e_shock *= 1 / P[j].Mass;
@@ -674,12 +669,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #endif
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
-                /* inject cosmic rays */
-                SphP[j].CosmicRayEnergy += pnorm * CR_energy_to_inject; SphP[j].CosmicRayEnergyPred += pnorm * CR_energy_to_inject;
-#ifdef COSMIC_RAYS_M1
-                double dflux = -pnorm * CR_energy_to_inject * COSMIC_RAYS_M1 / kernel.r; // add free-streaming flux of these CRs to the neighbor cells (so initial flux is correct and not from gradient which can suppress transport)
-                for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dflux*kernel.dp[k]; SphP[j].CosmicRayFluxPred[k]+=dflux*kernel.dp[k];}
-#endif
+                double crdir[3]; for(k=0;k<3;k++) {crdir[k]=-kernel.dp[k]/kernel.r;}
+                inject_cosmic_rays(pnorm * CR_energy_to_inject, local.SNe_v_ejecta, loop_iteration, j, crdir);
 #endif
                 /* inject momentum: account for ejecta being energy-conserving inside the cooling radius (or Hsml, if thats smaller) */
                 double wk_m_cooling = pnorm * m_cooling; // effective cooling mass for this particle

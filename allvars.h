@@ -295,6 +295,13 @@
 #define GAMMA_ALFVEN_CRS (3.0/2.0)
 #define COSMIC_RAYS_M1 (COSMIC_RAYS_ALFVEN)
 #endif
+#ifndef N_CR_PARTICLE_BINS
+#ifdef COSMIC_RAYS_MULTIBIN
+#define N_CR_PARTICLE_BINS 4
+#else
+#define N_CR_PARTICLE_BINS 1
+#endif
+#endif
 #endif
 
 #if defined(COOL_GRACKLE) 
@@ -592,7 +599,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 
 /* enable radiation pressure forces unless they have been explicitly disabled */
-#if defined(RADTRANSFER) && !defined(RT_DISABLE_RAD_PRESSURE)
+#if defined(RADTRANSFER) && !defined(RT_DISABLE_RAD_PRESSURE) && !defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
 #define RT_RAD_PRESSURE_FORCES
 #endif
 
@@ -933,14 +940,20 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #endif
 
 
+#ifndef RT_GENERIC_USER_FREQ
+#define RT_FREQ_BIN_GENERIC_USER_FREQ (RT_FREQ_BIN_FREEFREE+0)
+#else
+#define RT_FREQ_BIN_GENERIC_USER_FREQ (RT_FREQ_BIN_FREEFREE+1)
+#endif
+
 
 
 /* be sure to add all new wavebands to these lists, or else we will run into problems */
 /* ALSO, the IR bin here should be the last bin: add additional bins ABOVE this line */
 #ifndef RT_INFRARED
-#define RT_FREQ_BIN_INFRARED (RT_FREQ_BIN_FREEFREE+0)
+#define RT_FREQ_BIN_INFRARED (RT_FREQ_BIN_GENERIC_USER_FREQ+0)
 #else
-#define RT_FREQ_BIN_INFRARED (RT_FREQ_BIN_FREEFREE+1)
+#define RT_FREQ_BIN_INFRARED (RT_FREQ_BIN_GENERIC_USER_FREQ+1)
 #endif
 
 #define N_RT_FREQ_BINS (RT_FREQ_BIN_INFRARED+1)
@@ -2014,7 +2027,7 @@ extern struct global_data_all_processes
 #endif
     
 #ifdef COSMIC_RAYS
-    double CosmicRayDiffusionCoeff;
+    double CosmicRayDiffusionCoeff[N_CR_PARTICLE_BINS];
 #endif
     
 
@@ -2634,18 +2647,18 @@ extern struct sph_particle_data
 #endif
 
 #ifdef COSMIC_RAYS
-    MyFloat CosmicRayEnergy;        /*!< total energy of cosmic ray fluid (the conserved variable) */
-    MyFloat CosmicRayEnergyPred;    /*!< total energy of cosmic ray fluid (the conserved variable) */
-    MyFloat DtCosmicRayEnergy;      /*!< time derivative of cosmic ray energy */
-    MyFloat CosmicRayDiffusionCoeff;/*!< diffusion coefficient kappa for cosmic ray fluid */
+    MyFloat CosmicRayEnergy[N_CR_PARTICLE_BINS];        /*!< total energy of cosmic ray fluid (the conserved variable) */
+    MyFloat CosmicRayEnergyPred[N_CR_PARTICLE_BINS];    /*!< total energy of cosmic ray fluid (the conserved variable) */
+    MyFloat DtCosmicRayEnergy[N_CR_PARTICLE_BINS];      /*!< time derivative of cosmic ray energy */
+    MyFloat CosmicRayDiffusionCoeff[N_CR_PARTICLE_BINS];/*!< diffusion coefficient kappa for cosmic ray fluid */
 #ifdef COSMIC_RAYS_M1
-    MyFloat CosmicRayFlux[3];       /*!< CR flux vector [explicitly evolved] - conserved-variable */
-    MyFloat CosmicRayFluxPred[3];   /*!< CR flux vector [explicitly evolved] - conserved-variable */
+    MyFloat CosmicRayFlux[N_CR_PARTICLE_BINS][3];       /*!< CR flux vector [explicitly evolved] - conserved-variable */
+    MyFloat CosmicRayFluxPred[N_CR_PARTICLE_BINS][3];   /*!< CR flux vector [explicitly evolved] - conserved-variable */
 #endif
 #ifdef COSMIC_RAYS_ALFVEN
-    MyFloat CosmicRayAlfvenEnergy[2];       /*!< forward and backward-traveling Alfven wave-packet energies */
-    MyFloat CosmicRayAlfvenEnergyPred[2];   /*!< drifted forward and backward-traveling Alfven wave-packet energies */
-    MyFloat DtCosmicRayAlfvenEnergy[2];     /*!< time derivative fof forward and backward-traveling Alfven wave-packet energies */
+    MyFloat CosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];       /*!< forward and backward-traveling Alfven wave-packet energies */
+    MyFloat CosmicRayAlfvenEnergyPred[N_CR_PARTICLE_BINS][2];   /*!< drifted forward and backward-traveling Alfven wave-packet energies */
+    MyFloat DtCosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];     /*!< time derivative fof forward and backward-traveling Alfven wave-packet energies */
 #endif
 #endif
     
@@ -2710,7 +2723,7 @@ extern struct sph_particle_data
     
     MyFloat MaxSignalVel;           /*!< maximum signal velocity (needed for time-stepping) */
 
-#ifdef GALSF_FB_FIRE_RT_UVHEATING 
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
     MyFloat RadFluxUV;              /*!< local UV field strength */
     MyFloat RadFluxEUV;             /*!< local (ionizing/hard) UV field strength */
 #endif // GALSF_FB_FIRE_RT_UVHEATING 
@@ -2729,6 +2742,10 @@ extern struct sph_particle_data
     MyFloat RadFluxAGN;             /*!< local AGN flux */
 #endif
     
+#ifdef RT_USE_GRAVTREE_SAVE_LUMDEN
+    MyFloat E_Gamma???
+#endif
+
 #if defined(TURB_DRIVING) || defined(OUTPUT_VORTICITY)
    MyFloat Vorticity[3];
    MyFloat SmoothedVel[3];
@@ -2842,6 +2859,9 @@ extern struct sph_particle_data
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
     MyFloat RadAccel[3];
+#endif
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
+    MyDouble Interpolated_Opacity[N_RT_FREQ_BINS]; /* opacity values interpolated to gas positions */
 #endif
 #ifdef RT_INFRARED
     MyFloat Radiation_Temperature; /* IR radiation field temperature (evolved variable ^4 power, for convenience) */
