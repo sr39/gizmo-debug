@@ -344,6 +344,8 @@ double INLINE_FUNC hubble_function_external(double a);
 
 void blackhole_accretion(void);
 #ifdef BH_WIND_SPAWN
+void get_random_orthonormal_basis(int seed, double *nx, double *ny, double *nz);
+void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double *ny, double *nz, double *veldir);
 int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int num_already_spawned );
 void spawn_bh_wind_feedback(void);
 #endif
@@ -543,13 +545,13 @@ double ps_lum_Hayashi_BB(double m, double r);
 double stellar_lifetime_in_Gyr(int n);
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
-double singlestar_single_star_wind_mdot(int n, int mode);
-double singlestar_single_star_wind_velocity(int n);
+double single_star_wind_mdot(int n);
+double single_star_wind_velocity(int n);
 double singlestar_WR_lifetime_Gyr(int n);
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
-double singlestar_single_star_SN_velocity(int n);
-void singlestar_single_star_SN_init_directions(void);
+double single_star_SN_velocity(int n);
+void single_star_SN_init_directions(void);
 #endif
 
 #ifdef GRAIN_FLUID
@@ -604,7 +606,7 @@ char *GetMultiSpeciesFilename(int i, int hk);
 #endif 
 #endif
 
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (defined(SINGLE_STAR_FB_WINDS) && defined(BH_THERMALFEEDBACK))
 double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz);
 double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r, double H_bh);
 #endif

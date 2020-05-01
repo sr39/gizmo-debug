@@ -190,7 +190,7 @@ void begrun(void)
 
   random_generator = gsl_rng_alloc(gsl_rng_ranlxd1);
 
-  gsl_rng_set(random_generator, 42);	/* start-up seed */
+  gsl_rng_set(random_generator, 42 + ThisTask);	/* start-up seed */
 
   set_random_numbers();
 
@@ -439,7 +439,7 @@ void begrun(void)
 #endif
 
 #ifdef  SINGLE_STAR_FB_SNE
-    singlestar_single_star_SN_init_directions();
+    single_star_SN_init_directions();
 #endif
 #ifdef RADTRANSFER
 #if defined(RT_EVOLVE_INTENSITIES)
@@ -774,6 +774,15 @@ void open_outputfiles(void)
 #if defined(RT_CHEM_PHOTOION) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "rt_photoion_chem.txt");
   if(!(FdRad = fopen(buf, mode)))
+    {
+      printf("error in opening file '%s'\n", buf);
+      endrun(1);
+    }
+#endif
+
+#ifdef SINGLE_STAR_FB_SNE
+  sprintf(buf, "%s%s", All.OutputDir, "SN_details.txt");
+  if(!(FdBhSNDetails = fopen(buf, mode)))
     {
       printf("error in opening file '%s'\n", buf);
       endrun(1);
