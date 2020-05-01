@@ -504,8 +504,7 @@ integertime get_timestep(int p,		/*!< particle index */
         double L_particle = Get_Particle_Size(p);
         dt_courant = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / csnd;
 #if defined(GRAIN_BACKREACTION)
-        double tstop_tLarmor_min = All.CourantFac * P[p].Grain_AccelTimeMin;
-        if(tstop_tLarmor_min < dt_courant) {dt_courant = tstop_tLarmor_min;}
+        if(P[p].Grain_AccelTimeMin < dt_courant) {dt_courant = P[p].Grain_AccelTimeMin;}
 #endif
 #ifdef PIC_MHD
         if(P[p].Grain_SubType==3)
@@ -595,22 +594,24 @@ integertime get_timestep(int p,		/*!< particle index */
             
             
 #ifdef COSMIC_RAYS
+            int k_CRegy;
+            for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
             {
-                if(Get_Particle_CosmicRayPressure(p) > 1.0e-20)
+                if(Get_Particle_CosmicRayPressure(p,k_CRegy) > 1.0e-20)
                 {
                     int explicit_timestep_on, cr_diffusion_opt = 0;
 #if defined(DIFFUSION_OPTIMIZERS) || defined(COSMIC_RAYS_M1)
                     cr_diffusion_opt = 1;
 #endif
                     if(All.ComovingIntegrationOn) {cr_diffusion_opt = 1;}
-                    double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p);
+                    double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p,k_CRegy);
                     double L_cr_weak = CRPressureGradScaleLength;
 #if defined(COSMIC_RAYS_M1)
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
 #else
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + (1.-0.5*cr_diffusion_opt)/(L_particle*All.cf_atime)));
 #endif
-                    double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + fabs(SphP[p].CosmicRayDiffusionCoeff) * GAMMA_COSMICRAY_MINUS1);
+                    double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + fabs(SphP[p].CosmicRayDiffusionCoeff[k_CRegy]) * GAMMA_COSMICRAY_MINUS1);
                     double dt_conduction =  L_cr_strong * coeff_inv; /* true diffusion requires the stronger timestep criterion be applied */
                     explicit_timestep_on = 1;
 #if (COSMIC_RAYS_DIFFUSION_MODEL < 0)
@@ -620,23 +621,23 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifndef COSMIC_RAYS_DISABLE_STREAMING
                     /* estimate whether diffusion is streaming-dominated: use stronger/weaker criterion accordingly */
                     double diffusion_from_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * Get_CosmicRayStreamingVelocity(p) * CRPressureGradScaleLength;
-                    if(diffusion_from_streaming > 0.75*fabs(SphP[p].CosmicRayDiffusionCoeff)) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
+                    if(diffusion_from_streaming > 0.75*fabs(SphP[p].CosmicRayDiffusionCoeff[k_CRegy])) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
 #endif
 #ifdef GALSF
                     /* for multi-physics problems, we will use a more aggressive timestep criterion
                      based on whether or not the cosmic ray physics are relevant for what we are modeling */
-                    if((SphP[p].CosmicRayEnergy==0)||(SphP[p].DtCosmicRayEnergy==0))
+                    if((SphP[p].CosmicRayEnergy[k_CRegy]==0)||(SphP[p].DtCosmicRayEnergy[k_CRegy]==0))
                     {
                         dt_conduction = 10. * dt;
                     } else {
-                        double delta_cr = dt_conduction*fabs(SphP[p].DtCosmicRayEnergy);
+                        double delta_cr = dt_conduction*fabs(SphP[p].DtCosmicRayEnergy[k_CRegy]);
                         double dL_cr = CRPressureGradScaleLength / (L_particle*All.cf_atime);
                         double thres_dL = 2., thres_egy = 1.e-3;
                         if(cr_diffusion_opt==1) {thres_dL = 1.; thres_egy = 1.e-2;}
-                        if((dL_cr > thres_dL) || (delta_cr < thres_egy*SphP[p].CosmicRayEnergy))
+                        if((dL_cr > thres_dL) || (delta_cr < thres_egy*SphP[p].CosmicRayEnergy[k_CRegy]))
                         {
-                            double dt_weak = DMIN(L_cr_weak*coeff_inv , (delta_cr + 1.e-4*SphP[p].CosmicRayEnergy)/fabs(SphP[p].DtCosmicRayEnergy));
-                            if((dL_cr > thres_dL+1.) && (delta_cr < 0.1*thres_egy*SphP[p].CosmicRayEnergy)) {dt_conduction = dt_weak; explicit_timestep_on = 0;}
+                            double dt_weak = DMIN(L_cr_weak*coeff_inv , (delta_cr + 1.e-4*SphP[p].CosmicRayEnergy[k_CRegy])/fabs(SphP[p].DtCosmicRayEnergy[k_CRegy]));
+                            if((dL_cr > thres_dL+1.) && (delta_cr < 0.1*thres_egy*SphP[p].CosmicRayEnergy[k_CRegy])) {dt_conduction = dt_weak; explicit_timestep_on = 0;}
                         }
                     }
 #endif
@@ -654,14 +655,14 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef COSMIC_RAYS_M1
                     if(cr_diffusion_opt==1)
                     {
-                        if(SphP[p].CosmicRayEnergy > 0)
+                        if(SphP[p].CosmicRayEnergy[k_CRegy] > 0)
                         {
                             double cr_speed = COSMIC_RAYS_M1;
-                            int k; double crv=0; for(k=0;k<3;k++) {crv+=SphP[p].CosmicRayFlux[k]*SphP[p].CosmicRayFlux[k];}
+                            int k; double crv=0; for(k=0;k<3;k++) {crv+=SphP[p].CosmicRayFlux[k_CRegy][k]*SphP[p].CosmicRayFlux[k_CRegy][k];}
                             if(crv > 0)
                             {
-                                crv = sqrt(crv) / SphP[p].CosmicRayEnergy;
-                                cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , fabs(SphP[p].CosmicRayDiffusionCoeff)/(Get_Particle_Size(p)*All.cf_atime)));
+                                crv = sqrt(crv) / SphP[p].CosmicRayEnergy[k_CRegy];
+                                cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , fabs(SphP[p].CosmicRayDiffusionCoeff[k_CRegy])/(Get_Particle_Size(p)*All.cf_atime)));
 #ifdef COSMIC_RAYS_ALFVEN
                                 cr_speed = COSMIC_RAYS_ALFVEN;
 #endif
@@ -791,7 +792,10 @@ integertime get_timestep(int p,		/*!< particle index */
             }
 #endif
             
-            
+#if defined(GRAIN_BACKREACTION)
+            if(P[p].Grain_AccelTimeMin < dt) {dt = P[p].Grain_AccelTimeMin;}
+#endif
+
 
 #ifdef TURB_DIFFUSION
             {

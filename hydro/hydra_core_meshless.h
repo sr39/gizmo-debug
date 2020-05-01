@@ -36,10 +36,13 @@
     }
 #endif
 #ifdef COSMIC_RAYS
-    Fluxes.CosmicRayPressure = 0;
+    for(k=0;k<N_CR_PARTICLE_BINS;k++)
+    {
+        Fluxes.CosmicRayPressure[k] = 0;
 #ifdef COSMIC_RAYS_ALFVEN
-    Fluxes.CosmicRayAlfvenEnergy[0] = Fluxes.CosmicRayAlfvenEnergy[1] = 0;
+        Fluxes.CosmicRayAlfvenEnergy[k][0] = Fluxes.CosmicRayAlfvenEnergy[k][1] = 0;
 #endif
+    }
 #endif
     
     /* --------------------------------------------------------------------------------- */
@@ -423,15 +426,18 @@
              implicit constant (zeroth-order) reconstruction of the CR energy density at the face (we could reconstruct the CR
              properties at the face, and calculate a more accurate advection term; however at that stage we should actually be
              including them self-consistently in the Riemann problem */
-            if(Fluxes.rho < 0)
+            for(k=0;k<N_CR_PARTICLE_BINS;k++)
             {
-                Fluxes.CosmicRayPressure = Fluxes.rho * (local.CosmicRayPressure*V_i/(GAMMA_COSMICRAY_MINUS1*local.Mass)); /* note: CosmicRayPressure and V_i have comoving units, their product has physical units */
-            } else {
-                Fluxes.CosmicRayPressure = Fluxes.rho * (CosmicRayPressure_j*V_j/(GAMMA_COSMICRAY_MINUS1*P[j].Mass));
-            }
+                if(Fluxes.rho < 0)
+                {
+                    Fluxes.CosmicRayPressure[k] = Fluxes.rho * (local.CosmicRayPressure[k]*V_i/(GAMMA_COSMICRAY_MINUS1*local.Mass)); /* note: CosmicRayPressure and V_i have comoving units, their product has physical units */
+                } else {
+                    Fluxes.CosmicRayPressure[k] = Fluxes.rho * (CosmicRayPressure_j[k]*V_j/(GAMMA_COSMICRAY_MINUS1*P[j].Mass));
+                }
 #ifdef COSMIC_RAYS_ALFVEN
-            for(k=0;k<2;k++) {if(Fluxes.rho<0) {Fluxes.CosmicRayAlfvenEnergy[k]+=local.CosmicRayAlfvenEnergy[k]*Fluxes.rho/local.Mass;} else {Fluxes.CosmicRayAlfvenEnergy[k]+=SphP[j].CosmicRayAlfvenEnergy[k]*Fluxes.rho/local.Mass;}}
+                int kAlf=0; for(kAlf=0;kAlf<2;kAlf++) {if(Fluxes.rho<0) {Fluxes.CosmicRayAlfvenEnergy[k][kAlf]+=local.CosmicRayAlfvenEnergy[k][kAlf]*Fluxes.rho/local.Mass;} else {Fluxes.CosmicRayAlfvenEnergy[k][kAlf]+=SphP[j].CosmicRayAlfvenEnergy[k][kAlf]*Fluxes.rho/local.Mass;}}
 #endif
+            }
 #endif
 #ifdef MAGNETIC
             for(k=0;k<3;k++) {Fluxes.B[k] = Face_Area_Norm * Riemann_out.Fluxes.B[k];} // magnetic flux (B*V) //

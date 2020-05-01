@@ -207,7 +207,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 kernel.sound_j = Particle_effective_soundspeed_i(j);
                 kernel.vsig = kernel.sound_i + kernel.sound_j;
 #ifdef COSMIC_RAYS
-                double CosmicRayPressure_j = Get_Particle_CosmicRayPressure(j); /* compute this for use below */
+                double CosmicRayPressure_j[N_CR_PARTICLE_BINS]; for(k=0;k<N_CR_PARTICLE_BINS;k++) {CosmicRayPressure_j[k] = Get_Particle_CosmicRayPressure(j,k);} /* compute this for use below */
                 //double Streaming_Loss_Term = 0; // alternative evaluation of streaming+diffusion losses: still experimental //
 #endif
 #ifdef MAGNETIC
@@ -358,7 +358,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif 
                 
 #ifdef COSMIC_RAYS
-#include "../galaxy_sf/cosmic_ray_diffusion.h"
+#include "../eos/cosmic_ray_fluid/cosmic_ray_diffusion.h"
 #endif
                 
 #ifdef RT_SOLVER_EXPLICIT

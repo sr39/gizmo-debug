@@ -14,10 +14,13 @@
     if(All.ComovingIntegrationOn) vdotr2_phys -= All.cf_hubble_a2 * r2;
     V_j = P[j].Mass / SphP[j].Density;
 #ifdef COSMIC_RAYS
-    Fluxes.CosmicRayPressure = 0;
+    for(k=0;k<N_CR_PARTICLE_BINS;k++)
+    {
+        Fluxes.CosmicRayPressure[k] = 0;
 #ifdef COSMIC_RAYS_ALFVEN
-    Fluxes.CosmicRayAlfvenEnergy[0] = Fluxes.CosmicRayAlfvenEnergy[1] = 0;
+        Fluxes.CosmicRayAlfvenEnergy[k][0] = Fluxes.CosmicRayAlfvenEnergy[k][1] = 0;
 #endif
+    }
 #endif
     
     /* --------------------------------------------------------------------------------- */

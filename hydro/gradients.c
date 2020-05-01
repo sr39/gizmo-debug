@@ -101,7 +101,7 @@ struct Quantities_for_Gradients
     MyDouble InternalEnergy;
 #endif
 #ifdef COSMIC_RAYS
-    MyDouble CosmicRayPressure;
+    MyDouble CosmicRayPressure[N_CR_PARTICLE_BINS];
 #endif
 #ifdef DOGRAD_SOUNDSPEED
     MyDouble SoundSpeed;
@@ -320,7 +320,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
         in->GQuant.InternalEnergy = SphP[i].InternalEnergyPred;
 #endif
 #ifdef COSMIC_RAYS
-        in->GQuant.CosmicRayPressure = Get_Particle_CosmicRayPressure(i);
+        for(k=0;k<N_CR_PARTICLE_BINS;k++) {in->GQuant.CosmicRayPressure[k] = Get_Particle_CosmicRayPressure(i,k);}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
         in->GQuant.SoundSpeed = Particle_effective_soundspeed_i(i);
@@ -420,9 +420,12 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
         for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.InternalEnergy[k],out->Gradients[k].InternalEnergy,mode);}
 #endif
 #ifdef COSMIC_RAYS
-        MAX_ADD(GasGradDataPasser[i].Maxima.CosmicRayPressure,out->Maxima.CosmicRayPressure,mode);
-        MIN_ADD(GasGradDataPasser[i].Minima.CosmicRayPressure,out->Minima.CosmicRayPressure,mode);
-        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.CosmicRayPressure[k],out->Gradients[k].CosmicRayPressure,mode);}
+        for(j=0;j<N_CR_PARTICLE_BINS;j++)
+        {
+            MAX_ADD(GasGradDataPasser[i].Maxima.CosmicRayPressure[j],out->Maxima.CosmicRayPressure[j],mode);
+            MIN_ADD(GasGradDataPasser[i].Minima.CosmicRayPressure[j],out->Minima.CosmicRayPressure[j],mode);
+            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.CosmicRayPressure[j][k],out->Gradients[k].CosmicRayPressure[j],mode);}
+        }
 #endif
 #ifdef DOGRAD_SOUNDSPEED
         MAX_ADD(GasGradDataPasser[i].Maxima.SoundSpeed,out->Maxima.SoundSpeed,mode);
@@ -633,7 +636,7 @@ void hydro_gradient_calc(void)
                 SphP[i].Gradients.InternalEnergy[k] = 0;
 #endif
 #ifdef COSMIC_RAYS
-                SphP[i].Gradients.CosmicRayPressure[k] = 0;
+                for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {SphP[i].Gradients.CosmicRayPressure[k2][k] = 0;}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
                 SphP[i].Gradients.SoundSpeed[k] = 0;
@@ -1040,8 +1043,8 @@ void hydro_gradient_calc(void)
             construct_gradient(SphP[i].Gradients.InternalEnergy,i);
 #endif
 #ifdef COSMIC_RAYS
-            construct_gradient(SphP[i].Gradients.CosmicRayPressure,i);
-            int is_particle_local_extremum; is_particle_local_extremum = 0; // test for local extremum to revert to lower-order reconstruction if necessary
+            for(k=0;k<N_CR_PARTICLE_BINS;k++) {construct_gradient(SphP[i].Gradients.CosmicRayPressure[k],i);}
+            int is_particle_local_extremum[N_CR_PARTICLE_BINS]={0}; // test for local extremum to revert to lower-order reconstruction if necessary
 #endif
 #ifdef DOGRAD_SOUNDSPEED
             construct_gradient(SphP[i].Gradients.SoundSpeed,i);
@@ -1296,8 +1299,8 @@ void hydro_gradient_calc(void)
 		        // define some variables we need below //
 		        double zeta_cr = 1.0e-17; // cosmic ray ionization rate (fixed as constant for non-CR runs)
 #ifdef COSMIC_RAYS
-                double u_cr = ((SphP[i].CosmicRayEnergyPred / P[i].Mass * SphP[i].Density * All.cf_a3inv) * (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam)); // cgs
-		        zeta_cr = u_cr * 2.2e-6; // convert to ionization rate
+                double u_cr=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_CR += SphP[i].CosmicRayEnergyPred[k];}
+		        zeta_cr = u_cr * 2.2e-6 * ((1. / P[i].Mass * SphP[i].Density * All.cf_a3inv) * (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam)); // convert to ionization rate
 #endif
                 double a_grain_micron = 0.1; // effective size of grains that matter at these densities
                 double m_ion = 24.3; // Mg dominates ions in dense gas [where this is relevant]; this is ion mass in units of proton mass
@@ -1469,8 +1472,11 @@ void hydro_gradient_calc(void)
 #ifdef COSMIC_RAYS
             stol_tmp = stol;
 #ifndef COSMIC_RAYS_M1
-            local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,DMAX(1.,a_limiter),h_lim,0., 1,d_max,Get_Particle_CosmicRayPressure(i));
-            if((GasGradDataPasser[i].Maxima.CosmicRayPressure==0)||(GasGradDataPasser[i].Minima.CosmicRayPressure==0)) {is_particle_local_extremum = 1;}
+            for(k1=0;k1<N_CR_PARTICLE_BINS;k1++)
+            {
+                local_slopelimiter(SphP[i].Gradients.CosmicRayPressure[k1],GasGradDataPasser[i].Maxima.CosmicRayPressure[k1],GasGradDataPasser[i].Minima.CosmicRayPressure[k1],DMAX(1.,a_limiter),h_lim,0., 1,d_max,Get_Particle_CosmicRayPressure(i,k1));
+                if((GasGradDataPasser[i].Maxima.CosmicRayPressur[k1]e==0)||(GasGradDataPasser[i].Minima.CosmicRayPressure[k1]==0)) {is_particle_local_extremum[k1] = 1;}
+            }
 #endif
 #endif
 #ifdef DOGRAD_SOUNDSPEED
@@ -1570,9 +1576,10 @@ void hydro_gradient_calc(void)
             
             
 #if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_ALFVEN) /* note that because of the way this depends on the gradient scale-length, we should calculate it -after- the slope-limiters are applied */
-            SphP[i].CosmicRayDiffusionCoeff=0; if(SphP[i].Density > 0 && P[i].Mass > 0) {CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(i);}/* only assign diffusivities to 'valid' gas particles */
+            for(k=0;k<N_CR_PARTICLE_BINS;k++) {SphP[i].CosmicRayDiffusionCoeff[k]=0;}
+            if(SphP[i].Density > 0 && P[i].Mass > 0) {CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(i);}/* only assign diffusivities to 'valid' gas particles */
 #ifndef COSMIC_RAYS_M1
-            if(is_particle_local_extremum==1) {SphP[i].CosmicRayDiffusionCoeff *= -1;} // negative here codes for local extrema
+            for(k=0;k<N_CR_PARTICLE_BINS;k++) {if(is_particle_local_extremum[k]==1) {SphP[i].CosmicRayDiffusionCoeff[k] *= -1;}} // negative here codes for local extrema
 #endif
 #endif
             
@@ -2095,9 +2102,13 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if(swap_to_j) {MINMAX_CHECK(-du,GasGradDataPasser[j].Minima.InternalEnergy,GasGradDataPasser[j].Maxima.InternalEnergy);}
 #endif
 #ifdef COSMIC_RAYS
-                    double dpCR = Get_Particle_CosmicRayPressure(j) - local.GQuant.CosmicRayPressure;
-                    MINMAX_CHECK(dpCR,out.Minima.CosmicRayPressure,out.Maxima.CosmicRayPressure);
-                    if(swap_to_j) {MINMAX_CHECK(-dpCR,GasGradDataPasser[j].Minima.CosmicRayPressure,GasGradDataPasser[j].Maxima.CosmicRayPressure);}
+                    double dpCR[N_CR_PARTICLE_BINS];
+                    for(k=0;k<N_CR_PARTICLE_BINS;k++)
+                    {
+                        dpCR[k] = Get_Particle_CosmicRayPressure(j,k) - local.GQuant.CosmicRayPressure[k];
+                        MINMAX_CHECK(dpCR[k],out.Minima.CosmicRayPressure[k],out.Maxima.CosmicRayPressure[k]);
+                        if(swap_to_j) {MINMAX_CHECK(-dpCR[k],GasGradDataPasser[j].Minima.CosmicRayPressure[k],GasGradDataPasser[j].Maxima.CosmicRayPressure[k]);}
+                    }
 #endif
 #ifdef DOGRAD_SOUNDSPEED
                     double dc = Particle_effective_soundspeed_i(j) - local.GQuant.SoundSpeed;
@@ -2192,7 +2203,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             out.Gradients[k].InternalEnergy += wk_xyz_i * du;
 #endif
 #ifdef COSMIC_RAYS
-                            out.Gradients[k].CosmicRayPressure += wk_xyz_i * dpCR;
+                            for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {out.Gradients[k].CosmicRayPressure[k2] += wk_xyz_i * dpCR[k2];}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
                             out.Gradients[k].SoundSpeed += wk_xyz_i * dc;
@@ -2233,7 +2244,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             SphP[j].Gradients.InternalEnergy[k] += wk_xyz_j * du;
 #endif
 #ifdef COSMIC_RAYS
-                            SphP[j].Gradients.CosmicRayPressure[k] += wk_xyz_j * dpCR;
+                            for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {SphP[j].Gradients.CosmicRayPressure[k2][k] += wk_xyz_j * dpCR[k2];}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
                             SphP[j].Gradients.SoundSpeed[k] += wk_xyz_j * dc;

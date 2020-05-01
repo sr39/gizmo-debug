@@ -77,7 +77,10 @@ void   sub_turb_read_table(void);
 void   sub_turb_parent_halo_accel(double dx, double dy, double dz, double *acc);
 double sub_turb_enclosed_mass(double r, double msub, double vmax, double radvmax, double c);
 
-
+void interpolate_fluxes_opacities_gasgrains(void);
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
+double return_grain_absorption_efficiency_Q(int i, int k_freq);
+#endif
 int powerspec_turb_find_nearest_evaluate(int target, int mode, int *nexport, int *nsend_local);
 void powerspec_turb_calc_dispersion(void);
 double powerspec_turb_obtain_fields(void);
@@ -279,13 +282,28 @@ int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend
 double INLINE_FUNC Get_Particle_Size(int i);
 double INLINE_FUNC Particle_density_for_energy_i(int i);
 double INLINE_FUNC Get_Particle_Expected_Area(double h);
-#ifdef COSMIC_RAYS
-double INLINE_FUNC Get_Particle_CosmicRayPressure(int i);
-double Get_CosmicRayGradientLength(int i);
 double Get_Gas_Ionized_Fraction(int i);
+#ifdef COSMIC_RAYS
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i);
+double INLINE_FUNC Get_Particle_CosmicRayPressure(int i, int k_CRegy);
+double Get_CosmicRayGradientLength(int i, int k_CRegy);
 double Get_CosmicRayStreamingVelocity(int i);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
+double CR_cooling_and_gas_heating(int target, double n_elec, double nH_cgs, double dtime_cgs, int mode);
+double CR_energy_spectrum_injection_fraction(int k_CRegy, double injection_velocity, int source_PType);
+double inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir);
+double Get_AlfvenMachNumber_Local(int i, double vA_idealMHD_codeunits, int use_shear_corrected_vturb_flag);
+double diffusion_coefficient_constant(int target, int k_CRegy);
+double diffusion_coefficient_extrinsic_turbulence(int mode, int target, int k_CRegy, double M_A, double L_scale, double b_muG, double vA_noion, double rho_cgs, double temperature, double cs_thermal, double nh0, double nHe0, double f_ion);
+double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy, double M_A, double L_scale, double b_muG, double vA_noion, double rho_cgs, double temperature, double cs_thermal, double nh0, double nHe0, double f_ion);
+double return_CRbin_numberdensity_in_cgs(int target, int k_CRegy);
+double return_CRbin_CR_energies_in_GeV(int target, int k_CRegy);
+double return_CRbin_CR_charge_in_e(int target, int k_CRegy);
+double return_CRbin_kinetic_energy_in_GeV(int target, int k_CRegy);
+double return_CRbin_gamma_factor(int target, int k_CRegy);
+double return_CRbin_beta_factor(int target, int k_CRegy);
+double get_cell_Bfield_in_microGauss(int i);
+double get_cell_Urad_in_eVcm3(int i);
 #endif
 #ifdef EOS_ELASTIC
 void elastic_body_update_driftkick(int i, double dt_entr, int mode);

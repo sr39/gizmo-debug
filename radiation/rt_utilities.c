@@ -328,6 +328,10 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 /***********************************************************************************************************/
 double rt_kappa(int i, int k_freq)
 {
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
+    return SphP[i].Interpolated_Opacity[k_freq]; /* this is calculated in a different routine, just return it now */
+#endif
+    
 #ifdef RT_CHEM_PHOTOION
     /* opacity to ionizing radiation for Petkova & Springel bands. note rt_update_chemistry is where ionization is actually calculated */
     double nH_over_Density = HYDROGEN_MASSFRAC / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
@@ -447,6 +451,10 @@ double rt_kappa(int i, int k_freq)
 /***********************************************************************************************************/
 double rt_absorb_frac_albedo(int i, int k_freq)
 {
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
+    return 1; /* in these cases, assume pure absorption opacity for now */
+#endif
+
 #ifdef RT_CHEM_PHOTOION
     if(k_freq==RT_FREQ_BIN_H0)  {return 1.-1.e-6;} /* negligible scattering for ionizing radiation */
 #if defined(RT_CHEM_PHOTOION_HE) && defined(RT_PHOTOION_MULTIFREQUENCY)
