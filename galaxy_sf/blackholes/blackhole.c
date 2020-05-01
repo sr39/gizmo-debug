@@ -147,7 +147,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 
 
 
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (defined(SINGLE_STAR_FB_WINDS) && defined(BH_THERMALFEEDBACK))
 /* weight function for local (short-range) coupling terms from the black hole, including the single-scattering radiation pressure and the bal winds */
 double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r, double H_bh)
 {
@@ -481,6 +481,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 /* Update the BH_Mass and the BH_Mass_AlphaDisk */
 void set_blackhole_new_mass(int i, int n, double dt)
 {
+    int k;
     if(BPP(n).BH_Mdot <= 0) {BPP(n).BH_Mdot=0;} /* check unphysical values */
 
     /* before mass update, track angular momentum in disk for 'smoothed' accretion case [using continuous accretion rate and specific AM of all material in kernel around BH] */
@@ -489,7 +490,7 @@ void set_blackhole_new_mass(int i, int n, double dt)
 #ifdef BH_ALPHADISK_ACCRETION
     dm_acc_for_j = BlackholeTempInfo[i].mdot_alphadisk * dt; m_tot_for_j = BPP(n).BH_Mass + BPP(n).BH_Mass_AlphaDisk;
 #endif
-    int k; for(k=0;k<3;k++) {BPP(n).BH_Specific_AngMom[k] = (m_tot_for_j*BPP(n).BH_Specific_AngMom[k] + dm_acc_for_j*BlackholeTempInfo[i].Jgas_in_Kernel[k]/(MIN_REAL_NUMBER + BlackholeTempInfo[i].Mgas_in_Kernel)) / (m_tot_for_j + dm_acc_for_j);}
+    for(k=0;k<3;k++) {BPP(n).BH_Specific_AngMom[k] = (m_tot_for_j*BPP(n).BH_Specific_AngMom[k] + dm_acc_for_j*BlackholeTempInfo[i].Jgas_in_Kernel[k]/(MIN_REAL_NUMBER + BlackholeTempInfo[i].Mgas_in_Kernel)) / (m_tot_for_j + dm_acc_for_j);}
 #endif
 
 /*  for BH_WIND_CONTINUOUS or BH_WIND_SPAWN
@@ -514,9 +515,15 @@ void set_blackhole_new_mass(int i, int n, double dt)
     BPP(n).BH_Mass += BPP(n).BH_Mdot * dt;
 #endif
 #endif // #else BH_ALPHADISK_ACCRETION
-#ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK //store Mgas_in_Kernel and Jgas_in_Kernel
+#ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK 
+    double mtot = BlackholeTempInfo[i].Mgas_in_Kernel + BPP(n).Mass;
+    for(k=0; k<3; k++) { BlackholeTempInfo[i].BH_SurroundingGasCOM[k] /= mtot;} // this now stores the COM of the sink-gas system, relative to the sink position
+    for(k=0; k<3; k++) {
+        // We need the angular momentum in the COM frame of the sink-gas system, so must apply the correction -r x p. This is negligible when MBH >> Mgas but important when Mgas > MBH, e.g. low-mass stars at modest mass resolution
+        BlackholeTempInfo[i].Jgas_in_Kernel[k] -= (BlackholeTempInfo[i].Mgas_in_Kernel/mtot) * BlackholeTempInfo[i].Mgas_in_Kernel * (BlackholeTempInfo[i].BH_SurroundingGasCOM[(k+1)%3]*BlackholeTempInfo[i].BH_SurroundingGasVel[(k+2)%3] - BlackholeTempInfo[i].BH_SurroundingGasCOM[(k+2)%3]*BlackholeTempInfo[i].BH_SurroundingGasVel[(k+1)%3]);
+        BPP(n).Jgas_in_Kernel[k] = BlackholeTempInfo[i].Jgas_in_Kernel[k] + BPP(n).Mass * BPP(n).BH_Specific_AngMom[k]; // this stores the _total_ angular momentum (sink + gas) in the COM frame of the sink-gas system, including internal to the sink
+    }
     BPP(n).Mgas_in_Kernel=BlackholeTempInfo[i].Mgas_in_Kernel;
-    {int jk; for(jk=0;jk<3;jk++) {BPP(n).Jgas_in_Kernel[jk]=BlackholeTempInfo[i].Jgas_in_Kernel[jk];}}
 #endif
 
 }
@@ -787,14 +794,17 @@ void blackhole_final_operations(void)
 #endif 
 #endif
 #ifdef SINGLE_STAR_FB_WINDS
-        if (P[n].ProtoStellarStage == 5){ //for MS stars we have winds and no jets
-            dm_wind = singlestar_single_star_wind_mdot(n,1) * dt; //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep
-            BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
-        }
+       if (P[n].ProtoStellarStage == 5){ //for MS stars we have winds and no jets
+           double mdot_wind = single_star_wind_mdot(n);
+           if(P[n].wind_mode == 1){
+               dm_wind = mdot_wind * dt; //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep
+               BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
+           }
+       }
 #endif
 #ifdef SINGLE_STAR_FB_SNE
         if (P[n].ProtoStellarStage == 6){ //Star old enough to go out with a boom
-            double t_clear=P[n].SinkRadius/singlestar_single_star_SN_velocity(n); // time needed spawned wind particles to clear the sink
+            double t_clear=P[n].SinkRadius/single_star_SN_velocity(n); // time needed spawned wind particles to clear the sink
             double SN_mdot = (SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger)/t_clear; // we spawn SINGLE_STAR_FB_SNE_N_EJECTA per ejected shell, and we can have maximum 1 shell per t_clear
             dm_wind = DMIN(SN_mdot*dt, BPP(n).BH_Mass); // We will spawn particles to model the SN ejecta, but not more than what we can handle at the same time, these particles will have the same mass as gas particles, not like wind particles
             printf("Adding SN ejecta of mass %g from star %llu at time %g, unspawned mass at %g\n", dm_wind, P[n].ID, All.Time, (BPP(n).unspawned_wind_mass+dm_wind));
