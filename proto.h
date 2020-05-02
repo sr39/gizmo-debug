@@ -290,7 +290,7 @@ double Get_CosmicRayGradientLength(int i, int k_CRegy);
 double Get_CosmicRayStreamingVelocity(int i);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
 double CR_cooling_and_gas_heating(int target, double n_elec, double nH_cgs, double dtime_cgs, int mode);
-double CR_energy_spectrum_injection_fraction(int k_CRegy, double injection_velocity, int source_PType);
+double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, double shock_vel);
 double inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir);
 double Get_AlfvenMachNumber_Local(int i, double vA_idealMHD_codeunits, int use_shear_corrected_vturb_flag);
 double diffusion_coefficient_constant(int target, int k_CRegy);
@@ -304,6 +304,9 @@ double return_CRbin_gamma_factor(int target, int k_CRegy);
 double return_CRbin_beta_factor(int target, int k_CRegy);
 double get_cell_Bfield_in_microGauss(int i);
 double get_cell_Urad_in_eVcm3(int i);
+void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime_cgs);
+double CR_gas_heating(int target, double n_elec, double nHcgs);
+double return_CRbin_CRmass_in_mp(int target, int k_CRegy);
 #endif
 #ifdef EOS_ELASTIC
 void elastic_body_update_driftkick(int i, double dt_entr, int mode);

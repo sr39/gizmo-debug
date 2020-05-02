@@ -404,7 +404,7 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #endif
 #endif
 #ifdef COSMIC_RAYS
-        for(kf=0;kf<N_RT_FREQ_BINS;kf++)
+        for(kf=0;kf<N_CR_PARTICLE_BINS;kf++)
         {
             SphP[i].CosmicRayEnergyPred[kf] = SphP[i].CosmicRayEnergy[kf];
 #ifdef COSMIC_RAYS_M1

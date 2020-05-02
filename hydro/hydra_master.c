@@ -750,7 +750,7 @@ void hydro_final_operations_and_cleanup(void)
             {
                 double L_cr = Get_CosmicRayGradientLength(i,k), v_st_eff = SphP[i].CosmicRayDiffusionCoeff[k] / (GAMMA_COSMICRAY * L_cr + MIN_REAL_NUMBER); // maximum possible streaming speed from combined diffusivity
                 double cr_stream_cool = fabs(GAMMA_COSMICRAY_MINUS1 * DMIN(v_st_eff, vstream_0) / L_cr); // if upper-limit to streaming is less than nominal 'default' v_stream/loss term, this should be lower too
-                SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * cr_stream_cool; SphP[i].DtInternalEnergy[k] += SphP[i].CosmicRayEnergyPred[k] * cr_stream_cool;
+                SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * cr_stream_cool; SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * cr_stream_cool;
             }
 #endif // CRs
             

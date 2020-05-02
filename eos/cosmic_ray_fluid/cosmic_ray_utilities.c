@@ -40,7 +40,7 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
 #if (N_CR_PARTICLE_BINS > 1)
     /* insert physics here */
 #endif
-    return f_bin
+    return f_bin;
 }
 
 /* routine which gives diffusion coefficient as a function of energy for the 'constant diffusion coefficient' models:
@@ -61,7 +61,7 @@ double diffusion_coefficient_constant(int target, int k_CRegy)
     -- We use the estimate for combined hadronic + Coulomb losses from Volk 1996, Ensslin 1997, as updated in Guo & Oh 2008: */
 void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime_cgs)
 {
-    if(dtime <= 0) {return;} /* catch */
+    if(dtime_cgs <= 0) {return;} /* catch */
     int k,k_CRegy;
     double a_hadronic = 6.37e-16, b_coulomb_per_GeV = 3.09e-16*n_elec*HYDROGEN_MASSFRAC; /* some coefficients; a_hadronic is the default coefficient, b_coulomb_per_GeV the default divided by GeV, b/c we need to divide the energy per CR  */
     for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
@@ -71,10 +71,10 @@ void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime
         {
 #if (N_CR_PARTICLE_BINS > 2) /* note these are currently energy-loss expressions; for truly multi-bin, probably better to work with dp/dt, instead of dE/dt */
             double E_GeV=return_CRbin_kinetic_energy_in_GeV(target,k_CRegy), beta=return_CRbin_beta_factor(target,k_CRegy), R_CR_GV=return_CRbin_CR_rigidity_in_GV(target,k_CRegy);
-            CR_coolrate += b_coulomb * ((Z*Z)/(beta*E_GeV)) * nHcgs; // all protons Coulomb-interact, can be rapid for low-E
+            CR_coolrate += b_coulomb_per_GeV * ((Z*Z)/(beta*E_GeV)) * nHcgs; // all protons Coulomb-interact, can be rapid for low-E
             if(E_GeV>=0.78) {CR_coolrate += a_hadronic * nHcgs;} // only GeV CRs or higher trigger above threshold for collisions
 #else
-            CR_coolrate = (0.87*a_hadronic + 0.53*b_coulomb) * nHcgs; /* for N<=2, assume a universal spectral shape, the factor here corrects for the fraction above-threshold for hadronic interactions, and 0.53 likewise for averaging  */
+            CR_coolrate = (0.87*a_hadronic + 0.53*b_coulomb_per_GeV) * nHcgs; /* for N<=2, assume a universal spectral shape, the factor here corrects for the fraction above-threshold for hadronic interactions, and 0.53 likewise for averaging  */
 #endif
         } else { /* electrons here: note for electrons and positrons, always in the relativistic limit, don't need to worry about beta << 1 limits */
             /* bremsstrahlung [folllowing Blumenthal & Gould, 1970]: dEkin/dt=4*alpha_finestruct*r_classical_elec^2*c * SUM[n_Z,ion * Z * (Z+1) * (ln[2*gamma_elec]-1/3) * E_kin */
@@ -108,20 +108,20 @@ void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime
 double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy, double M_A, double L_scale, double b_muG,
     double vA_noion, double rho_cgs, double temperature, double cs_thermal, double nh0, double nHe0, double f_ion)
 {
-    double vol_inv = SphP[i].Density*All.cf_a3inv / P[i].Mass, fturb_multiplier=1, f_QLT=1, R_CR_GV=return_CRbin_CR_rigidity_in_GV(target,k_CRegy), Z_charge_CR=return_CRbin_CR_charge_in_e(target,k_CRegy);
-    double e_CR = SphP[i].CosmicRayEnergyPred[k_CRegy] * vol_inv;
+    double vol_inv = SphP[target].Density*All.cf_a3inv / P[target].Mass, fturb_multiplier=1, f_QLT=1, R_CR_GV=return_CRbin_CR_rigidity_in_GV(target,k_CRegy), Z_charge_CR=return_CRbin_CR_charge_in_e(target,k_CRegy);
+    double e_CR = SphP[target].CosmicRayEnergyPred[k_CRegy] * vol_inv;
+    double cos_Bgrad=0,B2=0,P2=0,EPSILON_SMALL=1.e-50; int k; for(k=0;k<3;k++) {double b0=SphP[target].BPred[k]*vol_inv*All.cf_a2inv, p0=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]; cos_Bgrad+=b0*p0; B2+=b0*b0; P2+=p0*p0;}
+    cos_Bgrad/=sqrt(B2*P2+EPSILON_SMALL); double Omega_gyro=0.00898734*b_muG*(All.UnitTime_in_s/All.HubbleParam)/R_CR_GV, r_L=C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*C_LIGHT_CODE;
+    double x_LL = DMAX( C_LIGHT_CODE / (Omega_gyro * L_scale), EPSILON_SMALL ), CRPressureGradScaleLength=Get_CosmicRayGradientLength(target,k_CRegy), vA_code=vA_noion, k_turb=1./L_scale, k_L=1./r_L, x_EB_ECR=(0.5*B2+EPSILON_SMALL)/(e_CR+EPSILON_SMALL);
+#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
+    if(f_ion>0) {vA_code /= sqrt(f_ion);} // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
+#endif
     if(mode==1) {f_QLT = 100;} // multiplier to account for arbitrary deviation from QLT, applies to all damping mechanisms [100 = favored value in our study; or could use fcas = 100]
     fturb_multiplier = pow(M_A,3./2.); // multiplier to account for different turbulent cascade models (fcas = 1)
     if(mode==2) {fturb_multiplier *= 100.;} // arbitrary multiplier (fcas = 100, here)
     if(mode==3) {fturb_multiplier = pow(M_A,3./2.) * 1./(pow(M_A,1./2.)*pow(x_LL,1./6.));} // pure-Kolmogorov (fcas-K41)
     if(mode==4) {fturb_multiplier = pow(M_A,3./2.) / pow(x_LL,1./10.);} // GS anisotropic but perp cascade is IK (fcas-IK) /
 
-    double cos_Bgrad=0,B2=0,P2=0,EPSILON_SMALL=1.e-50; int k; for(k=0;k<3;k++) {double b0=SphP[target].BPred[k]*vol_inv*All.cf_a2inv, p0=SphP[target].Gradients.CosmicRayPressure[k]; cos_Bgrad+=b0*p0; B2+=b0*b0; P2+=p0*p0;}
-    cos_Bgrad/=sqrt(B2*P2+EPSILON_SMALL); double Omega_gyro=0.00898734*b_muG*(All.UnitTime_in_s/All.HubbleParam)/R_CR_GV, r_L=C_LIGHT_CODE/Omega_gyro;
-    double x_LL = DMAX( C_LIGHT_CODE / (Omega_gyro * L_scale), EPSILON_SMALL ), CRPressureGradScaleLength=Get_CosmicRayGradientLength(target,k_CRegy), vA_code=vA_noion, k_turb=1./L_scale, k_L=1./r_L, x_EB_ECR=(0.5*B2+EPSILON_SMALL)/(e_CR+EPSILON_SMALL);
-#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-    if(f_ion>0) {vA_code /= sqrt(f_ion);} // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
-#endif
     //if(M_A<1.) {fturb_multiplier*=DMIN(sqrt(M_A),pow(M_A,7./6.)/pow(x_LL,1./6.));} else {fturb_multiplier*=DMIN(1.,1./(pow(M_A,1./2.)*pow(x_LL,1./6.)));} // corrects to Alfven scale, for correct estimate according to Farmer and Goldreich, Lazarian, etc. /* Lazarian+ 2016 multi-part model for where the resolved scales lie on the cascade */
     /* ok now we finally have all the terms needed to calculate the various damping rates that determine the equilibrium diffusivity */
     double f_grainsize = 0.1; // b=2, uniform logarithmic grain spectrum over a factor of ~100 in grain size; f_grainsize = 0.07*pow(sqrt(fion*n1)*EcrGeV*T4/BmuG,0.25); // MRN size spectrum
@@ -217,7 +217,7 @@ double Get_AlfvenMachNumber_Local(int i, double vA_idealMHD_codeunits, int use_s
         double vA_eff = sqrt(vA_idealMHD_codeunits*vA_idealMHD_codeunits + db_v_equiv*db_v_equiv + EPSILON_SMALL); /* effective Alfven speed including fluctuation-B */
         M_A = (EPSILON_SMALL + dv_e) / (EPSILON_SMALL + vA_eff);
     } else {
-        M_A = h0*(EPSILON_SMALL + dv2_t) / (EPSILON_SMALL + vA_noion); /* velocity fluctuation-inferred Mach number */
+        M_A = h0*(EPSILON_SMALL + dv2_t) / (EPSILON_SMALL + vA_idealMHD_codeunits); /* velocity fluctuation-inferred Mach number */
         M_A = DMAX(M_A , h0*(EPSILON_SMALL + db2_t) / (EPSILON_SMALL + b2_t)); /* B-field fluctuation-inferred Mach number [in incompressible B-turb, this will 'catch' where dv is locally low instanteously] */
     }
     M_A = DMAX( EPSILON_SMALL , M_A ); // proper calculation of the local Alfven Mach number
@@ -242,7 +242,7 @@ double CR_gas_heating(int target, double n_elec, double nHcgs)
             double e_cr_units = SphP[target].CosmicRayEnergyPred[k_CRegy] * e_CR_units_0;
 #if (N_CR_PARTICLE_BINS > 2)
             double E_GeV = return_CRbin_kinetic_energy_in_GeV(target,k_CRegy), beta = return_CRbin_beta_factor(target,k_CRegy);
-            e_heat += b_coulomb * ((Z*Z)/(beta*E_GeV)) * e_cr_units; // all protons Coulomb-heat, can be rapid for low-E
+            e_heat += b_coulomb_per_GeV * ((Z*Z)/(beta*E_GeV)) * e_cr_units; // all protons Coulomb-heat, can be rapid for low-E
             if(E_GeV>=0.78) {e_heat += f_heat_hadronic * a_hadronic * e_cr_units;} // only GeV CRs or higher trigger above threshold for collisions
 #else
             e_heat += (0.87*f_heat_hadronic*a_hadronic + 0.53*b_coulomb_per_GeV) * e_cr_units; /* for N<=2, assume a universal spectral shape, the factor here corrects for the fraction above-threshold for hadronic interactions, and 0.53 likewise for averaging  */
@@ -259,11 +259,11 @@ double CR_gas_heating(int target, double n_elec, double nHcgs)
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 {
     /* first define some very general variables, and calculate some useful quantities that will be used for any model */
-    int k_CRegy; double DiffusionCoeff, CR_kappa_streaming, CRPressureGradScaleLength;
+    int k_CRegy; double DiffusionCoeff, CR_kappa_streaming, CRPressureGradScaleLength, v_streaming; v_streaming=Get_CosmicRayStreamingVelocity(i)
 #if (COSMIC_RAYS_DIFFUSION_MODEL > 0)
-    double v_streaming,cs_thermal,M_A,L_scale,vA_code,vA_noion,codelength_to_kpc,Z_charge_CR,gizmo2gauss,Omega_per_GeV,Bmag,unit_kappa_code,b_muG,f_ion,temperature,EPSILON_SMALL; int k;
+    double cs_thermal,M_A,L_scale,vA_code,vA_noion,codelength_to_kpc,Z_charge_CR,gizmo2gauss,Omega_per_GeV,Bmag,unit_kappa_code,b_muG,f_ion,temperature,EPSILON_SMALL; int k;
     unit_kappa_code=All.UnitVelocity_in_cm_per_s*All.UnitLength_in_cm/All.HubbleParam; gizmo2gauss=sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); f_ion=1; temperature=0; EPSILON_SMALL=1.e-50; codelength_to_kpc=(All.UnitLength_in_cm/All.HubbleParam)/(3.086e21);
-    Bmag=2.*SphP[i].Pressure*All.cf_a3inv; v_streaming=Get_CosmicRayStreamingVelocity(i); cs_thermal=sqrt(convert_internalenergy_soundspeed2(i,SphP[i].InternalEnergyPred)); /* quick thermal pressure properties (we'll assume beta=1 if MHD not enabled) */
+    Bmag=2.*SphP[i].Pressure*All.cf_a3inv; cs_thermal=sqrt(convert_internalenergy_soundspeed2(i,SphP[i].InternalEnergyPred)); /* quick thermal pressure properties (we'll assume beta=1 if MHD not enabled) */
 #ifdef MAGNETIC /* get actual B-field */
     double B[3]={0}; Bmag=0; for(k=0;k<3;k++) {B[k]=Get_Particle_BField(i,k)*All.cf_a2inv; Bmag+=B[k]*B[k];} // B-field in code units (physical)
 #endif
@@ -317,6 +317,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
         DiffusionCoeff = diffusion_coefficient_extrinsic_turbulence(scatter_modes,i,k_CRegy,M_A,L_scale,b_muG,vA_noion,rho_cgs,temperature,cs_thermal,nh0,nHe0,f_ion) / unit_kappa_code;
 #endif
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 6) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* self-confinement-based diffusivity */
+        double Omega_gyro=0.00898734*b_muG*(All.UnitTime_in_s/All.HubbleParam)/return_CRbin_CR_rigidity_in_GV(i,k_CRegy), r_L=C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*C_LIGHT_CODE; // some handy numbers for limiting extreme-kappa below
         CR_kappa_streaming = diffusion_coefficient_self_confinement(1,i,k_CRegy,M_A,L_scale,b_muG,vA_noion,rho_cgs,temperature,cs_thermal,nh0,nHe0,f_ion) / unit_kappa_code;
         if(!isfinite(CR_kappa_streaming)) {CR_kappa_streaming = 1.e30/unit_kappa_code;} /* apply some limiters since its very easy for the routine above to give wildly-large-or-small diffusivity, which wont make a difference compared to just 'small' or 'large', but will mess things up numerically */
         CR_kappa_streaming = DMIN( DMAX( DMIN(DMAX(CR_kappa_streaming,kappa_0) , 1.0e6*GAMMA_COSMICRAY*CRPressureGradScaleLength*COSMIC_RAYS_M1) , 1.e25/unit_kappa_code ) , 1.e32/unit_kappa_code );
@@ -353,10 +354,10 @@ double inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity,
 {
     int k_CRegy,k; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
-        double dEcr = CR_energy_to_inject * CR_energy_spectrum_injection_fraction(k_CRegy,injection_velocity,source_PType);
+        double dEcr = CR_energy_to_inject * CR_energy_spectrum_injection_fraction(k_CRegy,source_PType,injection_velocity);
         SphP[target].CosmicRayEnergy[k_CRegy]+=dEcr; SphP[target].CosmicRayEnergyPred[k_CRegy]+=dEcr;
 #ifdef COSMIC_RAYS_M1
-        for(k=0;k<3;k++) {double dflux=dEcr*dir[k]*COSMIC_RAYS_M1; SphP[target].CosmicRayFlux[k_CRegy][k]+=dflux; SphP[target].CosmicRayFluxPred[k_CRegy][k]+=flux;}
+        for(k=0;k<3;k++) {double dflux=dEcr*dir[k]*COSMIC_RAYS_M1; SphP[target].CosmicRayFlux[k_CRegy][k]+=dflux; SphP[target].CosmicRayFluxPred[k_CRegy][k]+=dflux;}
 #endif
     }
 }
@@ -427,10 +428,19 @@ double Get_CosmicRayStreamingVelocity(int i)
 }
 
 
+/* routine to quickly estimate the atomic mass of the CR particles (in proton masses): making assumptions here [e.g. no positrons] -- could always hard-code some choice here for more complicated scenarios */
+double return_CRbin_CRmass_in_mp(int target, int k_CRegy)
+{
+    double Z = return_CRbin_CR_charge_in_e(target,k_CRegy), m_cr_mp=1;
+    if(Z<0) {mcr_mp=0.000544618;} else {if(Z>1.5) {m_cr_mp=2.*Z;}} // mass relative to proton mass [assuming no psoitrons here -- could make this more user-specified, but ignoring here]
+    return m_cr_mp;
+}
+
+
 /* routine which returns the dimensionless velocity beta = v/c of the CRs (this is not the RSOL, but true c, for e.g. cooling, energies, etc) */
 double return_CRbin_beta_factor(int target, int k_CRegy)
 {
-    double m_cr_mp=1; if(Z<0) {mcr_mp=0.000544618;} else {if(Z>1.5) {m_cr_mp=2.*Z;}} // mass relative to proton mass
+    double m_cr_mp=return_CRbin_CRmass_in_mp(target,k_CRegy); // mass in proton masses
     double q = return_CRbin_CR_rigidity_in_GV(target,k_CRegy)*1.06579*fabs(return_CRbin_CR_charge_in_e(target,k_CRegy))/m_cr_mp; // dimensionless factor to convert from R to beta
     double gamma = sqrt(1.+q*q), beta = q/gamma;
     return beta;
@@ -440,7 +450,7 @@ double return_CRbin_beta_factor(int target, int k_CRegy)
 /* routine which returns the dimensionless lorentz factor gamma=1/sqrt[1-beta^2] of the CRs (this is not the RSOL, but true c, for e.g. cooling, energies, etc) */
 double return_CRbin_gamma_factor(int target, int k_CRegy)
 {
-    double m_cr_mp=1; if(Z<0) {mcr_mp=0.000544618;} else {if(Z>1.5) {m_cr_mp=2.*Z;}} // mass relative to proton mass
+    double m_cr_mp=return_CRbin_CRmass_in_mp(target,k_CRegy); // mass in proton masses
     double q = return_CRbin_CR_rigidity_in_GV(target,k_CRegy)*1.06579*fabs(return_CRbin_CR_charge_in_e(target,k_CRegy))/m_cr_mp; // dimensionless factor to convert from R to beta
     return sqrt(1.+q*q);
 }
@@ -449,7 +459,7 @@ double return_CRbin_gamma_factor(int target, int k_CRegy)
 /* routine which returns the CR kinetic energy in GeV, for a given rigidity, etc. */
 double return_CRbin_kinetic_energy_in_GeV(int target, int k_CRegy)
 {
-    double m_cr_mp=1; if(Z<0) {mcr_mp=0.000544618;} else {if(Z>1.5) {m_cr_mp=2.*Z;}} // mass relative to proton mass
+    double m_cr_mp=return_CRbin_CRmass_in_mp(target,k_CRegy); // mass in proton masses
     double R_GV = return_CRbin_CR_rigidity_in_GV(target,k_CRegy), Z = fabs(return_CRbin_CR_charge_in_e(target,k_CRegy));
     double q = R_GV*Z*1.06579/m_cr_mp; // dimensionless factor to convert from R to beta
     double gamma = sqrt(1.+q*q), beta = q/gamma;
@@ -472,9 +482,9 @@ double get_cell_Bfield_in_microGauss(int i)
 {
     double Bmag=0, gizmo2mugauss_2=4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam*1.e12;
 #ifdef MAGNETIC
-    int k; for(k=0;k<3;k++) {double B=Get_Particle_BField(i,k)*All.cf_a2inv; Bmag+=B*B*gizmo2gauss_2;} // actual B-field in code units
+    int k; for(k=0;k<3;k++) {double B=Get_Particle_BField(i,k)*All.cf_a2inv; Bmag+=B*B*gizmo2mugauss_2;} // actual B-field in code units
 #else
-    Bmag=2.*SphP[i].Pressure*All.cf_a3inv*gizmo2gauss_2; // assume equipartition
+    Bmag=2.*SphP[i].Pressure*All.cf_a3inv*gizmo2mugauss_2; // assume equipartition
 #endif
     return sqrt(DMAX(Bmag,0));
 }
@@ -526,7 +536,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         for(k=0;k<3;k++)
         {
             if(mode==0) {B0[k]=SphP[i].B[k];} else {B0[k]=SphP[i].BPred[k];}
-            DtCRDotBhat += DtCosmicRayFlux[k_CRegy][k] * B0[k]; Bmag2 += B0[k]*B0[k];
+            DtCRDotBhat += DtCosmicRayFlux[k] * B0[k]; Bmag2 += B0[k]*B0[k];
         }
         if(Bmag2 > 0) {for(k=0;k<3;k++) {DtCosmicRayFlux[k] = DtCRDotBhat * B0[k] / Bmag2;}}
 #endif
