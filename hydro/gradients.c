@@ -1475,7 +1475,7 @@ void hydro_gradient_calc(void)
             for(k1=0;k1<N_CR_PARTICLE_BINS;k1++)
             {
                 local_slopelimiter(SphP[i].Gradients.CosmicRayPressure[k1],GasGradDataPasser[i].Maxima.CosmicRayPressure[k1],GasGradDataPasser[i].Minima.CosmicRayPressure[k1],DMAX(1.,a_limiter),h_lim,0., 1,d_max,Get_Particle_CosmicRayPressure(i,k1));
-                if((GasGradDataPasser[i].Maxima.CosmicRayPressur[k1]e==0)||(GasGradDataPasser[i].Minima.CosmicRayPressure[k1]==0)) {is_particle_local_extremum[k1] = 1;}
+                if((GasGradDataPasser[i].Maxima.CosmicRayPressure[k1]==0)||(GasGradDataPasser[i].Minima.CosmicRayPressure[k1]==0)) {is_particle_local_extremum[k1] = 1;}
             }
 #endif
 #endif

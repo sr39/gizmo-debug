@@ -284,6 +284,9 @@
 #define GALSF_USE_SNE_ONELOOP_SCHEME // set to use the 'base' FIRE-2 SNe coupling. if commented out, will user newer version that more accurately manages the injected energy with neighbors moving to inject a specific target
 #endif
 
+#if defined(GALSF_FB_FIRE_RT_LONGRANGE) && defined(COSMIC_RAYS) && (N_CR_PARTICLE_BINS > 1)
+#define RT_USE_GRAVTREE_SAVE_RAD_ENERGY
+#endif
 
 #ifdef COSMIC_RAYS
 #define GAMMA_COSMICRAY (4.0/3.0)
@@ -555,6 +558,8 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define RT_USE_GRAVTREE // use gravity tree for flux propagation
 #if !defined(GALSF_FB_FIRE_RT_LONGRANGE)
 #define RADTRANSFER // for cross-compatibility reasons, if the FIRE version is not on, need RADTRANSFER flag also enabled
+#define RT_USE_GRAVTREE_SAVE_RAD_ENERGY
+#define RT_USE_GRAVTREE_SAVE_RAD_FLUX
 #endif
 #endif
 

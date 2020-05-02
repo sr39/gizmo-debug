@@ -193,10 +193,10 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         if(flux_tmp[k_j_to_i]*dt_hydrostep > +0.5) {flux_tmp[k_j_to_i] = +0.5/dt_hydrostep;}
         if(flux_tmp[k_i_to_j]*dt_hydrostep < -0.5) {flux_tmp[k_i_to_j] = -0.5/dt_hydrostep;}
         // now just assign these fluxes: written lengthily here to prevent any typos, but trivial assignment //
-        Fluxes.CosmicRayAlfvenEnergy[k_CR_egy][k_j_to_i] += flux_tmp[k_j_to_i] * SphP[j].CosmicRayAlfvenEnergyPred[k_CR_egy][k_j_to_i];
-        Fluxes.CosmicRayAlfvenEnergy[k_CR_egy][k_i_to_j] += flux_tmp[k_i_to_j] * local.CosmicRayAlfvenEnergy[k_CR_egy][k_i_to_j];
-        for(k=0;k<2;k++) {out.DtCosmicRayAlfvenEnergy[k_CR_egy][k] += Fluxes.CosmicRayAlfvenEnergy[k_CR_egy][k];}
-        if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {SphP[j].DtCosmicRayAlfvenEnergy[k_CR_egy][k] -= Fluxes.CosmicRayAlfvenEnergy[k_CR_egy][k];}}
+        Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_j_to_i] += flux_tmp[k_j_to_i] * SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k_j_to_i];
+        Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_i_to_j] += flux_tmp[k_i_to_j] * local.CosmicRayAlfvenEnergy[k_CRegy][k_i_to_j];
+        for(k=0;k<2;k++) {out.DtCosmicRayAlfvenEnergy[k_CRegy][k] += Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}
+        if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= Fluxes.CosmicRayAlfvenEnergy[k_CR_egy][k];}}
 #endif
         
 #endif // COSMIC_RAYS_M1

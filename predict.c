@@ -231,6 +231,7 @@ void drift_particle(int i, integertime time1)
             int kfreq; double erad_tot=0,emin=0,enew=0,demin=0,dErad=0; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad_tot+=SphP[i].Rad_E_gamma_Pred[kfreq];}
             if(erad_tot > 0)
             {
+                double dEnt = SphP[i].DtInternalEnergy * dt_entr;
                 demin=0.025*SphP[i].InternalEnergyPred; emin=0.025*(erad_tot+SphP[i].InternalEnergyPred*P[i].Mass); enew=DMAX(erad_tot+dEnt*P[i].Mass,emin);
                 dEnt=(enew-erad_tot)/P[i].Mass; if(dEnt<demin) {dErad=dEnt-demin; dEnt=demin;}
                 if(dErad<-0.975*erad_tot) {dErad=-0.975*erad_tot;}
