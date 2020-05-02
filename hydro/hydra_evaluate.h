@@ -105,7 +105,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif // MAGNETIC //
 
 #ifdef RT_SOLVER_EXPLICIT
-    double tau_c_i[N_RT_FREQ_BINS]; for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Kappa_RT[k]*local.Density*All.cf_a3inv;}
+    double tau_c_i[N_RT_FREQ_BINS]; for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Rad_Kappa[k]*local.Density*All.cf_a3inv;}
 #endif
     
     /* --------------------------------------------------------------------------------- */

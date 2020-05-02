@@ -298,13 +298,13 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #endif // closes ENERGY_ENTROPY_SWITCH_IS_ACTIVE
             
 #ifdef RADTRANSFER /* block here to deal with tricky cases where radiation energy density is -much- larger than thermal */
-            int kfreq; double erad_tot=0,emin=0,enew=0,demin=0,dErad=0; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad_tot+=SphP[i].E_gamma[kfreq];}
+            int kfreq; double erad_tot=0,emin=0,enew=0,demin=0,dErad=0; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad_tot+=SphP[i].Rad_E_gamma[kfreq];}
             if(erad_tot > 0)
             {
                 demin=0.025*SphP[i].InternalEnergy; emin=0.025*(erad_tot+SphP[i].InternalEnergy*P[i].Mass); enew=DMAX(erad_tot+dEnt*P[i].Mass,emin);
                 dEnt=(enew-erad_tot)/P[i].Mass; if(dEnt<demin) {dErad=dEnt-demin; dEnt=demin;}
                 if(dErad<-0.975*erad_tot) {dErad=-0.975*erad_tot;}
-                SphP[i].InternalEnergy = dEnt; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {SphP[i].E_gamma[kfreq] *= 1 + dErad/erad_tot;}
+                SphP[i].InternalEnergy = dEnt; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {SphP[i].Rad_E_gamma[kfreq] *= 1 + dErad/erad_tot;}
             } else {
                 if(dEnt < 0.5*SphP[i].InternalEnergy) {SphP[i].InternalEnergy *= 0.5;} else {SphP[i].InternalEnergy = dEnt;}
             }
@@ -325,7 +325,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 dp[j] += mass_pred * SphP[i].TurbAccel[j] * dt_gravkick;
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
-                dp[j] += mass_pred * SphP[i].RadAccel[j] * All.cf_atime * dt_hydrokick;
+                dp[j] += mass_pred * SphP[i].Rad_Accel[j] * All.cf_atime * dt_hydrokick;
 #endif
             }
             dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;
@@ -419,15 +419,15 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #if defined(RT_EVOLVE_ENERGY)
         for(kf=0;kf<N_RT_FREQ_BINS;kf++)
         {
-            SphP[i].E_gamma_Pred[kf] = SphP[i].E_gamma[kf];
+            SphP[i].Rad_E_gamma_Pred[kf] = SphP[i].Rad_E_gamma[kf];
 #if defined(RT_EVOLVE_FLUX)
-            for(k=0;k<3;k++) SphP[i].Flux_Pred[kf][k] = SphP[i].Flux[kf][k];
+            for(k=0;k<3;k++) SphP[i].Rad_Flux_Pred[kf][k] = SphP[i].Rad_Flux[kf][k];
 #endif
         }
         rt_eddington_update_calculation(i);
 #endif
 #ifdef RT_EVOLVE_INTENSITIES
-        for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k=0;k<N_RT_INTENSITY_BINS;k++) {SphP[i].Intensity_Pred[kf][k] = SphP[i].Intensity[kf][k];}}
+        for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k=0;k<N_RT_INTENSITY_BINS;k++) {SphP[i].Rad_Intensity_Pred[kf][k] = SphP[i].Rad_Intensity[kf][k];}}
 #endif
 
 #ifdef EOS_ELASTIC

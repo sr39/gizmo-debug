@@ -82,7 +82,7 @@ void assign_imf_properties_from_starforming_gas(int i)
 #endif
     double rad_flux_uv = 1;
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
-    rad_flux_uv = SphP[i].RadFluxUV;
+    rad_flux_uv = SphP[i].Rad_Flux_UV;
 #endif
     double cr_energy_density = 0;
 #ifdef COSMIC_RAYS

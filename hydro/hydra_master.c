@@ -218,7 +218,7 @@ struct INPUT_STRUCT_NAME
         MyDouble SoundSpeed[3];
 #endif
 #if defined(RT_SOLVER_EXPLICIT) && defined(RT_COMPGRAD_EDDINGTON_TENSOR)
-        MyDouble E_gamma_ET[N_RT_FREQ_BINS][3];
+        MyDouble Rad_E_gamma_ET[N_RT_FREQ_BINS][3];
 #endif
     } Gradients;
     MyFloat NV_T[3][3];
@@ -239,20 +239,20 @@ struct INPUT_STRUCT_NAME
 #endif 
     
 #ifdef RT_SOLVER_EXPLICIT
-    MyDouble E_gamma[N_RT_FREQ_BINS];
-    MyDouble Kappa_RT[N_RT_FREQ_BINS];
+    MyDouble Rad_E_gamma[N_RT_FREQ_BINS];
+    MyDouble Rad_Kappa[N_RT_FREQ_BINS];
     MyDouble RT_DiffusionCoeff[N_RT_FREQ_BINS];
 #if defined(RT_EVOLVE_FLUX) || defined(HYDRO_SPH)
     MyDouble ET[N_RT_FREQ_BINS][6];
 #endif
 #ifdef RT_EVOLVE_FLUX
-    MyDouble Flux[N_RT_FREQ_BINS][3];
+    MyDouble Rad_Flux[N_RT_FREQ_BINS][3];
 #endif
 #ifdef RT_INFRARED
     MyDouble Radiation_Temperature;
 #endif
 #if defined(RT_EVOLVE_INTENSITIES)
-    MyDouble Intensity_Pred[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS];
+    MyDouble Rad_Intensity_Pred[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS];
 #endif
 #endif
     
@@ -342,16 +342,16 @@ struct OUTPUT_STRUCT_NAME
     
 #if defined(RT_SOLVER_EXPLICIT)
 #if defined(RT_EVOLVE_ENERGY)
-    MyFloat Dt_E_gamma[N_RT_FREQ_BINS];
+    MyFloat Dt_Rad_E_gamma[N_RT_FREQ_BINS];
 #endif
 #if defined(RT_EVOLVE_FLUX)
-    MyFloat Dt_Flux[N_RT_FREQ_BINS][3];
+    MyFloat Dt_Rad_Flux[N_RT_FREQ_BINS][3];
 #endif
 #if defined(RT_INFRARED)
-    MyFloat Dt_E_gamma_T_weighted_IR;
+    MyFloat Dt_Rad_E_gamma_T_weighted_IR;
 #endif
 #if defined(RT_EVOLVE_INTENSITIES)
-    MyFloat Dt_Intensity[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS];
+    MyFloat Dt_Rad_Intensity[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS];
 #endif
 #endif
     
@@ -457,7 +457,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
         in->Gradients.SoundSpeed[k] = SphP[i].Gradients.SoundSpeed[k];
 #endif
 #if defined(RT_SOLVER_EXPLICIT) && defined(RT_COMPGRAD_EDDINGTON_TENSOR)
-        for(j=0;j<N_RT_FREQ_BINS;j++) {in->Gradients.E_gamma_ET[j][k] = SphP[i].Gradients.E_gamma_ET[j][k];}
+        for(j=0;j<N_RT_FREQ_BINS;j++) {in->Gradients.Rad_E_gamma_ET[j][k] = SphP[i].Gradients.Rad_E_gamma_ET[j][k];}
 #endif
     }
 
@@ -465,20 +465,20 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
     for(k=0;k<N_RT_FREQ_BINS;k++)
     {
 #ifdef RT_EVOLVE_ENERGY
-        in->E_gamma[k] = SphP[i].E_gamma_Pred[k];
+        in->Rad_E_gamma[k] = SphP[i].Rad_E_gamma_Pred[k];
 #else
-        in->E_gamma[k] = SphP[i].E_gamma[k];
+        in->Rad_E_gamma[k] = SphP[i].Rad_E_gamma[k];
 #endif
-        in->Kappa_RT[k] = SphP[i].Kappa_RT[k];
+        in->Rad_Kappa[k] = SphP[i].Rad_Kappa[k];
         in->RT_DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
 #if defined(RT_EVOLVE_FLUX) || defined(HYDRO_SPH)
         {int k_dir; for(k_dir=0;k_dir<6;k_dir++) in->ET[k][k_dir] = SphP[i].ET[k][k_dir];}
 #endif
 #ifdef RT_EVOLVE_FLUX
-        {int k_dir; for(k_dir=0;k_dir<3;k_dir++) in->Flux[k][k_dir] = SphP[i].Flux_Pred[k][k_dir];}
+        {int k_dir; for(k_dir=0;k_dir<3;k_dir++) in->Rad_Flux[k][k_dir] = SphP[i].Rad_Flux_Pred[k][k_dir];}
 #endif
 #if defined(RT_EVOLVE_INTENSITIES)
-        {int k_dir; for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++) {in->Intensity_Pred[k][k_dir] = SphP[i].Intensity_Pred[k][k_dir];}}
+        {int k_dir; for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++) {in->Rad_Intensity_Pred[k][k_dir] = SphP[i].Rad_Intensity_Pred[k][k_dir];}}
 #endif
     }
 #ifdef RT_INFRARED
@@ -587,16 +587,16 @@ static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int
     
 #if defined(RT_SOLVER_EXPLICIT)
 #if defined(RT_EVOLVE_ENERGY)
-    for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] += out->Dt_E_gamma[k];}
+    for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_Rad_E_gamma[k] += out->Dt_Rad_E_gamma[k];}
 #endif
 #if defined(RT_EVOLVE_FLUX)
-    for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Flux[k][k_dir] += out->Dt_Flux[k][k_dir];}}
+    for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Rad_Flux[k][k_dir] += out->Dt_Rad_Flux[k][k_dir];}}
 #endif
 #if defined(RT_INFRARED)
-    SphP[i].Dt_E_gamma_T_weighted_IR += out->Dt_E_gamma_T_weighted_IR;
+    SphP[i].Dt_Rad_E_gamma_T_weighted_IR += out->Dt_Rad_E_gamma_T_weighted_IR;
 #endif
 #if defined(RT_EVOLVE_INTENSITIES)
-    for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++) {SphP[i].Dt_Intensity[k][k_dir] += out->Dt_Intensity[k][k_dir];}}
+    for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++) {SphP[i].Dt_Rad_Intensity[k][k_dir] += out->Dt_Rad_Intensity[k][k_dir];}}
 #endif
 #endif
     
@@ -784,7 +784,7 @@ void hydro_final_operations_and_cleanup(void)
             for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++)
             {
                 double vol_inv = SphP[i].Density*All.cf_a3inv/P[i].Mass, f_kappa_abs = rt_absorb_frac_albedo(i,kfreq), vel_i[3], vdot_h[3], flux_i[3], flux_mag=0, erad_i=0, flux_corr=1, work_band=0;
-                erad_i = SphP[i].E_gamma_Pred[kfreq]*vol_inv; for(k=0;k<3;k++) {flux_i[k]=SphP[i].Flux_Pred[kfreq][k]*vol_inv; vel_i[k]=SphP[i].VelPred[k]/All.cf_atime; vdot_h[k]=vel_i[k]*erad_i*(1. + SphP[i].ET[kfreq][k]); flux_mag+=flux_i[k]*flux_i[k];}
+                erad_i = SphP[i].Rad_E_gamma_Pred[kfreq]*vol_inv; for(k=0;k<3;k++) {flux_i[k]=SphP[i].Rad_Flux_Pred[kfreq][k]*vol_inv; vel_i[k]=SphP[i].VelPred[k]/All.cf_atime; vdot_h[k]=vel_i[k]*erad_i*(1. + SphP[i].ET[kfreq][k]); flux_mag+=flux_i[k]*flux_i[k];}
                 vdot_h[0] += erad_i*(vel_i[1]*SphP[i].ET[kfreq][3] + vel_i[2]*SphP[i].ET[kfreq][5]); vdot_h[1] += erad_i*(vel_i[0]*SphP[i].ET[kfreq][3] + vel_i[2]*SphP[i].ET[kfreq][4]); vdot_h[2] += erad_i*(vel_i[0]*SphP[i].ET[kfreq][5] + vel_i[1]*SphP[i].ET[kfreq][4]);
                 double flux_thin = erad_i * C_LIGHT_CODE_REDUCED; if(flux_mag>0) {flux_mag=sqrt(flux_mag);} else {flux_mag=1.e-20*flux_thin;}
                 flux_corr = DMIN(1., flux_thin/flux_mag);
@@ -793,16 +793,16 @@ void hydro_final_operations_and_cleanup(void)
 #endif
                 for(k=0;k<3;k++)
                 {
-                    radacc[k] += (SphP[i].Kappa_RT[kfreq]/C_LIGHT_CODE_REDUCED) * (flux_corr*flux_i[k] - vdot_h[k]); // note these 'vdoth' terms shouldn't be included in FLD, since its really assuming the entire right-hand-side of the flux equation reaches equilibrium with the pressure tensor, which gives the expression in rt_utilities
+                    radacc[k] += (SphP[i].Rad_Kappa[kfreq]/C_LIGHT_CODE_REDUCED) * (flux_corr*flux_i[k] - vdot_h[k]); // note these 'vdoth' terms shouldn't be included in FLD, since its really assuming the entire right-hand-side of the flux equation reaches equilibrium with the pressure tensor, which gives the expression in rt_utilities
                     work_band += radacc[k] * vel_i[k] * P[i].Mass; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit -- note that we have to be careful about the RSOL factors here! //
                 }
-                SphP[i].Dt_E_gamma[kfreq] += (2.*f_kappa_abs-1.)*work_band;
+                SphP[i].Dt_Rad_E_gamma[kfreq] += (2.*f_kappa_abs-1.)*work_band;
                 SphP[i].DtInternalEnergy -= 2.*f_kappa_abs*work_band / P[i].Mass;
             }
             for(k=0;k<3;k++)
             {
 #ifdef RT_RAD_PRESSURE_OUTPUT
-                SphP[i].RadAccel[k] = radacc[k]; // physical units, as desired
+                SphP[i].Rad_Accel[k] = radacc[k]; // physical units, as desired
 #else
                 SphP[i].HydroAccel[k] += radacc[k]; // physical units, as desired
 #endif
@@ -810,11 +810,11 @@ void hydro_final_operations_and_cleanup(void)
 #endif
 #ifdef RT_RADPRESSURE_IN_HYDRO
             int kfreq; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {
-                double fac = (1./3.) * SphP[i].E_gamma_Pred[kfreq] * P[i].Particle_DivVel*All.cf_a2inv * (1.-2.*rt_absorb_frac_albedo(i,kfreq));
+                double fac = (1./3.) * SphP[i].Rad_E_gamma_Pred[kfreq] * P[i].Particle_DivVel*All.cf_a2inv * (1.-2.*rt_absorb_frac_albedo(i,kfreq));
 #ifdef RT_FLUXLIMITER
-                fac *= SphP[i].Lambda_FluxLim[kfreq]; // apply flux-limiter
+                fac *= SphP[i].Rad_Flux_Limiter[kfreq]; // apply flux-limiter
 #endif
-                SphP[i].Dt_E_gamma[kfreq] -= fac; SphP[i].DtInternalEnergy += fac / P[i].Mass; /* exact energy conservation */
+                SphP[i].Dt_Rad_E_gamma[kfreq] -= fac; SphP[i].DtInternalEnergy += fac / P[i].Mass; /* exact energy conservation */
             }
 #endif
             
@@ -936,19 +936,19 @@ void hydro_force_initial_operations_preloop(void)
 #endif
 #if defined(RT_SOLVER_EXPLICIT)
 #if defined(RT_EVOLVE_ENERGY)
-            for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] = 0;}
+            for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_Rad_E_gamma[k] = 0;}
 #endif
 #if defined(RT_EVOLVE_FLUX)
-            for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Flux[k][k_dir] = 0;}}
+            for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Rad_Flux[k][k_dir] = 0;}}
 #endif
 #if defined(RT_INFRARED)
-            SphP[i].Dt_E_gamma_T_weighted_IR = 0;
+            SphP[i].Dt_Rad_E_gamma_T_weighted_IR = 0;
 #endif
 #if defined(RT_EVOLVE_FLUX)
-            for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Flux[k][k_dir] = 0;}}
+            for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Rad_Flux[k][k_dir] = 0;}}
 #endif
 #if defined(RT_EVOLVE_INTENSITIES)
-            for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++) {SphP[i].Dt_Intensity[k][k_dir] = 0;}}
+            for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++) {SphP[i].Dt_Rad_Intensity[k][k_dir] = 0;}}
 #endif
 #endif
 #ifdef MAGNETIC
