@@ -2621,10 +2621,10 @@ extern struct sph_particle_data
 #endif
 
     MyDouble Pressure;              /*!< current pressure */
-    MyDouble InternalEnergy;        /*!< internal energy of particle */
-    MyDouble InternalEnergyPred;    /*!< predicted value of the internal energy at the current time */
-    //MyDouble dInternalEnergy;     /*!< change in internal energy from hydro step */ //manifest-indiv-timestep-debug//
-    MyDouble DtInternalEnergy;      /*!< rate of change of internal energy */
+    MyDouble InternalEnergy;        /*!< specific internal energy [internal thermal energy per unit mass] of cell */
+    MyDouble InternalEnergyPred;    /*!< predicted value of the specific internal energy at the current time */
+    //MyDouble dInternalEnergy;     /*!< change in specific internal energy from hydro step */ //manifest-indiv-timestep-debug//
+    MyDouble DtInternalEnergy;      /*!< rate of change of specific internal energy */
 
     MyDouble VelPred[3];            /*!< predicted SPH particle velocity at the current time */
     //MyDouble dMomentum[3];        /*!< change in momentum from hydro step (conserved variable) */ //manifest-indiv-timestep-debug//
@@ -2739,12 +2739,12 @@ extern struct sph_particle_data
     double Chimes_G0[CHIMES_LOCAL_UV_NBINS];            /*!< 6-13.6 eV flux, in Habing units */
     double Chimes_fluxPhotIon[CHIMES_LOCAL_UV_NBINS];   /*!< ionising flux (>13.6 eV), in cm^-2 s^-1 */ 
 #ifdef CHIMES_HII_REGIONS 
-  double Chimes_G0_HII[CHIMES_LOCAL_UV_NBINS]; 
-  double Chimes_fluxPhotIon_HII[CHIMES_LOCAL_UV_NBINS]; 
+    double Chimes_G0_HII[CHIMES_LOCAL_UV_NBINS];
+    double Chimes_fluxPhotIon_HII[CHIMES_LOCAL_UV_NBINS];
 #endif // CHIMES_HII_REGIONS 
 #endif // CHIMES_STELLAR_FLUXES 
 #ifdef CHIMES_TURB_DIFF_IONS 
-  double ChimesNIons[TOTSIZE]; 
+    double ChimesNIons[TOTSIZE];
 #endif // CHIMES_TURB_DIFF_IONS 
 #ifdef BH_COMPTON_HEATING
     MyFloat Rad_Flux_AGN;             /*!< local AGN flux */

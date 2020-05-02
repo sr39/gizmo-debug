@@ -404,7 +404,6 @@ void gravity_tree(void)
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
                 if(P[place].Type==0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[place].Rad_Flux[kf][k2] += GravDataOut[j].Rad_Flux[kf][k2];}}}
 #endif
-
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 {int i1tt,i2tt; for(i1tt=0;i1tt<3;i1tt++) {for(i2tt=0;i2tt<3;i2tt++) {P[place].tidal_tensorps[i1tt][i2tt] += GravDataOut[j].tidal_tensorps[i1tt][i2tt];}}}
 #ifdef COMPUTE_JERK_IN_GRAVTREE
@@ -516,7 +515,14 @@ void gravity_tree(void)
             {double trace = SphP[i].ET[k_freq][0] + SphP[i].ET[k_freq][1] + SphP[i].ET[k_freq][2];
                 if(!isnan(trace) && (trace>0)) {for(k=0;k<6;k++) {SphP[i].ET[k_freq][k]/=trace;}} else {SphP[i].ET[k_freq][0]=SphP[i].ET[k_freq][1]=SphP[i].ET[k_freq][2]=1./3.; SphP[i].ET[k_freq][4]=SphP[i].ET[k_freq][5]=SphP[i].ET[k_freq][6]=0;}}}
 #endif
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) /* normalize to energy density with C, and multiply by volume to use standard 'finite volume-like' quanity as elsewhere in-code */
+        if(P[i].Type==0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[i].Rad_E_gamma[kf] *= P[i].Mass/(SphP[i].Density*All.cf_a3inv * C_LIGHT_CODE);}}
+#endif
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX) /* multiply by volume to use standard 'finite volume-like' quanity as elsewhere in-code */
+        if(P[i].Type==0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[i].Rad_Flux[kf][k2] *= P[i].Mass/(SphP[i].Density*All.cf_a3inv);}}}
+#endif
 
+        
 #ifdef RT_USE_TREECOL_FOR_NH  /* compute the effective column density that gives equivalent attenuation of a uniform background: -log(avg(exp(-sigma))) */
         double sigma_eff=0, sigma_sum=0; int kbin; // first do a sum of the columns and express columns in units of that sum, so that we're plugging O(1) values into exp and avoid overflow when we have unfortunate units. Then we just multiply by the sum at the end.
         for(kbin=0; kbin<RT_USE_TREECOL_FOR_NH; kbin++) {sigma_sum += P[i].ColumnDensityBins[kbin];}
