@@ -2034,7 +2034,7 @@ extern struct global_data_all_processes
 #endif
     
 #ifdef COSMIC_RAYS
-    double CosmicRayDiffusionCoeff[N_CR_PARTICLE_BINS];
+    double CosmicRayDiffusionCoeff;
 #endif
     
 
@@ -2701,7 +2701,7 @@ extern struct sph_particle_data
         MyDouble Metallicity[NUM_METAL_SPECIES][3];
 #endif
 #ifdef COSMIC_RAYS
-        MyDouble CosmicRayPressure[3];
+        MyDouble CosmicRayPressure[N_CR_PARTICLE_BINS][3];
 #endif
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
         MyDouble Rad_E_gamma_ET[N_RT_FREQ_BINS][3];

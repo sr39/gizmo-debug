@@ -107,7 +107,7 @@ double get_pressure(int i)
     int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
         press += Get_Particle_CosmicRayPressure(i,k_CRegy);
-        soundspeed2 += GAMMA_COSMICRAY*GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred[k_CRegy] / P[i].Mass);
+        soundspeed2 += GAMMA_COSMICRAY*GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred[k_CRegy] / P[i].Mass;
 #ifdef COSMIC_RAYS_ALFVEN
         press += (GAMMA_ALFVEN_CRS-1) * SphP[i].Density * (SphP[i].CosmicRayAlfvenEnergy[k_CRegy][0]+SphP[i].CosmicRayAlfvenEnergy[k_CRegy][1]);
         soundspeed2 += GAMMA_ALFVEN_CRS*(GAMMA_ALFVEN_CRS-1)*(SphP[i].CosmicRayAlfvenEnergy[k_CRegy][0]+SphP[i].CosmicRayAlfvenEnergy[k_CRegy][1]) / P[i].Mass;
