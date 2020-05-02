@@ -51,7 +51,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         if(q_whichupdate>0) {if(mode==0) {SphP[i].CosmicRayAlfvenEnergy[k_CRegy][q_whichupdate-1] += dCR_div; SphP[i].InternalEnergy -= dCR_div/P[i].Mass;} else {SphP[i].CosmicRayAlfvenEnergyPred[k_CRegy][q_whichupdate-1] += dCR_div; SphP[i].InternalEnergyPred -= dCR_div/P[i].Mass;}}
     }
 
-    double E_CRs_Gev=return_CRbin_CR_rigidity_in_GV(i,k_CRegy), Z_charge_CR=return_CRbin_CR_charge_in_e(i,k_CRegy) // charge and energy and resonant Alfven wavenumber (in gyro units) of the CR population we're evolving
+    double E_CRs_Gev=return_CRbin_CR_rigidity_in_GV(i,k_CRegy), Z_charge_CR=return_CRbin_CR_charge_in_e(i,k_CRegy); // charge and energy and resonant Alfven wavenumber (in gyro units) of the CR population we're evolving
         
     // ok, the updates from [0] advection w gas, [1] fluxes, [2] adiabatic, [-] catastrophic (in cooling.c) are all set, just need exchange terms b/t CR and Alfven //
     double EPSILON_SMALL = 1.e-77; // want a very small number here 

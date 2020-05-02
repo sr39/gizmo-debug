@@ -2676,7 +2676,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {lum_force_fac += mass_stellarlum[kf_rt] * fac_stellum[kf_rt];}
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
                 double fac_flux = -fac * All.cf_a2inv / (4.*M_PI); // ~L/(4pi*r^3), in -physical- units (except for last r, cancelled by dx_stellum), since L is physical
-                for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {Rad_Flux[kf][0]+=mass_stellarlum[kf_rt]*fac_flux*dx_stellarlum; Rad_Flux[kf][1]+=mass_stellarlum[kf_rt]*fac_flux*dy_stellarlum; Rad_Flux[kf][2]+=mass_stellarlum[kf_rt]*fac_flux*dz_stellarlum;}
+                for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {Rad_Flux[kf_rt][0]+=mass_stellarlum[kf_rt]*fac_flux*dx_stellarlum; Rad_Flux[kf_rt][1]+=mass_stellarlum[kf_rt]*fac_flux*dy_stellarlum; Rad_Flux[kf_rt][2]+=mass_stellarlum[kf_rt]*fac_flux*dz_stellarlum;}
 #endif
 #ifdef BH_PHOTONMOMENTUM /* divide out PhotoMom_coupled_frac here b/c we have our own BH_Rad_Mom factor, and don't want to double-count */
                 lum_force_fac += All.BH_Rad_MomentumFactor / All.PhotonMomentum_Coupled_Fraction * mass_bhlum * fac_stellum[N_RT_FREQ_BINS-1];

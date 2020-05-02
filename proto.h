@@ -307,6 +307,7 @@ double get_cell_Urad_in_eVcm3(int i);
 void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime_cgs);
 double CR_gas_heating(int target, double n_elec, double nHcgs);
 double return_CRbin_CRmass_in_mp(int target, int k_CRegy);
+double return_CRbin_CR_rigidity_in_GV(int target, int k_CRegy);
 #endif
 #ifdef EOS_ELASTIC
 void elastic_body_update_driftkick(int i, double dt_entr, int mode);
