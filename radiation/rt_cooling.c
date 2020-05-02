@@ -28,7 +28,7 @@ double rt_DoHeating(int i, double dt_internal)
     nH = HYDROGEN_MASSFRAC * SphP[i].Density * All.cf_a3inv / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
     nHI = SphP[i].HI * nH;
     sigma = 1.63e-18 / All.UnitLength_in_cm / All.UnitLength_in_cm * All.HubbleParam * All.HubbleParam;
-    e_gamma = SphP[i].E_gamma[0] * (SphP[i].Density*All.cf_a3inv/P[i].Mass);  // want the photon energy density //
+    e_gamma = SphP[i].Rad_E_gamma[0] * (SphP[i].Density*All.cf_a3inv/P[i].Mass);  // want the photon energy density //
     rate = nHI * C_LIGHT_CODE * sigma * e_gamma;
     return rate / (All.cf_hubble_a * (SphP[i].Density * All.cf_a3inv));
 }

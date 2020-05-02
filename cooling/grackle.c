@@ -333,7 +333,7 @@ void InitGrackle(void)
     // Flag to enable H2 cooling attenuation from Ripamonti & Abel (2004). Default: 0
     grackle_data.h2_optical_depth_approximation   = 0;
     
-    // Intensity of a constant Lyman-Werner H2 photo-dissociating radiation field,
+    // Rad_Intensity of a constant Lyman-Werner H2 photo-dissociating radiation field,
     //    in units of 10-21 erg s-1 cm-2 Hz-1 sr-1. Default: 0.
     grackle_data.LWbackground_intensity           = 0;
     // Flag to enable suppression of Lyman-Werner flux due to Lyman-series absorption

@@ -617,19 +617,14 @@ void init(void)
 #endif 
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
-            SphP[i].RadFluxUV = 0;
-            SphP[i].RadFluxEUV = 0;
+            SphP[i].Rad_Flux_UV = 0;
+            SphP[i].Rad_Flux_EUV = 0;
 #endif 
 #ifdef CHIMES_STELLAR_FLUXES 
-	    int kc; 
-	    for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
-	      { 
-		SphP[i].Chimes_fluxPhotIon[kc] = 0; 
-		SphP[i].Chimes_G0[kc] = 0; 
-	      }
+	    int kc; for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) {SphP[i].Chimes_fluxPhotIon[kc] = 0; SphP[i].Chimes_G0[kc] = 0;}
 #endif
 #ifdef BH_COMPTON_HEATING
-            SphP[i].RadFluxAGN = 0;
+            SphP[i].Rad_Flux_AGN = 0;
 #endif
         }
 #ifdef GALSF_SUBGRID_WINDS
@@ -858,13 +853,19 @@ void init(void)
         SphP[i].Super_Timestep_j = 0;
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
-        SphP[i].RadFluxUV = 0;
-        SphP[i].RadFluxEUV = 0;
+        SphP[i].Rad_Flux_UV = 0;
+        SphP[i].Rad_Flux_EUV = 0;
 #endif
 #ifdef BH_COMPTON_HEATING
-        SphP[i].RadFluxAGN = 0;
+        SphP[i].Rad_Flux_AGN = 0;
 #endif        
-        
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
+        {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[i].Rad_E_gamma[kf]=0;}}
+#endif
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
+        {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(j=0;j<3;j++) {SphP[i].Rad_Flux[kf][j]=0;}}}
+#endif
+
 #ifdef COOL_GRACKLE
         if(RestartFlag == 0)
         {

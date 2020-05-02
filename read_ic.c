@@ -497,7 +497,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             
         case IO_RADGAMMA:
 #ifdef RADTRANSFER
-            for(n = 0; n < pc; n++) {for(k = 0; k < N_RT_FREQ_BINS; k++) {SphP[offset + n].E_gamma[k] = *fp++;}}
+            for(n = 0; n < pc; n++) {for(k = 0; k < N_RT_FREQ_BINS; k++) {SphP[offset + n].Rad_E_gamma[k] = *fp++;}}
 #endif
             break;
             

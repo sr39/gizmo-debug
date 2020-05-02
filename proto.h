@@ -765,9 +765,9 @@ void pm_setup_nonperiodic_kernel(void);
 #ifdef CHIMES_STELLAR_FLUXES 
 double chimes_G0_luminosity(double stellar_age, double stellar_mass); 
 double chimes_ion_luminosity(double stellar_age, double stellar_mass); 
-int rt_get_source_luminosity(int i, double sigma_0, double *lum, double *chimes_lum_G0, double *chimes_lum_ion); 
+int rt_get_source_luminosity(int i, int mode, double *lum, double *chimes_lum_G0, double *chimes_lum_ion);
 #else 
-int rt_get_source_luminosity(int i, double sigma_0, double *lum);
+int rt_get_source_luminosity(int i, int mode, double *lum);
 #endif 
 double rt_kappa(int j, int k_freq);
 double rt_absorb_frac_albedo(int j, int k_freq);

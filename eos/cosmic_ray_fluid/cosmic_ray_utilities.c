@@ -356,7 +356,7 @@ double inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity,
         double dEcr = CR_energy_to_inject * CR_energy_spectrum_injection_fraction(k_CRegy,injection_velocity,source_PType);
         SphP[target].CosmicRayEnergy[k_CRegy]+=dEcr; SphP[target].CosmicRayEnergyPred[k_CRegy]+=dEcr;
 #ifdef COSMIC_RAYS_M1
-        for(k=0;k<3;k++) {double dFlux=dEcr*dir[k]*COSMIC_RAYS_M1; SphP[target].CosmicRayFlux[k_CRegy][k]+=dflux; SphP[target].CosmicRayFluxPred[k_CRegy][k]+=flux;}
+        for(k=0;k<3;k++) {double dflux=dEcr*dir[k]*COSMIC_RAYS_M1; SphP[target].CosmicRayFlux[k_CRegy][k]+=dflux; SphP[target].CosmicRayFluxPred[k_CRegy][k]+=flux;}
 #endif
     }
 }
@@ -484,16 +484,13 @@ double get_cell_Bfield_in_microGauss(int i)
 double get_cell_Urad_in_eVcm3(int i)
 {
     double erad = 0.26*All.cf_a3inv/All.cf_atime; // default with the CMB energy density, which we assume here is a baseline minimum
-#if defined(RADTRANSFER)
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
     int kfreq; double e_units = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam * 6.24151e11;
 #ifdef RT_EVOLVE_ENERGY
-    for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad+=SphP[i].E_gamma_Pred[kfreq]*e_units;}
+    for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad+=SphP[i].Rad_E_gamma_Pred[kfreq]*e_units;}
 #else
-    for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad+=SphP[i].E_gamma[kfreq]*e_units;}
+    for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad+=SphP[i].Rad_E_gamma[kfreq]*e_units;}
 #endif
-#elif defined(???)
-    
-    erad +=
 #else
     double uRad_MW = 0.31 + 0.66; /* dust (0.31) and stars (0.66) for Milky way ISRF from Draine (2011); want this to decay as we approach the IGM (where CMB totally dominates) */
     double prefac_rad=1, rho_cgs=SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam; if(All.ComovingIntegrationOn) {double rhofac = rho_cgs / (1000.*All.OmegaBaryon*(All.HubbleParam*HUBBLE_CGS)*(All.HubbleParam*HUBBLE_CGS)*(3./(8.*M_PI*GRAVITY_G))*All.cf_a3inv);

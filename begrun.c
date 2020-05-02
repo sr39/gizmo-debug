@@ -1520,7 +1520,8 @@ void read_parameter_file(char *fname)
 
 #ifdef BH_PHOTONMOMENTUM
         strcpy(tag[nt],"BH_FluxMomentumFactor");
-        addr[nt] = &All.BH_FluxMomentumFactor;
+        strcpy(alternate_tag[nt], "BH_Rad_MomentumFactor");
+        addr[nt] = &All.BH_Rad_MomentumFactor;
         id[nt++] = REAL;
 #endif
 

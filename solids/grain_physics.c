@@ -461,7 +461,7 @@ int interpolate_fluxes_opacities_gasgrains_evaluate(int target, int mode, int *e
                         for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++)
                         {
                             f_kappa_abs = 1; // rt_absorb_frac_albedo(i,kfreq); -- this is set to unity anyways but would require extra passing, ignore for now //
-                            erad_i = SphP[j].E_gamma_Pred[kfreq]; for(k=0;k<3;k++) {flux_i[k]=SphP[j].Flux_Pred[kfreq][k]; vdot_h[k]=vel_i[k]*erad_i*(1. + SphP[j].ET[kfreq][k]); flux_mag+=flux_i[k]*flux_i[k];}
+                            erad_i = SphP[j].Rad_E_gamma_Pred[kfreq]; for(k=0;k<3;k++) {flux_i[k]=SphP[j].Rad_Flux_Pred[kfreq][k]; vdot_h[k]=vel_i[k]*erad_i*(1. + SphP[j].ET[kfreq][k]); flux_mag+=flux_i[k]*flux_i[k];}
                             vdot_h[0] += erad_i*(vel_i[1]*SphP[j].ET[kfreq][3] + vel_i[2]*SphP[j].ET[kfreq][5]); vdot_h[1] += erad_i*(vel_i[0]*SphP[j].ET[kfreq][3] + vel_i[2]*SphP[j].ET[kfreq][4]); vdot_h[2] += erad_i*(vel_i[0]*SphP[j].ET[kfreq][5] + vel_i[1]*SphP[j].ET[kfreq][4]);
                             double flux_thin = erad_i * C_LIGHT_CODE_REDUCED; if(flux_mag>0) {flux_mag=sqrt(flux_mag);} else {flux_mag=1.e-20*flux_thin;}
                             flux_corr = DMIN(1., flux_thin/flux_mag);

@@ -388,7 +388,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                         if(local.BH_angle_weighted_kernel_sum<=0) mom_wt=0;
                                 
 #ifdef BH_PHOTONMOMENTUM /* inject radiation pressure: add initial L/c optical/UV coupling to the gas at the dust sublimation radius */
-                        double v_kick = All.BH_FluxMomentumFactor * mom_wt * mom / P[j].Mass;
+                        double v_kick = All.BH_Rad_MomentumFactor * mom_wt * mom / P[j].Mass;
                         for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k];}
 #endif
 #if defined(BH_COSMIC_RAYS) && defined(BH_WIND_CONTINUOUS) /* inject cosmic rays alongside continuous wind injection */
@@ -776,9 +776,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #ifdef RADTRANSFER
         for(k=0;k<N_RT_FREQ_BINS;k++)
         {
-            SphP[j].E_gamma[k] = 0;
+            SphP[j].Rad_E_gamma[k] = 0;
 #if defined(RT_EVOLVE_ENERGY)
-            SphP[j].E_gamma_Pred[k] = 0; SphP[j].Dt_E_gamma[k] = 0;
+            SphP[j].Rad_E_gamma_Pred[k] = 0; SphP[j].Dt_Rad_E_gamma[k] = 0;
 #endif
         }
 #endif        

@@ -442,7 +442,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #ifdef SINGLE_STAR_FB_RT_HEATING
 #if !defined(TEST_RT_M1)
 #define GALSF_FB_FIRE_RT_LONGRANGE  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
-#define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. make sure BH_FluxMomentumFactor=0 to avoid launching winds this way!!!
+#define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. make sure BH_Rad_MomentumFactor=0 to avoid launching winds this way!!!
 #define BH_COMPTON_HEATING // turn on the heating term: this just calculates incident BH-particle flux, to be used in the cooling routine
 #endif
 #endif
@@ -563,7 +563,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define RT_DIFFUSION_CG // use our implicit solver [will crash with any other modules, hence checking this before the others below]
 #endif
 
-/* options for FLD or OTVET or M1 or Ray/Intensity modules */
+/* options for FLD or OTVET or M1 or Ray/Rad_Intensity modules */
 #if defined(RT_OTVET) || defined(RT_FLUXLIMITEDDIFFUSION) || defined(RT_M1) || defined(RT_LOCALRAYGRID)
 #ifndef RADTRANSFER
 #define RADTRANSFER // RADTRANSFER is ON, obviously
@@ -1985,7 +1985,7 @@ extern struct global_data_all_processes
 #endif
     
 #ifdef RT_EVOLVE_INTENSITIES
-    double RT_Intensity_Direction[N_RT_INTENSITY_BINS][3];
+    double Rad_Intensity_Direction[N_RT_INTENSITY_BINS][3];
 #endif
 
 #ifdef SINGLE_STAR_FB_SNE
@@ -2005,7 +2005,7 @@ extern struct global_data_all_processes
     double PhotonMomentum_fOPT;
 #endif
 #ifdef BH_PHOTONMOMENTUM
-    double BH_FluxMomentumFactor;
+    double BH_Rad_MomentumFactor;
 #endif
 #endif
     
@@ -2704,7 +2704,7 @@ extern struct sph_particle_data
         MyDouble CosmicRayPressure[3];
 #endif
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
-        MyDouble E_gamma_ET[N_RT_FREQ_BINS][3];
+        MyDouble Rad_E_gamma_ET[N_RT_FREQ_BINS][3];
 #endif
     } Gradients;
     MyFloat NV_T[3][3];             /*!< holds the tensor used for gradient estimation */
@@ -2732,12 +2732,12 @@ extern struct sph_particle_data
     MyFloat MaxSignalVel;           /*!< maximum signal velocity (needed for time-stepping) */
 
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
-    MyFloat RadFluxUV;              /*!< local UV field strength */
-    MyFloat RadFluxEUV;             /*!< local (ionizing/hard) UV field strength */
+    MyFloat Rad_Flux_UV;              /*!< local UV field strength */
+    MyFloat Rad_Flux_EUV;             /*!< local (ionizing/hard) UV field strength */
 #endif // GALSF_FB_FIRE_RT_UVHEATING 
 #ifdef CHIMES_STELLAR_FLUXES 
-    double Chimes_G0[CHIMES_LOCAL_UV_NBINS];    /*!< 6-13.6 eV flux, in Habing units */ 
-    double Chimes_fluxPhotIon[CHIMES_LOCAL_UV_NBINS];  /*!< ionising flux (>13.6 eV), in cm^-2 s^-1 */ 
+    double Chimes_G0[CHIMES_LOCAL_UV_NBINS];            /*!< 6-13.6 eV flux, in Habing units */
+    double Chimes_fluxPhotIon[CHIMES_LOCAL_UV_NBINS];   /*!< ionising flux (>13.6 eV), in cm^-2 s^-1 */ 
 #ifdef CHIMES_HII_REGIONS 
   double Chimes_G0_HII[CHIMES_LOCAL_UV_NBINS]; 
   double Chimes_fluxPhotIon_HII[CHIMES_LOCAL_UV_NBINS]; 
@@ -2747,11 +2747,14 @@ extern struct sph_particle_data
   double ChimesNIons[TOTSIZE]; 
 #endif // CHIMES_TURB_DIFF_IONS 
 #ifdef BH_COMPTON_HEATING
-    MyFloat RadFluxAGN;             /*!< local AGN flux */
+    MyFloat Rad_Flux_AGN;             /*!< local AGN flux */
 #endif
     
-#ifdef RT_USE_GRAVTREE_SAVE_LUMDEN
-    MyFloat E_Gamma???
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) && !defined(RADTRANSFER)
+    MyFloat Rad_E_gamma[N_RT_FREQ_BINS];
+#endif
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX) && !defined(RT_EVOLVE_FLUX)
+    MyFloat Rad_Flux[N_RT_FREQ_BINS][3];
 #endif
 
 #if defined(TURB_DRIVING) || defined(OUTPUT_VORTICITY)
@@ -2844,36 +2847,36 @@ extern struct sph_particle_data
 
     
 #if defined(RADTRANSFER)
-    MyFloat ET[N_RT_FREQ_BINS][6];      /*!< eddington tensor - symmetric -> only 6 elements needed: this is dimensionless by our definition */
-    MyFloat Je[N_RT_FREQ_BINS];         /*!< emissivity (includes sources like stars, as well as gas): units=E_gamma/time  */
-    MyFloat E_gamma[N_RT_FREQ_BINS];    /*!< photon energy (integral of dE_gamma/dvol*dVol) associated with particle [for simple frequency bins, equivalent to photon number] */
-    MyFloat Kappa_RT[N_RT_FREQ_BINS];   /*!< opacity [physical units ~ length^2 / mass]  */
+    MyFloat ET[N_RT_FREQ_BINS][6];          /*!< eddington tensor - symmetric -> only 6 elements needed: this is dimensionless by our definition */
+    MyFloat Rad_Je[N_RT_FREQ_BINS];         /*!< emissivity (includes sources like stars, as well as gas): units=Rad_E_gamma/time  */
+    MyFloat Rad_E_gamma[N_RT_FREQ_BINS];    /*!< photon energy (integral of dRad_E_gamma/dvol*dVol) associated with particle [for simple frequency bins, equivalent to photon number] */
+    MyFloat Rad_Kappa[N_RT_FREQ_BINS];      /*!< opacity [physical units ~ length^2 / mass]  */
 #ifdef RT_FLUXLIMITER
-    MyFloat Lambda_FluxLim[N_RT_FREQ_BINS]; /*!< dimensionless flux-limiter (0<lambda<1) */
+    MyFloat Rad_Flux_Limiter[N_RT_FREQ_BINS]; /*!< dimensionless flux-limiter (0<lambda<1) */
 #endif
 #ifdef RT_EVOLVE_INTENSITIES
-    MyFloat Intensity[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]; /*!< intensity values along different directions, for each frequency */
-    MyFloat Intensity_Pred[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]; /*!< predicted [drifted] values of intensities */
-    MyFloat Dt_Intensity[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]; /*!< time derivative of intensities */
+    MyFloat Rad_Intensity[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]; /*!< intensity values along different directions, for each frequency */
+    MyFloat Rad_Intensity_Pred[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]; /*!< predicted [drifted] values of intensities */
+    MyFloat Dt_Rad_Intensity[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]; /*!< time derivative of intensities */
 #endif
 #ifdef RT_EVOLVE_FLUX
-    MyFloat Flux[N_RT_FREQ_BINS][3];    /*!< photon energy flux density (energy/time/area), for methods which track this explicitly (e.g. M1) */
-    MyFloat Flux_Pred[N_RT_FREQ_BINS][3];/*!< predicted photon energy flux density for drift operations (needed for adaptive timestepping) */
-    MyFloat Dt_Flux[N_RT_FREQ_BINS][3]; /*!< time derivative of photon energy flux density */
+    MyFloat Rad_Flux[N_RT_FREQ_BINS][3];    /*!< photon energy flux density (energy/time/area), for methods which track this explicitly (e.g. M1) */
+    MyFloat Rad_Flux_Pred[N_RT_FREQ_BINS][3];/*!< predicted photon energy flux density for drift operations (needed for adaptive timestepping) */
+    MyFloat Dt_Rad_Flux[N_RT_FREQ_BINS][3]; /*!< time derivative of photon energy flux density */
 #endif
 #ifdef RT_EVOLVE_ENERGY
-    MyFloat E_gamma_Pred[N_RT_FREQ_BINS]; /*!< predicted E_gamma for drift operations (needed for adaptive timestepping) */
-    MyFloat Dt_E_gamma[N_RT_FREQ_BINS]; /*!< time derivative of photon number in particle (used only with explicit solvers) */
+    MyFloat Rad_E_gamma_Pred[N_RT_FREQ_BINS]; /*!< predicted Rad_E_gamma for drift operations (needed for adaptive timestepping) */
+    MyFloat Dt_Rad_E_gamma[N_RT_FREQ_BINS]; /*!< time derivative of photon number in particle (used only with explicit solvers) */
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
-    MyFloat RadAccel[3];
+    MyFloat Rad_Accel[3];
 #endif
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
     MyDouble Interpolated_Opacity[N_RT_FREQ_BINS]; /* opacity values interpolated to gas positions */
 #endif
 #ifdef RT_INFRARED
     MyFloat Radiation_Temperature; /* IR radiation field temperature (evolved variable ^4 power, for convenience) */
-    MyFloat Dt_E_gamma_T_weighted_IR; /* IR radiation temperature-weighted time derivative of photon energy (evolved variable ^4 power, for convenience) */
+    MyFloat Dt_Rad_E_gamma_T_weighted_IR; /* IR radiation temperature-weighted time derivative of photon energy (evolved variable ^4 power, for convenience) */
     MyFloat Dust_Temperature; /* Dust temperature (evolved variable ^4 power, for convenience) */
 #endif
 #ifdef RT_CHEM_PHOTOION
@@ -3057,15 +3060,21 @@ extern struct gravdata_out
     MyLongDouble ET[N_RT_FREQ_BINS][6];
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
-    MyLongDouble RadFluxUV;
-    MyLongDouble RadFluxEUV;
+    MyLongDouble Rad_Flux_UV;
+    MyLongDouble Rad_Flux_EUV;
 #endif
-#ifdef CHIMES_STELLAR_FLUXES 
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
+    MyDouble Rad_E_gamma[N_RT_FREQ_BINS];
+#endif
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
+    MyDouble Rad_Flux[N_RT_FREQ_BINS][3];
+#endif
+#ifdef CHIMES_STELLAR_FLUXES
     double Chimes_G0[CHIMES_LOCAL_UV_NBINS]; 
     double Chimes_fluxPhotIon[CHIMES_LOCAL_UV_NBINS]; 
 #endif 
 #ifdef BH_COMPTON_HEATING
-    MyLongDouble RadFluxAGN;
+    MyLongDouble Rad_Flux_AGN;
 #endif
 #ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
     MyLongDouble MencInRcrit;

@@ -244,16 +244,16 @@ void do_the_cooling_for_particle(int i)
         
 #ifdef RT_INFRARED /* assume (for now) that all radiated/absorbed energy comes from the IR bin [not really correct, this should just be the dust term] */
         double de_u = -(unew-SphP[i].InternalEnergy) * P[i].Mass; /* energy gained by gas needs to be subtracted from radiation */
-        if(de_u<=-0.99*SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]) {de_u=-0.99*SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]; unew=DMAX(0.01*SphP[i].InternalEnergy , SphP[i].InternalEnergy-de_u/P[i].Mass);}
-        SphP[i].E_gamma[RT_FREQ_BIN_INFRARED] += de_u; /* energy gained by gas is lost here */
+        if(de_u<=-0.99*SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]) {de_u=-0.99*SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]; unew=DMAX(0.01*SphP[i].InternalEnergy , SphP[i].InternalEnergy-de_u/P[i].Mass);}
+        SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED] += de_u; /* energy gained by gas is lost here */
 #if defined(RT_EVOLVE_ENERGY)
-        SphP[i].E_gamma_Pred[RT_FREQ_BIN_INFRARED] = SphP[i].E_gamma[RT_FREQ_BIN_INFRARED]; /* updated drifted */
+        SphP[i].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED] = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]; /* updated drifted */
 #elif defined(RT_EVOLVE_INTENSITIES)
-        int k_tmp; for(k_tmp=0;k_tmp<N_RT_INTENSITY_BINS;k_tmp++) {SphP[i].Intensity[RT_FREQ_BIN_INFRARED][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA; SphP[i].Intensity_Pred[RT_FREQ_BIN_INFRARED][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA;}
+        int k_tmp; for(k_tmp=0;k_tmp<N_RT_INTENSITY_BINS;k_tmp++) {SphP[i].Rad_Intensity[RT_FREQ_BIN_INFRARED][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA; SphP[i].Rad_Intensity_Pred[RT_FREQ_BIN_INFRARED][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA;}
 #endif
         double momfac = de_u / All.cf_atime; int kv; // add leading-order relativistic corrections here, accounting for gas motion in the addition/subtraction to the flux
 #if defined(RT_EVOLVE_FLUX)
-        for(kv=0;kv<3;kv++) {SphP[i].Flux[RT_FREQ_BIN_INFRARED][kv] += momfac*SphP[i].VelPred[kv]; SphP[i].Flux_Pred[RT_FREQ_BIN_INFRARED][kv] += momfac*SphP[i].VelPred[kv];}
+        for(kv=0;kv<3;kv++) {SphP[i].Rad_Flux[RT_FREQ_BIN_INFRARED][kv] += momfac*SphP[i].VelPred[kv]; SphP[i].Rad_Flux_Pred[RT_FREQ_BIN_INFRARED][kv] += momfac*SphP[i].VelPred[kv];}
 #endif
         momfac = 1. - de_u / (P[i].Mass * C_LIGHT_CODE_REDUCED*C_LIGHT_CODE_REDUCED); // back-reaction on gas from emission
         for(kv=0;kv<3;kv++) {P[i].Vel[kv] *= momfac; SphP[i].VelPred[kv] *= momfac;}
@@ -605,7 +605,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
     if((target >= 0) && (gJH0 > 0))
     {
-        local_gammamultiplier = SphP[target].RadFluxEUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
+        local_gammamultiplier = SphP[target].Rad_Flux_EUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
         local_gammamultiplier = 1 + local_gammamultiplier/gJH0;
     }
 #endif
@@ -875,7 +875,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
     if((target >= 0) && (gJH0 > 0))
     {
-        local_gammamultiplier = SphP[target].RadFluxEUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
+        local_gammamultiplier = SphP[target].Rad_Flux_EUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
         local_gammamultiplier = 1 + local_gammamultiplier/gJH0;
     }
 #endif
@@ -899,7 +899,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     double AGN_LambdaPre = 0, AGN_T_Compton; AGN_T_Compton = 2.0e7; /* approximate from Sazonov et al. */
     if(target >= 0)
     {
-        AGN_LambdaPre = SphP[target].RadFluxAGN * (3.9/2.0) * All.UnitMass_in_g/(All.UnitLength_in_cm*All.UnitLength_in_cm)*All.HubbleParam*All.cf_a2inv; /* proper units */
+        AGN_LambdaPre = SphP[target].Rad_Flux_AGN * (3.9/2.0) * All.UnitMass_in_g/(All.UnitLength_in_cm*All.UnitLength_in_cm)*All.HubbleParam*All.cf_a2inv; /* proper units */
 #ifdef SINGLE_STAR_SINK_DYNAMICS /* here we are hijacking this module to approximate dust heating/cooling */
         double Tmin_to_enforce = pow(10.0,Tmin); // use this as a mininum dust temperature, not for any physical reason but to prevent cooling below it
         AGN_T_Compton = DMIN(2000,pow( Tmin_to_enforce*Tmin_to_enforce*Tmin_to_enforce*Tmin_to_enforce + AGN_LambdaPre / 5.67e-5 , 0.25)); // (sigma*T^4 = Flux_incident), assuming heating/cooling balance defines the target temperature, maximum set to 2000K as the dust is destroyed above that
@@ -1064,12 +1064,12 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
       
         
 #if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) // account for Compton heating by X-rays:
-        double u_gamma_xr=0, Tc_xr=0, prefac_for_compton = 1.35e-23 * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * All.UnitPressure_in_cgs * All.HubbleParam*All.HubbleParam  / nHcgs; // convert E_gamma to (u_gamma*c)*sigma_Thompson*(4*kB)/(me*c^2) in CGS (last 1/n is to make it in appropriate "Lambda" units)
+        double u_gamma_xr=0, Tc_xr=0, prefac_for_compton = 1.35e-23 * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * All.UnitPressure_in_cgs * All.HubbleParam*All.HubbleParam  / nHcgs; // convert Rad_E_gamma to (u_gamma*c)*sigma_Thompson*(4*kB)/(me*c^2) in CGS (last 1/n is to make it in appropriate "Lambda" units)
 #if defined(RT_HARD_XRAY)
-        u_gamma_xr=SphP[target].E_gamma[RT_FREQ_BIN_HARD_XRAY]; Tc_xr=1.7e7; if(T<Tc_xr) {Heat += prefac_for_compton*u_gamma_xr*(Tc_xr-T);}
+        u_gamma_xr=SphP[target].Rad_E_gamma[RT_FREQ_BIN_HARD_XRAY]; Tc_xr=1.7e7; if(T<Tc_xr) {Heat += prefac_for_compton*u_gamma_xr*(Tc_xr-T);}
 #endif
 #if defined(RT_SOFT_XRAY)
-        u_gamma_xr=SphP[target].E_gamma[RT_FREQ_BIN_SOFT_XRAY]; Tc_xr=3.6e6; if(T<Tc_xr) {Heat += prefac_for_compton*u_gamma_xr*(Tc_xr-T);}
+        u_gamma_xr=SphP[target].Rad_E_gamma[RT_FREQ_BIN_SOFT_XRAY]; Tc_xr=3.6e6; if(T<Tc_xr) {Heat += prefac_for_compton*u_gamma_xr*(Tc_xr-T);}
 #endif
 #endif
 
@@ -1089,13 +1089,13 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         if((target >= 0) && (T < 1.0e6))
         {
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
-            double photoelec = SphP[target].RadFluxUV;
+            double photoelec = SphP[target].Rad_Flux_UV;
 #ifdef COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
             if(gJH0>0 && shieldfac>0) {photoelec += sqrt(shieldfac) * (gJH0 / 2.29e-10);} // uvb contribution //
 #endif
 #endif
 #ifdef RT_PHOTOELECTRIC
-            double photoelec = SphP[target].E_gamma[RT_FREQ_BIN_PHOTOELECTRIC] * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * All.UnitPressure_in_cgs * All.HubbleParam*All.HubbleParam / 3.9e-14; // convert to Habing field //
+            double photoelec = SphP[target].Rad_E_gamma[RT_FREQ_BIN_PHOTOELECTRIC] * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * All.UnitPressure_in_cgs * All.HubbleParam*All.HubbleParam / 3.9e-14; // convert to Habing field //
             if(photoelec > 0) {if(photoelec > 1.0e4) {photoelec = 1.e4;}}
 #endif
             if(photoelec > 0)
@@ -1740,32 +1740,30 @@ double GetLambdaSpecies(long k_index, long index_x0y0, long index_x0y1, long ind
 void selfshield_local_incident_uv_flux(void)
 {
     /* include local self-shielding with the following */
-    int i;
-    double GradRho = 0;
-    double sigma_eff_0 = All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam;
-    double code_flux_to_physical = sigma_eff_0 * All.cf_a2inv; // convert code flux [units=(L/M)_physical * Mcode/(Rcode*Rcode)] to physical cgs units
+    int i; double surfdensity = 0, code_surfacedensity_to_cgs = All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam;
+    double code_flux_to_cgs = (All.UnitPressure_in_cgs*All.UnitVelocity_in_cm_per_s*All.HubbleParam*All.HubbleParam); // convert code flux [units=Lcode/(Rcode*Rcode)] to physical cgs units
     
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if(P[i].Type==0)
         {
-            if((SphP[i].RadFluxUV>0) && (PPP[i].Hsml>0) && (SphP[i].Density>0) && (P[i].Mass>0) && (All.Time>0))
+            if((SphP[i].Rad_Flux_UV>0) && (PPP[i].Hsml>0) && (SphP[i].Density>0) && (P[i].Mass>0) && (All.Time>0))
             {
-                SphP[i].RadFluxUV *= code_flux_to_physical; // convert to cgs
-                SphP[i].RadFluxEUV *= code_flux_to_physical; // convert to cgs
+                SphP[i].Rad_Flux_UV *= code_flux_to_cgs; // convert to cgs
+                SphP[i].Rad_Flux_EUV *= code_flux_to_cgs; // convert to cgs
 
-                GradRho = sigma_eff_0 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); // in CGS
+                surfdensity = code_surfacedensity_to_cgs * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); // in CGS
 
-                double tau_nuv = KAPPA_UV * GradRho * (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // optical depth: this part is attenuated by dust //
-                double tau_euv = 3.7e6 * GradRho; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas //
-                SphP[i].RadFluxUV *= exp(-tau_nuv); // attenuate
-                SphP[i].RadFluxEUV *= 0.01 + 0.99/(1.0 + 0.8*tau_euv + 0.85*tau_euv*tau_euv); // attenuate (for clumpy medium with 1% scattering) //
+                double tau_nuv = KAPPA_UV * surfdensity * (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // optical depth: this part is attenuated by dust //
+                double tau_euv = 3.7e6 * surfdensity; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas //
+                SphP[i].Rad_Flux_UV *= exp(-tau_nuv); // attenuate
+                SphP[i].Rad_Flux_EUV *= 0.01 + 0.99/(1.0 + 0.8*tau_euv + 0.85*tau_euv*tau_euv); // attenuate (for clumpy medium with 1% scattering) //
                 
-                SphP[i].RadFluxUV *= 1276.19; // convert to Habing units (normalize strength to local MW field)
-                SphP[i].RadFluxEUV *= 1276.19; // convert to Habing units (normalize strength to local MW field)
+                SphP[i].Rad_Flux_UV *= 1276.19; // convert to Habing units (normalize strength to local MW field)
+                SphP[i].Rad_Flux_EUV *= 1276.19; // convert to Habing units (normalize strength to local MW field)
             } else {
-                SphP[i].RadFluxUV = 0;
-                SphP[i].RadFluxEUV = 0;
+                SphP[i].Rad_Flux_UV = 0;
+                SphP[i].Rad_Flux_EUV = 0;
             }}}
 }
 #endif // GALSF_FB_FIRE_RT_UVHEATING

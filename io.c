@@ -662,7 +662,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for (n = 0; n < pc; pindex++)
                 if (P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,PPP[pindex].Hsml,P[pindex].DensAroundStar,PPP[pindex].NumNgb,0,pindex) * 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm));  // g cm^-2
+                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,PPP[pindex].Hsml,P[pindex].DensAroundStar,PPP[pindex].NumNgb,0,pindex) * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm));  // g cm^-2
                     n++;
                 }
 #endif 
@@ -1497,7 +1497,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 if(P[pindex].Type == type)
                 {
                     for(k = 0; k < N_RT_FREQ_BINS; k++)
-                        fp[k] = SphP[pindex].E_gamma[k];
+                        fp[k] = SphP[pindex].Rad_E_gamma[k];
                     
                     n++;
                     fp += N_RT_FREQ_BINS;
@@ -1510,7 +1510,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 3; k++) {fp[k] = SphP[pindex].RadAccel[k];}                    
+                    for(k = 0; k < 3; k++) {fp[k] = SphP[pindex].Rad_Accel[k];}                    
                     n++;
                     fp += 3;
                 }
@@ -4025,7 +4025,7 @@ void get_dataset_name(enum iofields blocknr, char *buf)
 	  strcpy(buf, "SigmaEff"); 
 	  break; 
         case IO_CHIMES_FLUX_G0: 
-	  strcpy(buf, "ChimesFluxG0"); 
+	  strcpy(buf, "ChimesFluxG0");
 	  break; 
         case IO_CHIMES_FLUX_ION: 
 	  strcpy(buf, "ChimesFluxIon"); 
