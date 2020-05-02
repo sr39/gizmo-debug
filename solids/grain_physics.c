@@ -379,6 +379,10 @@ void calculate_interact_kick(double dV[3], double kick[3], double m)
 
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
 
+#if !defined(GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX)
+#define GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX 1 /* needed for radiation problems below, default to unity */
+#endif
+
 #define MASTER_FUNCTION_NAME interpolate_fluxes_opacities_gasgrains_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define CONDITIONFUNCTION_FOR_EVALUATION if(((1 << P[i].Type) & (GRAIN_PTYPES+1))&&(P[i].TimeBin>=0)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
@@ -393,7 +397,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
     in->Type=P[i].Type; in->Mass=P[i].Mass; in->Hsml=PPP[i].Hsml; int k; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k]; in->Vel[k]=P[i].Vel[k];}
     if(P[i].Type > 0)
     {
-        in->Grain_Size=P[i].Grain_Size;
+        in->Grain_Size=P[i].Grain_Size; int k_freq;
         double R_grain_code=P[i].Grain_Size/(All.UnitLength_in_cm/All.HubbleParam), rho_grain_code=All.Grain_Internal_Density/(All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam), rho_gas_code=P[i].Gas_Density*All.cf_a3inv; /* internal grain density in code units */
         for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
         {
@@ -412,8 +416,8 @@ struct OUTPUT_STRUCT_NAME { /* define variables below as e.g. "double X;" */
 /* this subroutine assigns the values to the variables that need to be sent -back to- the 'searching' element */
 static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration) {  /* "i" is the particle to which data from structure "out" will be assigned. mode=0 for local communication, =1 for data sent back from other processors. you must account for this. */
     int k,k_freq;
-    for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) {ASSIGN_ADD(P[i].Interpolated_Opacity[k_freq],out->Interpolated_Opacity[k_freq],mode);}
-    for(k=0;k<3;k++) {P[i].GravAccel[k] += out->Interpolated_Radiation_Acceleration[k]/All.cf_a2inv;} /* this simply adds to the 'gravitational' acceleration for kicks */
+    if(P[i].Type==0) {for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) {ASSIGN_ADD(SphP[i].Interpolated_Opacity[k_freq],out->Interpolated_Opacity[k_freq],mode);}}
+    if(P[i].Type>0) {for(k=0;k<3;k++) {P[i].GravAccel[k] += out->Interpolated_Radiation_Acceleration[k]/All.cf_a2inv;}} /* this simply adds to the 'gravitational' acceleration for kicks */
 }
 
 /* this subroutine does the actual neighbor-element calculations (this is the 'core' of the loop, essentially) */
@@ -452,7 +456,7 @@ int interpolate_fluxes_opacities_gasgrains_evaluate(int target, int mode, int *e
                         for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
                         {
                             double Q_abs_eff = return_grain_absorption_efficiency_Q(j, k_freq); /* need this to calculate the absorption efficiency in each band */
-                            out.Interpolated_Opacity[k_freq] += = Q_abs_eff * abs_coeff_j;
+                            out.Interpolated_Opacity[k_freq] += Q_abs_eff * abs_coeff_j;
                         }
                     } else { /* sitting on a -grain- element, want to interpolate flux to it and calculate radiation pressure force */
                         wt = SphP[j].Density*All.cf_a3inv * wk_i; /* weight of element to 'i, with appropriate coefficient from above */
