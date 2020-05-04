@@ -506,6 +506,9 @@ double return_grain_absorption_efficiency_Q(int i, int k_freq)
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
     Q *= All.Grain_Size_Max / P[i].Grain_Size;
 #endif
+#else
+    /* INSERT PHYSICS HERE -- this is where you want to specify the optical properties of grains relative to the frequency bins being evolved. could code up something for -ALL- the bins we do, but that's a lot, so we'll do these as-needed, for runs with different frequencies */
+    if(ThisTask==0) {PRINT_WARNING("Code does not have entered grain absorption efficiency/optical properties for your specific wavelength being evolved. Please enter that information in the routine 'return_grain_absorption_efficiency_Q'. For now will assume geometric absorption (Q=1). \n");}
 #endif
     return Q;
 }

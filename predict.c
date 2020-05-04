@@ -228,14 +228,14 @@ void drift_particle(int i, integertime time1)
             SphP[i].Density *= exp(-divv_fac);
             double etmp = SphP[i].InternalEnergyPred + SphP[i].DtInternalEnergy * dt_entr;
 #if defined(RADTRANSFER) && defined(RT_EVOLVE_ENERGY) /* block here to deal with tricky cases where radiation energy density is -much- larger than thermal */ 
-            int kfreq; double erad_tot=0,emin=0,enew=0,demin=0,dErad=0; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad_tot+=SphP[i].Rad_E_gamma_Pred[kfreq];}
+            int kfreq; double erad_tot=0,tot_e_min=0,enew=0,int_e_min=0,dErad=0; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad_tot+=SphP[i].Rad_E_gamma_Pred[kfreq];}
             if(erad_tot > 0)
             {
-                double dEnt = SphP[i].DtInternalEnergy * dt_entr;
-                demin=0.025*SphP[i].InternalEnergyPred; emin=0.025*(erad_tot+SphP[i].InternalEnergyPred*P[i].Mass); enew=DMAX(erad_tot+dEnt*P[i].Mass,emin);
-                dEnt=(enew-erad_tot)/P[i].Mass; if(dEnt<demin) {dErad=dEnt-demin; dEnt=demin;}
+                int_e_min=0.025*SphP[i].InternalEnergyPred; tot_e_min=0.025*(erad_tot+SphP[i].InternalEnergyPred*P[i].Mass);
+                enew=DMAX(erad_tot+etmp*P[i].Mass,tot_e_min);
+                etmp=(enew-erad_tot)/P[i].Mass; if(etmp<int_e_min) {dErad=etmp-int_e_min; etmp=int_e_min;}
                 if(dErad<-0.975*erad_tot) {dErad=-0.975*erad_tot;}
-                SphP[i].InternalEnergyPred = dEnt; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {SphP[i].Rad_E_gamma_Pred[kfreq] *= 1 + dErad/erad_tot;}
+                SphP[i].InternalEnergyPred = etmp; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {SphP[i].Rad_E_gamma_Pred[kfreq] *= 1 + dErad/erad_tot;}
             } else {
                 if(etmp<0.5*SphP[i].InternalEnergyPred) {SphP[i].InternalEnergyPred *= 0.5;} else {SphP[i].InternalEnergyPred=etmp;}
             }
