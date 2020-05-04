@@ -194,7 +194,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 #endif
 #endif // local extinction-corrected version gets the 'full' thin flux above: more general formulation allows these to build up self-consistently, since we don't know what the flux 'should' be in fact
 #if defined(RT_EVOLVE_FLUX) // add relativistic corrections here, which should be there in general. however we will ignore [here] the 'back-reaction' term, since we're assuming the source is a star or something like that, where this would be negligible. gas self gain/loss is handled separately.
-                    for(kv=0;kv<3;kv++) {SphP[j].Rad_Flux[k][kv] += dE*local.Vel[kv]/All.cf_atime; SphP[j].Rad_Flux_Pred[k][kv] += dE*local.Vel[kv]/All.cf_atime;}
+                    {int kv; for(kv=0;kv<3;kv++) {SphP[j].Rad_Flux[k][kv] += dE*local.Vel[kv]/All.cf_atime; SphP[j].Rad_Flux_Pred[k][kv] += dE*local.Vel[kv]/All.cf_atime;}}
 #endif
 #else // end discrete injection clause
                     SphP[j].Rad_Je[k] += dE; // treat continuously
@@ -223,6 +223,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 /*! routine to do the master loop over particles, for the source injection (photons put into surrounding gas) */
 void rt_source_injection(void)
 {
+    PRINT_STATUS(" ..injecting radiation onto grid for RHD steps");
     rt_source_injection_initial_operations_preloop(); /* operations before the main loop */
     #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */

@@ -84,7 +84,7 @@ void GravAccel_RDITestProblem()
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
             acc *= All.Grain_Size_Max / P[i].Grain_Size;
 #endif
-            if(P[i].Type==3) 
+            if((1 << P[i].Type) & (GRAIN_PTYPES))
             {
                 P[i].GravAccel[GRAV_DIRECTION_RDI] += acc * cos(All.Vertical_Grain_Accel_Angle * M_PI/180.);
                 P[i].GravAccel[0] += acc * sin(All.Vertical_Grain_Accel_Angle * M_PI/180.);

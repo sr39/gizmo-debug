@@ -306,6 +306,22 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
 #endif // RT_HARD_XRAY
 
     
+#if defined(RT_GENERIC_USER_FREQ)
+    if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
+    {
+        if(P[i].Type == 4)
+        {
+            if(mode<0) {return 1;} active_check=1;
+            lum[RT_FREQ_BIN_GENERIC_USER_FREQ] = 0;
+#ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION /* assume special units for this problem, and that total mass of 'sources' is 1 */
+            lum[RT_FREQ_BIN_GENERIC_USER_FREQ] = P[i].Mass * All.Vertical_Grain_Accel * C_LIGHT_CODE / (0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/All.Grain_Size_Max); // special behavior for particular test of stratified boxes compared to explicit dust opacities ????
+#endif
+        }
+    }
+#endif
+    
+    
+    
 #ifdef RADTRANSFER
     /* generic sub routines for gas as a source term */
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
@@ -337,7 +353,7 @@ double rt_kappa(int i, int k_freq)
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
     return SphP[i].Interpolated_Opacity[k_freq]; /* this is calculated in a different routine, just return it now */
 #endif
-    
+
 #ifdef RT_CHEM_PHOTOION
     /* opacity to ionizing radiation for Petkova & Springel bands. note rt_update_chemistry is where ionization is actually calculated */
     double nH_over_Density = HYDROGEN_MASSFRAC / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;

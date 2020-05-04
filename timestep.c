@@ -522,6 +522,9 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
         if(dt_courant < dt) dt = dt_courant;
     }
+#ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
+    if(P[p].Type==4) {double dt_inj = 0.1 * PPP[p].Hsml / C_LIGHT_CODE_REDUCED; if(dt_inj < dt) {dt = dt_inj;}}
+#endif
 #endif
     
     
