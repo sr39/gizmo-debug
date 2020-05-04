@@ -389,13 +389,13 @@ void calculate_interact_kick(double dV[3], double kick[3], double m)
 
 /* this structure defines the variables that need to be sent -from- the 'searching' element */
 struct INPUT_STRUCT_NAME {
-    int NodeList[NODELISTLENGTH], Type; MyDouble Pos[3], Vel[3], Hsml, Mass, Grain_Size, Grain_Abs_Coeff[N_RT_FREQ_BINS]; /* these must always be defined */
+    int NodeList[NODELISTLENGTH], Type; MyDouble Mass, Hsml, Pos[3], Vel[3], Grain_Size, Grain_Abs_Coeff[N_RT_FREQ_BINS]; /* these must always be defined */
 } *DATAIN_NAME, *DATAGET_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
 /* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' element */
 static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration) {   /* "i" is the particle from which data will be assigned, to structure "in" */
     in->Type=P[i].Type; in->Mass=P[i].Mass; in->Hsml=PPP[i].Hsml; int k; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k]; in->Vel[k]=P[i].Vel[k];}
-    if(P[i].Type > 0)
+    if((1 << P[i].Type) & (GRAIN_PTYPES+1))
     {
         in->Grain_Size=P[i].Grain_Size; int k_freq;
         double R_grain_code=P[i].Grain_Size/(All.UnitLength_in_cm/All.HubbleParam), rho_grain_code=All.Grain_Internal_Density/(All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam), rho_gas_code=P[i].Gas_Density*All.cf_a3inv; /* internal grain density in code units */
@@ -417,7 +417,7 @@ struct OUTPUT_STRUCT_NAME { /* define variables below as e.g. "double X;" */
 static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration) {  /* "i" is the particle to which data from structure "out" will be assigned. mode=0 for local communication, =1 for data sent back from other processors. you must account for this. */
     int k,k_freq;
     if(P[i].Type==0) {for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) {ASSIGN_ADD(SphP[i].Interpolated_Opacity[k_freq],out->Interpolated_Opacity[k_freq],mode);}}
-    if(P[i].Type>0) {for(k=0;k<3;k++) {P[i].GravAccel[k] += out->Interpolated_Radiation_Acceleration[k]/All.cf_a2inv;}} /* this simply adds to the 'gravitational' acceleration for kicks */
+    if((1 << P[i].Type) & (GRAIN_PTYPES+1)) {for(k=0;k<3;k++) {P[i].GravAccel[k] += out->Interpolated_Radiation_Acceleration[k]/All.cf_a2inv;}} /* this simply adds to the 'gravitational' acceleration for kicks */
 }
 
 /* this subroutine does the actual neighbor-element calculations (this is the 'core' of the loop, essentially) */
@@ -439,7 +439,7 @@ int interpolate_fluxes_opacities_gasgrains_evaluate(int target, int mode, int *e
             if(numngb_inbox < 0) {return -1;} /* no neighbors! */
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
-                j = ngblist[n]; if((P[j].Mass <= 0)||(P[j].Hsml <= 0)) {continue;} /* make sure neighbor is valid */
+                j = ngblist[n]; if((P[j].Mass <= 0)||(PPP[j].Hsml <= 0)) {continue;} /* make sure neighbor is valid */
                 int k,k_freq; double dp[3],h_to_use; for(k=0;k<3;k++) {dp[k]=local.Pos[k]-P[j].Pos[k];} /* position offset */
                 NEAREST_XYZ(dp[0],dp[1],dp[2],1); double r2=dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2]; /* box-wrap appropriately and calculate distance */
                 if(local.Type == 0) {h_to_use = PPP[j].Hsml;} else {h_to_use = local.Hsml;}
@@ -460,13 +460,13 @@ int interpolate_fluxes_opacities_gasgrains_evaluate(int target, int mode, int *e
                         }
                     } else { /* sitting on a -grain- element, want to interpolate flux to it and calculate radiation pressure force */
                         wt = SphP[j].Density*All.cf_a3inv * wk_i; /* weight of element to 'i, with appropriate coefficient from above */
-                        double radacc[3],fluxcorr,vol_inv=SphP[j].Density*All.cf_a3inv/P[j].Mass,f_kappa_abs,vel_i[3],vdot_h[3],flux_i[3],flux_mag=0,erad_i=0,flux_corr=1,dtEgamma_work_done=0; radacc[0]=radacc[1]=radacc[2]=0; int kfreq;
+                        double radacc[3],fluxcorr,vol_inv=SphP[j].Density*All.cf_a3inv/P[j].Mass,f_kappa_abs,vel_i[3],vdot_h[3],flux_i[3],flux_mag=0,erad_i=0,flux_corr=1,dtEgamma_work_done=0; radacc[0]=radacc[1]=radacc[2]=0;
                         for(k=0;k<3;k++) {vel_i[k]=local.Vel[k]/All.cf_atime;} /* velocity of interest here is the grain velocity (radiation in lab frame) */
-                        for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++)
+                        for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
                         {
-                            f_kappa_abs = 1; // rt_absorb_frac_albedo(i,kfreq); -- this is set to unity anyways but would require extra passing, ignore for now //
-                            erad_i = SphP[j].Rad_E_gamma_Pred[kfreq]; for(k=0;k<3;k++) {flux_i[k]=SphP[j].Rad_Flux_Pred[kfreq][k]; vdot_h[k]=vel_i[k]*erad_i*(1. + SphP[j].ET[kfreq][k]); flux_mag+=flux_i[k]*flux_i[k];}
-                            vdot_h[0] += erad_i*(vel_i[1]*SphP[j].ET[kfreq][3] + vel_i[2]*SphP[j].ET[kfreq][5]); vdot_h[1] += erad_i*(vel_i[0]*SphP[j].ET[kfreq][3] + vel_i[2]*SphP[j].ET[kfreq][4]); vdot_h[2] += erad_i*(vel_i[0]*SphP[j].ET[kfreq][5] + vel_i[1]*SphP[j].ET[kfreq][4]);
+                            f_kappa_abs = 1; // rt_absorb_frac_albedo(i,k_freq); -- this is set to unity anyways but would require extra passing, ignore for now //
+                            erad_i = SphP[j].Rad_E_gamma_Pred[k_freq]; for(k=0;k<3;k++) {flux_i[k]=SphP[j].Rad_Flux_Pred[k_freq][k]; vdot_h[k]=vel_i[k]*erad_i*(1. + SphP[j].ET[k_freq][k]); flux_mag+=flux_i[k]*flux_i[k];}
+                            vdot_h[0] += erad_i*(vel_i[1]*SphP[j].ET[k_freq][3] + vel_i[2]*SphP[j].ET[k_freq][5]); vdot_h[1] += erad_i*(vel_i[0]*SphP[j].ET[k_freq][3] + vel_i[2]*SphP[j].ET[k_freq][4]); vdot_h[2] += erad_i*(vel_i[0]*SphP[j].ET[k_freq][5] + vel_i[1]*SphP[j].ET[k_freq][4]);
                             double flux_thin = erad_i * C_LIGHT_CODE_REDUCED; if(flux_mag>0) {flux_mag=sqrt(flux_mag);} else {flux_mag=1.e-20*flux_thin;}
                             flux_corr = DMIN(1., flux_thin/flux_mag);
                             for(k=0;k<3;k++)
@@ -503,8 +503,8 @@ double return_grain_absorption_efficiency_Q(int i, int k_freq)
     double Q = 1; /* default to geometric opacity */
 #if defined(GRAIN_RDI_TESTPROBLEM)
     Q *= GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX; // this needs to be set by-hand, Q for the maximum sized grains. irrelevant for the scale-free problem (degenerate with flux), but important here */
-#ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
-    Q *= All.Grain_Size_Max / P[i].Grain_Size;
+#if !defined(GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE)
+    Q *= P[i].Grain_Size / All.Grain_Size_Max;
 #endif
 #else
     /* INSERT PHYSICS HERE -- this is where you want to specify the optical properties of grains relative to the frequency bins being evolved. could code up something for -ALL- the bins we do, but that's a lot, so we'll do these as-needed, for runs with different frequencies */
