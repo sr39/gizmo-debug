@@ -474,7 +474,7 @@ double rt_kappa(int i, int k_freq)
 double rt_absorb_frac_albedo(int i, int k_freq)
 {
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
-    return 1; /* in these cases, assume pure absorption opacity for now */
+    return 1.-1.e-6; /* in these cases, assume pure absorption opacity for now */
 #endif
 
 #ifdef RT_CHEM_PHOTOION
