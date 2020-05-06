@@ -195,6 +195,9 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 #endif // local extinction-corrected version gets the 'full' thin flux above: more general formulation allows these to build up self-consistently, since we don't know what the flux 'should' be in fact
 #if defined(RT_EVOLVE_FLUX) // add relativistic corrections here, which should be there in general. however we will ignore [here] the 'back-reaction' term, since we're assuming the source is a star or something like that, where this would be negligible. gas self gain/loss is handled separately.
                     {int kv; for(kv=0;kv<3;kv++) {SphP[j].Rad_Flux[k][kv] += dE*local.Vel[kv]/All.cf_atime; SphP[j].Rad_Flux_Pred[k][kv] += dE*local.Vel[kv]/All.cf_atime;}}
+#ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
+                    {double dflux=dE*C_LIGHT_CODE_REDUCED; SphP[j].Rad_Flux_Pred[k][2]+=dflux; SphP[j].Rad_Flux[k][2]+=dflux;}
+#endif
 #endif
 #else // end discrete injection clause
                     SphP[j].Rad_Je[k] += dE; // treat continuously

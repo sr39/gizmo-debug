@@ -643,6 +643,9 @@ void density(void)
 #if defined(RT_SOURCE_INJECTION)
                     if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
 #endif
+#ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
+                    if(desnumngb < 128) {desnumngb = 128;} // we do want a decent number to ensure the area around the particle is 'covered'
+#endif
 #ifdef GALSF
                     if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
                     // if we're finding this for feedback routines, there isn't any good reason to search beyond a modest physical radius //

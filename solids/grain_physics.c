@@ -395,7 +395,7 @@ struct INPUT_STRUCT_NAME {
 /* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' element */
 static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration) {   /* "i" is the particle from which data will be assigned, to structure "in" */
     in->Type=P[i].Type; in->Mass=P[i].Mass; in->Hsml=PPP[i].Hsml; int k; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k]; in->Vel[k]=P[i].Vel[k];}
-    if((1 << P[i].Type) & (GRAIN_PTYPES+1))
+    if((1 << P[i].Type) & (GRAIN_PTYPES))
     {
         in->Grain_Size=P[i].Grain_Size; int k_freq;
         double R_grain_code=P[i].Grain_Size/(All.UnitLength_in_cm/All.HubbleParam), rho_grain_code=All.Grain_Internal_Density/(All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam), rho_gas_code=P[i].Gas_Density*All.cf_a3inv; /* internal grain density in code units */
@@ -417,7 +417,7 @@ struct OUTPUT_STRUCT_NAME { /* define variables below as e.g. "double X;" */
 static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration) {  /* "i" is the particle to which data from structure "out" will be assigned. mode=0 for local communication, =1 for data sent back from other processors. you must account for this. */
     int k,k_freq;
     if(P[i].Type==0) {for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) {ASSIGN_ADD(SphP[i].Interpolated_Opacity[k_freq],out->Interpolated_Opacity[k_freq],mode);}}
-    if((1 << P[i].Type) & (GRAIN_PTYPES+1)) {for(k=0;k<3;k++) {P[i].GravAccel[k] += out->Interpolated_Radiation_Acceleration[k]/All.cf_a2inv;}} /* this simply adds to the 'gravitational' acceleration for kicks */
+    if((1 << P[i].Type) & (GRAIN_PTYPES)) {for(k=0;k<3;k++) {P[i].GravAccel[k] += out->Interpolated_Radiation_Acceleration[k]/All.cf_a2inv;}} /* this simply adds to the 'gravitational' acceleration for kicks */
 }
 
 /* this subroutine does the actual neighbor-element calculations (this is the 'core' of the loop, essentially) */
