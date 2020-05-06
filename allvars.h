@@ -1403,7 +1403,10 @@ xtmp = fabs(((xtmp)>boxSize_Y)?((xtmp)-boxSize_Y):(((xtmp)<-boxSize_Y)?((xtmp)+b
 #define NGB_PERIODIC_BOX_LONG_Y(x,y,z,sign) (fabs(y)) /* simple absolute value */
 #endif
 
-#define NEAREST_XYZ(x,y,z,sign) (TMP_WRAP_X_S(x,y,z,sign),TMP_WRAP_Y_S(x,y,z,sign),TMP_WRAP_Z_S(x,y,z,sign)) /* collect the box-wrapping terms into one function here */
+#define NEAREST_XYZ(x,y,z,sign) {\
+TMP_WRAP_X_S(x,y,z,sign);\
+TMP_WRAP_Y_S(x,y,z,sign);\
+TMP_WRAP_Z_S(x,y,z,sign);} /* collect the box-wrapping terms into one function here */
 
 
 

@@ -184,7 +184,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     int *ip_int;
     float *fp_single;
     integertime dt_step;
-    MyFloat boxSize; boxSize=All.BoxSize;
 
 #ifdef PMGRID
     double dt_gravkick_pm = 0;
@@ -240,12 +239,12 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     {
                         fp_pos[k] = P[pindex].Pos[k];
 #ifdef BOX_PERIODIC
-                        boxSize = All.BoxSize;
-                        if(k==0) {boxSize = boxSize_X;}
-                        if(k==1) {boxSize = boxSize_Y;}
-                        if(k==2) {boxSize = boxSize_Z;}
-                        while(fp_pos[k] < 0) {fp_pos[k] += boxSize;}
-                        while(fp_pos[k] >= boxSize) {fp_pos[k] -= boxSize;}
+                        double box_length_xyz;
+                        if(k==0) {box_length_xyz = boxSize_X;}
+                        if(k==1) {box_length_xyz = boxSize_Y;}
+                        if(k==2) {box_length_xyz = boxSize_Z;}
+                        while(fp_pos[k] < 0) {fp_pos[k] += box_length_xyz;}
+                        while(fp_pos[k] >= box_length_xyz) {fp_pos[k] -= box_length_xyz;}
 #endif
                     }
                     n++;
