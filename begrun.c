@@ -109,27 +109,27 @@ void begrun(void)
 #endif
 
 #ifdef BOX_PERIODIC
-  boxSize = All.BoxSize;
-  boxHalf = 0.5 * All.BoxSize;
+    boxSize = All.BoxSize;
+    boxHalf = 0.5 * All.BoxSize;
+#endif
 #ifdef BOX_LONG_X
-    boxSize_X = boxSize * BOX_LONG_X;
+    boxSize_X = All.BoxSize * BOX_LONG_X;
     boxHalf_X = 0.5 * boxSize_X;
 #endif
 #ifdef BOX_LONG_Y
-    boxSize_Y = boxSize * BOX_LONG_Y;
+    boxSize_Y = All.BoxSize * BOX_LONG_Y;
     boxHalf_Y = 0.5 * boxSize_Y;
 #endif
 #ifdef BOX_LONG_Z
-    boxSize_Z = boxSize * BOX_LONG_Z;
+    boxSize_Z = All.BoxSize * BOX_LONG_Z;
     boxHalf_Z = 0.5 * boxSize_Z;
-#endif
 #endif
     
 #ifdef BOX_SHEARING
 #ifdef BOX_LONG_X
-    Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * boxSize * BOX_LONG_X;
+    Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * All.BoxSize * BOX_LONG_X;
 #else
-    Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * boxSize;
+    Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * All.BoxSize;
 #endif
     calc_shearing_box_pos_offset();
 #endif

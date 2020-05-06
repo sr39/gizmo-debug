@@ -74,6 +74,7 @@ size_t HighMark_run, HighMark_domain, HighMark_gravtree,
 
 #ifdef BOX_PERIODIC
 MyDouble boxSize, boxHalf;      /* size of the box! these variables are technically redundant but used -constantly- so very helpful */
+#endif
 #ifdef BOX_LONG_X
 MyDouble boxSize_X, boxHalf_X;
 #endif
@@ -82,7 +83,6 @@ MyDouble boxSize_Y, boxHalf_Y;
 #endif
 #ifdef BOX_LONG_Z
 MyDouble boxSize_Z, boxHalf_Z;
-#endif
 #endif
 
 #ifdef BOX_SHEARING
