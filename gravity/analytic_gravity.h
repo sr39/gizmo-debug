@@ -74,7 +74,7 @@ void GravAccel_RDITestProblem()
 #ifdef GRAIN_RDI_TESTPROBLEM
     int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {   /* add the relevant vertical field for non-anchored particles */
-        if(P[i].ID > 0)
+        if(P[i].ID > 0 && (P[i].Type==0 || ((1 << P[i].Type) & (GRAIN_PTYPES))))
         {
             P[i].GravAccel[GRAV_DIRECTION_RDI] = -All.Vertical_Gravity_Strength; /* dust feels radiation acceleration in the direction opposite gravity */
             double acc = All.Vertical_Grain_Accel;

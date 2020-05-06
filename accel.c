@@ -63,9 +63,6 @@ void compute_hydro_densities_and_forces(void)
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
         ags_density();
 #endif
-#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
-        interpolate_fluxes_opacities_gasgrains();
-#endif
         force_update_hmax();	/* update kernel lengths in tree */
         /*! This function updates the hmax-values in tree nodes that hold SPH
          *  particles. These values are needed to find all neighbors in the
@@ -79,6 +76,9 @@ void compute_hydro_densities_and_forces(void)
 
 #ifdef TURB_DIFF_DYNAMIC
         dynamic_diff_vel_calc(); /* This must be called between density and gradient calculations */
+#endif
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
+        interpolate_fluxes_opacities_gasgrains();
 #endif
 
         hydro_gradient_calc(); /* calculates the gradients of hydrodynamical quantities  */

@@ -942,6 +942,17 @@ void rt_set_simple_inits(int RestartFlag)
 #ifdef RT_EVOLVE_INTENSITIES
                 int k_dir; for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++) {SphP[i].Rad_Intensity_Pred[k][k_dir] = SphP[i].Rad_Intensity[k][k_dir] = MIN_REAL_NUMBER; SphP[i].Dt_Rad_Intensity[k][k_dir] = 0;}
 #endif
+                
+#ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
+                double q_a=0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/All.Grain_Size_Max, e0=All.Vertical_Grain_Accel/q_a, kappa0=All.Dust_to_Gas_Mass_Ratio*q_a;
+                e0 *= (P[i].Mass/SphP[i].Density) * exp(kappa0*(1.-exp(-P[i].Pos[2]))); // attenuate according to equilibrium expectation, if we're using single-scattering radiation pressure [otherwise comment this line out] //
+                SphP[i].Rad_E_gamma_Pred[k]=SphP[i].Rad_E_gamma[k]=e0;
+#if defined(RT_EVOLVE_FLUX)
+                SphP[i].Rad_Flux_Pred[k][2]=SphP[i].Rad_Flux[k][2] = e0*C_LIGHT_CODE_REDUCED;
+                SphP[i].Rad_Flux[k][0]=SphP[i].Rad_Flux[k][1]=SphP[i].Rad_Flux_Pred[k][0]=SphP[i].Rad_Flux_Pred[k][1]=0;
+#endif
+#endif
+                
             }
         }
     }

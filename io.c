@@ -184,10 +184,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     int *ip_int;
     float *fp_single;
     integertime dt_step;
-    
-#ifdef BOX_PERIODIC
-    MyFloat boxSize;
-#endif
+    MyFloat boxSize; boxSize=All.BoxSize;
+
 #ifdef PMGRID
     double dt_gravkick_pm = 0;
 #endif

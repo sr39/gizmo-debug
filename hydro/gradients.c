@@ -44,9 +44,6 @@
 #define NUMBER_OF_GRADIENT_ITERATIONS 1
 #endif
 
-#if defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_ENERGY)
-#define Rad_E_gamma_Pred Rad_E_gamma
-#endif
 
 
 #ifdef PTHREADS_NUM_THREADS

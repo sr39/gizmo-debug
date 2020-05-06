@@ -75,6 +75,9 @@ int density_isactive(int n)
 #endif
         }
 #endif
+#if (defined(GRAIN_FLUID) || defined(RADTRANSFER)) && (!defined(GALSF) && !(defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)))
+        return 1;
+#endif
     }
 #endif
     
@@ -624,7 +627,17 @@ void density(void)
                 /* use a much looser check for N_neighbors when the central point is a star particle,
                  since the accuracy is limited anyways to the coupling efficiency -- the routines use their
                  own estimators+neighbor loops, anyways, so this is just to get some nearby particles */
-                if((P[i].Type!=0)&&(P[i].Type!=5))
+                int valid_stellar_types = 2+4+8+16, invalid_stellar_types = 1+32; // allow types 1,2,3,4 here //
+#if (defined(GRAIN_FLUID) || defined(RADTRANSFER)) && (!defined(GALSF) && !(defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)))
+                valid_stellar_types = 16; invalid_stellar_types = 1+2+4+8+32; // -only- type-4 sources in these special problems
+#ifdef RADTRANSFER
+                invalid_stellar_types = 64; valid_stellar_types = RT_SOURCES; // any valid 'injection' source is allowed
+#endif
+#ifdef GRAIN_FLUID
+                invalid_stellar_types = GRAIN_PTYPES;
+#endif
+#endif
+                if( ((1 << P[i].Type) & (valid_stellar_types)) && !((1 << P[i].Type) & (invalid_stellar_types)) )
                 {
                     desnumngb = All.DesNumNgb;
 #if defined(RT_SOURCE_INJECTION)
