@@ -1365,6 +1365,50 @@ extern short int special_boundary_condition_xyz_def_outflow[3];
  */
 /****************************************************************************************************************************/
 
+#if defined(BOX_PERIODIC) && !(defined(BOX_REFLECT_X) || defined(BOX_OUTFLOW_X)) // x-axis is periodic
+#define TMP_WRAP_X_S(x,y,z,sign) (x=((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x))) /* normal (signed) periodic wrap */
+#define NGB_PERIODIC_BOX_LONG_X(x,y,z,sign) (xtmp=fabs(x),(xtmp>boxHalf_X)?(boxSize_X-xtmp):xtmp) /* absolute value of normal periodic wrap */
+#else // x-axis is non-periodic
+#define TMP_WRAP_X_S(x,y,z,sign) () /* this is an empty macro: nothing will happen to the variables input here */
+#define NGB_PERIODIC_BOX_LONG_X(x,y,z,sign) (fabs(x)) /* simple absolute value */
+#endif
+
+#if defined(BOX_PERIODIC) && !(defined(BOX_REFLECT_Z) || defined(BOX_OUTFLOW_Z)) // z-axis is periodic
+#define TMP_WRAP_Z_S(x,y,z,sign) (z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z))) /* normal (signed) periodic wrap */
+#define NGB_PERIODIC_BOX_LONG_Z(x,y,z,sign) (xtmp=fabs(z),(xtmp>boxHalf_Z)?(boxSize_Z-xtmp):xtmp) /* absolute value of normal periodic wrap */
+#else // z-axis is non-periodic
+#define TMP_WRAP_Z_S(x,y,z,sign) () /* this is an empty macro: nothing will happen to the variables input here */
+#define NGB_PERIODIC_BOX_LONG_Z(x,y,z,sign) (fabs(z)) /* simple absolute value */
+#endif
+
+#if defined(BOX_PERIODIC) && !(defined(BOX_REFLECT_Y) || defined(BOX_OUTFLOW_Y)) // y-axis is periodic
+#if (BOX_SHEARING > 1) // Shearing Periodic Box:: in this case, we have a shearing box with the '1' coordinate being phi, so there is a periodic extra wrap
+
+#define TMP_WRAP_Y_S(x,y,z,sign) (\
+y += Shearing_Box_Pos_Offset * (((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0))),\
+y = ((y)>boxSize_Y)?((y)-boxSize_Y):(((y)<-boxSize_Y)?((y)+boxSize_Y):(y)),\
+y=((y)>boxHalf_Y)?((y)-boxSize_Y):(((y)<-boxHalf_Y)?((y)+boxSize_Y):(y))) /* shear-periodic wrap in y, accounting for the position offset needed for azimuthal wrap off the radial axis */
+
+#define NGB_PERIODIC_BOX_LONG_Y(x,y,z,sign) (\
+xtmp = y + Shearing_Box_Pos_Offset * (((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0))),\
+xtmp = fabs(((xtmp)>boxSize_Y)?((xtmp)-boxSize_Y):(((xtmp)<-boxSize_Y)?((xtmp)+boxSize_Y):(xtmp))),\
+(xtmp>boxHalf_Y)?(boxSize_Y-xtmp):xtmp) /* shear periodic wrap in y, accounting for the position offset needed for azimuthal wrap off the radial axis: absolute value here */
+
+#else // 'normal' periodic y-axis, nothing special
+#define TMP_WRAP_Y_S(x,y,z,sign) (y=((y)>boxHalf_Y)?((y)-boxSize_Y):(((y)<-boxHalf_Y)?((y)+boxSize_Y):(y))) /* normal (signed) periodic wrap */
+#define NGB_PERIODIC_BOX_LONG_Y(x,y,z,sign) (xtmp=fabs(y),(xtmp>boxHalf_Y)?(boxSize_Y-xtmp):xtmp) /* absolute value of normal periodic wrap */
+#endif
+#else // y-axis is non-periodic
+#define TMP_WRAP_Y_S(x,y,z,sign) () /* this is an empty macro: nothing will happen to the variables input here */
+#define NGB_PERIODIC_BOX_LONG_Y(x,y,z,sign) (fabs(y)) /* simple absolute value */
+#endif
+
+#define NEAREST_XYZ(x,y,z,sign) (TMP_WRAP_X_S(x,y,z,sign),TMP_WRAP_Y_S(x,y,z,sign),TMP_WRAP_Z_S(x,y,z,sign)) /* collect the box-wrapping terms into one function here */
+
+
+
+#if 0 /* below is the old code block for this, replaced with the more flexible structures above, retained for de-bugging for now */
+
 #ifdef BOX_PERIODIC
 #define NGB_PERIODIC_BOX_LONG_X(x,y,z,sign) (xtmp=fabs(x),(xtmp>boxHalf_X)?(boxSize_X-xtmp):xtmp) // normal periodic wrap //
 #define NGB_PERIODIC_BOX_LONG_Z(x,y,z,sign) (xtmp=fabs(z),(xtmp>boxHalf_Z)?(boxSize_Z-xtmp):xtmp) // normal periodic wrap //
@@ -1403,6 +1447,7 @@ z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
 #define NGB_PERIODIC_BOX_LONG_Z(x,y,z,sign) (fabs(z))
 #endif
 
+#endif // 0
 
 
 /* this function, like the NEAREST and NGB_PERIODIC functions above, does -velocity wrapping- for periodic boundary
@@ -2755,13 +2800,7 @@ extern struct sph_particle_data
     MyFloat Rad_Flux_AGN;             /*!< local AGN flux */
 #endif
     
-#if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) && !defined(RADTRANSFER)
-    MyFloat Rad_E_gamma[N_RT_FREQ_BINS];
-#endif
-#if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX) && !defined(RT_EVOLVE_FLUX)
-    MyFloat Rad_Flux[N_RT_FREQ_BINS][3];
-#endif
-
+    
 #if defined(TURB_DRIVING) || defined(OUTPUT_VORTICITY)
    MyFloat Vorticity[3];
    MyFloat SmoothedVel[3];
@@ -2868,10 +2907,14 @@ extern struct sph_particle_data
     MyFloat Rad_Flux[N_RT_FREQ_BINS][3];    /*!< photon energy flux density (energy/time/area), for methods which track this explicitly (e.g. M1) */
     MyFloat Rad_Flux_Pred[N_RT_FREQ_BINS][3];/*!< predicted photon energy flux density for drift operations (needed for adaptive timestepping) */
     MyFloat Dt_Rad_Flux[N_RT_FREQ_BINS][3]; /*!< time derivative of photon energy flux density */
+#else
+#define Rad_Flux_Pred Rad_Flux
 #endif
 #ifdef RT_EVOLVE_ENERGY
     MyFloat Rad_E_gamma_Pred[N_RT_FREQ_BINS]; /*!< predicted Rad_E_gamma for drift operations (needed for adaptive timestepping) */
     MyFloat Dt_Rad_E_gamma[N_RT_FREQ_BINS]; /*!< time derivative of photon number in particle (used only with explicit solvers) */
+#else
+#define Rad_E_gamma_Pred Rad_E_gamma        /*! define a useful shortcut for use throughout code so we don't have to worry about Pred-vs-true difference */
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
     MyFloat Rad_Accel[3];
@@ -2895,8 +2938,17 @@ extern struct sph_particle_data
     MyFloat HeII;                 /* HeII fraction */
     MyFloat HeIII;                 /* HeIII fraction */
 #endif
+#endif // end of chem-photoion
+#endif // end of radtransfer
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) && !defined(RADTRANSFER)
+    MyFloat Rad_E_gamma[N_RT_FREQ_BINS];
+#define Rad_E_gamma_Pred Rad_E_gamma
 #endif
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX) && !defined(RT_EVOLVE_FLUX)
+    MyFloat Rad_Flux[N_RT_FREQ_BINS][3];
+#define Rad_Flux_Pred Rad_Flux
 #endif
+
     
 #ifdef EOS_GENERAL
     MyFloat SoundSpeed;                   /* Sound speed */

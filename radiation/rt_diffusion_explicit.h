@@ -10,6 +10,7 @@
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 /* --------------------------------------------------------------------------------- */
+//#define RT_ENHANCED_NUMERICAL_DIFFUSION /* option which increases numerical diffusion, to get smoother solutions, if desired; akin to slopelimiters~0 model */
 {
     // first define some variables needed regardless //
     double c_light = C_LIGHT_CODE_REDUCED;
@@ -114,6 +115,9 @@
             {
                 // enforce a flux limiter for stability (to prevent overshoot) //
                 double thold_hll = 0.25 * DMIN(fabs(scalar_i*V_i-scalar_j*V_j),DMAX(fabs(scalar_i*V_i),fabs(scalar_j*V_j))); // physical
+#ifdef RT_ENHANCED_NUMERICAL_DIFFUSION
+                thold_hll *= 2.0;
+#endif
                 if(check_for_stability_sign<0) {thold_hll *= 1.e-2;}
                 if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
                 cmag /= dt_hydrostep;
@@ -173,7 +177,9 @@
             if((lam_m==0)&&(lam_p==0)) {hlle_wtfac_f=0.5;} else {hlle_wtfac_f=lam_p/(lam_p+lam_m);}
             if(hlle_wtfac_f < eps_wtfac_f) {hlle_wtfac_f=eps_wtfac_f;} else {if(hlle_wtfac_f > 1.-eps_wtfac_f) {hlle_wtfac_f=1.-eps_wtfac_f;}}
             hlle_wtfac_u = hlle_wtfac_f * (1.-hlle_wtfac_f) * (lam_p + lam_m); // weight for addition of diffusion term
-             
+#ifdef RT_ENHANCED_NUMERICAL_DIFFUSION
+            hlle_wtfac_u = hlle_wtfac_f = 0.5;
+#endif
             for(k=0;k<3;k++)
             {
                 /* the flux is already known (its explicitly evolved, rather than determined by the gradient of the energy density */
@@ -194,7 +200,10 @@
             /* q below is a limiter to try and make sure the diffusion speed given by the hll flux doesn't exceed the diffusion speed in the diffusion limit */
             double q = 0.5 * c_hll * (kernel.r*All.cf_atime) / fabs(MIN_REAL_NUMBER + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q); // physical
             double renormerFAC = DMIN(1.,fabs(cos_theta_face_flux*cos_theta_face_flux * q * hll_corr));            
-            
+#ifdef RT_ENHANCED_NUMERICAL_DIFFUSION
+            renormerFAC = 1;
+#endif
+
             // now we need to add the advective flux. note we do this after the limiters above, since those are designed for the diffusive terms, and this is simpler and more stable. we do this zeroth order (super-diffusive, but that's fine for our purposes)
             double cmag_adv=0, v_Area_dot_rt=0; for(k=0;k<3;k++) {v_Area_dot_rt += v_frame[k] * Face_Area_Vec[k];}
             cmag_adv += -v_Area_dot_rt*2.*scalar_i*scalar_j/(scalar_i+scalar_j) + 0.5*fabs(v_Area_dot_rt)*(scalar_j-scalar_i); // need to be careful with the sign here. since this is an oriented area and A points from j to i, need to flip the sign here //
@@ -221,6 +230,9 @@
                 cmag *= dt_hydrostep; // all in physical units //
                 double sVi = scalar_i*V_i_phys, sVj = scalar_j*V_j_phys; // physical units //
                 thold_hll = 0.25 * DMIN(fabs(sVi-sVj), DMAX(fabs(sVi), fabs(sVj)));
+#ifdef RT_ENHANCED_NUMERICAL_DIFFUSION
+                thold_hll *= 2.0;
+#endif
                 if(sign_c0 < 0) {thold_hll *= 1.e-2;} // if opposing signs, restrict this term //
                 if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
                 cmag /= dt_hydrostep;

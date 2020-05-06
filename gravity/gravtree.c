@@ -513,7 +513,7 @@ void gravity_tree(void)
         if(P[i].Type == 0) {
             int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
             {double trace = SphP[i].ET[k_freq][0] + SphP[i].ET[k_freq][1] + SphP[i].ET[k_freq][2];
-                if(!isnan(trace) && (trace>0)) {for(k=0;k<6;k++) {SphP[i].ET[k_freq][k]/=trace;}} else {SphP[i].ET[k_freq][0]=SphP[i].ET[k_freq][1]=SphP[i].ET[k_freq][2]=1./3.; SphP[i].ET[k_freq][4]=SphP[i].ET[k_freq][5]=SphP[i].ET[k_freq][6]=0;}}}
+                if(!isnan(trace) && (trace>0)) {for(k=0;k<6;k++) {SphP[i].ET[k_freq][k]/=trace;}} else {SphP[i].ET[k_freq][0]=SphP[i].ET[k_freq][1]=SphP[i].ET[k_freq][2]=1./3.; SphP[i].ET[k_freq][3]=SphP[i].ET[k_freq][4]=SphP[i].ET[k_freq][5]=0;}}}
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) /* normalize to energy density with C, and multiply by volume to use standard 'finite volume-like' quanity as elsewhere in-code */
         if(P[i].Type==0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[i].Rad_E_gamma[kf] *= P[i].Mass/(SphP[i].Density*All.cf_a3inv * C_LIGHT_CODE);}}
