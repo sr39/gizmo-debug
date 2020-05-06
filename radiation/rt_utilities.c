@@ -478,7 +478,8 @@ double rt_kappa(int i, int k_freq)
 double rt_absorb_frac_albedo(int i, int k_freq)
 {
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
-    return 1.-1.e-6; /* in these cases, assume pure absorption opacity for now */
+    return 0.5; /* appropriate for single-scattering (e.g. ISM dust at optical wavelengths) */
+    //return 1.-1.e-6; /* appropriate for multiple-scattering at far-IR (wavelength much longer than dust size) */
 #endif
 
 #ifdef RT_CHEM_PHOTOION
