@@ -873,7 +873,14 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
         force_add_star_to_tree(i0, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
 #ifdef SINGLE_STAR_FB_SPAWN_DEBUG
-            printf("Spawned new particle at time %g from BH %llu. Part-ID=%llu Pos %g %g %g hsml %g csnd %g mass %g Vel %g %g %g MaxSignalVel %g v_magnitude %g R_star_solar %g Sink mass %g Sink ProtoStellarStage %d\n", All.Time, (MyIDType) P[i].ID, (MyIDType) P[j].ID, P[j].Pos[0], P[j].Pos[1], P[j].Pos[2], PPP[j].Hsml, convert_internalenergy_soundspeed2(j, SphP[j].InternalEnergy), P[j].Mass,P[j].Vel[0], P[j].Vel[1], P[j].Vel[2], SphP[j].MaxSignalVel,v_magnitude,P[i].ProtoStellarRadius_inSolar, P[i].Mass, P[i].ProtoStellarStage);
+#ifdef MAGNETIC
+            double Bmag = sqrt(SphP[j].B[0]*SphP[j].B[0]+SphP[j].B[1]*SphP[j].B[1]+SphP[j].B[2]*SphP[j].B[2]);
+            double v_Alfven = 0.282 * Bmag*All.UnitMagneticField_in_gauss / sqrt(P[i].DensAroundStar*All.UnitMass_in_g*pow(All.UnitLength_in_cm,-3.0)) / All.UnitVelocity_in_cm_per_s; //Alfvén velocity vA=B/sqrt(rho mu0)
+#else
+            double Bmag = 0;
+            double v_Alfven = 0;
+#endif
+            printf("Spawned new particle at time %g from BH %llu. Part-ID=%llu Pos %g %g %g hsml %g csnd %g mass %g Vel %g %g %g MaxSignalVel %g v_magnitude %g R_star_solar %g Sink mass %g Sink BH_mass %g Sink ProtoStellarStage %d DensAroundStar %g Bmag %g v_Alfven %g BH_SurroundingGasVel %g\n", All.Time, (MyIDType) P[i].ID, (MyIDType) P[j].ID, P[j].Pos[0], P[j].Pos[1], P[j].Pos[2], PPP[j].Hsml, convert_internalenergy_soundspeed2(j, SphP[j].InternalEnergy), P[j].Mass,P[j].Vel[0], P[j].Vel[1], P[j].Vel[2], SphP[j].MaxSignalVel,v_magnitude,P[i].ProtoStellarRadius_inSolar, P[i].Mass, P[i].BH_Mass, P[i].ProtoStellarStage, P[i].DensAroundStar, Bmag, v_Alfven, P[i].BH_SurroundingGasVel);
 #endif
     }    
     if(BPP(i).unspawned_wind_mass < 0) {BPP(i).unspawned_wind_mass=0;}
