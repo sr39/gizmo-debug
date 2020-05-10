@@ -872,6 +872,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
         force_add_star_to_tree(i0, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
+#ifdef SINGLE_STAR_FB_SPAWN_DEBUG
+            printf("Spawned new particle at time %g from BH %llu. Part-ID=%llu Pos %g %g %g hsml %g csnd %g mass %g Vel %g %g %g MaxSignalVel %g v_magnitude %g R_star_solar %g Sink mass %g Sink ProtoStellarStage %d\n", All.Time, (MyIDType) P[i].ID, (MyIDType) P[j].ID, P[j].Pos[0], P[j].Pos[1], P[j].Pos[2], PPP[j].Hsml, convert_internalenergy_soundspeed2(j, SphP[j].InternalEnergy), P[j].Mass,P[j].Vel[0], P[j].Vel[1], P[j].Vel[2], SphP[j].MaxSignalVel,v_magnitude,P[i].ProtoStellarRadius_inSolar, P[i].Mass, P[i].ProtoStellarStage);
+#endif
     }    
     if(BPP(i).unspawned_wind_mass < 0) {BPP(i).unspawned_wind_mass=0;}
     return n_particles_split;
