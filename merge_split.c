@@ -374,10 +374,6 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
     if(P[i].ID_generation > 30) {P[i].ID_generation=0;} // roll over at 32 generations (unlikely to ever reach this)
     P[j].ID_generation = P[i].ID_generation; // ok, all set!
 
-#ifdef CHIMES 
-    ChimesGasVars[j].ID_child_number = P[j].ID_child_number;
-#endif
-
     /* assign masses to both particles (so they sum correctly) */
     P[j].Mass = mass_of_new_particle * P[i].Mass;
     P[i].Mass -= P[j].Mass;
@@ -930,8 +926,8 @@ void rearrange_particle_sequence(void)
 #ifdef CHIMES /* swap chimes-specific 'gasvars' structure which is separate from SphP */
                 gasVarsSave = ChimesGasVars[i]; ChimesGasVars[i] = ChimesGasVars[j]; ChimesGasVars[j] = gasVarsSave;
                 /* Old particle (now at position j) is no longer a gas particle, so delete its abundance array. */
-                free(ChimesGasVars[j].abundances); free(ChimesGasVars[j].isotropic_photon_density); free(ChimesGasVars[j].dust_G_parameter); free(ChimesGasVars[j].H2_dissocJ);
-                ChimesGasVars[j].abundances = NULL; ChimesGasVars[j].isotropic_photon_density = NULL; ChimesGasVars[j].dust_G_parameter = NULL; ChimesGasVars[j].H2_dissocJ = NULL;
+		free_gas_abundances_memory(&(ChimesGasVars[j]), &ChimesGlobalVars); 
+                ChimesGasVars[j].abundances = NULL; ChimesGasVars[j].isotropic_photon_density = NULL; ChimesGasVars[j].G0_parameter = NULL; ChimesGasVars[j].H2_dissocJ = NULL;
 #endif /* CHIMES */
                 
                 /* ok we've now swapped the ordering so the gas particle is still inside the block */
@@ -964,9 +960,9 @@ void rearrange_particle_sequence(void)
                 /* swap with properties of last gas particle (i-- below will force a check of this so its ok) */
                 
 #ifdef CHIMES
-                free(ChimesGasVars[i].abundances); free(ChimesGasVars[i].isotropic_photon_density); free(ChimesGasVars[i].dust_G_parameter); free(ChimesGasVars[i].H2_dissocJ);
+		free_gas_abundances_memory(&(ChimesGasVars[i]), &ChimesGlobalVars); 
                 ChimesGasVars[i] = ChimesGasVars[N_gas - 1];
-                ChimesGasVars[N_gas - 1].abundances = NULL; ChimesGasVars[N_gas - 1].isotropic_photon_density = NULL; ChimesGasVars[N_gas - 1].dust_G_parameter = NULL; ChimesGasVars[N_gas - 1].H2_dissocJ = NULL;
+                ChimesGasVars[N_gas - 1].abundances = NULL; ChimesGasVars[N_gas - 1].isotropic_photon_density = NULL; ChimesGasVars[N_gas - 1].G0_parameter = NULL; ChimesGasVars[N_gas - 1].H2_dissocJ = NULL;
 #endif
                 
                 P[N_gas - 1] = P[NumPart - 1]; /* redirect the final gas pointer to go to the final particle (BH) */

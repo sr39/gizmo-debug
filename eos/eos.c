@@ -242,7 +242,7 @@ double Get_Gas_Ionized_Fraction(int i)
 {
 #ifdef COOLING
 #ifdef CHIMES 
-  return (double) ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HII]]; 
+  return (double) ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_HII]]; 
 #else 
     double ne=SphP[i].Ne, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, u0=SphP[i].InternalEnergyPred;
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties

@@ -444,6 +444,7 @@ void init(void)
 	    ChimesGasVars[i].element_abundances[9] = P[i].Metallicity[10] / (56.0 * H_mass_fraction); // Fe 
 
 	    ChimesGasVars[i].metallicity = P[i].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129. 
+	    ChimesGasVars[i].dust_ratio = ChimesGasVars[i].metallicity; 
 	  }
 #else 
 	if (ThisTask == 0)
@@ -463,6 +464,7 @@ void init(void)
 	    for (j = 1; j < 10; j++) 
 	      ChimesGasVars[i].element_abundances[j] = 0.0; 
 	    ChimesGasVars[i].metallicity = 0.0; 
+	    ChimesGasVars[i].dust_ratio = 0.0; 
 	  }
 #endif // CHIMES 
 #endif // METALS
@@ -723,13 +725,6 @@ void init(void)
     if(RestartFlag==0) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
 #ifdef NO_CHILD_IDS_IN_ICS
     if(RestartFlag != 1) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
-#endif 
-
-#ifdef CHIMES
-    if(RestartFlag==0) {for(i = 0; i < NumPart; i++) {ChimesGasVars[i].ID_child_number = P[i].ID_child_number;}}
-#ifdef NO_CHILD_IDS_IN_ICS
-    if(RestartFlag != 1) {for(i = 0; i < NumPart; i++) {ChimesGasVars[i].ID_child_number = P[i].ID_child_number;}}
-#endif 
 #endif 
     
 #ifdef TEST_FOR_IDUNIQUENESS
@@ -1020,7 +1015,7 @@ void init(void)
 	      ChimesGasVars[i].ThermEvolOn = 0; 
 
 	      for (iter_number = 0; iter_number < 10; iter_number++)
-		chimes_network(&(ChimesGasVars[i]), &ChimesGlobalVars, AllRates_omp[ThisThread], all_reactions_root_omp[ThisThread], nonmolecular_reactions_root_omp[ThisThread]); 
+		chimes_network(&(ChimesGasVars[i]), &ChimesGlobalVars); 
 
 #ifdef CHIMES_TURB_DIFF_IONS 
 	      chimes_update_turbulent_abundances(i, 1); 

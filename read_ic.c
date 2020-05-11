@@ -239,12 +239,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             
         case IO_ID:		/* particle ID */
             for(n = 0; n < pc; n++)
-            {
-                P[offset + n].ID = *ip++;
-#ifdef CHIMES 
-                if(type == 0) {ChimesGasVars[offset + n].ID = P[offset + n].ID; }
-#endif 
-            }
+	      P[offset + n].ID = *ip++;
             break;
             
             
@@ -252,12 +247,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             if(RestartFlag == 2)
             {
                 for(n = 0; n < pc; n++)
-                {
-                    P[offset + n].ID_child_number = *ip++;
-#ifdef CHIMES 
-                    if(type==0) {ChimesGasVars[offset + n].ID_child_number = P[offset + n].ID_child_number; }
-#endif 
-                }
+		  P[offset + n].ID_child_number = *ip++;
             }
             break;
 

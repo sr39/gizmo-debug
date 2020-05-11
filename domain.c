@@ -879,13 +879,10 @@ void domain_exchange(void)
 #ifdef CHIMES 
 	      for (i = 0; i < ChimesGlobalVars.totalNumberOfSpecies; i++)
 		sphAbundancesBuf[((offset_sph[target] + count_sph[target]) * ChimesGlobalVars.totalNumberOfSpecies) + i] = ChimesGasVars[n].abundances[i];
-	      free(ChimesGasVars[n].abundances); 
-	      free(ChimesGasVars[n].isotropic_photon_density); 
-	      free(ChimesGasVars[n].dust_G_parameter); 
-	      free(ChimesGasVars[n].H2_dissocJ); 
+	      free_gas_abundances_memory(&(ChimesGasVars[n]), &ChimesGlobalVars); 
 	      ChimesGasVars[n].abundances = NULL; 
 	      ChimesGasVars[n].isotropic_photon_density = NULL; 
-	      ChimesGasVars[n].dust_G_parameter = NULL; 
+	      ChimesGasVars[n].G0_parameter = NULL; 
 	      ChimesGasVars[n].H2_dissocJ = NULL; 
 	      sphChimesBuf[offset_sph[target] + count_sph[target]] = ChimesGasVars[n];
 #endif 
@@ -919,13 +916,10 @@ void domain_exchange(void)
 		{
 		  for (abunIndex = 0; abunIndex < ChimesGlobalVars.totalNumberOfSpecies; abunIndex++)
 		    tempAbundanceArray[abunIndex] = ChimesGasVars[N_gas - 1].abundances[abunIndex];
-		  free(ChimesGasVars[N_gas - 1].abundances);
-		  free(ChimesGasVars[N_gas - 1].isotropic_photon_density); 
-		  free(ChimesGasVars[N_gas - 1].dust_G_parameter); 
-		  free(ChimesGasVars[N_gas - 1].H2_dissocJ); 
+		  free_gas_abundances_memory(&(ChimesGasVars[N_gas - 1]), &ChimesGlobalVars); 
 		  ChimesGasVars[N_gas - 1].abundances = NULL; 
 		  ChimesGasVars[N_gas - 1].isotropic_photon_density = NULL; 
-		  ChimesGasVars[N_gas - 1].dust_G_parameter = NULL; 
+		  ChimesGasVars[N_gas - 1].G0_parameter = NULL; 
 		  ChimesGasVars[N_gas - 1].H2_dissocJ = NULL; 
 		  ChimesGasVars[n] = ChimesGasVars[N_gas - 1]; 
 		  allocate_gas_abundances_memory(&(ChimesGasVars[n]), &ChimesGlobalVars); 
