@@ -2610,7 +2610,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
 	      typelist[3] = 0; 
 	    } 
 	  else 
-	    nngb += {header.npart[2] + header.npart[3];}
+	    nngb += header.npart[2] + header.npart[3];
 	  return nngb; 
 	  break; 
 

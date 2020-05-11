@@ -625,7 +625,7 @@ void GetPhotoIonTables_parallel(struct globalVariables *myGlobalVars, int N_Elem
 	  if (current_spectrum > myGlobalVars->N_spectra - 1) 
 	    {
 	      printf("ERROR: too many UV spectra specified in PhotoIon table list. Aborting. \n"); 
-	      endrun(56275362);
+	      exit(EXIT_FAILURE);
 	    }
 	  sscanf(buffer, "%s", table_path);
 	  printf("Reading PhotoIon table: %s \n", table_path); 
@@ -635,13 +635,13 @@ void GetPhotoIonTables_parallel(struct globalVariables *myGlobalVars, int N_Elem
       if (current_spectrum < myGlobalVars->N_spectra)
 	{
 	  printf("ERROR: too few UV spectra specified in PhotoIon table list. Aborting. \n"); 
-	  endrun(56275362);
+	  exit(EXIT_FAILURE);
 	}
     }
   else
     {
       printf("ERROR: PhotoIon table list %s not found. \n", myGlobalVars->PhotoIonTablePath);
-      endrun(56275362);
+      exit(EXIT_FAILURE);
     }
   
 
