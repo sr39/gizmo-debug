@@ -314,7 +314,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
             if(mode<0) {return 1;} active_check=1;
             lum[RT_FREQ_BIN_GENERIC_USER_FREQ] = 0;
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION /* assume special units for this problem, and that total mass of 'sources' is 1 */
-            lum[RT_FREQ_BIN_GENERIC_USER_FREQ] = P[i].Mass * All.Vertical_Grain_Accel * C_LIGHT_CODE / (0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/All.Grain_Size_Max); // special behavior for particular test of stratified boxes compared to explicit dust opacities ????
+            lum[RT_FREQ_BIN_GENERIC_USER_FREQ] = P[i].Mass * All.Vertical_Grain_Accel * C_LIGHT_CODE / (0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/All.Grain_Size_Max); // special behavior for particular test of stratified boxes compared to explicit dust opacities
 #endif
         }
     }
@@ -353,7 +353,7 @@ double rt_kappa(int i, int k_freq)
 
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION /* special test problem implementation */
-    return SphP[i].Interpolated_Opacity[k_freq] + 0.001 * All.Dust_to_Gas_Mass_Ratio * 0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/All.Grain_Size_Max; /* enforce minimum */
+    return 0*SphP[i].Interpolated_Opacity[k_freq] + 1.* All.Dust_to_Gas_Mass_Ratio * 0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/All.Grain_Size_Max; /* enforce minimum */
 #endif
     return MIN_REAL_NUMBER + SphP[i].Interpolated_Opacity[k_freq]; /* this is calculated in a different routine, just return it now */
 #endif
@@ -478,6 +478,9 @@ double rt_kappa(int i, int k_freq)
 double rt_absorb_frac_albedo(int i, int k_freq)
 {
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
+#ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
+    return 1.e-6;
+#endif
     return 0.5; /* appropriate for single-scattering (e.g. ISM dust at optical wavelengths) */
     //return 1.-1.e-6; /* appropriate for multiple-scattering at far-IR (wavelength much longer than dust size) */
 #endif
@@ -620,7 +623,7 @@ void rt_eddington_update_calculation(int j)
     vector v=vec_in, returning u=vec_out as u=D.v. Here u[0,1,2]=u[x,y,z], and
     D[0]=xx,D[1]=yy,D[2]=zz,D[3]=xy,D[4]=yz,D[5]=xz components of ET following our convention */
 /***********************************************************************************************************/
-static inline void eddington_tensor_dot_vector(double ET[6], double vec_in[3], double vec_out[3])
+void eddington_tensor_dot_vector(double ET[6], double vec_in[3], double vec_out[3])
 {
     vec_out[0] = vec_in[0]*ET[0] + vec_in[1]*ET[3] + vec_in[2]*ET[5];
     vec_out[1] = vec_in[0]*ET[3] + vec_in[1]*ET[1] + vec_in[2]*ET[4];
@@ -634,7 +637,7 @@ static inline void eddington_tensor_dot_vector(double ET[6], double vec_in[3], d
 /***********************************************************************************************************/
 /*! return the value of the flux-limiter function, as needed */
 /***********************************************************************************************************/
-static inline double return_flux_limiter(int target, int k_freq)
+double return_flux_limiter(int target, int k_freq)
 {
 #ifdef RT_FLUXLIMITER
     return SphP[i].Rad_Flux_Limiter[k_freq]; // apply flux-limiter
@@ -835,7 +838,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #else
             for(k_dir=0;k_dir<3;k_dir++) {DeltaFluxEff[k_dir] += (SphP[i].Dt_Rad_Flux[kf][k_dir]/teqm_inv);}
 #endif
-            for(k_dir=0;k_dir<3;k_dir++) {DeltaFluxEff[k_dir] += vdot_h[k_dir]) * dt_entr;} // add the 'enthalpy advection' term here, vdot_h = Erad v.(e*I + P_rad)
+            for(k_dir=0;k_dir<3;k_dir++) {DeltaFluxEff[k_dir] += vdot_h[k_dir] * dt_entr;} // add the 'enthalpy advection' term here, vdot_h = Erad v.(e*I + P_rad)
 
             double tau=dt_entr*teqm_inv, f00=exp(-tau), f11=1.-f00;
             if(tau > 0 && isfinite(tau))
@@ -987,7 +990,7 @@ void rt_set_simple_inits(int RestartFlag)
                 
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
                 double q_a=0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/All.Grain_Size_Max, e0=All.Vertical_Grain_Accel/q_a, kappa0=All.Dust_to_Gas_Mass_Ratio*q_a;
-                e0 *= (P[i].Mass/SphP[i].Density) * exp(-kappa0*(1.-exp(-P[i].Pos[2]))); // attenuate according to equilibrium expectation, if we're using single-scattering radiation pressure [otherwise comment this line out] //
+                e0 *= 1.e-3 * (P[i].Mass/SphP[i].Density) * exp(-kappa0*(1.-exp(-P[i].Pos[2]))); // attenuate according to equilibrium expectation, if we're using single-scattering radiation pressure [otherwise comment this line out] //
                 SphP[i].Rad_E_gamma_Pred[k]=SphP[i].Rad_E_gamma[k]=e0;
 #if defined(RT_EVOLVE_FLUX)
                 SphP[i].Rad_Flux_Pred[k][2]=SphP[i].Rad_Flux[k][2] = e0*C_LIGHT_CODE_REDUCED;
