@@ -464,15 +464,12 @@ int interpolate_fluxes_opacities_gasgrains_evaluate(int target, int mode, int *e
                         {
                             double f_kappa_abs=0.5,vdot_h[3]={0},flux_i[3]={0},flux_mag=0,erad_i=0,flux_corr=1;
                             f_kappa_abs = 0.5; // rt_absorb_frac_albedo(i,k_freq); -- this is set to 1/2 anyways but would require extra passing, ignore for now //
-#if defined(RT_EVOLVE_FLUX)
+#if defined(RT_EVOLVE_FLUX) || (defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX) && defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY))
                             erad_i = SphP[j].Rad_E_gamma_Pred[k_freq];
-                            for(k=0;k<3;k++) {flux_i[k]=SphP[j].Rad_Flux_Pred[k_freq][k]; vdot_h[k]=vel_i[k]*erad_i*(1. + SphP[j].ET[k_freq][k]); flux_mag+=flux_i[k]*flux_i[k];}
-                            if(flux_mag>0 && isfinite(flux_mag)) {flux_mag=sqrt(flux_mag); vdot_h[0] += erad_i*(vel_i[1]*SphP[j].ET[k_freq][3] + vel_i[2]*SphP[j].ET[k_freq][5]); vdot_h[1] += erad_i*(vel_i[0]*SphP[j].ET[k_freq][3] + vel_i[2]*SphP[j].ET[k_freq][4]); vdot_h[2] += erad_i*(vel_i[0]*SphP[j].ET[k_freq][5] + vel_i[1]*SphP[j].ET[k_freq][4]);} else {flux_mag=MIN_REAL_NUMBER; flux_i[0]=flux_i[1]=0; flux_i[2]=flux_mag; vdot_h[0]=vdot_h[1]=vdot_h[2]=0;}
-#elif defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX) && defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
-                            erad_i = SphP[j].Rad_E_gamma_Pred[k_freq];
-                            for(k=0;k<3;k++) {flux_i[k]=SphP[j].Rad_Flux_Pred[k_freq][k]; vdot_h[k]=vel_i[k]*erad_i*(1. + 1./3.); flux_mag+=flux_i[k]*flux_i[k];}
-                            flux_mag=sqrt(flux_mag);
-#elif (defined(RT_FLUXLIMITER) && defined(RT_COMPGRAD_EDDINGTON_TENSOR)) || defined(RT_FLUXLIMITEDDIFFUSION)
+                            eddington_tensor_dot_vector(SphP[j].ET[k_freq],vel_i,vdot_h); for(k=0;k<3;k++) {vdot_h[k] = erad_i * (vel_i[k] + vdot_h[k]);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term. this is the P term //
+                            for(k=0;k<3;k++) {flux_i[k]=SphP[j].Rad_Flux_Pred[k_freq][k]; flux_mag+=flux_i[k]*flux_i[k];}
+                            if(flux_mag>0 && isfinite(flux_mag)) {flux_mag=sqrt(flux_mag);} else {flux_mag=MIN_REAL_NUMBER; flux_i[0]=flux_i[1]=0; flux_i[2]=flux_mag;}
+#elif (defined(RT_OTVET) || defined(RT_FLUXLIMITEDDIFFUSION))
                             erad_i = SphP[j].Rad_E_gamma_Pred[k_freq]; //for(k=0;k<3;k++) {flux_i[k] = SphP[j].Rad_Flux_Limiter[k_freq] * (-SphP[j].Gradients.Rad_E_gamma_ET[k_freq][k]*All.cf_a3inv/All.cf_atime) * C_LIGHT_CODE_REDUCED / (SphP[j].Density*All.cf_a3inv * SphP[j].Rad_Kappa[k_freq]); flux_mag+=flux_i[k]*flux_i[k];} // can't use this because kappa isn't calculated yet
                             for(k=0;k<3;k++) {flux_i[k] = -SphP[j].Gradients.Rad_E_gamma_ET[k_freq][k]; flux_mag+=flux_i[k]*flux_i[k];}
                             if(flux_mag>0) {for(k=0;k<3;k++) {flux_i[k]/=sqrt(flux_mag);}} else {flux_i[0]=0;flux_i[1]=0;flux_i[2]=1;}
