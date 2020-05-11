@@ -556,24 +556,22 @@ double rt_absorption_rate(int i, int k_freq)
 /***********************************************************************************************************/
 double rt_diffusion_coefficient(int i, int k_freq)
 {
-    double coeff = C_LIGHT_CODE_REDUCED / (1.e-45 + SphP[i].Rad_Kappa[k_freq] * SphP[i].Density*All.cf_a3inv);
-#ifdef RT_FLUXLIMITER
-    coeff *= SphP[i].Rad_Flux_Limiter[k_freq]; // apply flux-limiter
-#endif
-    return coeff;
+    return return_flux_limiter(i,k_freq) * C_LIGHT_CODE_REDUCED / (1.e-45 + SphP[i].Rad_Kappa[k_freq] * SphP[i].Density*All.cf_a3inv);
 }
 
 
 
 /***********************************************************************************************************/
-/* calculate the eddington tensor according to the M1 formalism (for use with that solver, obviously) */
+/* calculate the eddington tensor according to the different closure option[s] adopted */
 /***********************************************************************************************************/
 void rt_eddington_update_calculation(int j)
 {
+#ifdef RT_OTVET
+    return; /* eddington tensor is calculated elsewhere [in the gravity subroutine]: don't mess with it here! */
+#endif
 #ifdef RT_M1
-    int k_freq, k;
-    double c_light = C_LIGHT_CODE_REDUCED;
-    double n_flux_j[3], fmag_j, V_j_inv = SphP[j].Density / P[j].Mass;
+    /* calculate the eddington tensor with the M1 closure */
+    int k_freq, k; double c_light = C_LIGHT_CODE_REDUCED, n_flux_j[3], fmag_j, V_j_inv = SphP[j].Density / P[j].Mass;
     for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
     {
         n_flux_j[0]=n_flux_j[1]=n_flux_j[2]=0;
@@ -583,8 +581,7 @@ void rt_eddington_update_calculation(int j)
         double f_chifac = fmag_j / (MIN_REAL_NUMBER + c_light * SphP[j].Rad_E_gamma[k_freq] * V_j_inv);
         if(f_chifac < 0) {f_chifac=0;}
         if(fmag_j <= 0) {f_chifac = 0;}
-        // restrict values of f_chifac to physical range.  
-        //   [optional, not here]: impose additional condition: if optically thick locally, use isotropic tensor
+        // restrict values of f_chifac to physical range.
         double f_min = 0.01, f_max = 0.99;
         if((f_chifac < f_min) || (isnan(f_chifac))) {f_chifac = f_min;}
         if(f_chifac > f_max) {f_chifac = f_max;}
@@ -604,9 +601,46 @@ void rt_eddington_update_calculation(int j)
             }
         }
     }
+    return;
 #endif
+#ifdef RT_FLUXLIMITEDDIFFUSION
+    /* always assume the isotropic eddington tensor */
+    int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) {SphP[j].ET[k_freq][0]=SphP[j].ET[k_freq][1]=SphP[j].ET[k_freq][2]=1./3.; SphP[j].ET[k_freq][3]=SphP[j].ET[k_freq][4]=SphP[j].ET[k_freq][5]=0;}
+    return;
+#endif
+    
+    /* if nothing is set, default to guess the isotropic eddington tensor */
+    {int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) {SphP[j].ET[k_freq][0]=SphP[j].ET[k_freq][1]=SphP[j].ET[k_freq][2]=1./3.; SphP[j].ET[k_freq][3]=SphP[j].ET[k_freq][4]=SphP[j].ET[k_freq][5]=0;}}
+    return;
 }
 
+
+/***********************************************************************************************************/
+/*! simple subroutine to compute the dot product of the symmetric Eddington tensor ET=D with a
+    vector v=vec_in, returning u=vec_out as u=D.v. Here u[0,1,2]=u[x,y,z], and
+    D[0]=xx,D[1]=yy,D[2]=zz,D[3]=xy,D[4]=yz,D[5]=xz components of ET following our convention */
+/***********************************************************************************************************/
+static inline void eddington_tensor_dot_vector(double ET[6], double vec_in[3], double vec_out[3])
+{
+    vec_out[0] = vec_in[0]*ET[0] + vec_in[1]*ET[3] + vec_in[2]*ET[5];
+    vec_out[1] = vec_in[0]*ET[3] + vec_in[1]*ET[1] + vec_in[2]*ET[4];
+    vec_out[2] = vec_in[0]*ET[5] + vec_in[1]*ET[4] + vec_in[2]*ET[2];
+    return;
+}
+
+
+
+
+/***********************************************************************************************************/
+/*! return the value of the flux-limiter function, as needed */
+/***********************************************************************************************************/
+static inline double return_flux_limiter(int target, int k_freq)
+{
+#ifdef RT_FLUXLIMITER
+    return SphP[i].Rad_Flux_Limiter[k_freq]; // apply flux-limiter
+#endif
+    return 1;
+}
 
 
 
@@ -725,10 +759,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 double slabfac_rp = slab_averaging_function(f_kappa_abs*SphP[i].Rad_Kappa[kf]*Sigma_particle) * slab_averaging_function(f_kappa_abs*SphP[i].Rad_Kappa[kf]*abs_per_kappa_dt); // reduction factor for absorption over dt
                 int kx; for(kx=0;kx<3;kx++)
                 {
-                    radacc[kx] = -dt_entr * slabfac_rp * (SphP[i].Gradients.Rad_E_gamma_ET[kf][kx] / SphP[i].Density) / All.cf_atime; // naive radiation-pressure calc for FLD methods [physical units]
-#ifdef RT_FLUXLIMITER
-                    radacc[kx] *= SphP[i].Rad_Flux_Limiter[kf]; // apply flux-limiter
-#endif
+                    radacc[kx] = -dt_entr * slabfac_rp * return_flux_limiter(i,kf) * (SphP[i].Gradients.Rad_E_gamma_ET[kf][kx] / SphP[i].Density) / All.cf_atime; // naive radiation-pressure calc for FLD methods [physical units]
                     rmag += radacc[kx]*radacc[kx]; // compute magnitude
                     if(mode==0) {vel_i[kx]=P[i].Vel[kx]/All.cf_atime;} else {vel_i[kx]=SphP[i].VelPred[kx]/All.cf_atime;}
                 }
@@ -797,9 +828,8 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             int k_dir; double f_mag=0, E_rad_forflux=0, vdot_h[3]={0}, vel_i[3]={0}, DeltaFluxEff[3]={0}, rho=SphP[i].Density*All.cf_a3inv; E_rad_forflux=0.5*(e0+ef); // use energy density averaged over this update for the operation below
             for(k_dir=0;k_dir<3;k_dir++) {if(mode==0) {vel_i[k_dir]=P[i].Vel[k_dir]/All.cf_atime;} else {vel_i[k_dir]=SphP[i].VelPred[k_dir]/All.cf_atime;}} // need gas velocity at this time
             double teqm_inv = SphP[i].Rad_Kappa[kf] * rho * C_LIGHT_CODE_REDUCED + MIN_REAL_NUMBER; // physical code units of 1/time, defines characteristic timescale for coming to equilibrium flux. see notes for CR second-order module for details. //
-            for(k_dir=0;k_dir<3;k_dir++) {vdot_h[k_dir] = vel_i[k_dir] * (1. + SphP[i].ET[kf][k_dir]);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term //
-            vdot_h[0] += vel_i[1]*SphP[i].ET[kf][3]+vel_i[2]*SphP[i].ET[kf][5]; vdot_h[1] += vel_i[0]*SphP[i].ET[kf][3]+vel_i[2]*SphP[i].ET[kf][4]; vdot_h[2] += vel_i[0]*SphP[i].ET[kf][5]+vel_i[1]*SphP[i].ET[kf][4];
-            for(k_dir=0;k_dir<3;k_dir++) {vdot_h[k_dir] *= E_rad_forflux;} // multiply by radiation energy to use in this step
+            eddington_tensor_dot_vector(SphP[i].ET[kf],vel_i,vdot_h); // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term. this is the P term //
+            for(k_dir=0;k_dir<3;k_dir++) {vdot_h[k_dir] = E_rad_forflux * (vel_i[k_dir] + vdot_h[k_dir]);} // and this is the eI term, multiply both by radiation energy to use in this step //
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
             for(k_dir=0;k_dir<3;k_dir++) {DeltaFluxEff[k_dir] -= (P[i].Mass/rho) * (C_LIGHT_CODE_REDUCED*C_LIGHT_CODE_REDUCED/teqm_inv) * SphP[i].Gradients.Rad_E_gamma_ET[kf][k_dir];}
 #else
@@ -823,11 +853,10 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 }
                 if(f_mag > 0) // limit the flux according the physical (optically thin) maximum //
                 {
-                    f_mag=sqrt(f_mag); double fmag_max = 1.1 * C_LIGHT_CODE * ef; // maximum flux should be optically-thin limit: e_gamma/c: here allow some tolerance for numerical leapfrogging in timestepping. NOT the reduced RSOL here.
+                    f_mag=sqrt(f_mag); double fmag_max = 1.0 * C_LIGHT_CODE * ef; // maximum flux should be optically-thin limit: e_gamma/c: here allow some tolerance for numerical leapfrogging in timestepping. NOT the reduced RSOL here.
                     if(f_mag > fmag_max) {for(k_dir=0;k_dir<3;k_dir++) {if(mode==0) {SphP[i].Rad_Flux[kf][k_dir] *= fmag_max/f_mag;} else {SphP[i].Rad_Flux_Pred[kf][k_dir] *= fmag_max/f_mag;}}}
                 }
             }
-            if(mode==0) {for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Rad_Flux_Pred[kf][k_dir] = SphP[i].Rad_Flux[kf][k_dir];}}
 #endif
             total_erad_emission_minus_absorption += de_emission_minus_absorption; // add to cumulative sum for back-reaction to gas
 #if defined(RT_EVOLVE_INTENSITIES)
@@ -938,8 +967,7 @@ void rt_set_simple_inits(int RestartFlag)
             {
                 if(RestartFlag==0) {SphP[i].Rad_E_gamma[k] = MIN_REAL_NUMBER;}
                 SphP[i].ET[k][0]=SphP[i].ET[k][1]=SphP[i].ET[k][2]=1./3.; SphP[i].ET[k][3]=SphP[i].ET[k][4]=SphP[i].ET[k][5]=0;
-                SphP[i].Rad_Je[k] = 0;
-                SphP[i].Rad_Kappa[k] = rt_kappa(i,k);
+                SphP[i].Rad_Je[k] = 0; SphP[i].Rad_Kappa[k] = rt_kappa(i,k);
 #ifdef RT_FLUXLIMITER
                 SphP[i].Rad_Flux_Limiter[k] = 1;
 #endif

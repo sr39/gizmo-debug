@@ -1395,12 +1395,9 @@ void hydro_gradient_calc(void)
 #if defined(RT_FLUXLIMITER) && defined(RT_COMPGRAD_EDDINGTON_TENSOR)
                     /* compute the flux-limiter for radiation transport: also convenient here to compute the relevant opacities for all particles */
                     double lambda = 1;
-                    if(SphP[i].Rad_E_gamma_Pred[k_freq] > 0)
+                    if(SphP[i].Rad_E_gamma_Pred[k_freq] > 0) /* can compute gradient length scale */
                     {
-                        /* 1/gradient length scale of grad.Prad */
-                        double R_ET = sqrt(SphP[i].Gradients.Rad_E_gamma_ET[k_freq][0] * SphP[i].Gradients.Rad_E_gamma_ET[k_freq][0] +
-                                           SphP[i].Gradients.Rad_E_gamma_ET[k_freq][1] * SphP[i].Gradients.Rad_E_gamma_ET[k_freq][1] +
-                                           SphP[i].Gradients.Rad_E_gamma_ET[k_freq][2] * SphP[i].Gradients.Rad_E_gamma_ET[k_freq][2]) / (1.e-37 + SphP[i].Rad_E_gamma_Pred[k_freq] * SphP[i].Density/(1.e-37+P[i].Mass));
+                        double R_ET = sqrt(SphP[i].Gradients.Rad_E_gamma_ET[k_freq][0] * SphP[i].Gradients.Rad_E_gamma_ET[k_freq][0] + SphP[i].Gradients.Rad_E_gamma_ET[k_freq][1] * SphP[i].Gradients.Rad_E_gamma_ET[k_freq][1] + SphP[i].Gradients.Rad_E_gamma_ET[k_freq][2] * SphP[i].Gradients.Rad_E_gamma_ET[k_freq][2]) / (MIN_REAL_NUMBER + SphP[i].Rad_E_gamma_Pred[k_freq] * SphP[i].Density/(MIN_REAL_NUMBER+P[i].Mass));
                         R_ET = 3.*DMAX(R_ET , 1.e-6/Get_Particle_Size(i)) / (1.e-55 + All.cf_atime*SphP[i].Rad_Kappa[k_freq]*(SphP[i].Density*All.cf_a3inv)); // limit to be > 0, divide by kappa-rho to get desired dimensionless ratio
                         lambda = DMIN(1., DMAX( 3.*(2. + R_ET) / (6. + 3.*R_ET + R_ET*R_ET), MIN_REAL_NUMBER )); // slope-limiter
 #ifdef RT_OTVET         /* note that the OTVET eddington tensor is close to the correct value for the optically-thin limit. for the diffusion limit
@@ -1412,12 +1409,14 @@ void hydro_gradient_calc(void)
                         for(k=0;k<6;k++) {SphP[i].ET[k_freq][k] *= chifac_ot; if(k<3) {SphP[i].ET[k_freq][k] += chifac_iso/3.;}} // diagonal components // (this only makes sense if ET is freq-dependent) [note this will cause instability in the explicit methods; only use for CG where ET is explicitly called and this is done only on global timesteps]
 #endif
 #endif // ifdef otvet
-#ifdef RT_FLUXLIMITEDDIFFUSION /* this is simple because the Eddington tensor is always isotropic */
-                        for(k=0;k<3;k++) {SphP[i].Gradients.Rad_E_gamma_ET[k_freq][k] = GasGradDataPasser[i].Gradients_Rad_E_gamma[k_freq][k]/3.;}
-#endif
                     }
                     SphP[i].Rad_Flux_Limiter[k_freq] = lambda;
 #endif // ifdef fluxlimiter
+                    
+#if defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_OTVET)
+                    /* set the output gradient grad.(D*Prad) = D.(grad Prad), i.e. move the tensor outside the gradient. while not strictly self-consistent, this is more stable, and correct at the level of the ad-hoc M1 or OTVET closure, b/c otherwise M1 introduces unphysical behaviors from the gradients of the tensor where the ad-hoc closure relation causes changes to D [see e.g. Hopkins 'Anisotropic Diffusion in Mesh-Free Numerical Magnetohydrodynamics' Fig 8 and associated discussion]. Also works for FLD trivially. */
+                    eddington_tensor_dot_vector(SphP[i].ET[k_freq],GasGradDataPasser[i].Gradients_Rad_E_gamma[k_freq],SphP[i].Gradients.Rad_E_gamma_ET[k_freq]);
+#endif
                 }
             }
 #endif // ifdef radtransfer

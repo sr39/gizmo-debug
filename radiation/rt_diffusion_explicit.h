@@ -91,8 +91,9 @@
             // now we need to add the advective flux. note we do this after the limiters above, since those are designed for the diffusive terms, and this is simpler and more stable. we do this zeroth order (super-diffusive, but that's fine for our purposes)
             double cmag_adv=0, fluxlim_i=1, fluxlim_j=1, v_Area_dot_rt=0; for(k=0;k<3;k++) {v_Area_dot_rt += v_frame[k] * Face_Area_Vec[k];}
             double scalar_ij_phys = 2.*scalar_i*scalar_j/(scalar_i+scalar_j) * All.cf_a3inv; // use harmonic mean here, to weight lower value
+            fluxlim_j = return_flux_limiter(j,k_freq);
 #ifdef RT_FLUXLIMITER
-            fluxlim_i = local.RT_DiffusionCoeff[k_freq] * local.Density * local.Rad_Kappa[k_freq] / C_LIGHT_CODE_REDUCED; fluxlim_j = SphP[j].Rad_Flux_Limiter[k_freq];
+            fluxlim_i = local.RT_DiffusionCoeff[k_freq] * local.Density * local.Rad_Kappa[k_freq] / C_LIGHT_CODE_REDUCED; /* figure this out by what we've passed to save an extra variable being sent, here */
 #endif
             double fluxlim_ij = 0.5 * (fluxlim_i+fluxlim_j), fac_fluxlim = (4./3.)*fluxlim_ij - 1.;
 #ifdef RT_RADPRESSURE_IN_HYDRO
@@ -180,17 +181,14 @@
 #ifdef RT_ENHANCED_NUMERICAL_DIFFUSION
             hlle_wtfac_u = hlle_wtfac_f = 0.5;
 #endif
-            for(k=0;k<3;k++)
-            {
-                /* the flux is already known (its explicitly evolved, rather than determined by the gradient of the energy density */
-                cmag += Face_Area_Vec[k] * (hlle_wtfac_f*flux_i[k] + (1.-hlle_wtfac_f)*flux_j[k]); /* remember, our 'flux' variable is a volume-integral [all physical units here] */
-                int k_xyz=k, k_et_al, k_et_loop[3];
-                if(k_xyz==0) {k_et_loop[0]=0; k_et_loop[1]=3; k_et_loop[2]=5;}
-                if(k_xyz==1) {k_et_loop[0]=3; k_et_loop[1]=1; k_et_loop[2]=4;}
-                if(k_xyz==2) {k_et_loop[0]=5; k_et_loop[1]=4; k_et_loop[2]=2;}
-                for(k_et_al=0;k_et_al<3;k_et_al++) {
-                    cmag_flux[k_xyz] += c_light*c_light * Face_Area_Vec[k_et_al] * (hlle_wtfac_f*scalar_i*local.ET[k_freq][k_et_loop[k_et_al]] + (1.-hlle_wtfac_f)*scalar_j*SphP[j].ET[k_freq][k_et_loop[k_et_al]]);} // [all physical units]
-            }
+            /* the flux is already known (its explicitly evolved, rather than determined by the gradient of the energy density */
+            for(k=0;k<3;k++) {cmag += Face_Area_Vec[k] * (hlle_wtfac_f*flux_i[k] + (1.-hlle_wtfac_f)*flux_j[k]);} /* remember, our 'flux' variable is a volume-integral [all physical units here] */
+
+            /* now compute the 'flux source term' - divergence of the radiation pressure tensor */
+            double ET_dot_Face_i[3]={0}, ET_dot_Face_j={0};
+            eddington_tensor_dot_vector(local.ET[k_freq],Face_Area_Vec,ET_dot_Face_i); /* compute face dotted into eddington tensors for both sides */
+            eddington_tensor_dot_vector(SphP[j].ET[k_freq],Face_Area_Vec,ET_dot_Face_j); /* compute face dotted into eddington tensors for both sides */
+            for(k=0;k<3;k++) {cmag_flux[k] += c_light*c_light * (hlle_wtfac_f*scalar_i*ET_dot_Face_i[k] + (1.-hlle_wtfac_f)*scalar_j*ET_dot_Face_j[k]);}
             
             /* add asymptotic-preserving correction so that numerical flux doesn't unphysically dominate in optically thick limit */
             double v_eff_light = DMIN(c_light , kappa_ij / Particle_Size_j); // physical
