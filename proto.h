@@ -639,6 +639,7 @@ void disp_density(void);
 void chimes_cooling_parent_routine(void); 
 double chimes_convert_u_to_temp(double u, double rho, int target); 
 void chimes_update_gas_vars(int target); 
+void chimes_gizmo_exit(void); 
 #ifdef COOL_METAL_LINES_BY_SPECIES 
 void chimes_update_element_abundances(int i); 
 #endif 

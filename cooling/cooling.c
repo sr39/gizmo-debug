@@ -1626,6 +1626,11 @@ void InitCool(void)
 	ChimesGlobalVars.use_redshift_dependent_eqm_tables = 0; 
       }
 
+    // Set the chimes_exit() function 
+    // to use the Gizmo-specific 
+    // chimes_gizmo_exit(). 
+    chimes_exit = &chimes_gizmo_exit; 
+
     // Initialise the CHIMES module. 
     init_chimes(&ChimesGlobalVars); 
 
@@ -2037,5 +2042,11 @@ void chimes_compute_depletions(double nH, double T, int thread_id)
   ChimesDepletionData[thread_id].ChimesDustRatio /= ChimesDepletionData[thread_id].DustToGasSaturated; 
 } 
 #endif // CHIMES_METAL_DEPLETION 
+
+
+void chimes_gizmo_exit(void) 
+{
+  endrun(56275362); 
+}
 #endif // CHIMES 
 #endif
