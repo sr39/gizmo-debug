@@ -876,6 +876,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
             double Bmag = 0;
 #ifdef MAGNETIC
             for(k=0;k<3;k++) {Bmag+=Get_Particle_BField(j,k)*Get_Particle_BField(j,k);}
+            Bmag = sqrt(Bmag);
             double v_Alfven = 0.282 * Bmag*All.UnitMagneticField_in_gauss / sqrt(P[i].DensAroundStar*All.UnitMass_in_g*pow(All.UnitLength_in_cm,-3.0)) / All.UnitVelocity_in_cm_per_s; //Alfvén velocity vA=B/sqrt(rho mu0)
 #else
             double v_Alfven = 0;
