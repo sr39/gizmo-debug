@@ -41,7 +41,7 @@ void apply_grain_dragforce(void)
 #ifdef BOX_BND_PARTICLES
         if(P[i].ID > 0) /* 'frozen' particles are excluded */
 #endif
-        if((1 << P[i].Type) & (GRAIN_PTYPES)) /* only particles of designated type[s] are eligible for this routine */
+        if(((1 << P[i].Type) & (GRAIN_PTYPES)) && (P[i].Mass>0)) /* only particles of designated type[s] are eligible for this routine */
         {
 #if defined(GRAIN_BACKREACTION)
             for(k=0;k<3;k++) {P[i].Grain_DeltaMomentum[k]=0;} /* reset momentum to couple back to gas (or else would diverge) */
@@ -230,7 +230,7 @@ void apply_grain_dragforce(void)
  etc, are all handled for you. */
 
 #define MASTER_FUNCTION_NAME grain_backrx_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
-#define CONDITIONFUNCTION_FOR_EVALUATION if(((1 << P[i].Type) & (GRAIN_PTYPES))&&(P[i].TimeBin>=0)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(((1 << P[i].Type) & (GRAIN_PTYPES))&&(P[i].TimeBin>=0)&&(P[i].Mass>0)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 
@@ -384,7 +384,7 @@ void calculate_interact_kick(double dV[3], double kick[3], double m)
 #endif
 
 #define MASTER_FUNCTION_NAME interpolate_fluxes_opacities_gasgrains_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
-#define CONDITIONFUNCTION_FOR_EVALUATION if(((1 << P[i].Type) & (GRAIN_PTYPES+1))&&(P[i].TimeBin>=0)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(((1 << P[i].Type) & (GRAIN_PTYPES+1))&&(P[i].TimeBin>=0)&&(P[i].Mass>0)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 /* this structure defines the variables that need to be sent -from- the 'searching' element */

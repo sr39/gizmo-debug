@@ -62,8 +62,8 @@ double diffusion_coefficient_constant(int target, int k_CRegy)
 void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime_cgs)
 {
     if(dtime_cgs <= 0) {return;} /* catch */
-    int k,k_CRegy;
-    double a_hadronic = 6.37e-16, b_coulomb_per_GeV = 3.09e-16*n_elec*HYDROGEN_MASSFRAC; /* some coefficients; a_hadronic is the default coefficient, b_coulomb_per_GeV the default divided by GeV, b/c we need to divide the energy per CR  */
+    int k,k_CRegy; double f_ion=DMAX(DMIN(Get_Gas_Ionized_Fraction(target),1.),0.);
+    double a_hadronic = 6.37e-16, b_coulomb_per_GeV = 3.09e-16*(n_elec + 0.57*(1.-f_ion))*HYDROGEN_MASSFRAC; /* some coefficients; a_hadronic is the default coefficient, b_coulomb_per_GeV the default Coulomb+ionization (the two scale nearly-identically) normalization divided by GeV, b/c we need to divide the energy per CR  */
     for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
         double CR_coolrate=0, Z=return_CRbin_CR_charge_in_e(target,k_CRegy);
@@ -588,6 +588,22 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 }
 #endif
 
+
+
+#if 0
+/* this routine does the CR cooling/losses and "heating"/re-acceleration for multi-bin CR spectra: i.e. exchanging CR number
+    between bins in the multi-bin approximation and modifying the spectral slope within each bin */
+void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, double dtime_cgs)
+{
+    /*! LOSS TYPES:
+     - hadronic+catastrophic: simply remove energy from the bin (N and E decrease together, preserving spectral slope)
+     - adiabatic+bremstrahhlung: pure multiplicative: Edot ~ E (so instantaneously conserves slope, shifts pmin,p0,pmax, need to calculate flux)
+     - coulomb+ionization: scale identically, for low-E protons important, messy dependence, use fitting function from Girichidis, dp/dt ~ (1 + p^(-1.9))
+     - inverse compton+synchrotron: Edot ~ E^2, also pdot~p^2 [ultra-rel b/c e-]: modifies slope
+     */
+    return;
+}
+#endif
 
 
 
