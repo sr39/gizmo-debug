@@ -593,6 +593,7 @@ void rt_eddington_update_calculation(int j)
         double chifac_n_j = 0.5 * (3.*chi_j-1.);
         for(k=0;k<6;k++)
         {
+            SphP[j].ET[k_freq][k] = 0;
             if(k<3)
             {
                 SphP[j].ET[k_freq][k] = chifac_iso_j + chifac_n_j * n_flux_j[k]*n_flux_j[k];
@@ -793,22 +794,29 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #endif
 
 #if defined(RT_EVOLVE_FLUX)
-            int k_dir; double f_mag=0, rho=SphP[i].Density*All.cf_a3inv, e_mid=0.5*(e0+ef), vdot_h[3], vel_i[3], DeltaFluxEff[3]; // use energy density averaged over this update for the operation below
+            int k_dir; double f_mag=0, E_rad_forflux=0, vdot_h[3]={0}, vel_i[3]={0}, DeltaFluxEff[3]={0}, rho=SphP[i].Density*All.cf_a3inv; E_rad_forflux=0.5*(e0+ef); // use energy density averaged over this update for the operation below
             for(k_dir=0;k_dir<3;k_dir++) {if(mode==0) {vel_i[k_dir]=P[i].Vel[k_dir]/All.cf_atime;} else {vel_i[k_dir]=SphP[i].VelPred[k_dir]/All.cf_atime;}} // need gas velocity at this time
-            double teqm_inv=SphP[i].Rad_Kappa[kf]*rho*C_LIGHT_CODE_REDUCED, etoflux=e_mid*teqm_inv; // physical code units of 1/time, defines characteristic timescale for coming to equilibrium flux. see notes for CR second-order module for details. //
-            for(k_dir=0;k_dir<3;k_dir++) {vdot_h[k_dir]=vel_i[k_dir]*etoflux*(1. + SphP[i].ET[kf][k_dir]);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term //
-            vdot_h[0]+=etoflux*(vel_i[1]*SphP[i].ET[kf][3]+vel_i[2]*SphP[i].ET[kf][5]); vdot_h[1]+=etoflux*(vel_i[0]*SphP[i].ET[kf][3]+vel_i[2]*SphP[i].ET[kf][4]); vdot_h[2]+=etoflux*(vel_i[0]*SphP[i].ET[kf][5]+vel_i[1]*SphP[i].ET[kf][4]);
-            for(k_dir=0;k_dir<3;k_dir++) {DeltaFluxEff[k_dir] = (SphP[i].Dt_Rad_Flux[kf][k_dir] + vdot_h[k_dir]) * dt_entr;} // add the term from the neighbor computation to this term
-            double tau=dt_entr*teqm_inv, f00=exp(-tau), f11=(1.-f00)/tau;
-            if(tau > 0)
+            double teqm_inv = SphP[i].Rad_Kappa[kf] * rho * C_LIGHT_CODE_REDUCED + MIN_REAL_NUMBER; // physical code units of 1/time, defines characteristic timescale for coming to equilibrium flux. see notes for CR second-order module for details. //
+            for(k_dir=0;k_dir<3;k_dir++) {vdot_h[k_dir] = vel_i[k_dir] * (1. + SphP[i].ET[kf][k_dir]);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term //
+            vdot_h[0] += vel_i[1]*SphP[i].ET[kf][3]+vel_i[2]*SphP[i].ET[kf][5]; vdot_h[1] += vel_i[0]*SphP[i].ET[kf][3]+vel_i[2]*SphP[i].ET[kf][4]; vdot_h[2] += vel_i[0]*SphP[i].ET[kf][5]+vel_i[1]*SphP[i].ET[kf][4];
+            for(k_dir=0;k_dir<3;k_dir++) {vdot_h[k_dir] *= E_rad_forflux;} // multiply by radiation energy to use in this step
+#ifdef RT_COMPGRAD_EDDINGTON_TENSOR
+            for(k_dir=0;k_dir<3;k_dir++) {DeltaFluxEff[k_dir] -= (P[i].Mass/rho) * (C_LIGHT_CODE_REDUCED*C_LIGHT_CODE_REDUCED/teqm_inv) * SphP[i].Gradients.Rad_E_gamma_ET[kf][k_dir];}
+#else
+            for(k_dir=0;k_dir<3;k_dir++) {DeltaFluxEff[k_dir] += (SphP[i].Dt_Rad_Flux[kf][k_dir]/teqm_inv);}
+#endif
+            for(k_dir=0;k_dir<3;k_dir++) {DeltaFluxEff[k_dir] += vdot_h[k_dir]) * dt_entr;} // add the 'enthalpy advection' term here, vdot_h = Erad v.(e*I + P_rad)
+
+            double tau=dt_entr*teqm_inv, f00=exp(-tau), f11=1.-f00;
+            if(tau > 0 && isfinite(tau))
             {
-                if(tau <= 0.04) {f11=1.-0.5*tau+tau*tau/6.;} // some limits to prevent small/large number problems here
-                if(!isfinite(f00)) {f00=0.; f11=1./tau;} // some limits to prevent small/large number problems here
-                if(tau >= 20.) {f00=DMAX(0.,DMIN(2.e-9,f00)); f11=(1.-f00)/tau;} // some limits to prevent small/large number problems here
+                if(tau <= 0.04) {f11=tau-0.5*tau*tau+tau*tau*tau/6.; f00=1.-f11;} // some limits to prevent small/large number problems here
+                if(!isfinite(f00) || !isfinite(f11)) {f00=1.; f11=0.;} // some limits to prevent small/large number problems here
+                if(tau >= 20.) {f00=DMAX(0.,DMIN(1.e-11,f00)); f11=1.-f00;} // some limits to prevent small/large number problems here
                 for(k_dir=0;k_dir<3;k_dir++)
                 {
                     double flux_0; if(mode==0) {flux_0 = SphP[i].Rad_Flux[kf][k_dir];} else {flux_0 = SphP[i].Rad_Flux_Pred[kf][k_dir];}
-                    flux_0 += vel_i[k_dir] * de_emission_minus_absorption; // add Lorentz term from net energy injected by absorption and re-emission
+                    flux_0 += vel_i[k_dir] * de_emission_minus_absorption; // add Lorentz term from net energy injected by absorption and re-emission (effectively, we operator-split this term and solve it -BEFORE- going to the next step)
                     double flux_f = flux_0 * f00 + DeltaFluxEff[k_dir] * f11; // exact solution for dE/dt = -E*abs + de , the 'reduction factor' appropriately suppresses the source term //
                     if(mode==0) {SphP[i].Rad_Flux[kf][k_dir] = flux_f;} else {SphP[i].Rad_Flux_Pred[kf][k_dir] = flux_f;}
                     f_mag += flux_f*flux_f; // magnitude of flux vector
@@ -819,6 +827,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                     if(f_mag > fmag_max) {for(k_dir=0;k_dir<3;k_dir++) {if(mode==0) {SphP[i].Rad_Flux[kf][k_dir] *= fmag_max/f_mag;} else {SphP[i].Rad_Flux_Pred[kf][k_dir] *= fmag_max/f_mag;}}}
                 }
             }
+            if(mode==0) {for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Rad_Flux_Pred[kf][k_dir] = SphP[i].Rad_Flux[kf][k_dir];}}
 #endif
             total_erad_emission_minus_absorption += de_emission_minus_absorption; // add to cumulative sum for back-reaction to gas
 #if defined(RT_EVOLVE_INTENSITIES)
