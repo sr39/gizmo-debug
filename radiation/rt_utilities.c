@@ -353,7 +353,7 @@ double rt_kappa(int i, int k_freq)
 
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION /* special test problem implementation */
-    return 0*SphP[i].Interpolated_Opacity[k_freq] + 1.* All.Dust_to_Gas_Mass_Ratio * 0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/All.Grain_Size_Max; /* enforce minimum */
+    return 1*SphP[i].Interpolated_Opacity[k_freq] + 0.001 * All.Dust_to_Gas_Mass_Ratio * 0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/All.Grain_Size_Max; /* enforce minimum */
 #endif
     return MIN_REAL_NUMBER + SphP[i].Interpolated_Opacity[k_freq]; /* this is calculated in a different routine, just return it now */
 #endif
