@@ -696,8 +696,8 @@ ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -parallel -openmp -mt_mpi 
 endif
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
-CHIMESINCL = -I/home/ajr882/sundials/include  
-CHIMESLIBS = -L/home/ajr882/sundials/lib -lsundials_cvode -lsundials_nvecserial 
+CHIMESINCL = -I/home/sundials/include  
+CHIMESLIBS = -L/home/sundials/lib -lsundials_cvode -lsundials_nvecserial 
 endif 
 GMP_INCL = #
 GMP_LIBS = #
@@ -705,8 +705,8 @@ MKL_INCL = -I$(MKLROOT)/include
 MKL_LIBS = -L$(MKLROOT)/lib/intel64 -lm -lmkl_core -lmkl_sequential -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_blacs_intelmpi_lp64
 GSL_INCL = 
 GSL_LIBS = 
-FFTW_INCL= -I/home/ajr882/libraries/fftw-2.1.5_install/include 
-FFTW_LIBS= -L/home/ajr882/libraries/fftw-2.1.5_install/lib 
+FFTW_INCL= -I/home/libraries/fftw-2.1.5_install/include 
+FFTW_LIBS= -L/home/libraries/fftw-2.1.5_install/lib 
 HDF5INCL = -DH5_USE_16_API 
 HDF5LIB  = -lhdf5 -lz
 MPICHLIB = 
