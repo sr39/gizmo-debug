@@ -745,7 +745,7 @@ void merge_particles_ij(int i, int j)
     wt_h_j = 1.0; 
 #endif 
     for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) 
-      ChimesGasVars[j].abundances[k] = (ChimesGasVars[j].abundances[k] * wt_j * wt_h_j) + (ChimesGasVars[i].abundances[k] * wt_i * wt_h_i);
+      ChimesGasVars[j].abundances[k] = (ChimesFloat) ((ChimesGasVars[j].abundances[k] * wt_j * wt_h_j) + (ChimesGasVars[i].abundances[k] * wt_i * wt_h_i));
 #endif // CHIMES 
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++)

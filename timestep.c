@@ -53,7 +53,7 @@ void set_cosmo_factors_for_current_time(void)
         /* dt_code * v_code/r_code = All.cf_hubble_a2 * dt_phys * v_phys/r_phys */
         All.cf_hubble_a2 = All.Time * All.Time * hubble_function(All.Time);
 #ifdef CHIMES 
-	ChimesGlobalVars.cmb_temperature = 2.725 / All.cf_atime; 
+	ChimesGlobalVars.cmb_temperature = (ChimesFloat) (2.725 / All.cf_atime); 
 #endif 
     }
     else

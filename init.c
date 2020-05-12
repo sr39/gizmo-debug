@@ -432,18 +432,18 @@ void init(void)
 	if (P[i].Type == 0) 
 	  {
 	    H_mass_fraction = 1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1]); 
-	    ChimesGasVars[i].element_abundances[0] = P[i].Metallicity[1] / (4.0 * H_mass_fraction);   // He 
-	    ChimesGasVars[i].element_abundances[1] = P[i].Metallicity[2] / (12.0 * H_mass_fraction);  // C 
-	    ChimesGasVars[i].element_abundances[2] = P[i].Metallicity[3] / (14.0 * H_mass_fraction);  // N 
-	    ChimesGasVars[i].element_abundances[3] = P[i].Metallicity[4] / (16.0 * H_mass_fraction);  // O 
-	    ChimesGasVars[i].element_abundances[4] = P[i].Metallicity[5] / (20.0 * H_mass_fraction);  // Ne 
-	    ChimesGasVars[i].element_abundances[5] = P[i].Metallicity[6] / (24.0 * H_mass_fraction);  // Mg 
-	    ChimesGasVars[i].element_abundances[6] = P[i].Metallicity[7] / (28.0 * H_mass_fraction);  // Si 
-	    ChimesGasVars[i].element_abundances[7] = P[i].Metallicity[8] / (32.0 * H_mass_fraction);  // S 
-	    ChimesGasVars[i].element_abundances[8] = P[i].Metallicity[9] / (40.0 * H_mass_fraction);  // Ca 
-	    ChimesGasVars[i].element_abundances[9] = P[i].Metallicity[10] / (56.0 * H_mass_fraction); // Fe 
+	    ChimesGasVars[i].element_abundances[0] = (ChimesFloat) (P[i].Metallicity[1] / (4.0 * H_mass_fraction));   // He 
+	    ChimesGasVars[i].element_abundances[1] = (ChimesFloat) (P[i].Metallicity[2] / (12.0 * H_mass_fraction));  // C 
+	    ChimesGasVars[i].element_abundances[2] = (ChimesFloat) (P[i].Metallicity[3] / (14.0 * H_mass_fraction));  // N 
+	    ChimesGasVars[i].element_abundances[3] = (ChimesFloat) (P[i].Metallicity[4] / (16.0 * H_mass_fraction));  // O 
+	    ChimesGasVars[i].element_abundances[4] = (ChimesFloat) (P[i].Metallicity[5] / (20.0 * H_mass_fraction));  // Ne 
+	    ChimesGasVars[i].element_abundances[5] = (ChimesFloat) (P[i].Metallicity[6] / (24.0 * H_mass_fraction));  // Mg 
+	    ChimesGasVars[i].element_abundances[6] = (ChimesFloat) (P[i].Metallicity[7] / (28.0 * H_mass_fraction));  // Si 
+	    ChimesGasVars[i].element_abundances[7] = (ChimesFloat) (P[i].Metallicity[8] / (32.0 * H_mass_fraction));  // S 
+	    ChimesGasVars[i].element_abundances[8] = (ChimesFloat) (P[i].Metallicity[9] / (40.0 * H_mass_fraction));  // Ca 
+	    ChimesGasVars[i].element_abundances[9] = (ChimesFloat) (P[i].Metallicity[10] / (56.0 * H_mass_fraction)); // Fe 
 
-	    ChimesGasVars[i].metallicity = P[i].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129. 
+	    ChimesGasVars[i].metallicity = (ChimesFloat) (P[i].Metallicity[0] / 0.0129);  // In Zsol. CHIMES uses Zsol = 0.0129. 
 	    ChimesGasVars[i].dust_ratio = ChimesGasVars[i].metallicity; 
 	  }
 #else 
@@ -460,7 +460,7 @@ void init(void)
 	if (P[i].Type == 0) 
 	  {
 	    H_mass_fraction = HYDROGEN_MASSFRAC; 
-	    ChimesGasVars[i].element_abundances[0] = (1.0 - H_mass_fraction) / (4.0 * H_mass_fraction);  // He 
+	    ChimesGasVars[i].element_abundances[0] = (ChimesFloat) ((1.0 - H_mass_fraction) / (4.0 * H_mass_fraction));  // He 
 	    for (j = 1; j < 10; j++) 
 	      ChimesGasVars[i].element_abundances[j] = 0.0; 
 	    ChimesGasVars[i].metallicity = 0.0; 
@@ -1011,7 +1011,7 @@ void init(void)
 	      chimes_update_gas_vars(i); 
 
 	      // Evolve the chemistry for (1 / nH) Myr (limited to 1 Gyr) ten times at fixed temperature.
-	      ChimesGasVars[i].hydro_timestep = DMIN(3.16e13 / ChimesGasVars[i].nH_tot, 3.16e16); 
+	      ChimesGasVars[i].hydro_timestep = (ChimesFloat) DMIN(3.16e13 / ChimesGasVars[i].nH_tot, 3.16e16); 
 	      ChimesGasVars[i].ThermEvolOn = 0; 
 
 	      for (iter_number = 0; iter_number < 10; iter_number++)

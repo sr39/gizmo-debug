@@ -863,6 +863,10 @@ void read_parameter_file(char *fname)
   char alternate_tag[MAXTAGS][50];
   int pnum, errorFlag = 0;
 
+#ifdef CHIMES 
+  double Tdust_buf, Tmol_buf, relTol_buf, absTol_buf, expTol_buf; 
+#endif 
+
   if(sizeof(long long) != 8)
     {
       if(ThisTask == 0)
@@ -1921,7 +1925,7 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
   
       strcpy(tag[nt], "Grain_Temperature");
-      addr[nt] = &ChimesGlobalVars.grain_temperature;
+      addr[nt] = &Tdust_buf;
       id[nt++] = REAL;
   
       strcpy(tag[nt], "CR_rate");
@@ -1929,7 +1933,7 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 
       strcpy(tag[nt], "max_mol_temperature");
-      addr[nt] = &ChimesGlobalVars.T_mol;
+      addr[nt] = &Tmol_buf;
       id[nt++] = REAL;
   
       strcpy(tag[nt], "rad_field_norm_factor");
@@ -1937,15 +1941,15 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 
       strcpy(tag[nt], "relativeTolerance");
-      addr[nt] = &ChimesGlobalVars.relativeTolerance;
+      addr[nt] = &relTol_buf;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "absoluteTolerance");
-      addr[nt] = &ChimesGlobalVars.absoluteTolerance;
+      addr[nt] = &absTol_buf;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "explicitTolerance");
-      addr[nt] = &ChimesGlobalVars.explicitTolerance;
+      addr[nt] = &expTol_buf;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "scale_metal_tolerances");
@@ -2150,6 +2154,14 @@ void read_parameter_file(char *fname)
     /* now communicate the relevant parameters to the other processes */
     MPI_Bcast(&All, sizeof(struct global_data_all_processes), MPI_BYTE, 0, MPI_COMM_WORLD);
 #ifdef CHIMES 
+    if (ThisTask == 0) 
+      {
+	ChimesGlobalVars.grain_temperature = Tdust_buf; 
+	ChimesGlobalVars.T_mol = Tmol_buf; 
+	ChimesGlobalVars.relativeTolerance = relTol_buf; 
+	ChimesGlobalVars.absoluteTolerance = absTol_buf; 
+	ChimesGlobalVars.explicitTolerance = expTol_buf; 
+      }
     MPI_Bcast(&ChimesGlobalVars, sizeof(struct globalVariables), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&ChimesDataPath, 256 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&ChimesEqAbundanceTable, 196 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);

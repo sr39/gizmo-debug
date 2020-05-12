@@ -839,12 +839,12 @@ void domain_exchange(void)
   sphBuf = (struct sph_particle_data *) mymalloc("sphBuf", count_togo_sph * sizeof(struct sph_particle_data));
 #ifdef CHIMES 
   struct gasVariables *sphChimesBuf; 
-  double *sphAbundancesBuf, *sphAbundancesRecvBuf, *tempAbundanceArray; 
+  ChimesFloat *sphAbundancesBuf, *sphAbundancesRecvBuf, *tempAbundanceArray; 
   int abunIndex; 
   sphChimesBuf = (struct gasVariables *) mymalloc("chiBuf", count_togo_sph * sizeof(struct gasVariables));
-  sphAbundancesBuf = (double *) mymalloc("abunBuf", count_togo_sph * ChimesGlobalVars.totalNumberOfSpecies * sizeof(double));
-  sphAbundancesRecvBuf = (double *) mymalloc("xRecBuf", count_get_sph * ChimesGlobalVars.totalNumberOfSpecies * sizeof(double));
-  tempAbundanceArray = (double *) malloc(ChimesGlobalVars.totalNumberOfSpecies * sizeof(double));
+  sphAbundancesBuf = (ChimesFloat *) mymalloc("abunBuf", count_togo_sph * ChimesGlobalVars.totalNumberOfSpecies * sizeof(ChimesFloat));
+  sphAbundancesRecvBuf = (ChimesFloat *) mymalloc("xRecBuf", count_get_sph * ChimesGlobalVars.totalNumberOfSpecies * sizeof(ChimesFloat));
+  tempAbundanceArray = (ChimesFloat *) malloc(ChimesGlobalVars.totalNumberOfSpecies * sizeof(ChimesFloat));
 #endif
   keyBuf = (peanokey *) mymalloc("keyBuf", count_togo * sizeof(peanokey));
 
@@ -1044,9 +1044,15 @@ void domain_exchange(void)
 			count_recv_sph[target] * sizeof(struct gasVariables), MPI_BYTE, target,
 			TAG_CHIMESDATA, MPI_COMM_WORLD, &requests[n_requests++]); 
 
+#ifdef CHIMES_USE_DOUBLE_PRECISION
 	      MPI_Irecv(sphAbundancesRecvBuf + ((offset_recv_sph[target] - offset_recv_sph[0]) * ChimesGlobalVars.totalNumberOfSpecies),
 			count_recv_sph[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_DOUBLE, target, TAG_ABUNDATA, 
 			MPI_COMM_WORLD, &requests[n_requests++]); 
+#else 
+	      MPI_Irecv(sphAbundancesRecvBuf + ((offset_recv_sph[target] - offset_recv_sph[0]) * ChimesGlobalVars.totalNumberOfSpecies),
+			count_recv_sph[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_FLOAT, target, TAG_ABUNDATA, 
+			MPI_COMM_WORLD, &requests[n_requests++]); 
+#endif
 #endif 
 	    }
 
@@ -1099,9 +1105,15 @@ void domain_exchange(void)
 	      MPI_Isend(sphChimesBuf + offset_sph[target], count_sph[target] * sizeof(struct gasVariables),
 			MPI_BYTE, target, TAG_CHIMESDATA, MPI_COMM_WORLD, &requests[n_requests++]);
 
+#ifdef CHIMES_USE_DOUBLE_PRECISION
 	      MPI_Isend(sphAbundancesBuf + (offset_sph[target] * ChimesGlobalVars.totalNumberOfSpecies), 
 			count_sph[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_DOUBLE, target, 
 			TAG_ABUNDATA, MPI_COMM_WORLD, &requests[n_requests++]);
+#else 
+	      MPI_Isend(sphAbundancesBuf + (offset_sph[target] * ChimesGlobalVars.totalNumberOfSpecies), 
+			count_sph[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_FLOAT, target, 
+			TAG_ABUNDATA, MPI_COMM_WORLD, &requests[n_requests++]);
+#endif 
 #endif 
 	    }
 
@@ -1163,11 +1175,19 @@ void domain_exchange(void)
 			   count_recv_sph[target] * sizeof(struct gasVariables), MPI_BYTE, target,
 			   TAG_CHIMESDATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
+#ifdef CHIMES_USE_DOUBLE_PRECISION
 	      MPI_Sendrecv(sphAbundancesBuf + (offset_sph[target] * ChimesGlobalVars.totalNumberOfSpecies), 
 			   count_sph[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_DOUBLE, target, TAG_ABUNDATA, 
 			   sphAbundancesRecvBuf + ((offset_recv_sph[target] - offset_recv_sph[0]) * ChimesGlobalVars.totalNumberOfSpecies), 
 			   count_recv_sph[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_DOUBLE, target, 
 			   TAG_ABUNDATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+#else 
+	      MPI_Sendrecv(sphAbundancesBuf + (offset_sph[target] * ChimesGlobalVars.totalNumberOfSpecies), 
+			   count_sph[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_FLOAT, target, TAG_ABUNDATA, 
+			   sphAbundancesRecvBuf + ((offset_recv_sph[target] - offset_recv_sph[0]) * ChimesGlobalVars.totalNumberOfSpecies), 
+			   count_recv_sph[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_FLOAT, target, 
+			   TAG_ABUNDATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+#endif 
 #endif 
 
 	      MPI_Sendrecv(keyBuf + offset_sph[target], count_sph[target] * sizeof(peanokey),
