@@ -1626,6 +1626,11 @@ void InitCool(void)
 	ChimesGlobalVars.use_redshift_dependent_eqm_tables = 0; 
       }
 
+    // Hybrid cooling has not yet been 
+    // implemented in Gizmo. Switch 
+    // it off for now. 
+    ChimesGlobalVars.hybrid_cooling_mode = 0; 
+    
     // Set the chimes_exit() function 
     // to use the Gizmo-specific 
     // chimes_gizmo_exit(). 
@@ -1781,6 +1786,10 @@ void chimes_update_gas_vars(int target)
   else 
     ChimesGasVars[target].TempFloor = (ChimesFloat) All.MinGasTemp; 
 #endif 
+
+  // Flag to control how the temperature 
+  // floor is implemented in CHIMES. 
+  ChimesGasVars[target].temp_floor_mode = 0; 
   
   // Extragalactic UV background 
   ChimesGasVars[target].isotropic_photon_density[0] = chimes_table_spectra.isotropic_photon_density[0]; 

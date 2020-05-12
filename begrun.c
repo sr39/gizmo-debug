@@ -864,7 +864,7 @@ void read_parameter_file(char *fname)
   int pnum, errorFlag = 0;
 
 #ifdef CHIMES 
-  double Tdust_buf, Tmol_buf, relTol_buf, absTol_buf, expTol_buf; 
+  double Tdust_buf, Tmol_buf, relTol_buf, absTol_buf, expTol_buf, z_reion_buf; 
 #endif 
 
   if(sizeof(long long) != 8)
@@ -1952,6 +1952,10 @@ void read_parameter_file(char *fname)
       addr[nt] = &expTol_buf;
       id[nt++] = REAL;
 
+      strcpy(tag[nt], "reionisation_redshift");
+      addr[nt] = &z_reion_buf;
+      id[nt++] = REAL;
+
       strcpy(tag[nt], "scale_metal_tolerances");
       addr[nt] = &ChimesGlobalVars.scale_metal_tolerances;
       id[nt++] = INT;
@@ -1994,6 +1998,10 @@ void read_parameter_file(char *fname)
 
       strcpy(tag[nt], "N_chimes_full_output_freq");
       addr[nt] = &N_chimes_full_output_freq;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "chimes_debug");
+      addr[nt] = &ChimesGlobalVars.chimes_debug;
       id[nt++] = INT;
 
 #ifdef CHIMES_STELLAR_FLUXES 
@@ -2161,6 +2169,7 @@ void read_parameter_file(char *fname)
 	ChimesGlobalVars.relativeTolerance = (ChimesFloat) relTol_buf; 
 	ChimesGlobalVars.absoluteTolerance = (ChimesFloat) absTol_buf; 
 	ChimesGlobalVars.explicitTolerance = (ChimesFloat) expTol_buf; 
+	ChimesGlobalVars.reionisation_redshift = (ChimesFloat) z_reion_buf; 
       }
     MPI_Bcast(&ChimesGlobalVars, sizeof(struct globalVariables), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&ChimesDataPath, 256 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
