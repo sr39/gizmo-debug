@@ -2156,11 +2156,11 @@ void read_parameter_file(char *fname)
 #ifdef CHIMES 
     if (ThisTask == 0) 
       {
-	ChimesGlobalVars.grain_temperature = Tdust_buf; 
-	ChimesGlobalVars.T_mol = Tmol_buf; 
-	ChimesGlobalVars.relativeTolerance = relTol_buf; 
-	ChimesGlobalVars.absoluteTolerance = absTol_buf; 
-	ChimesGlobalVars.explicitTolerance = expTol_buf; 
+	ChimesGlobalVars.grain_temperature = (ChimesFloat) Tdust_buf; 
+	ChimesGlobalVars.T_mol = (ChimesFloat) Tmol_buf; 
+	ChimesGlobalVars.relativeTolerance = (ChimesFloat) relTol_buf; 
+	ChimesGlobalVars.absoluteTolerance = (ChimesFloat) absTol_buf; 
+	ChimesGlobalVars.explicitTolerance = (ChimesFloat) expTol_buf; 
       }
     MPI_Bcast(&ChimesGlobalVars, sizeof(struct globalVariables), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&ChimesDataPath, 256 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
