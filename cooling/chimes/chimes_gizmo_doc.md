@@ -37,6 +37,18 @@ You will also need to update your Makefile to link against the required Sundials
 OPENMP
   The CHIMES module is compatible with multithreading using the OPENMP option. When this option is switched on, then the cooling loop, where the code loops over active gas particles and performs the chemistry and cooling, will be split between OPENMP threads. This option greatly improves the work-load balancing of the chemistry solver, because particles are dynamically distributed between threads as their chemistry is being integrated, which helps to avoid the scenario where one CPU has to integrate several particles that are much slower (e.g. if they are far from chemical equilibrium) while the remaining CPUs have already finished. In many cases you will find that the most efficient approach is to run with just one or two MPI tasks on each node, and use OPENMP to then fill the CPUs on each node with threads. 
 
+
+CHIMES Makefile Options
+-----------------------
+
+The following compiler flags can be added in the Makefile as required: 
+
+-DCHIMES_USE_DOUBLE_PRECISION 
+  The CHIMES module will be built in double precision. If this flag isn't given, CHIMES will use single precision by default. Note that the Sundials library needs to be built with the same precision as CHIMES. 
+
+-DCHIMES_ENABLE_GNU_SOURCE 
+  This will define the _GNU_SOURCE macro, which allows us to use the exp10() function from the GNU extensions. However, this option should only be used on systems that support GNU extensions. 
+
 CHIMES Config.sh Options
 ------------------------
 
