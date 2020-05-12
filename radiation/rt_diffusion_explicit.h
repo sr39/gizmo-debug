@@ -194,7 +194,6 @@
             for(k=0;k<3;k++) {cmag_flux[k] += c_light*c_light * (hlle_wtfac_f*scalar_i*ET_dot_Face_i[k] + (1.-hlle_wtfac_f)*scalar_j*ET_dot_Face_j[k]);}
 #endif
             
-            /* revisit block after testing ??? */
             /* add asymptotic-preserving correction so that numerical flux doesn't unphysically dominate in optically thick limit */
             double v_eff_light = DMIN(c_light , kappa_ij / Particle_Size_j); // physical
             c_hll = 0.5*fabs(face_vel_i-face_vel_j) + DMAX(1.,hlle_wtfac_u) * v_eff_light; // physical
@@ -206,7 +205,7 @@
 #ifdef RT_ENHANCED_NUMERICAL_DIFFUSION
             renormerFAC = 1;
 #endif
-#if !defined(RT_ENHANCED_NUMERICAL_DIFFUSION)
+#if defined(RT_ENHANCED_NUMERICAL_DIFFUSION)
             double RTopticaldepth = DMIN(Particle_Size_i,Particle_Size_j) * C_LIGHT_CODE_REDUCED / kappa_ij;
             double reductionfactor = sqrt((1.0-exp(-RTopticaldepth*RTopticaldepth))) / RTopticaldepth;
             double reducedcM1 = reductionfactor * C_LIGHT_CODE_REDUCED / sqrt(3.0);

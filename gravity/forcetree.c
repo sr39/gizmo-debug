@@ -46,7 +46,7 @@ static int last;
 
 #define ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING /* comment out to revert to behavior of taking 'greater' softening in pairwise kernel interactions with adaptive softenings enabled */
 
-/*! length of lock-up table for short-range force kernel in TreePM algorithm */
+/*! length of look-up table for short-range force kernel in TreePM algorithm */
 #define NTAB 1000
 /*! variables for short-range lookup table */
 static float shortrange_table[NTAB], shortrange_table_potential[NTAB];
@@ -85,9 +85,7 @@ extern pthread_mutex_t mutex_nexport, mutex_partnodedrift;
 #ifdef BOX_PERIODIC
 /*! Size of 3D look-up table for Ewald correction force */
 #define EN  64
-/*! 3D lock-up table for Ewald correction to force and potential. Only one
- *  octant is stored, the rest constructed by using the symmetry
- */
+/*! 3D look-up table for Ewald correction to force and potential. Only one octant is stored, the rest constructed by using the symmetry of the problem */
 static MyFloat fcorrx[EN + 1][EN + 1][EN + 1];
 static MyFloat fcorry[EN + 1][EN + 1][EN + 1];
 static MyFloat fcorrz[EN + 1][EN + 1][EN + 1];

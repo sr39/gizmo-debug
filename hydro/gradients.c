@@ -1387,8 +1387,7 @@ void hydro_gradient_calc(void)
             
 #ifdef RADTRANSFER
             {
-                int k_freq;
-                for(k_freq = 0; k_freq < N_RT_FREQ_BINS; k_freq++)
+                int k_freq; for(k_freq = 0; k_freq < N_RT_FREQ_BINS; k_freq++)
                 {
                     /* calculate the opacity */
                     SphP[i].Rad_Kappa[k_freq] = rt_kappa(i, k_freq); // physical units //
@@ -1481,11 +1480,16 @@ void hydro_gradient_calc(void)
 #if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
             for(k1=0;k1<NUM_METAL_SPECIES;k1++) {local_slopelimiter(SphP[i].Gradients.Metallicity[k1],GasGradDataPasser[i].Maxima.Metallicity[k1],GasGradDataPasser[i].Minima.Metallicity[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion), 1,d_max,P[i].Metallicity[k1]);}
 #endif
-#ifdef RT_COMPGRAD_EDDINGTON_TENSOR
+#if defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX)
             for(k1=0;k1<N_RT_FREQ_BINS;k1++)
             {
-                local_slopelimiter(SphP[i].Gradients.Rad_E_gamma_ET[k1],GasGradDataPasser[i].Maxima.Rad_E_gamma[k1],GasGradDataPasser[i].Minima.Rad_E_gamma[k1],a_limiter,h_lim,stol, 0,0,0);
+#if 0 /* stricter limiter here */
+                local_slopelimiter(SphP[i].Gradients.Rad_E_gamma_ET[k1],GasGradDataPasser[i].Maxima.Rad_E_gamma[k1],GasGradDataPasser[i].Minima.Rad_E_gamma[k1],DMAX(1.,a_limiter),DMAX(h_lim,d_max),0, 1,d_max,SphP[i].Rad_E_gamma_Pred[k1]*SphP[i].Density/P[i].Mass);
+                local_slopelimiter(GasGradDataPasser[i].Gradients_Rad_E_gamma[k1],GasGradDataPasser[i].Maxima.Rad_E_gamma[k1],GasGradDataPasser[i].Minima.Rad_E_gamma[k1],DMAX(1.,a_limiter),DMAX(h_lim,d_max),0, 1,d_max,SphP[i].Rad_E_gamma_Pred[k1]*SphP[i].Density/P[i].Mass);
+#else /* weaker limiter here [choose with current tests] */
+                local_slopelimiter(SphP[i].Gradients.Rad_E_gamma_ET[k1],GasGradDataPasser[i].Maxima.Rad_E_gamma[k1],GasGradDataPasser[i].Minima.Rad_E_gamma[k1],a_limiter,h_lim,stol, 1,d_max,SphP[i].Rad_E_gamma_Pred[k1]*SphP[i].Density/P[i].Mass);
                 local_slopelimiter(GasGradDataPasser[i].Gradients_Rad_E_gamma[k1],GasGradDataPasser[i].Maxima.Rad_E_gamma[k1],GasGradDataPasser[i].Minima.Rad_E_gamma[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion), 1,d_max,SphP[i].Rad_E_gamma_Pred[k1]*SphP[i].Density/P[i].Mass);
+#endif
             }
 #endif
 #ifdef MAGNETIC
