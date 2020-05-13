@@ -50,11 +50,7 @@ double cr_rate;
 int ChimesEqmMode, ChimesUVBMode, ChimesInitIonState, N_chimes_full_output_freq; 
 int Chimes_incl_full_output = 1; 
 #ifdef CHIMES_METAL_DEPLETION 
-#ifdef _OPENMP
-struct Chimes_depletion_data_structure ChimesDepletionData[OPENMP]; 
-#else 
-struct Chimes_depletion_data_structure ChimesDepletionData[1]; 
-#endif 
+struct Chimes_depletion_data_structure *ChimesDepletionData; 
 #endif 
 #endif 
 
@@ -1948,6 +1944,12 @@ void chimes_update_turbulent_abundances(int i, int mode)
 void chimes_init_depletion_data(void) 
 {
   int i; 
+
+#ifdef _OPENMP 
+  ChimesDepletionData = (struct Chimes_depletion_data_structure *) malloc(maxThreads * sizeof(struct Chimes_depletion_data_structure)); 
+#else 
+  ChimesDepletionData = (struct Chimes_depletion_data_structure *) malloc(sizeof(struct Chimes_depletion_data_structure)); 
+#endif 
   
   // Elements in Jenkins (2009) in the order 
   // C, N, O, Mg, Si, P, S, Cl, Ti, Cr, Mn, Fe, 
@@ -1981,17 +1983,20 @@ void chimes_init_depletion_data(void)
 				     {-0.615, -0.725, 0.69},  // Ge 
 				     {-0.166, -0.332, 0.684}}; // Kr 
   
-        i = 0;
+  int n_thread; 
 #ifdef _OPENMP
-        int n_openmp_threads = omp_get_num_threads();
-        for (i = 0; i < n_openmp_threads; i++)
-#endif
-        {
-            memcpy(ChimesDepletionData[i].SolarAbund, SolarAbund, DEPL_N_ELEM * sizeof(double));
-            memcpy(ChimesDepletionData[i].DeplPars, DeplPars, DEPL_N_ELEM * 3 * sizeof(double));
-            // DustToGasSaturated is the dust to gas ratio when F_star = 1.0, i.e. at maximum depletion onto grains.
-            ChimesDepletionData[i].DustToGasSaturated = 5.9688e-03;
-        }
+  n_thread = maxThreads; 
+#else 
+  n_thread = 1; 
+#endif 
+
+  for (i = 0; i < n_thread; i++)
+    {
+      memcpy(ChimesDepletionData[i].SolarAbund, SolarAbund, DEPL_N_ELEM * sizeof(double));
+      memcpy(ChimesDepletionData[i].DeplPars, DeplPars, DEPL_N_ELEM * 3 * sizeof(double));
+      // DustToGasSaturated is the dust to gas ratio when F_star = 1.0, i.e. at maximum depletion onto grains.
+      ChimesDepletionData[i].DustToGasSaturated = 5.9688e-03;
+    }
 }
 
 /* Computes the linear fits as in Jenkins (2009) 

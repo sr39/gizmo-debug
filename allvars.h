@@ -349,11 +349,7 @@ struct Chimes_depletion_data_structure
   double ChimesDepletionFactors[7]; 
   double ChimesDustRatio; 
 }; 
-#ifdef _OPENMP 
-extern struct Chimes_depletion_data_structure ChimesDepletionData[OPENMP]; 
-#else 
-extern struct Chimes_depletion_data_structure ChimesDepletionData[1]; 
-#endif // OPENMP 
+extern struct Chimes_depletion_data_structure *ChimesDepletionData; 
 #endif // CHIMES_METAL_DEPLETION 
 #endif // CHIMES 
 
