@@ -713,36 +713,43 @@ Below, we describe the entire contents of the `Template_Config.sh` file, in grou
 #################################################################################################### 
 #--------------------------------------- Boundary Conditions & Dimensions 
 #################################################################################################### 
-#BOX_PERIODIC               # Use this if periodic boundaries are needed (otherwise open boundaries are assumed)
+#BOX_SPATIAL_DIMENSION=3    # sets number of spatial dimensions evolved (default=3D). Switch for 1D/2D test problems: if =1, code only follows the x-line (all y=z=0), if =2, only xy-plane (all z=0). requires SELFGRAVITY_OFF
+#BOX_PERIODIC               # Use this if periodic/finite boundaries are needed (otherwise an infinite box [no boundary] is assumed)
 #BOX_BND_PARTICLES          # particles with ID=0 are forced in place (their accelerations are set =0): use for special boundary conditions where these particles represent fixed "walls"
-#BOX_LONG_X=140             # modify box dimensions (non-square periodic box): multiply X (BOX_PERIODIC and SELFGRAVITY_OFF required)
-#BOX_LONG_Y=1               # modify box dimensions (non-square periodic box): multiply Y
-#BOX_LONG_Z=1               # modify box dimensions (non-square periodic box): multiply Z
-#BOX_REFLECT_X              # make the x-boundary reflecting (assumes a box 0<x<1, unless BOX_PERIODIC is set)
-#BOX_REFLECT_Y              # make the y-boundary reflecting (assumes a box 0<y<1, unless BOX_PERIODIC is set)
-#BOX_REFLECT_Z              # make the z-boundary reflecting (assumes a box 0<z<1, unless BOX_PERIODIC is set)
 #BOX_SHEARING=1             # shearing box boundaries: 1=r-z sheet (r,z,phi coordinates), 2=r-phi sheet (r,phi,z), 3=r-phi-z box, 4=as 3, with vertical gravity
 #BOX_SHEARING_Q=(3./2.)     # shearing box q=-dlnOmega/dlnr; will default to 3/2 (Keplerian) if not set
-#BOX_SPATIAL_DIMENSION=3    # sets number of spatial dimensions evolved (default=3D). Switch for 1D/2D test problems: if =1, code only follows the x-line (all y=z=0), if =2, only xy-plane (all z=0). requires SELFGRAVITY_OFF
+#BOX_LONG_X=140             # modify box dimensions (non-square finite box): multiply X (not compatible with periodic gravity: if BOX_PERIODIC or PMGRID is active, make sure SELFGRAVITY_OFF or GRAVITY_NOT_PERIODIC is on)
+#BOX_LONG_Y=1               # modify box dimensions (non-square finite box): multiply Y
+#BOX_LONG_Z=1               # modify box dimensions (non-square finite box): multiply Z
+#BOX_REFLECT_X=0            # make the x-boundary reflecting (assumes a box 0<x<BoxSize_X, where BoxSize_X=BoxSize*BOX_LONG_X, if BOX_LONG_X is set); if no value set or =0, both x-boundaries reflect, if =-1, only lower-x (x=0) boundary reflects, if =+1, only upper-x (x=BoxSize) boundary reflects
+#BOX_REFLECT_Y              # make the y-boundary reflecting (assumes a box 0<y<BoxSize_Y); if no value set or =0, both y-boundaries reflect, if =-1, only lower-y (y=0) boundary reflects, if =+1, only upper-y (y=BoxSize) boundary reflects
+#BOX_REFLECT_Z              # make the z-boundary reflecting (assumes a box 0<z<BoxSize_Z); if no value set or =0, both z-boundaries reflect, if =-1, only lower-z (z=0) boundary reflects, if =+1, only upper-z (z=BoxSize) boundary reflects
+#BOX_OUTFLOW_X=0            # make the x-boundary outflowing (assumes a box 0<x<BoxSize_X, where BoxSize_X=BoxSize*BOX_LONG_X, if BOX_LONG_X is set); if no value set or =0, both x-boundaries outflow, if =-1, only lower-x (x=0) boundary outflows, if =+1, only upper-x (x=BoxSize) boundary outflows
+#BOX_OUTFLOW_Y              # make the y-boundary outflowing (rules follow BOX_OUTFLOW_X, for the y-axis here). note that outflow boundaries are usually not needed, with Lagrangian methods, but may be useful in special cases.
+#BOX_OUTFLOW_Z              # make the z-boundary outflowing (rules follow BOX_OUTFLOW_X, for the z-axis here)
 ####################################################################################################
 ```
 
 These options determine basic aspects of the boundary conditions and dimensionality of the problem. Because these completely change the nature of the solvers and neighbor searches, they must be set at compile (not run) time.  
 
+**BOX\_SPATIAL\_DIMENSION**: This determines how many dimensions will actually be evolved for the simulation. If not set, defaults to 3 (3D x,y,z). If set =1, the simulation will be one-dimensional, and only follow the x-line, with all $y=z=0$ ($y=z=0$ should be set in the initial conditions, or it may cause the code to crash). If set =2, the simulation will be two-dimensional, and only follow the x-y plane, with all $z=0$ (again, make sure $z=0$ is set in the initial conditions). Higher-than-three dimensional systems are not implemented (sorry, no hyper-cubes). Lower-dimensional integration only works with `SELFGRAVITY_OFF` (gravity off, or the radiation version of this). 
 
 **BOX\_PERIODIC**: set this if you want to have periodic boundary conditions.     
 
 **BOX\_BND\_PARTICLES**: If this is set, particles with a particle-ID equal to zero do not receive any hydrodynamic acceleration. This can be useful for idealized tests, where these particles represent fixed ‘walls’. They can also be modified in kicks.c to give reflecting boundary conditions. 
 
-**BOX\_LONG X/Y/Z**: These options can only be used together with `BOX_PERIODIC` and `SELFGRAVITY_OFF` (or disabling periodic gravitational forces). When set, they make the periodic simulation box rectangular with dimensions `BOX_LONG_?` times BoxSize in each of the `?=X,Y,Z` axes. 
-
-**BOX\_REFLECT X/Y/Z**: This makes the boundaries reflecting; set X/Y/Z for the appropriate of the axes you want to be reflecting, of course. If the box is open (non-periodic), then this will *assume* the box of interest stretches from 0-1 in each reflecting coordinate (the non-reflecting dimensions of the box can be anything). If the box is periodic (totally compatible, but the 'reflect' will override the 'periodic' term), the dimensions will follow the box size and LONG options set above.
-
 **BOX\_SHEARING**: This enables shearing-box boundary conditions. It should be set to different values corresponding to the type of shearing box. (=1) is a 2D un-stratified shearing-sheet in the r-z plane. note that if this is set, the output coordinates (0,1,2) correspond to (r,z,phi). (=2) is a 2D shearing sheet in the r-phi plane; coordinates (0,1,2)=(r,phi,z). (=3) is a full 3D box, (0,1,2)=(r,phi,z). (=4) is the full box but vertically stratified (with vertical gravity). 
 
 **BOX\_SHEARING\_Q**: This sets the "q" parameter for shearing boxes. q=-dln(Omega)/dln(R), =3/2 for a Keplerian disk or =1 for a constant-Vc disk. If this isn't set but `BOX_SHEARING` is, it will default to =3/2 (Keplerian).
 
-**BOX\_SPATIAL\_DIMENSION**: This determines how many dimensions will actually be evolved for the simulation. If not set, defaults to 3 (3D x,y,z). If set =1, the simulation will be one-dimensional, and only follow the x-line, with all $y=z=0$ ($y=z=0$ should be set in the initial conditions, or it may cause the code to crash). If set =2, the simulation will be two-dimensional, and only follow the x-y plane, with all $z=0$ (again, make sure $z=0$ is set in the initial conditions). Higher-than-three dimensional systems are not implemented (sorry, no hyper-cubes). This only works with `SELFGRAVITY_OFF` (gravity off, or the radiation version of this). 
+**BOX\_LONG\_X/Y/Z**: These options can be used when the boundary conditions make the box finite in extent () When set, they make the periodic simulation box rectangular with dimensions `BOX_LONG_?` times BoxSize in each of the `?=X,Y,Z` axes. 
+
+**BOX\_REFLECT\_X/Y/Z**: This makes the boundaries reflecting: set `BOX_REFLECT_?` with the appropriate `?=X,Y,Z` to make the given X, Y, or Z axes reflecting. If the box is 'open', then this will still *assume* the 'reflecting domain' to be effectively a box that stretches from location `x,y,z = 0` to `x,y,z = BoxSize_x,y,z` (the value of the `BoxSize` parameter times any appropriate `BOX_LONG` multipliers you may have enabled). If you have enabled periodic boundaries with `BOX_PERIODIC`, then this will override the periodic boundary in whatever axes you make reflecting. If you simply enable this without specifying a numerical value, or give it the value `=0` (e.g. `BOX_REFLECT_X` or `BOX_REFLECT_X=0`) then it will set *both* axis along the appropriate dimension to be reflecting (i.e. both the 'lower' `x=0` and 'upper' `x=BoxSize_x` boundary will be reflecting). If you set it to the value `=-1` (e.g. `BOX_REFLECT_X=-1`), then only the 'lower' (`x=0`) boundary along the relevant dimension will be reflecting. If you set it to the value `=1` (e.g. `BOX_REFLECT_X=1`), then only the 'upper' (`x=BoxSize_x`) boundary along the relevant dimension will be reflecting. Currently, reflecting boundaries are only implemented for the quasi-Lagrangian code methods (not fixed-grids).
+
+**BOX\_OUTFLOW\_X/Y/Z**: This makes the boundaries outflowing -- any elements which flow through a given boundary will simply be deleted from the simulation domain. The syntax here is identical to that of the `BOX_REFLECT` flags described above. Set `BOX_OUTFLOW_?` with the appropriate `?=X,Y,Z` to make the given X, Y, or Z axes outflowing. If the box is 'open', then this will still *assume* the 'outflow boundary' corresponds to either the 'lower' axis at `x,y,z = 0` or the 'upper' axis at `x,y,z = BoxSize_x,y,z` (the value of the `BoxSize` parameter times any appropriate `BOX_LONG` multipliers you may have enabled). If you have enabled periodic boundaries with `BOX_PERIODIC`, then this will override the periodic boundary in whatever axes you make outflowing. If you simply enable this without specifying a numerical value, or give it the value `=0` (e.g. `BOX_OUTFLOW_X` or `BOX_OUTFLOW_X=0`) then it will set *both* axis along the appropriate dimension to be outflowing (i.e. both the 'lower' `x=0` and 'upper' `x=BoxSize_x` boundary will be outflowing). If you set it to the value `=-1` (e.g. `BOX_OUTFLOW_X=-1`), then only the 'lower' (`x=0`) boundary along the relevant dimension will be outflowing. If you set it to the value `=1` (e.g. `BOX_REFLECT_X=1`), then only the 'upper' (`x=BoxSize_x`) boundary along the relevant dimension will be outflowing. Currently, outflow boundaries are only implemented for the quasi-Lagrangian code methods (not fixed-grids). Note that in many circumstances, there is no actual need for a formal outflow boundary condition -- since the code is Lagrangian, resolution elements can simply expand outwards in e.g. simulations with outflows to infinity, and if the densities are low at infinity, their timesteps will usually be long as well (making it negligible in CPU cost to 'retain' said elements). But in some cases, this can be useful for either physical or numerical reasons.
+
+
+
 
 
 <a name="config-hydro"></a>
@@ -1682,7 +1689,7 @@ These models also involve their own parameterfile settings, in addition to those
 
 **BH\_HII\_HEATING**: Turn on to enable BH photo-ionization feedback. This requires `GALSF_FB_FIRE_RT_HIIHEATING` (the stellar photo-ionization feedback module) is also enabled. Then photo-ionization is treated from the BH identically to that from the stars, modulo the shape and magnitude of the ionizing spectrum, which is calculated for the BH luminosity following the empirical quasar spectral templates in Hopkins, Richards, & Hernquist 2007. This uses the FIRE HII-heating algorithms and implementation (Hopkins et al., arXiv:1702.06148), so its use follows FIRE policies -- it is proprietary and not free-to-use even for users of the development code, without explicit permissions from the FIRE collaboration [see notes above for the FIRE modules in the stellar feedback section].
 
-**BH\_PHOTONMOMENTUM**: Turn on to enable BH radiation pressure feedback. This follows the mechanisms used to couple stellar radiation pressure to the gas, but with additional corrections for the non-isotropic geometry of the BH accretion disk and obscuration from the torus region, including single-scattering at the dust sublimation radius and IR scattering outside this; this follows the fitting functions taken directly from full radiative transfer calculations by N. Roth (private communication, but see Roth et al. 2012, arXiv:1204.0063, for details). You can set the strength of this mechanism in the parameterfile separately from the other BH feedback mechanisms with the multiplier `BH_FluxMomentumFactor` (default =1). This uses the FIRE radiation pressure algorithms and implementation (Hopkins et al., arXiv:1702.06148), so its use follows FIRE policies -- it is proprietary and not free-to-use even for users of the development code, without explicit permissions from the FIRE collaboration [see notes above for the FIRE modules in the stellar feedback section].
+**BH\_PHOTONMOMENTUM**: Turn on to enable BH radiation pressure feedback. This follows the mechanisms used to couple stellar radiation pressure to the gas, but with additional corrections for the non-isotropic geometry of the BH accretion disk and obscuration from the torus region, including single-scattering at the dust sublimation radius and IR scattering outside this; this follows the fitting functions taken directly from full radiative transfer calculations by N. Roth (private communication, but see Roth et al. 2012, arXiv:1204.0063, for details). You can set the strength of this mechanism in the parameterfile separately from the other BH feedback mechanisms with the multiplier `BH_Rad_MomentumFactor` (default =1). This uses the FIRE radiation pressure algorithms and implementation (Hopkins et al., arXiv:1702.06148), so its use follows FIRE policies -- it is proprietary and not free-to-use even for users of the development code, without explicit permissions from the FIRE collaboration [see notes above for the FIRE modules in the stellar feedback section].
 
 **BH\_COSMIC\_RAYS**: Turn on to enable BH feedback via cosmic rays, with explicit CR transport. Requires `COSMIC_RAYS` and appropriate choices there for CR transport. Also requires one of the BH mechanical feedback modules. CRs will be coupled alongside mechanical energy, with specified efficiency (so you can make it 'pure' CR by making mechanical energy weak, CRs large). From then on, trated as 'normal' CRs.
 
@@ -2591,7 +2598,7 @@ These parameters control the stellar feedback models developed in the series of 
     BlackHoleRadiativeEfficiency 0.1        % radiative efficiency (for accretion and feedback)
     %--- feedback 
     BlackHoleFeedbackFactor      1.0	    % generic feedback strength multiplier 
-    BH_FluxMomentumFactor        1.0	    % multiply radiation pressure (BH_PHOTONMOMENTUM) 
+    BH_Rad_MomentumFactor        1.0	    % multiply radiation pressure (BH_PHOTONMOMENTUM) 
     BAL_f_accretion              0.5        % fraction of gas swallowed by BH (BH_WIND options)
     BAL_v_outflow                30000	    % velocity (code units) of BAL outflow (BH_WIND options)
     BAL_internal_temperature     1.0e4      % internal temperature (K) of BAL outflow (BH_WIND_SPAWN)
@@ -2628,7 +2635,7 @@ These parameters control the sub-grid models for super-massive black holes, enab
 
 **BlackHoleFeedbackFactor**: Multiplier for the strength of all BH feedback mechanisms (whatever is enabled, the energy/momentum will be scaled by this factor relative to its 'default' which corresponds to values =1). You can set this =0 to turn off BH feedback.
 
-**BH\_FluxMomentumFactor**: This serves the same role as BlackHoleFeedbackFactor, specific to the radiation pressure terms from the BH. Currently this is separated just for de-bugging purposes.
+**BH\_FluxMomentumFactor** or **BH\_Rad_MomentumFactor**: (Either name here produces the same functionality). This serves the same role as BlackHoleFeedbackFactor, specific to the radiation pressure terms from the BH. Currently this is separated just for de-bugging purposes.
 
 **BAL\_f\_accretion**/**BAL\_v\_outflow**: These control the model for accretion disk or broad-absorption line winds from the BH (compiler flags beginning with `BH_WINDS`). `BAL_f_accretion` controls the mass-loading of the winds: a fraction `BAL_f_accretion` of the mass in the inner accretion disk is assumed to be accreted, while (`1-BAL_f_accretion`) is blown out in the wind, with launch velocity `BAL_v_outflow` in km/s. See the Config.sh discussion, or the `notes_blackholes` file, for more details. 
 
@@ -4049,7 +4056,7 @@ Yes, lots of them! See the sections of this User Guide on [Initial Conditions (M
 
 Read the [Snapshot & Initial Condition Files](#snaps) section, as well as the description of the relevant `Config.sh` flags you have enabled in [Config.sh (Setting compile-time options)](#config), where most of the outputs are described. If you cannot find it, search the source code, in `io.c` you can find the map between the HDF5 variable name and what is actually written out. 
 
-Example: if you are using radiation-hydrodynamics, and see the variable `PhotonEnergy` in your HDF5 file, search this in `io.c` to see it is associated with the case `IO_RADGAMMA` (the switch for whether or not this variable is written out to a file), so search that and you see it is writing out a vector with `N_RT_FREQ_BINS` entries per particle, representing the different radiation frequency bins followed in the code in the same order, and writing out the variable `SphP[pindex].E_gamma[k]` -- the absolute energy of the radiation field (in code units) at frequency `k` associated with gas resolution element `pindex`. 
+Example: if you are using radiation-hydrodynamics, and see the variable `PhotonEnergy` in your HDF5 file, search this in `io.c` to see it is associated with the case `IO_RADGAMMA` (the switch for whether or not this variable is written out to a file), so search that and you see it is writing out a vector with `N_RT_FREQ_BINS` entries per particle, representing the different radiation frequency bins followed in the code in the same order, and writing out the variable `SphP[pindex].Rad_E_gamma[k]` -- the absolute energy of the radiation field (in code units) at frequency `k` associated with gas resolution element `pindex`. 
 
 <a name="faqs-units"></a>
 ## What are the Code Units?

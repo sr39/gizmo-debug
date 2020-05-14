@@ -12,20 +12,22 @@
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 /* --------------------------------------------------------------------------------- */
+int k_CRegy;
+for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
 {
     double cosmo_unit = All.cf_a3inv;
-    double scalar_i = local.CosmicRayPressure * cosmo_unit; // physical units
-    double scalar_j = CosmicRayPressure_j * cosmo_unit;
-    double kappa_i = fabs(local.CosmicRayDiffusionCoeff); // physical units
-    double kappa_j = fabs(SphP[j].CosmicRayDiffusionCoeff);
+    double scalar_i = local.CosmicRayPressure[k_CRegy] * cosmo_unit; // physical units
+    double scalar_j = CosmicRayPressure_j[k_CRegy] * cosmo_unit;
+    double kappa_i = fabs(local.CosmicRayDiffusionCoeff[k_CRegy]); // physical units
+    double kappa_j = fabs(SphP[j].CosmicRayDiffusionCoeff[k_CRegy]);
     double d_scalar = scalar_i - scalar_j;
     
     if(((kappa_i>0)||(kappa_j>0))&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>0)&&(Face_Area_Norm>0)&&(dt_hydrostep>0))
     {
 #ifndef COSMIC_RAYS_M1
         // NOT SPH: Now we use the more accurate finite-volume formulation, with the effective faces we have already calculated //
-        double *grad_i = local.Gradients.CosmicRayPressure; // units = E/[L_comoving^4]
-        double *grad_j = SphP[j].Gradients.CosmicRayPressure;
+        double *grad_i = local.Gradients.CosmicRayPressure[k_CRegy]; // units = E/[L_comoving^4]
+        double *grad_j = SphP[j].Gradients.CosmicRayPressure[k_CRegy];
         double flux_wt = 1;
         double diffusion_wt = 0.5*(kappa_i+kappa_j);
         int do_isotropic = 1;
@@ -44,13 +46,13 @@
 #endif
             // negative coefficient is used here as shorthand for a particle being a local extremum in CR density.
             //  in this case we use a zeroth-order estimate for the flux: more diffusive, but needed to get the gradients resolved
-            if((local.CosmicRayDiffusionCoeff<0)||(SphP[j].CosmicRayDiffusionCoeff<0)) {grad_ij[k] = q_direct;}
+            if((local.CosmicRayDiffusionCoeff[k_CRegy]<0)||(SphP[j].CosmicRayDiffusionCoeff[k_CRegy]<0)) {grad_ij[k] = q_direct;}
         }
         
         double grad_mag = 0.0;
         for(k=0;k<3;k++) {grad_mag += grad_ij[k]*grad_ij[k];}
         if(grad_mag > 0) {grad_mag = sqrt(grad_mag);} else {grad_mag=MIN_REAL_NUMBER;}
-        if((local.CosmicRayDiffusionCoeff<0)||(SphP[j].CosmicRayDiffusionCoeff<0)) // codes for local maximum: need lower-order gradient estimator
+        if((local.CosmicRayDiffusionCoeff[k_CRegy]<0)||(SphP[j].CosmicRayDiffusionCoeff[k_CRegy]<0)) // codes for local maximum: need lower-order gradient estimator
         {
             double gmag_a=0,gmag_b=0,g0=grad_mag*grad_mag;
             for(k=0;k<3;k++) {gmag_a += grad_i[k]*grad_i[k]; gmag_b += grad_j[k]*grad_j[k];}
@@ -81,7 +83,7 @@
         cmag /= All.cf_atime; // cmag has units of [E/(L_phys*L_comoving)] -- convert to physical
         
         double check_for_stability_sign = 1; /* if we are using the zeroth-order method, no HLL flux, etc is needed */
-        if((local.CosmicRayDiffusionCoeff>=0)&&(SphP[j].CosmicRayDiffusionCoeff>=0))
+        if((local.CosmicRayDiffusionCoeff[k_CRegy]>=0)&&(SphP[j].CosmicRayDiffusionCoeff[k_CRegy]>=0))
         {
             /* obtain HLL correction terms for Reimann problem solution */
             double d_scalar_tmp = d_scalar - grad_dot_x_ij; // both in physical units
@@ -103,15 +105,15 @@
         if(fabs(diffusion_wt) > 0)
         {
             // enforce a flux limiter for stability (to prevent overshoot) //
-            double CR_egy_i = local.CosmicRayPressure*V_i / GAMMA_COSMICRAY_MINUS1; // (E_cr = Volume * (Pressure/GAMMA_COSMICRAY_MINUS1)) - this is physical units //
-            double CR_egy_j = CosmicRayPressure_j*V_j / GAMMA_COSMICRAY_MINUS1;
+            double CR_egy_i = local.CosmicRayPressure[k_CRegy]*V_i / GAMMA_COSMICRAY_MINUS1; // (E_cr = Volume * (Pressure/GAMMA_COSMICRAY_MINUS1)) - this is physical units //
+            double CR_egy_j = CosmicRayPressure_j[k_CRegy]*V_j / GAMMA_COSMICRAY_MINUS1;
             double prefac_duij = 0.25, flux_multiplier = 1;
-            if((local.CosmicRayDiffusionCoeff<0)||(SphP[j].CosmicRayDiffusionCoeff<0)) {prefac_duij = 0.05;}
+            if((local.CosmicRayDiffusionCoeff[k_CRegy]<0)||(SphP[j].CosmicRayDiffusionCoeff[k_CRegy]<0)) {prefac_duij = 0.05;}
             double du_ij_cond = prefac_duij * DMAX(DMIN( fabs(CR_egy_i-CR_egy_j) , DMAX(CR_egy_i , CR_egy_j)) , DMIN(CR_egy_i , CR_egy_j));
             if(diffusion_wt > 0) {du_ij_cond=DMIN(du_ij_cond,0.25*CR_egy_j);} else {du_ij_cond=DMIN(du_ij_cond,0.25*CR_egy_i);} // prevent flux from creating negative values //
             if(fabs(diffusion_wt)>du_ij_cond) {flux_multiplier = du_ij_cond/fabs(diffusion_wt);}
             diffusion_wt *= flux_multiplier;
-            Fluxes.CosmicRayPressure += diffusion_wt / dt_hydrostep; // physical units, as needed
+            Fluxes.CosmicRayPressure[k_CRegy] += diffusion_wt / dt_hydrostep; // physical units, as needed
         } // if(diffusion_wt > 0)
         
         
@@ -122,7 +124,7 @@
         for(k=0;k<3;k++)
         {
             /* the flux is already known (its explicitly evolved, rather than determined by the gradient of the energy density */
-            flux_i[k] = local.CosmicRayFlux[k]/V_i_phys; flux_j[k] = SphP[j].CosmicRayFlux[k]/V_j_phys; // this needs to be in physical units
+            flux_i[k] = local.CosmicRayFlux[k_CRegy][k]/V_i_phys; flux_j[k] = SphP[j].CosmicRayFlux[k_CRegy][k]/V_j_phys; // this needs to be in physical units
             double flux_ij = 0.5*(flux_i[k] + flux_j[k]); flux_norm += flux_ij*flux_ij;
             cmag += Face_Area_Vec[k] * flux_ij; // remember, our 'flux' variable is a volume-integral; physical units here//
         }
@@ -176,7 +178,7 @@
             if(sign_c0 < 0) {thold_hll *= 0.001;} // if opposing signs, restrict this term //
             if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
             cmag /= dt_hydrostep;
-            Fluxes.CosmicRayPressure = cmag; // physical, as it needs to be
+            Fluxes.CosmicRayPressure[k_CRegy] = cmag; // physical, as it needs to be
         } // cmag != 0
         
 #ifdef COSMIC_RAYS_ALFVEN
@@ -191,16 +193,16 @@
         if(flux_tmp[k_j_to_i]*dt_hydrostep > +0.5) {flux_tmp[k_j_to_i] = +0.5/dt_hydrostep;}
         if(flux_tmp[k_i_to_j]*dt_hydrostep < -0.5) {flux_tmp[k_i_to_j] = -0.5/dt_hydrostep;}
         // now just assign these fluxes: written lengthily here to prevent any typos, but trivial assignment //
-        Fluxes.CosmicRayAlfvenEnergy[k_j_to_i] += flux_tmp[k_j_to_i] * SphP[j].CosmicRayAlfvenEnergyPred[k_j_to_i];
-        Fluxes.CosmicRayAlfvenEnergy[k_i_to_j] += flux_tmp[k_i_to_j] * local.CosmicRayAlfvenEnergy[k_i_to_j];
-        for(k=0;k<2;k++) {out.DtCosmicRayAlfvenEnergy[k] += Fluxes.CosmicRayAlfvenEnergy[k];}
-        if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {SphP[j].DtCosmicRayAlfvenEnergy[k] -= Fluxes.CosmicRayAlfvenEnergy[k];}}
+        Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_j_to_i] += flux_tmp[k_j_to_i] * SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k_j_to_i];
+        Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_i_to_j] += flux_tmp[k_i_to_j] * local.CosmicRayAlfvenEnergy[k_CRegy][k_i_to_j];
+        for(k=0;k<2;k++) {out.DtCosmicRayAlfvenEnergy[k_CRegy][k] += Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}
+        if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= Fluxes.CosmicRayAlfvenEnergy[k_CR_egy][k];}}
 #endif
         
 #endif // COSMIC_RAYS_M1
     } // close check that kappa and particle masses are positive
     // actually assign the fluxes //
-    out.DtCosmicRayEnergy += Fluxes.CosmicRayPressure;
-    if(j_is_active_for_fluxes) {SphP[j].DtCosmicRayEnergy -= Fluxes.CosmicRayPressure;}
+    out.DtCosmicRayEnergy[k_CRegy] += Fluxes.CosmicRayPressure[k_CRegy];
+    if(j_is_active_for_fluxes) {SphP[j].DtCosmicRayEnergy[k_CRegy] -= Fluxes.CosmicRayPressure[k_CRegy];}
 }
 #endif // COSMIC_RAYS

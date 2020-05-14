@@ -184,10 +184,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     int *ip_int;
     float *fp_single;
     integertime dt_step;
-    
-#ifdef BOX_PERIODIC
-    MyFloat boxSize;
-#endif
+
 #ifdef PMGRID
     double dt_gravkick_pm = 0;
 #endif
@@ -242,12 +239,12 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     {
                         fp_pos[k] = P[pindex].Pos[k];
 #ifdef BOX_PERIODIC
-                        boxSize = All.BoxSize;
-                        if(k==0) {boxSize = boxSize_X;}
-                        if(k==1) {boxSize = boxSize_Y;}
-                        if(k==2) {boxSize = boxSize_Z;}
-                        while(fp_pos[k] < 0) {fp_pos[k] += boxSize;}
-                        while(fp_pos[k] >= boxSize) {fp_pos[k] -= boxSize;}
+                        double box_length_xyz;
+                        if(k==0) {box_length_xyz = boxSize_X;}
+                        if(k==1) {box_length_xyz = boxSize_Y;}
+                        if(k==2) {box_length_xyz = boxSize_Z;}
+                        while(fp_pos[k] < 0) {fp_pos[k] += box_length_xyz;}
+                        while(fp_pos[k] >= box_length_xyz) {fp_pos[k] -= box_length_xyz;}
 #endif
                     }
                     n++;
@@ -597,10 +594,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < NUM_METAL_SPECIES; k++)
-                    {
-                        fp[k] = P[pindex].Metallicity[k];
-                    }
+                    for(k=0;k<NUM_METAL_SPECIES;k++) {fp[k] = P[pindex].Metallicity[k];}
                     fp += NUM_METAL_SPECIES;
                     n++;
                 }
@@ -665,7 +659,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for (n = 0; n < pc; pindex++)
                 if (P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,PPP[pindex].Hsml,P[pindex].DensAroundStar,PPP[pindex].NumNgb,0,pindex) * 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm));  // g cm^-2
+                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,PPP[pindex].Hsml,P[pindex].DensAroundStar,PPP[pindex].NumNgb,0,pindex) * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm));  // g cm^-2
                     n++;
                 }
 #endif 
@@ -913,7 +907,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = SphP[pindex].CosmicRayEnergyPred;
+                    for(k=0;k<N_CR_PARTICLE_BINS;k++) {fp[k] = SphP[pindex].CosmicRayEnergyPred[k];}
+                    fp += N_CR_PARTICLE_BINS;
                     n++;
                 }
 #endif
@@ -925,7 +920,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = SphP[pindex].CosmicRayDiffusionCoeff;
+                    for(k=0;k<N_CR_PARTICLE_BINS;k++) {fp[k] = SphP[pindex].CosmicRayDiffusionCoeff[k];}
+                    fp += N_CR_PARTICLE_BINS;
                     n++;
                 }
 #endif
@@ -937,8 +933,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 2; k++)
-                        *fp++ = SphP[pindex].CosmicRayAlfvenEnergyPred[k];
+                    for(k=0;k<2;k++) {int k2; for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {fp[N_CR_PARTICLE_BINS*k + k2] = SphP[pindex].CosmicRayAlfvenEnergyPred[k2][k];}}
+                    fp += 2*N_CR_PARTICLE_BINS;
                     n++;
                 }
 #endif
@@ -1498,7 +1494,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 if(P[pindex].Type == type)
                 {
                     for(k = 0; k < N_RT_FREQ_BINS; k++)
-                        fp[k] = SphP[pindex].E_gamma[k];
+                        fp[k] = SphP[pindex].Rad_E_gamma[k];
                     
                     n++;
                     fp += N_RT_FREQ_BINS;
@@ -1511,7 +1507,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 3; k++) {fp[k] = SphP[pindex].RadAccel[k];}                    
+                    for(k = 0; k < 3; k++) {fp[k] = SphP[pindex].Rad_Accel[k];}                    
                     n++;
                     fp += 3;
                 }
@@ -1877,8 +1873,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_STRESSBULK:
         case IO_SHEARCOEFF:
         case IO_TSTP:
-        case IO_COSMICRAY_ENERGY:
-        case IO_COSMICRAY_KAPPA:
         case IO_DIVB:
         case IO_VRMS:
         case IO_VRAD:
@@ -1949,11 +1943,24 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = sizeof(MyOutputFloat);
             break;
             
-        case IO_COSMICRAY_ALFVEN:
+
+        case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_KAPPA:
+#ifdef COSMIC_RAYS
             if(mode)
-                bytes_per_blockelement = 2 * sizeof(MyInputFloat);
+                bytes_per_blockelement = (N_CR_PARTICLE_BINS) * sizeof(MyInputFloat);
             else
-                bytes_per_blockelement = 2 * sizeof(MyOutputFloat);
+                bytes_per_blockelement = (N_CR_PARTICLE_BINS) * sizeof(MyOutputFloat);
+#endif
+            break;
+
+        case IO_COSMICRAY_ALFVEN:
+#ifdef COSMIC_RAYS_ALFVEN
+            if(mode)
+                bytes_per_blockelement = (2 * N_CR_PARTICLE_BINS) * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = (2 * N_CR_PARTICLE_BINS) * sizeof(MyOutputFloat);
+#endif
             break;
 
         case IO_IMF:
@@ -1968,9 +1975,9 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_RADGAMMA:
 #ifdef RADTRANSFER
             if(mode)
-                bytes_per_blockelement = N_RT_FREQ_BINS * sizeof(MyInputFloat);
+                bytes_per_blockelement = (N_RT_FREQ_BINS) * sizeof(MyInputFloat);
             else
-                bytes_per_blockelement = N_RT_FREQ_BINS * sizeof(MyOutputFloat);
+                bytes_per_blockelement = (N_RT_FREQ_BINS) * sizeof(MyOutputFloat);
 #endif
             break;
             
@@ -2174,8 +2181,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_VRAD:
         case IO_VDIV:
         case IO_VROT:
-        case IO_COSMICRAY_ENERGY:
-        case IO_COSMICRAY_KAPPA:
         case IO_DIVB:
         case IO_ABVC:
         case IO_AMDC:
@@ -2242,8 +2247,19 @@ int get_values_per_blockelement(enum iofields blocknr)
             values = 1;
             break;
 
+        case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_KAPPA:
+            values = 0;
+#ifdef COSMIC_RAYS
+            values = N_CR_PARTICLE_BINS;
+#endif
+            break;
+
         case IO_COSMICRAY_ALFVEN:
             values = 2;
+#ifdef COSMIC_RAYS_ALFVEN
+            values = (2*N_CR_PARTICLE_BINS);
+#endif
             break;
 
         case IO_CBE_MOMENTS:
@@ -4006,7 +4022,7 @@ void get_dataset_name(enum iofields blocknr, char *buf)
 	  strcpy(buf, "SigmaEff"); 
 	  break; 
         case IO_CHIMES_FLUX_G0: 
-	  strcpy(buf, "ChimesFluxG0"); 
+	  strcpy(buf, "ChimesFluxG0");
 	  break; 
         case IO_CHIMES_FLUX_ION: 
 	  strcpy(buf, "ChimesFluxIon"); 

@@ -105,7 +105,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif // MAGNETIC //
 
 #ifdef RT_SOLVER_EXPLICIT
-    double tau_c_i[N_RT_FREQ_BINS]; for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Kappa_RT[k]*local.Density*All.cf_a3inv;}
+    double tau_c_i[N_RT_FREQ_BINS]; for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Rad_Kappa[k]*local.Density*All.cf_a3inv;}
 #endif
     
     /* --------------------------------------------------------------------------------- */
@@ -184,12 +184,10 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #ifdef BOX_SHEARING
                 /* in a shearing box, need to set dv appropriately for the shearing boundary conditions */
                 MyDouble VelPred_j[3]; for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
-                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+                NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,VelPred_j,-1); /* wrap velocities for shearing boxes if needed */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 MyDouble ParticleVel_j[3]; for(k=0;k<3;k++) {ParticleVel_j[k]=SphP[j].VelPred[k];}
-                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {ParticleVel_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {ParticleVel_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+                NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,ParticleVel_j,-1); /* wrap velocities for shearing boxes if needed */
 #endif
 #else
                 /* faster to just set a pointer directly */
@@ -209,7 +207,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 kernel.sound_j = Particle_effective_soundspeed_i(j);
                 kernel.vsig = kernel.sound_i + kernel.sound_j;
 #ifdef COSMIC_RAYS
-                double CosmicRayPressure_j = Get_Particle_CosmicRayPressure(j); /* compute this for use below */
+                double CosmicRayPressure_j[N_CR_PARTICLE_BINS]; for(k=0;k<N_CR_PARTICLE_BINS;k++) {CosmicRayPressure_j[k] = Get_Particle_CosmicRayPressure(j,k);} /* compute this for use below */
                 //double Streaming_Loss_Term = 0; // alternative evaluation of streaming+diffusion losses: still experimental //
 #endif
 #ifdef MAGNETIC
@@ -360,7 +358,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif 
                 
 #ifdef COSMIC_RAYS
-#include "../galaxy_sf/cosmic_ray_diffusion.h"
+#include "../eos/cosmic_ray_fluid/cosmic_ray_diffusion.h"
 #endif
                 
 #ifdef RT_SOLVER_EXPLICIT
