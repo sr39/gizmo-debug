@@ -205,7 +205,7 @@
 #ifdef RT_ENHANCED_NUMERICAL_DIFFUSION
             renormerFAC = 1;
 #endif
-#if defined(RT_ENHANCED_NUMERICAL_DIFFUSION)
+#if !defined(RT_ENHANCED_NUMERICAL_DIFFUSION)
             double RTopticaldepth = DMIN(Particle_Size_i,Particle_Size_j) * C_LIGHT_CODE_REDUCED / kappa_ij;
             double reductionfactor = sqrt((1.0-exp(-RTopticaldepth*RTopticaldepth))) / RTopticaldepth;
             double reducedcM1 = reductionfactor * C_LIGHT_CODE_REDUCED / sqrt(3.0);
@@ -214,8 +214,12 @@
             hll_corr = 1. / (1. + 1.5 * v_eff_light * DMAX(Particle_Size_j/kappa_j , Particle_Size_i/kappa_i));
             q = 0.5 * c_hll * (kernel.r * All.cf_atime) / fabs(MIN_REAL_NUMBER + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q);
             renormerFAC = DMIN(1.,fabs(cos_theta_face_flux*cos_theta_face_flux * q * hll_corr));
-#endif
 
+            double scalar_jr=scalar_j, scalar_ir=scalar_i, d_scalar_hll=d_scalar, d_scalar_ij=0;
+            for(k=0;k<3;k++) {scalar_jr+=0.5*kernel.dp[k]*local.Gradients.Rad_E_gamma_ET[k_freq][k]; scalar_ir-=0.5*kernel.dp[k]*SphP[j].Gradients.Rad_E_gamma_ET[k_freq][k];}
+            d_scalar_ij=scalar_ir-scalar_jr; if((d_scalar_ij*d_scalar>0)&&(fabs(d_scalar_ij)<fabs(d_scalar))) {d_scalar_hll=d_scalar_ij;}
+            d_scalar = d_scalar_hll;
+#endif
 
             /* flux-limiter to ensure flow is always down the local gradient [no 'uphill' flow] */
             double f_direct = -Face_Area_Norm * c_hll * d_scalar * renormerFAC; // simple HLL term for frame moving at 1/2 inter-particle velocity: here not limited [physical units] //
