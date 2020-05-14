@@ -14,7 +14,7 @@
  This module contains the self-contained sub-routines needed for
  grain-specific physics in proto-planetary/proto-stellar/planetary cases,
  GMC and ISM/CGM/IGM dust dynamics, dust dynamics in cool-star atmospheres,
- winds, and SNe remnants, as well as terrestrial turbulance and
+ winds, and SNe remnants, as well as terrestrial turbulence and
  particulate-laden turbulence. Anywhere where particles coupled to gas
  via coulomb, aerodynamic, or lorentz forces are interesting.
   
