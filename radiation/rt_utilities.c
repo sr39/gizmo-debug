@@ -479,7 +479,7 @@ double rt_absorb_frac_albedo(int i, int k_freq)
 {
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
-    return 1.e-6;
+    return DMAX(1.e-6,DMIN(1.0-1.e-6,(1.0*GRAIN_RDI_TESTPROBLEM_SET_ABSFRAC)));
 #endif
     return 0.5; /* appropriate for single-scattering (e.g. ISM dust at optical wavelengths) */
     //return 1.-1.e-6; /* appropriate for multiple-scattering at far-IR (wavelength much longer than dust size) */
@@ -990,7 +990,7 @@ void rt_set_simple_inits(int RestartFlag)
                 
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
                 double q_a=0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/All.Grain_Size_Max, e0=All.Vertical_Grain_Accel/q_a, kappa0=All.Dust_to_Gas_Mass_Ratio*q_a;
-                e0 *= 1.e-3 * (P[i].Mass/SphP[i].Density) * exp(-kappa0*(1.-exp(-P[i].Pos[2]))); // attenuate according to equilibrium expectation, if we're using single-scattering radiation pressure [otherwise comment this line out] //
+                e0 *= (P[i].Mass/SphP[i].Density) * exp(-kappa0*(1.-exp(-P[i].Pos[2]))); // attenuate according to equilibrium expectation, if we're using single-scattering radiation pressure [otherwise comment this line out] //
                 SphP[i].Rad_E_gamma_Pred[k]=SphP[i].Rad_E_gamma[k]=e0;
 #if defined(RT_EVOLVE_FLUX)
                 SphP[i].Rad_Flux_Pred[k][2]=SphP[i].Rad_Flux[k][2] = e0*C_LIGHT_CODE_REDUCED;
