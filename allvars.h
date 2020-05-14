@@ -613,7 +613,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 
 /* check if we need to explicitly calculate gradients of the radiation pressure tensor for the diffusive step */
-#if ((defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_FORCES) || defined(RT_SOLVER_EXPLICIT)) && !defined(RT_COMPGRAD_EDDINGTON_TENSOR) //&& !defined(RT_EVOLVE_FLUX) && !defined(RT_EVOLVE_INTENSITIES)) 
+#if (defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_FORCES) || defined(RT_SOLVER_EXPLICIT)) && !defined(RT_COMPGRAD_EDDINGTON_TENSOR) //&& !defined(RT_EVOLVE_FLUX) && !defined(RT_EVOLVE_INTENSITIES)) 
 #define RT_COMPGRAD_EDDINGTON_TENSOR
 #endif
 
