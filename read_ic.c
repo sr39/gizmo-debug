@@ -402,8 +402,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 
         case IO_BHDUSTMASS:
 #if defined(BLACK_HOLES) && defined(GRAIN_FLUID)
-            for(n = 0; n < pc; n++)
-                P[offset + n].BH_Dust_Mass = *fp++;
+            for(n = 0; n < pc; n++) {P[offset + n].BH_Dust_Mass = *fp++;}
 #endif
             break;
 
@@ -498,7 +497,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             
         case IO_RADGAMMA:
 #ifdef RADTRANSFER
-            for(n = 0; n < pc; n++) {for(k = 0; k < N_RT_FREQ_BINS; k++) {SphP[offset + n].E_gamma[k] = *fp++;}}
+            for(n = 0; n < pc; n++) {for(k = 0; k < N_RT_FREQ_BINS; k++) {SphP[offset + n].Rad_E_gamma[k] = *fp++;}}
 #endif
             break;
             
@@ -538,13 +537,17 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 
         case IO_COSMICRAY_ENERGY:
 #ifdef COSMIC_RAYS            
-             for(n = 0; n < pc; n++) {SphP[offset + n].CosmicRayEnergy = *fp++;}
+            for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {SphP[offset + n].CosmicRayEnergy[k] = *fp++;}}
 #endif
             break;
 
         case IO_COSMICRAY_ALFVEN:
 #ifdef COSMIC_RAYS_ALFVEN
-            for(n = 0; n < pc; n++) {for(k = 0; k < 2; k++) {SphP[offset + n].CosmicRayAlfvenEnergy[k] = *fp++;}}
+            for(n = 0; n < pc; n++) {
+                int k2; for(k=0;k<2;k++) {for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {
+                        SphP[offset + n].CosmicRayAlfvenEnergy[k2][k] = fp[N_CR_PARTICLE_BINS*k + k2];}}
+                fp += 2*N_CR_PARTICLE_BINS;
+            }
 #endif
             break;
 

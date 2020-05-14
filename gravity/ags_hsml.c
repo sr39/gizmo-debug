@@ -201,10 +201,7 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
                             kernel.dv[1] = local.Vel[1] - P[j].Vel[1];
                             kernel.dv[2] = local.Vel[2] - P[j].Vel[2];
                         }
-#ifdef BOX_SHEARING
-                        if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {kernel.dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-                        if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {kernel.dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-#endif
+                        NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,kernel.dv,1); /* wrap velocities for shearing boxes if needed */
                         double v_dot_r = kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2];
                         if(v_dot_r > 0) {v_dot_r *= 0.333333;} // receding elements don't signal strong change in forces in the same manner as approaching/converging particles
                         double vsig = 0.5 * fabs( fac_mu * v_dot_r / kernel.r );

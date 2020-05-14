@@ -1227,6 +1227,10 @@ ifeq (RT_,$(findstring RT_,$(CONFIGVARS)))
 OBJS	+= radiation/rt_utilities.o radiation/rt_CGmethod.o radiation/rt_source_injection.o radiation/rt_chem.o radiation/rt_cooling.o
 endif
 
+ifeq (COSMIC_RAYS,$(findstring COSMIC_RAYS,$(CONFIGVARS)))
+OBJS	+= eos/cosmic_ray_fluid/cosmic_ray_alfven.o eos/cosmic_ray_fluid/cosmic_ray_utilities.o 
+endif
+
 ifeq (SUBFIND,$(findstring SUBFIND,$(CONFIGVARS)))
 OBJS	+=  structure/subfind/subfind.o \
 			structure/subfind/subfind_vars.o \

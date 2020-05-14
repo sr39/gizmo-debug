@@ -17,7 +17,7 @@
 #ifdef GALSF
 
 
-/* return the (solar-scaled) light-to-mass ratio of an SSP with a given age; used throughout the code */
+/* return the light-to-mass ratio [in units of Lsun/Msun] of an SSP with a given age; used throughout the code */
 double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i)
 {
     double lum=1; if(stellar_age_in_gyr < 0.01) {lum=1000;} // default to a dumb imf-averaged 'young/high-mass' vs 'old/low-mass' distinction 

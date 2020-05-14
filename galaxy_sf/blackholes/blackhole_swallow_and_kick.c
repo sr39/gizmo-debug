@@ -197,10 +197,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                 j = ngblist[n]; MyIDType OriginallyMarkedSwallowID; OriginallyMarkedSwallowID = P[j].SwallowID; // record this to help prevent double-counting below
                 double dpos[3]={0},dvel[3]={0}; for(k=0;k<3;k++) {dpos[k]=P[j].Pos[k]-local.Pos[k]; dvel[k]=P[j].Vel[k]-local.Vel[k];}
                 NEAREST_XYZ(dpos[0],dpos[1],dpos[2],-1); /*  find the closest image in the given box size  */
-#ifdef BOX_SHEARING
-                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dvel[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dvel[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-#endif
+                NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dvel,-1); /* wrap velocities for shearing boxes if needed */
 
 #if defined(BH_RETURN_ANGMOM_TO_GAS) || defined(BH_RETURN_BFLUX)
                 double wk, dwk, u=0;
@@ -349,10 +346,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
                         double v_kick=All.BAL_v_outflow, dir[3]; for(k=0;k<3;k++) {dir[k]=dpos[k];} // DAA: default direction is radially outwards
 #if defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
-                        double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * C_LIGHT_CODE*C_LIGHT_CODE; SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
-#ifdef COSMIC_RAYS_M1
-                        dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dEcr*dir[k]; SphP[j].CosmicRayFluxPred[k]+=dEcr*dir[k];}
-#endif
+                        double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * C_LIGHT_CODE*C_LIGHT_CODE;
+                        inject_cosmic_rays(dEcr,All.BAL_v_outflow,5,j,dir);
 #endif
 #if (BH_WIND_KICK < 0)  /* DAA: along polar axis defined by angular momentum within Kernel (we could add finite opening angle) work out the geometry w/r to the plane of the disk */
                         if((dir[0]*J_dir[0] + dir[1]*J_dir[1] + dir[2]*J_dir[2]) > 0){for(k=0;k<3;k++) {dir[k]=J_dir[k];}} else {for(k=0;k<3;k++) {dir[k]=-J_dir[k];}}
@@ -393,15 +388,12 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                         if(local.BH_angle_weighted_kernel_sum<=0) mom_wt=0;
                                 
 #ifdef BH_PHOTONMOMENTUM /* inject radiation pressure: add initial L/c optical/UV coupling to the gas at the dust sublimation radius */
-                        double v_kick = All.BH_FluxMomentumFactor * mom_wt * mom / P[j].Mass;
+                        double v_kick = All.BH_Rad_MomentumFactor * mom_wt * mom / P[j].Mass;
                         for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k];}
 #endif
 #if defined(BH_COSMIC_RAYS) && defined(BH_WIND_CONTINUOUS) /* inject cosmic rays alongside continuous wind injection */
                         double dEcr = All.BH_CosmicRay_Injection_Efficiency * mom_wt * C_LIGHT_CODE*C_LIGHT_CODE * local.Mdot*local.Dt;
-                        SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
-#ifdef COSMIC_RAYS_M1
-                        dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dEcr*dir[k]; SphP[j].CosmicRayFluxPred[k]+=dEcr*dir[k];}
-#endif
+                        inject_cosmic_rays(dEcr,All.BAL_v_outflow,5,j,dir);
 #endif
 #if defined(BH_WIND_CONTINUOUS) && !defined(BH_WIND_KICK) /* inject BAL winds, this is the more standard smooth feedback model */
                         double m_wind = mom_wt * (1-All.BAL_f_accretion)/(All.BAL_f_accretion) * local.Mdot*local.Dt; /* mass to couple */
@@ -784,9 +776,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #ifdef RADTRANSFER
         for(k=0;k<N_RT_FREQ_BINS;k++)
         {
-            SphP[j].E_gamma[k] = 0;
+            SphP[j].Rad_E_gamma[k] = 0;
 #if defined(RT_EVOLVE_ENERGY)
-            SphP[j].E_gamma_Pred[k] = 0; SphP[j].Dt_E_gamma[k] = 0;
+            SphP[j].Rad_E_gamma_Pred[k] = 0; SphP[j].Dt_Rad_E_gamma[k] = 0;
 #endif
         }
 #endif        
@@ -798,7 +790,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
 #endif
 #ifdef COSMIC_RAYS
-        SphP[j].CosmicRayEnergyPred = SphP[j].CosmicRayEnergy = 0; SphP[j].DtCosmicRayEnergy = 0; /* add CR energy here if desired */
+        int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {SphP[j].CosmicRayEnergyPred[k_CRegy] = SphP[j].CosmicRayEnergy[k_CRegy] = SphP[j].DtCosmicRayEnergy[k_CRegy] = 0;} /* add CR energy here if desired */
 #endif
         
         /* now set the real hydro variables. */
@@ -865,10 +857,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 
 #if defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
         double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * C_LIGHT_CODE*C_LIGHT_CODE;
-        SphP[j].CosmicRayEnergy=dEcr; SphP[j].CosmicRayEnergyPred=dEcr;
-#ifdef COSMIC_RAYS_M1
-        dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]=dEcr*(veldir[0]*jx[k]+veldir[1]*jy[k]+veldir[2]*jz[k]); SphP[j].CosmicRayFluxPred[k]=SphP[j].CosmicRayFlux[k];}
-#endif
+        inject_cosmic_rays(dEcr,All.BAL_v_outflow,5,j,veldir);
 #endif
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
         force_add_star_to_tree(i0, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */

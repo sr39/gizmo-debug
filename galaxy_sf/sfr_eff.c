@@ -82,11 +82,11 @@ void assign_imf_properties_from_starforming_gas(int i)
 #endif
     double rad_flux_uv = 1;
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
-    rad_flux_uv = SphP[i].RadFluxUV;
+    rad_flux_uv = SphP[i].Rad_Flux_UV;
 #endif
     double cr_energy_density = 0;
 #ifdef COSMIC_RAYS
-    cr_energy_density = SphP[i].CosmicRayEnergyPred * SphP[i].Density * All.cf_a3inv / P[i].Mass;
+    int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {cr_energy_density += SphP[i].CosmicRayEnergyPred[k_CRegy] * SphP[i].Density * All.cf_a3inv / P[i].Mass;}
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     P[i].IMF_FormProps[0] = P[i].min_dist_to_bh; // min distance to nearest sink particle

@@ -224,10 +224,7 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
                     double wt = P[j].Mass;
                     double dP[3], dv[3]; for(k=0;k<3;k++) {dP[k]=P[j].Pos[k]-local.Pos[k]; dv[k]=P[j].Vel[k]-local.Vel[k];}
                     NEAREST_XYZ(dP[0],dP[1],dP[2],-1); /*  find the closest image in the given box size  */
-#ifdef BOX_SHEARING
-                    if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                    if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-#endif
+                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dv,-1); /* wrap velocities for shearing boxes if needed */
 
 #ifdef BH_DYNFRICTION
 #if (BH_DYNFRICTION == 1)    // DAA: dark matter + stars
@@ -435,10 +432,7 @@ int blackhole_environment_second_evaluate(int target, int mode, int *exportflag,
                 j = ngblist[n]; if((P[j].Mass <= 0)||(P[j].Hsml <= 0)||(P[j].Type==5)) {continue;} /* make sure neighbor is valid */
                 int k; double dP[3], dv[3]; for(k=0;k<3;k++) {dP[k]=P[j].Pos[k]-local.Pos[k]; dv[k]=P[j].Vel[k]-local.Vel[k];} /* position offset */
                 NEAREST_XYZ(dP[0],dP[1],dP[2],-1);
-#ifdef BOX_SHEARING
-                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-#endif
+                NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dv,-1); /* wrap velocities for shearing boxes if needed */
                 double J_tmp[3]; J_tmp[0]=dP[1]*dv[2]-dP[2]*dv[1]; J_tmp[1]=dP[2]*dv[0]-dP[0]*dv[2]; J_tmp[2]=dP[0]*dv[1]-dP[1]*dv[0]; /* just need direction not magnitude */
                 if(P[j].Type==0) {if(J_tmp[0]*local.Jgas_in_Kernel[0] + J_tmp[1]*local.Jgas_in_Kernel[1] + J_tmp[2]*local.Jgas_in_Kernel[2] < 0) {out.MgasBulge_in_Kernel += 2*P[j].Mass;}} /* DAA: assume the bulge component contains as many particles with positive azimuthal velocities as with negative azimuthal velocities relative to the angular momentum vector */
                 if(P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn))) {if(J_tmp[0]*local.Jstar_in_Kernel[0] + J_tmp[1]*local.Jstar_in_Kernel[1] + J_tmp[2]*local.Jstar_in_Kernel[2] < 0) {out.MstarBulge_in_Kernel += 2*P[j].Mass;}}

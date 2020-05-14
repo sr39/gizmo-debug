@@ -166,10 +166,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                 {
                     for(k=0;k<3;k++) {dpos[k] = P[j].Pos[k] - local.Pos[k]; dvel[k]=P[j].Vel[k]-local.Vel[k];}
                     NEAREST_XYZ(dpos[0],dpos[1],dpos[2],-1); r2=0; for(k=0;k<3;k++) {r2 += dpos[k]*dpos[k];}
-#ifdef BOX_SHEARING
-                    if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dvel[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                    if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dvel[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-#endif
+                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dvel,-1); /* wrap velocities for shearing boxes if needed */
                     if(r2 < h_i2 || r2 < PPP[j].Hsml*PPP[j].Hsml)
                     {
                         vrel=0; for(k=0;k<3;k++) {vrel += dvel[k]*dvel[k];}

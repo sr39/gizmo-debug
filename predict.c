@@ -218,7 +218,7 @@ void drift_particle(int i, integertime time1)
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
             for(j = 0; j < 3; j++)
-                SphP[i].VelPred[j] += SphP[i].RadAccel[j] * All.cf_atime * dt_hydrokick;
+                SphP[i].VelPred[j] += SphP[i].Rad_Accel[j] * All.cf_atime * dt_hydrokick;
 #endif
             
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -227,7 +227,21 @@ void drift_particle(int i, integertime time1)
             
             SphP[i].Density *= exp(-divv_fac);
             double etmp = SphP[i].InternalEnergyPred + SphP[i].DtInternalEnergy * dt_entr;
+#if defined(RADTRANSFER) && defined(RT_EVOLVE_ENERGY) /* block here to deal with tricky cases where radiation energy density is -much- larger than thermal */ 
+            int kfreq; double erad_tot=0,tot_e_min=0,enew=0,int_e_min=0,dErad=0; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad_tot+=SphP[i].Rad_E_gamma_Pred[kfreq];}
+            if(erad_tot > 0)
+            {
+                int_e_min=0.025*SphP[i].InternalEnergyPred; tot_e_min=0.025*(erad_tot+SphP[i].InternalEnergyPred*P[i].Mass);
+                enew=DMAX(erad_tot+etmp*P[i].Mass,tot_e_min);
+                etmp=(enew-erad_tot)/P[i].Mass; if(etmp<int_e_min) {dErad=etmp-int_e_min; etmp=int_e_min;}
+                if(dErad<-0.975*erad_tot) {dErad=-0.975*erad_tot;}
+                SphP[i].InternalEnergyPred = etmp; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {SphP[i].Rad_E_gamma_Pred[kfreq] *= 1 + dErad/erad_tot;}
+            } else {
+                if(etmp<0.5*SphP[i].InternalEnergyPred) {SphP[i].InternalEnergyPred *= 0.5;} else {SphP[i].InternalEnergyPred=etmp;}
+            }
+#else
             if(etmp<0.5*SphP[i].InternalEnergyPred) {SphP[i].InternalEnergyPred *= 0.5;} else {SphP[i].InternalEnergyPred=etmp;}
+#endif
             if(SphP[i].InternalEnergyPred<All.MinEgySpec) SphP[i].InternalEnergyPred=All.MinEgySpec;
             
 #ifdef HYDRO_PRESSURE_SPH
@@ -247,38 +261,9 @@ void drift_particle(int i, integertime time1)
             SphP[i].Pressure = get_pressure(i);
         }
     
-    /* check for reflecting boundaries: if so, do the reflection! */
-#if defined(BOX_REFLECT_X) || defined(BOX_REFLECT_Y) || defined(BOX_REFLECT_Z)
-    double box_upper[3]; box_upper[0]=box_upper[1]=box_upper[2]=1;
-#ifdef BOX_PERIODIC
-    box_upper[0]=boxSize_X; box_upper[1]=boxSize_Y; box_upper[2]=boxSize_Z;
-#endif
-    for(j = 0; j < 3; j++)
-    {
-        /* skip the non-reflecting boundaries */
-#ifndef BOX_REFLECT_X
-        if(j==0) continue;
-#endif
-#ifndef BOX_REFLECT_Y
-        if(j==1) continue;
-#endif
-#ifndef BOX_REFLECT_Z
-        if(j==2) continue;
-#endif
-        if(P[i].Pos[j] <= 0)
-        {
-            if(P[i].Vel[j]<0) {P[i].Vel[j]=-P[i].Vel[j]; if(P[i].Type==0) {SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;}}
-            P[i].Pos[j]=(0+((double)P[i].ID)*1.e-9)*box_upper[j];
-        }
-        if(P[i].Pos[j] >= box_upper[j])
-        {
-            if(P[i].Vel[j]>0) {P[i].Vel[j]=-P[i].Vel[j]; if(P[i].Type==0) {SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;}}
-            P[i].Pos[j]=box_upper[j]*(1-((double)P[i].ID)*1.e-9);
-        }
-    }
-#endif
+    /* check for reflecting or outflow or otherwise special boundaries: if so, do the reflection/boundary! */
+    apply_special_boundary_conditions(i,P[i].Mass,0);
 
-    
     P[i].Ti_current = time1;
 }
 
