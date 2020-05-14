@@ -1935,7 +1935,7 @@ void chimes_update_turbulent_abundances(int i, int mode)
   else 
     { 
       for (k_species = 0; k_species < ChimesGlobalVars.totalNumberOfSpecies; k_species++) 
-	SphP[i].ChimesNIons[k_species] = (ChimesFloat) (ChimesGasVars[i].abundances[k_species] * NHtot); 
+	SphP[i].ChimesNIons[k_species] = ((double) ChimesGasVars[i].abundances[k_species]) * NHtot; 
     }
 }
 #endif // CHIMES_TURB_DIFF_IONS 
