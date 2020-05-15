@@ -237,7 +237,7 @@ void restart(int modus)
 		}
 
 	      /* Abundance buffer */
-	      byten(&sphAbundancesBuf[0], N_gas * ChimesGlobalVars.totalNumberOfSpecies * sizeof(double), modus);
+	      byten(&sphAbundancesBuf[0], N_gas * ChimesGlobalVars.totalNumberOfSpecies * sizeof(ChimesFloat), modus);
 	      /* GasVars */
 	      byten(&ChimesGasVars[0], N_gas * sizeof(struct gasVariables), modus);
 			  
