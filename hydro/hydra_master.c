@@ -783,9 +783,10 @@ void hydro_final_operations_and_cleanup(void)
             double radacc[3],fluxcorr; radacc[0]=radacc[1]=radacc[2]=0;  int kfreq;
             for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++)
             {
-                double vol_inv = SphP[i].Density*All.cf_a3inv/P[i].Mass, f_kappa_abs = rt_absorb_frac_albedo(i,kfreq), vel_i[3], vdot_h[3], flux_i[3], flux_mag=0, erad_i=0, flux_corr=1, work_band=0;
-                erad_i = SphP[i].Rad_E_gamma_Pred[kfreq]*vol_inv; for(k=0;k<3;k++) {flux_i[k]=SphP[i].Rad_Flux_Pred[kfreq][k]*vol_inv; vel_i[k]=SphP[i].VelPred[k]/All.cf_atime; vdot_h[k]=vel_i[k]*erad_i*(1. + SphP[i].ET[kfreq][k]); flux_mag+=flux_i[k]*flux_i[k];}
-                vdot_h[0] += erad_i*(vel_i[1]*SphP[i].ET[kfreq][3] + vel_i[2]*SphP[i].ET[kfreq][5]); vdot_h[1] += erad_i*(vel_i[0]*SphP[i].ET[kfreq][3] + vel_i[2]*SphP[i].ET[kfreq][4]); vdot_h[2] += erad_i*(vel_i[0]*SphP[i].ET[kfreq][5] + vel_i[1]*SphP[i].ET[kfreq][4]);
+                double vol_inv = SphP[i].Density*All.cf_a3inv/P[i].Mass, f_kappa_abs = rt_absorb_frac_albedo(i,kfreq), vel_i[3]={0}, vdot_h[3]={0}, flux_i[3]={0}, flux_mag=0, erad_i=0, flux_corr=1, work_band=0;
+                erad_i = SphP[i].Rad_E_gamma_Pred[kfreq]*vol_inv;
+                for(k=0;k<3;k++) {flux_i[k]=SphP[i].Rad_Flux_Pred[kfreq][k]*vol_inv; vel_i[k]=SphP[i].VelPred[k]/All.cf_atime; flux_mag+=flux_i[k]*flux_i[k];}
+                eddington_tensor_dot_vector(SphP[i].ET[kfreq],vel_i,vdot_h); for(k=0;k<3;k++) {vdot_h[k] = erad_i * (vel_i[k] + vdot_h[k]);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term. this is the P term //
                 double flux_thin = erad_i * C_LIGHT_CODE_REDUCED; if(flux_mag>0) {flux_mag=sqrt(flux_mag);} else {flux_mag=1.e-20*flux_thin;}
                 flux_corr = DMIN(1., flux_thin/flux_mag);
 #if defined(RT_ENABLE_R15_GRADIENTFIX)
@@ -810,10 +811,7 @@ void hydro_final_operations_and_cleanup(void)
 #endif
 #ifdef RT_RADPRESSURE_IN_HYDRO
             int kfreq; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {
-                double fac = (1./3.) * SphP[i].Rad_E_gamma_Pred[kfreq] * P[i].Particle_DivVel*All.cf_a2inv * (1.-2.*rt_absorb_frac_albedo(i,kfreq));
-#ifdef RT_FLUXLIMITER
-                fac *= SphP[i].Rad_Flux_Limiter[kfreq]; // apply flux-limiter
-#endif
+                double fac = (1./3.) * return_flux_limiter(i,kfreq) * SphP[i].Rad_E_gamma_Pred[kfreq] * P[i].Particle_DivVel*All.cf_a2inv * (1.-2.*rt_absorb_frac_albedo(i,kfreq));
                 SphP[i].Dt_Rad_E_gamma[kfreq] -= fac; SphP[i].DtInternalEnergy += fac / P[i].Mass; /* exact energy conservation */
             }
 #endif
