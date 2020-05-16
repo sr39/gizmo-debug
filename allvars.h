@@ -275,6 +275,7 @@
 #undef PROTECT_FROZEN_FIRE  /* undefine protections to test new code */
 #undef GALSF_SFR_VIRIAL_SF_CRITERION 
 #define GALSF_SFR_VIRIAL_SF_CRITERION 4 /*! sink-particle like self-gravity requirement for star formation: slightly more sophisticated version per Mike */
+#define GALSF_SFR_VIRIAL_CONTINUOUS_THOLD /*! continuous behavior through virial threshold */
 #endif
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
 #else

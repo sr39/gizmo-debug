@@ -209,172 +209,134 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
 /* Routine to actually determine the SFR assigned to an individual gas particle at each time */
 double get_starformation_rate(int i)
 {
-    double rateOfSF,tsfr,y; y=0;
-    int flag;
-#ifdef GALSF_EFFECTIVE_EQS
-    double factorEVP, egyhot, ne, tcool, x, cloudmass;
-#endif
+    double rateOfSF,tsfr,y; y=0; int flag=1, j, k; /* flag to proceed to SFR calc */
+    if(P[i].Mass <= 0 || SphP[i].Density <= 0) {flag=0;} /* zero-mass elements [for deletion] not eligible for SF */
 #ifdef GALSF_SUBGRID_WINDS
-    if(SphP[i].DelayTime > 0) return 0;
+    if(SphP[i].DelayTime > 0) {flag=0;} /* 'decoupled' wind elements not eligible for SF */
 #endif
-    
 #ifdef BH_WIND_SPAWN
-    if(P[i].ID == All.AGNWindID) return 0;
+    if(P[i].ID == All.AGNWindID) {flag=0;} /* spawned hyper-resolution elements not eligible for SF */
 #endif
-
-    flag = 1;			/* default is normal cooling */
-    if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh) {flag = 0;}
+    if(All.ComovingIntegrationOn && SphP[i].Density < All.OverDensThresh) {flag=0;} /* below overdensity threshold required for SF */
+    if(SphP[i].Density*All.cf_a3inv < All.PhysDensThresh) {flag=0;} /* below physical density threshold */
 #if (GALSF_SFR_VIRIAL_SF_CRITERION>=3)
-    else {SphP[i].AlphaVirial_SF_TimeSmoothed = 0.;}
+    if(flag==0) {SphP[i].AlphaVirial_SF_TimeSmoothed=0;} /* for time-smoothed virial param, reset to nil if fall below threshold */
 #endif
-    if(All.ComovingIntegrationOn)
-    if(SphP[i].Density < All.OverDensThresh)
-    flag = 1;
-    if((flag == 1)||(P[i].Mass<=0))
-    return 0;
-#if (GALSF_SFR_VIRIAL_SF_CRITERION>=3)
-    double dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval;
-    double dtime = dt / All.cf_hubble_a; /*  the actual time-step */
+    tsfr = sqrt(All.PhysDensThresh / (SphP[i].Density * All.cf_a3inv)) * All.MaxSfrTimescale; /* set default SFR timescale to scale appropriately with the gas dynamical time */
+    rateOfSF = P[i].Mass / tsfr; /* 'normal' sfr from density law above */
+    if(tsfr<=0 || rateOfSF <= 0) {return 0;} /* nonsense here, return 0 */
+    
+#ifdef GALSF_EFFECTIVE_EQS /* do the SFR calc for the Springel-Hernquist EOS, before any 'fancy' sf criteria, when above-threshold, or else risk incorrect entropies */
+    double factorEVP = pow(SphP[i].Density * All.cf_a3inv / All.PhysDensThresh, -0.8) * All.FactorEVP; /* evaporation factor */
+    double egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold; /* specific energy of hot [volume-filling] phase gas */
+    double tcool = GetCoolingTime(egyhot, SphP[i].Density * All.cf_a3inv, SphP[i].Ne, i); /* cooling time of two-phase mix */
+    y = tsfr / tcool * egyhot / (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold); /* parameter */
+    double cloudmass = (1 + 1 / (2 * y) - sqrt(1 / y + 1 / (4 * y * y))) * P[i].Mass; /* quasi-equilibrium mass in cold phase */
+    rateOfSF = (1 - All.FactorSN) * cloudmass / tsfr; /* SFR given by cold mass (less SNe-entrainment fraction) divided by tSFR */
+    update_internalenergy_for_galsf_effective_eos(i,tcool,tsfr,x,rateOfSF); /* updates entropies for the effective equation-of-state */
 #endif
-    tsfr = sqrt(All.PhysDensThresh / (SphP[i].Density * All.cf_a3inv)) * All.MaxSfrTimescale;
-    if(tsfr<=0) return 0;
     
+    /* compute various velocity-gradient terms which are potentially used in the various criteria below */
+    double dv2abs=0, divv=0, gradv[9]={0}, cs_eff=0, vA=0, v_fast=0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
+    cs_eff = Particle_effective_soundspeed_i(i); /* standard effective soundspeed */
+#ifdef MAGNETIC
+    double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(i,k)*All.cf_a2inv*Get_Particle_BField(i,k)*All.cf_a2inv;}
+    if(bmag > 0) {vA = sqrt(bmag / (MIN_REAL_NUMBER + SphP[i].Density*All.cf_a3inv));} /* calculate Alfven speed for use below */
+#endif
+    v_fast = sqrt(cs_eff*cs_eff + vA*vA); /* calculate fast magnetosonic speed for use below */
+    for(j=0;j<3;j++) {
+        for(k=0;k<3;k++) {
+            double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
+            if(All.ComovingIntegrationOn) {if(j==k) {vt += All.cf_hubble_a;}} /* add hubble-flow correction */
+            gradv[3*j + k]=vt; dv2abs+=vt*vt; if(j==k) {divv+=vt;} // save for possible use below
+        }}
+#ifdef SINGLE_STAR_SINK_FORMATION
+#if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) || defined(EOS_GMC_BAROTROPIC) // if we have to deal with optically-thick thermo
+    double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam) / PROTONMASS;
+    if(nHcgs > 1e13) {v_fast = DMIN(v_fast, 2e4/All.UnitVelocity_in_cm_per_s);}  //1.62e5/All.UnitVelocity_in_cm_per_s); // limiter to permit sink formation in simulations that really resolve the opacity limit and bog down when an optically-thick core forms. Modify this if you want to follow first collapse more/less - scale as c_s ~ n^(1/5)
+#endif
+#endif
     
-#ifndef GALSF_EFFECTIVE_EQS
-    /* 'normal' sfr from density law above */
-    rateOfSF = P[i].Mass / tsfr;
-#else
-    factorEVP = pow(SphP[i].Density * All.cf_a3inv / All.PhysDensThresh, -0.8) * All.FactorEVP;
-    egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold;
-    ne = SphP[i].Ne;
-    tcool = GetCoolingTime(egyhot, SphP[i].Density * All.cf_a3inv, ne, i);
-    y = tsfr / tcool * egyhot / (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold);
-    x = 1 + 1 / (2 * y) - sqrt(1 / y + 1 / (4 * y * y));
-    cloudmass = x * P[i].Mass;
-    rateOfSF = (1 - All.FactorSN) * cloudmass / tsfr;
+#ifdef GALSF_SFR_VIRIAL_SF_CRITERION  /* apply standard virial-parameter criteria here */
+    double k_cs = v_fast / (Get_Particle_Size(i)*All.cf_atime), alpha_crit = 1.0; /* effective wavenumber for thermal+B-field+CR+whatever internal energy support, and threshold virial parameter */
+#ifdef SINGLE_STAR_SINK_FORMATION
+    k_cs *= M_PI; /* use the more conservative version of the wavenumber here, in the highly-resolved limit */
+#endif
+    dv2abs += 2.*k_cs*k_cs; // account for thermal+magnetic pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
+    double alpha_vir = dv2abs / (8. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 -- going more careful here using 1/8 //
+#if (GALSF_SFR_VIRIAL_SF_CRITERION >= 3) /* compute and prepare to use our time-rolling average virial criterion */
+    double dtime = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; /* the physical time-step */
+    double alpha_0=1./(1.+alpha_vir), dtau=DMIN(1.,DMAX(0.,exp(-(DMIN(DMAX(8.*dtime/tsfr,0.),20.))))); /* dimensionless units for below */
+    SphP[i].AlphaVirial_SF_TimeSmoothed = DMIN(DMAX(SphP[i].AlphaVirial_SF_TimeSmoothed * dtau + alpha_0 * (1.-dtau) , 1.e-10), 1.); /* update rolling time-averaged virial parameter */
+    alpha_vir = 1./SphP[i].AlphaVirial_SF_TimeSmoothed - 1.; /* use the rolling average below */
+#endif
+#if (GALSF_SFR_VIRIAL_SF_CRITERION <= 1) && !defined(GALSF_SFR_VIRIAL_CONTINUOUS_THOLD) /* 'weakest' mode: reduce [do not zero] SFR if above alpha_crit, and not -too- dense */
+    if((alpha_vir>alpha_crit) && (SphP[i].Density*All.cf_a3inv<100.*All.PhysDensThresh)) {rateOfSF *= 0.0015;} /* PFH: note the 100x threshold limit here is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! */
+#endif
+#if (GALSF_SFR_VIRIAL_SF_CRITERION > 1) && !defined(GALSF_SFR_VIRIAL_CONTINUOUS_THOLD) /* 'normal' mode: zero SF if don't meet virial threshold */
+    if(alpha_vir>alpha_crit) {rateOfSF=0;} /* simple 'hard' threshold here */
+#endif
+#if defined(GALSF_SFR_VIRIAL_CONTINUOUS_THOLD) /* Padoan-style semi-continuous SF as a function of alpha_vir */
+    double avir_coeff = DMIN(DMAX(sqrt(DMAX(0.,alpha_vir)),0.),22.); /* limit the values of sqrt(alpha_vir) here since we'll take an exponential so don't want a nan */
+    rateOfSF *= exp(-1.4 * avir_coeff); /* continuous cutoff of rateOfSF with increasing virial parameter as ~exp[-1.4*sqrt(alpha_vir)] */
+#endif
+#endif
     
-    update_internalenergy_for_galsf_effective_eos(i,tcool,tsfr,x,rateOfSF); // updates entropies for the effective equation-of-state //
-#endif // GALSF_EFFECTIVE_EQS
-
-    
-#ifdef GALSF_SFR_MOLECULAR_CRITERION
-    /* Krumholz & Gnedin fitting function for f_H2 as a function of local properties */
+#ifdef GALSF_SFR_MOLECULAR_CRITERION /* Krumholz & Gnedin fitting function for f_H2 as a function of local properties */
     double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i);
-    tau_fmol *= (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]);
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(GALSF_SFR_VIRIAL_SF_CRITERION)
-#if (GALSF_SFR_VIRIAL_SF_CRITERION < 0)
-    if(SphP[i].Density*All.cf_a3inv > 100.*All.PhysDensThresh) {tau_fmol=-1;} // PFH: note the this is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
-#endif
-#endif
+    tau_fmol *= 434.78 * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam * (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]);
     if(tau_fmol>0) {
-        tau_fmol *= 434.78 * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam;
         y = 0.756 * (1 + 3.1*pow(P[i].Metallicity[0]/All.SolarAbundances[0],0.365));
-        y = log(1 + 0.6*y + 0.01*y*y) / (0.6*tau_fmol);
-        y = 1 - 0.75*y/(1 + 0.25*y);
-        if(y<0) y=0; if(y>1) y=1;
-        rateOfSF *= y;
-    } // if(tau_fmol>0)
-#endif // GALSF_SFR_MOLECULAR_CRITERION
-
-    
+        y = log(1 + 0.6*y + 0.01*y*y) / (0.6*tau_fmol); y = 1 - 0.75*y/(1 + 0.25*y);
+        rateOfSF *= DMIN(1,DMAX(0,y));}
+#endif
 #ifdef CHIMES_SFR_MOLECULAR_CRITERION
     rateOfSF *= DMIN(1,DMAX(0,ChimesGasVars[i].abundances[H2] * 2.0)); /* This is similar to GALSF_SFR_MOLECULAR_CRITERION, except that the H2 fraction is taken from the CHIMES network. */
 #endif
     
-    
-#ifdef GALSF_SFR_VIRIAL_SF_CRITERION
-    int j,k; double dv2abs=0, divv=0, gradv[9]={0}; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
-    for(j=0;j<3;j++)
-    {
-        for(k=0;k<3;k++)
-        {
-            double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
-            if(All.ComovingIntegrationOn) {if(j==k) {vt += All.cf_hubble_a;}} /* add hubble-flow correction */
-            gradv[3*j + k] = vt; // save for possible use below
-            if(j==k) {divv += vt;} // save for possible use below
-            dv2abs += vt*vt; // save for possible use below
-        }
-    }
-    /* add thermal support, although it is almost always irrelevant on large scales */
-    double cs_eff = Particle_effective_soundspeed_i(i);    
-    double k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
-    
-#ifdef SINGLE_STAR_SINK_FORMATION    
-#ifdef MAGNETIC
-    double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
-    cs_eff = sqrt(cs_eff*cs_eff + bmag/SphP[i].Density);
+#if (SINGLE_STAR_SINK_FORMATION & 2) || (GALSF_SFR_VIRIAL_SF_CRITERION >= 3) /* restrict to convergent flows */
+    if(divv >= 0) {rateOfSF=0;} /* diverging flow, no SF */
 #endif
-#if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) || defined(EOS_GMC_BAROTROPIC) // if we have to deal with optically-thick thermo
-    double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
-    if(nHcgs > 1e13) { cs_eff = DMIN(cs_eff, 2e4/All.UnitVelocity_in_cm_per_s);}  //1.62e5/All.UnitVelocity_in_cm_per_s); // limiter to permit sink formation in simulations that really resolve the opacity limit and bog down when an optically-thick core forms. Modify this if you want to follow first collapse more/less - scale as c_s ~ n^(1/5) 
+
+#if (GALSF_SFR_VIRIAL_SF_CRITERION >= 4) /* check that the velocity gradient is negative-definite, ie. converging along all principal axes, which is much stricter than div v < 0 */
+    gsl_matrix_view M = gsl_matrix_view_array(gradv, 3, 3); gsl_vector *eval1 = gsl_vector_alloc(3);
+    gsl_eigen_symm_workspace *v = gsl_eigen_symm_alloc(3); gsl_eigen_symm(&M.matrix, eval1,  v);
+    if(SphP[i].Density*All.cf_a3inv < 1e4 * All.PhysDensThresh) {for(k=0;k<3;k++) if(gsl_vector_get(eval1,k) >= 0) {rateOfSF=0;}}
+    gsl_eigen_symm_free(v); gsl_vector_free(eval1);
 #endif
-    k_cs = M_PI * cs_eff / (Get_Particle_Size(i)*All.cf_atime);
+
+#ifdef GALSF_SFR_TIDAL_HILL_CRITERION /* check that the tidal tensor is negative-definite, ie. converging along all principal axes, indicating that we're dominating our environment gravitationally and are living in our own Hill sphere */
+    for(k=0;k<3;k++) {if(P[i].tidal_tensorps[k][k] >= 0) {rateOfSF=0;}} /* we've already diagonized this in gravtree.c, so this is a straightforward check */
 #endif
-                                            
-    dv2abs += 2.*k_cs*k_cs; // account for thermal pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
-    double alpha_vir = dv2abs / (8. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 -- going more careful here //
-#if (GALSF_SFR_VIRIAL_SF_CRITERION > 0)
-    if(alpha_vir < 1.0)
-    {   /* check if Jeans mass is remotely close to solar; if not, dont allow it to form 'stars' */
-        double q = cs_eff * All.UnitVelocity_in_cm_per_s / (0.2e5);
-        double q2 = SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / (HYDROGEN_MASSFRAC*1.0e3*PROTONMASS);
-        double MJ_solar = 2.*q*q*q/sqrt(q2);
-        double MJ_crit = 1000.;
+
+#if (GALSF_SFR_VIRIAL_SF_CRITERION >= 1) /* check if Jeans mass is low enough for conceivable formation of 'stars' */
+    double MJ_crit=1000., cs_touse=cs_eff; /* for galaxy-scale SF, default to large ~1000 Msun threshold */
 #ifdef SINGLE_STAR_SINK_FORMATION
-        MJ_crit = DMIN(1.e4, DMAX(1.e-3 , 100.*P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS)));
+    cs_touse=v_fast; MJ_crit=DMIN(1.e4, DMAX(1.e-3 , 100.*P[i].Mass*All.UnitMass_in_g/(All.HubbleParam*SOLAR_MASS))); /* for single-star formation use un-resolved Jeans mass criterion, with B+thermal pressure */
 #endif
-        if(MJ_solar > MJ_crit) {alpha_vir = 100.;}
-    }
+    double MJ_solar = 2.*pow(cs_touse*All.UnitVelocity_in_cm_per_s/(0.2e5),3)/sqrt(SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam / (HYDROGEN_MASSFRAC*1.0e3*PROTONMASS);
+    if(MJ_solar > MJ_crit) {rateOfSF=0;} /* if too massive Jeans mass, go no further */
 #endif
-#if (GALSF_SFR_VIRIAL_SF_CRITERION >= 3)
-    SphP[i].AlphaVirial_SF_TimeSmoothed += 8.*(1./(1+alpha_vir) - SphP[i].AlphaVirial_SF_TimeSmoothed) * dtime/tsfr;
-    if (SphP[i].AlphaVirial_SF_TimeSmoothed < 0.5 || divv >= 0) rateOfSF *= 0.0;
-#if (GALSF_SFR_VIRIAL_SF_CRITERION >= 4) 
-    // we check that the velocity gradient is negative-definite, ie. converging along all principal axes, which is much stricter than div v < 0
-    gsl_matrix_view M = gsl_matrix_view_array (gradv, 3, 3);
-    gsl_vector *eval1 = gsl_vector_alloc (3);
-    gsl_eigen_symm_workspace *v = gsl_eigen_symm_alloc (3);
-    gsl_eigen_symm(&M.matrix, eval1,  v);
-    if(SphP[i].Density*All.cf_a3inv < 1e4 * All.PhysDensThresh) {for(k=0; k<3; k++) if (gsl_vector_get(eval1,k) >= 0) rateOfSF = 0;} 
-    gsl_eigen_symm_free (v);
-    gsl_vector_free (eval1);
+
+#if (SINGLE_STAR_SINK_FORMATION & 4) /* restrict to local density/potential maxima */
+    if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;}
 #endif
-#elif (GALSF_SFR_VIRIAL_SF_CRITERION > 1)
-    if(alpha_vir >= 1.0) {rateOfSF *= 0.0;}
+    
+#if (SINGLE_STAR_SINK_FORMATION & 8) /* restrict to cell which neither 'sees' or 'is seen by' a sink too close */
+    if(P[i].BH_Ngb_Flag) {rateOfSF=0;} /* cell cannot be 'seen' by -any- sink as a potential interacting neighbor */
+    if(P[i].min_dist_to_bh < 1.24*Get_Particle_Size(i)) {rateOfSF=0;} /* cell does not see a sink within a volume = 8x=2^3 times its cell volume [set coefficient =1.86 for 27x=3^3 its cell volume] */
 #endif
-#if (GALSF_SFR_VIRIAL_SF_CRITERION<3)
-    if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;} // PFH: note the latter flag is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
+    
+#if (SINGLE_STAR_SINK_FORMATION & 16) /* restrict to cells which have a local SF time or free-fall time shorter than their free-fall time onto the nearest sink */
+    if(DMIN(P[i].min_bh_approach_time, P[i].min_bh_freefall_time) < tsfr) {rateOfSF=0;}
 #endif
-#endif // GALSF_SFR_VIRIAL_SF_CRITERION
 
     
-#ifdef GALSF_SFR_TIDAL_HILL_CRITERION // we check that the tidal tensor is negative-definite, ie. converging along all principal axes, indicating that we're dominating our environment gravitationally and are living in our own Hill sphere
-    {int k; for(k=0;k<3;k++) {if(P[i].tidal_tensorps[k][k] >= 0) {rateOfSF = 0;}}} // we've already diagonized this bad boy in gravtree.c - MYG
-#endif
-
     
 #ifdef SINGLE_STAR_SINK_FORMATION
-    rateOfSF *= 1.0e10; // make sink formation guaranteed to happen, where it can
+    rateOfSF *= 1.0e20; /* make sink formation guaranteed to happen, where it can, by setting rate super-high if non-zero */
 #endif
-#if (SINGLE_STAR_SINK_FORMATION & 2) // restrict to convergent flows //
-    {int k; double divv=0; for(k=0;k<3;k++) {divv += SphP[i].Gradients.Velocity[k][k] * All.cf_a2inv;}
-        if(All.ComovingIntegrationOn) {divv += 3.*All.cf_hubble_a;}
-        if(divv >= 0) {rateOfSF=0;}}
-#endif
-#if (SINGLE_STAR_SINK_FORMATION & 4)
-    if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;} // restrict to local density/potential maxima //
-#endif
-#if (SINGLE_STAR_SINK_FORMATION & 8)
-    if(P[i].BH_Ngb_Flag) {rateOfSF=0;} // particle cannot be 'seen' by -any- sink as a potential interacting neighbor //
-    if(P[i].min_dist_to_bh < 1.24*Get_Particle_Size(i)) {rateOfSF=0;} // particle does not see a sink within a volume = 8x=2^3 times its cell volume [set coefficient =1.86 for 27x=3^3 its cell volume] //
-#endif
-#if (SINGLE_STAR_SINK_FORMATION & 16)
-    if(DMIN(P[i].min_bh_approach_time, P[i].min_bh_freefall_time) < tsfr) {rateOfSF = 0;} // probably not about to get gobbled up by a sink before it can collapse //
-#endif
-
-
-    
-    return rateOfSF;
+    return rateOfSF; /* finally, we have a SFR! */
 }
 
 
@@ -417,23 +379,20 @@ void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double t
 /* master routine for star formation. for 'effective equation of state' models for star-forming gas, this also updates their effective EOS parameters */
 void star_formation_parent_routine(void)
 {
-  int i, bin, flag, stars_spawned, tot_spawned, stars_converted, tot_converted, number_of_stars_generated;
-  unsigned int bits;
-  double dtime, mass_of_star, p, prob, rate_in_msunperyear, sfrrate, totsfrrate;
-  double sum_sm, total_sm, sm=0, rate, sum_mass_stars, total_sum_mass_stars;
+    int i, bin, flag, stars_spawned, tot_spawned, stars_converted, tot_converted, number_of_stars_generated;
+    unsigned int bits; double dtime, mass_of_star, p, prob, rate_in_msunperyear, sfrrate, totsfrrate, sum_sm, total_sm, sm=0, rate, sum_mass_stars, total_sum_mass_stars;
 #if defined(BH_SEED_FROM_LOCALGAS) || defined(SINGLE_STAR_SINK_DYNAMICS)
-  int num_bhformed=0, tot_bhformed=0;
+    int num_bhformed=0, tot_bhformed=0;
 #endif
     
     for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinActive[bin]) {TimeBinSfr[bin] = 0;}}
-  stars_spawned = stars_converted = 0; sum_sm = sum_mass_stars = 0;
+    stars_spawned = stars_converted = 0; sum_sm = sum_mass_stars = 0;
+    for(bits = 0; GALSF_GENERATIONS > (1 << bits); bits++);
 
-  for(bits = 0; GALSF_GENERATIONS > (1 << bits); bits++);
-
-  for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
       if((P[i].Type == 0)&&(P[i].Mass>0))
-	{
+      {
         SphP[i].Sfr = 0; flag = 1; /* will be reset below if flag==0, but default to flag = 1 (non-eligible) */
         dtime = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; /*  the actual time-step */
         
@@ -450,7 +409,7 @@ void star_formation_parent_routine(void)
 #endif
         
         
-    if((flag == 0)&&(dtime>0)&&(P[i].TimeBin))		/* active star formation (upon start-up, we need to protect against dt==0) */
+        if((flag == 0)&&(dtime>0)&&(P[i].TimeBin))		/* active star formation (upon start-up, we need to protect against dt==0) */
 	    {
           sm = get_starformation_rate(i) * dtime; // expected stellar mass formed this timestep
             // (this also updates entropies for the effective equation-of-state model) //
@@ -458,19 +417,18 @@ void star_formation_parent_routine(void)
 	      sum_sm += P[i].Mass * (1 - exp(-p));
             
 
-        /* Alright, now we consider the actual gas-to-star particle conversion and associated steps */
+          /* Alright, now we consider the actual gas-to-star particle conversion and associated steps */
 
 	      /* the upper bits of the gas particle ID store how many stars this gas particle gas already generated */
 	      if(bits == 0)
-            number_of_stars_generated = 0;
+            {number_of_stars_generated = 0;}
 	      else
-            number_of_stars_generated = (P[i].ID >> (sizeof(MyIDType) * 8 - bits));
+            {number_of_stars_generated = (P[i].ID >> (sizeof(MyIDType) * 8 - bits));}
 
 	      mass_of_star = P[i].Mass / (GALSF_GENERATIONS - number_of_stars_generated);
-            if(number_of_stars_generated >= GALSF_GENERATIONS-1) mass_of_star=P[i].Mass;
+          if(number_of_stars_generated >= GALSF_GENERATIONS-1) mass_of_star=P[i].Mass;
 
-          SphP[i].Sfr = sm / dtime *
-            (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
+          SphP[i].Sfr = sm / dtime * (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
 	      if(dtime>0) TimeBinSfr[P[i].TimeBin] += SphP[i].Sfr;
 
           prob = P[i].Mass / mass_of_star * (1 - exp(-p));
@@ -478,11 +436,7 @@ void star_formation_parent_routine(void)
 #if defined(METALS) && defined(GALSF_EFFECTIVE_EQS) // does instantaneous enrichment //
             double w = get_random_number(P[i].ID);
             P[i].Metallicity[0] += w * All.SolarAbundances[0] * (1 - exp(-p));
-            if(NUM_METAL_SPECIES>=10)
-            {
-                int k;
-                for(k=1;k<NUM_METAL_SPECIES;k++) {P[i].Metallicity[k] += w * All.SolarAbundances[k] * (1 - exp(-p));}
-            }
+            if(NUM_METAL_SPECIES>=10) {int k; for(k=1;k<NUM_METAL_SPECIES;k++) {P[i].Metallicity[k] += w * All.SolarAbundances[k] * (1 - exp(-p));}}
 #endif
             
         if(get_random_number(P[i].ID + 1) < prob)	/* ok, make a star */
@@ -540,23 +494,22 @@ void star_formation_parent_routine(void)
 
             /* ok, we're going to make a star! */
 #if defined(GALSF_SFR_IMF_VARIATION) || defined(GALSF_SFR_IMF_SAMPLING)
-            /* if we're allowing for a variable IMF, this is where we will 
-                calculate the IMF properties produced from the gas forming stars */
+            /* if we're allowing for a variable IMF, this is where we will calculate the IMF properties produced from the gas forming stars */
             assign_imf_properties_from_starforming_gas(i);
 #endif
                 
             if(number_of_stars_generated == (GALSF_GENERATIONS - 1))
 		    {
-		      /* here we turn the gas particle itself into a star */
-		      Stars_converted++;
-		      stars_converted++;
-		      sum_mass_stars += P[i].Mass;
+                /* here we turn the gas particle itself into a star */
+                Stars_converted++;
+                stars_converted++;
+                sum_mass_stars += P[i].Mass;
 
-		      P[i].Type = 4;
-		      TimeBinCountSph[P[i].TimeBin]--;
-		      TimeBinSfr[P[i].TimeBin] -= SphP[i].Sfr;
+                P[i].Type = 4;
+                TimeBinCountSph[P[i].TimeBin]--;
+                TimeBinSfr[P[i].TimeBin] -= SphP[i].Sfr;
 
-		      P[i].StellarAge = All.Time;
+                P[i].StellarAge = All.Time;
 
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
                 P[i].DensAroundStar = SphP[i].Density;
@@ -646,13 +599,11 @@ void star_formation_parent_routine(void)
 		      /* here we spawn a new star particle */
 
 		      if(NumPart + stars_spawned >= All.MaxPart)
-			{
-			  printf
-			    ("On Task=%d with NumPart=%d we try to spawn %d particles. Sorry, no space left...(All.MaxPart=%d)\n",
-			     ThisTask, NumPart, stars_spawned, All.MaxPart);
-			  fflush(stdout);
-			  endrun(8888);
-			}
+              {
+                  PRINT_WARNING("On Task=%d with NumPart=%d we try to spawn %d particles. Sorry, no space left...(All.MaxPart=%d)",ThisTask, NumPart, stars_spawned, All.MaxPart);
+                  fflush(stdout);
+                  endrun(8888);
+              }
 
 		      P[NumPart + stars_spawned] = P[i];
 		      P[NumPart + stars_spawned].Type = 4;
@@ -666,11 +617,9 @@ void star_formation_parent_routine(void)
 		      TimeBinCount[P[NumPart + stars_spawned].TimeBin]++;
 		      PrevInTimeBin[NumPart + stars_spawned] = i;
 		      NextInTimeBin[NumPart + stars_spawned] = NextInTimeBin[i];
-		      if(NextInTimeBin[i] >= 0)
-                  PrevInTimeBin[NextInTimeBin[i]] = NumPart + stars_spawned;
+		      if(NextInTimeBin[i] >= 0) {PrevInTimeBin[NextInTimeBin[i]] = NumPart + stars_spawned;}
 		      NextInTimeBin[i] = NumPart + stars_spawned;
-		      if(LastInTimeBin[P[i].TimeBin] == i)
-                  LastInTimeBin[P[i].TimeBin] = NumPart + stars_spawned;
+		      if(LastInTimeBin[P[i].TimeBin] == i) {LastInTimeBin[P[i].TimeBin] = NumPart + stars_spawned;}
 
 		      P[i].ID += ((MyIDType) 1 << (sizeof(MyIDType) * 8 - bits));
 
@@ -697,18 +646,13 @@ void star_formation_parent_routine(void)
 	    if(P[i].Type == 0)	/* to protect using a particle that has been turned into a star */
         {
             P[i].Metallicity[0] += (1 - w) * All.SolarAbundances[0] * (1 - exp(-p));
-            if(NUM_METAL_SPECIES>=10)
-            {
-                int k;
-                for(k=1;k<NUM_METAL_SPECIES;k++) {P[i].Metallicity[k] += (1-w) * All.SolarAbundances[k] * (1 - exp(-p));}
-            }
+            if(NUM_METAL_SPECIES>=10) {int k; for(k=1;k<NUM_METAL_SPECIES;k++) {P[i].Metallicity[k] += (1-w) * All.SolarAbundances[k] * (1 - exp(-p));}}
         }
 #endif
         } // closes check of flag==0 for star-formation operation
 
 #if defined(GALSF_SUBGRID_WINDS)
-        if( (flag==0 || All.ComovingIntegrationOn==0) &&
-           (P[i].Mass>0) && (P[i].Type==0) && (dtime>0) && (All.Time>0) )
+        if( (flag==0 || All.ComovingIntegrationOn==0) && (P[i].Mass>0) && (P[i].Type==0) && (dtime>0) && (All.Time>0) )
         {
             double pvtau_return[4];
             assign_wind_kick_from_sf_routine(i,sm,dtime,pvtau_return);
@@ -755,10 +699,7 @@ void star_formation_parent_routine(void)
         MPI_Reduce(&sum_mass_stars, &total_sum_mass_stars, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
         if(ThisTask == 0)
         {
-            if(All.TimeStep > 0)
-                rate = total_sm / (All.TimeStep / (All.cf_atime*All.cf_hubble_a));
-            else
-                rate = 0;
+            if(All.TimeStep > 0) {rate = total_sm / (All.TimeStep / (All.cf_atime*All.cf_hubble_a));} else {rate = 0;}
             /* convert to solar masses per yr */
             rate_in_msunperyear = rate * (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
             fprintf(FdSfr, "%g %g %g %g %g\n", All.Time, total_sm, totsfrrate, rate_in_msunperyear, total_sum_mass_stars);
