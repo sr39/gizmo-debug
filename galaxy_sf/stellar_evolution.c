@@ -257,12 +257,10 @@ void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt)
 
 void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 {
-#ifdef SINGLE_STAR_FB_WINDS
-    if(P[i].wind_mode != 2) return;
-#endif    
     if(All.GasReturnFraction <= 0) return;
     double D_RETURN_FRAC = 0.01; // fraction of particle mass to return on a recycling step //
-#ifdef SINGLE_STAR_SINK_DYNAMICS
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(SINGLE_STAR_FB_WINDS)
+    if(P[i].wind_mode != 2) return;
     D_RETURN_FRAC = 1.0e-15; // needs to be much smaller to have quasi-continuous winds on these scales //
     //double M_sol = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS); // M in solar
     // /* use a standard scaling from e.g. Castor, Abbot, & Klein */
@@ -280,6 +278,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     p = 1.0 - exp(-p); // need to account for p>1 cases //
     
 #else
+    
     double p=0, star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), ZZ = P[i].Metallicity[0]/All.SolarAbundances[0];
     if(ZZ>3) {ZZ=3;}
     if(ZZ<0.01) {ZZ=0.01;}
@@ -308,6 +307,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
      p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
      p = 1.0 - exp(-p); // need to account for p>1 cases //
      */
+    
 #endif
     double n_wind_0=(double)floor(p/D_RETURN_FRAC); p-=n_wind_0*D_RETURN_FRAC; // if p >> return frac, should have > 1 event, so we inject the correct wind mass
     P[i].MassReturn_ThisTimeStep += n_wind_0*D_RETURN_FRAC; // add this in, then determine if there is a 'remainder' to be added as well
@@ -410,7 +410,7 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
     for(k=0;k<NUM_METAL_SPECIES;k++) in->yields[k]=yields[k];
 #endif
     in->Msne = P[i].Mass * P[i].MassReturn_ThisTimeStep; // mass (in code units) returned
-#ifdef SINGLE_STAR_SINK_DYNAMICS
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(SINGLE_STAR_FB_WINDS)
     //double m_msun = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
     //in->SNe_v_ejecta = (616.e5 * sqrt((1.+0.1125*m_msun)/(1.+0.0125*m_msun)) * pow(m_msun,0.131)) / All.UnitVelocity_in_cm_per_s; // scaling from size-mass relation+eddington factor, assuming line-driven winds //
     //Wind velocity based on Leitherer 1992
@@ -658,7 +658,7 @@ double single_star_wind_mdot(int n){
     
     double wind_mass_loss_rate=0; //mass loss rate in code units
     if (P[n].Type != 5) {return 0;}
-    if(BPP(n).ProtoStellarStage != 5){return 0;}
+    if(BPP(n).ProtoStellarStage != 5) {return 0;}
     double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
     if (m_solar < minimum_stellarmass_for_winds_solar){return 0.0;} //no winds for low mass stars
 

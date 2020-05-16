@@ -413,7 +413,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
 #ifndef SINGLE_STAR_TIMESTEPPING
-#define SINGLE_STAR_TIMESTEPPING
+#define SINGLE_STAR_TIMESTEPPING 0
 #endif
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 32)
