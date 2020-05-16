@@ -314,7 +314,7 @@ double get_starformation_rate(int i)
 #ifdef SINGLE_STAR_SINK_FORMATION
     cs_touse=v_fast; MJ_crit=DMIN(1.e4, DMAX(1.e-3 , 100.*P[i].Mass*All.UnitMass_in_g/(All.HubbleParam*SOLAR_MASS))); /* for single-star formation use un-resolved Jeans mass criterion, with B+thermal pressure */
 #endif
-    double MJ_solar = 2.*pow(cs_touse*All.UnitVelocity_in_cm_per_s/(0.2e5),3)/sqrt(SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam / (HYDROGEN_MASSFRAC*1.0e3*PROTONMASS);
+    double MJ_solar = 2.*pow(cs_touse*All.UnitVelocity_in_cm_per_s/(0.2e5),3)/sqrt(SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam / (HYDROGEN_MASSFRAC*1.0e3*PROTONMASS));
     if(MJ_solar > MJ_crit) {rateOfSF=0;} /* if too massive Jeans mass, go no further */
 #endif
 
