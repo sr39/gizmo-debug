@@ -112,5 +112,4 @@ void set_blackhole_long_range_rp(int i, int n);
 
 
 
-#endif
-#endif
+#endif // master flag

@@ -45,7 +45,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 #if !defined(SINGLE_STAR_SINK_DYNAMICS)
     return 0; /* not defined */
 #endif
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1) /* this is pre-calculated, simply return it */
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2) /* this is pre-calculated, simply return it */
     return P[i].StarLuminosity_Solar * SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
 #endif
     /* if above flags not defined, estimate accretion + main-sequence luminosity as simply as possible */
@@ -60,7 +60,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
         else if(m_solar < 53.9) {lum_sol = 1.5 * m_solar*m_solar*m_solar * sqrt(m_solar);}
         else {lum_sol = 32000. * m_solar;}
     }
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0) // now, account for pre-main sequence evolution and calculate accretion luminosity using protostellar radius
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1) // now, account for pre-main sequence evolution and calculate accretion luminosity using protostellar radius
     if(i > 0) {if(P[i].Type == 5) {
         double eps_protostar=1.0, T4000_4 = pow(m_solar , 0.55), l_kh = 0.2263 * P[i].ProtoStellarRadius_inSolar*P[i].ProtoStellarRadius_inSolar * T4000_4; // protostellar temperature along Hayashi track and luminosity from KH contraction
         lum = DMAX(lum_sol,l_kh) * SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s) + eps_protostar * (All.G * P[i].Mass / (P[i].ProtoStellarRadius_inSolar * 6.957e10 / All.UnitLength_in_cm)) * mdot; // assume GM/r liberated per unit mass. Note we need radius in code units here since everything else in 'lum' is code-units as well. for pre-ms evolution, if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
@@ -185,7 +185,7 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 #endif
     
 #ifdef GALSF_FB_MECHANICAL /* STELLAR-POPULATION version: mechanical feedback: 'dummy' example model below assumes a constant SNe rate for t < 30 Myr, then nothing. experiment! */
-    double RSNe=0, star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+    RSNe=0; double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
     if(star_age < 0.03)
     {
         RSNe = 3.e-4; // assume a constant rate ~ 3e-4 SNe/Myr/solar mass for t = 0-30 Myr //
@@ -210,7 +210,7 @@ double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
     return 0;
 #endif
     if(All.SNe_Energy_Renormalization <= 0) return 0;
-    double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), RSNe=0, gemin=0.003401, agebrk=0.01037, agemax=0.03753; // some ages in Gyr used below
+    double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), RSNe=0, agemin=0.003401, agebrk=0.01037, agemax=0.03753; // some ages in Gyr used below
     /* here we are determining an expected SNe rate, so SNe occur stochastically but with an age dependence in the population */
     // calculate: NSNe/Myr *if* each SNe had exactly 10^51 ergs; really from the energy curve [do this so we are gauranteed to get the correct SNe energy] //
 #if (GALSF_FB_FIRE_STELLAREVOLUTION == 1) || (GALSF_FB_FIRE_STELLAREVOLUTION == 2)
@@ -426,7 +426,7 @@ double Z_for_stellar_evol(int i)
 #if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) && defined(COOL_METAL_LINES_BY_SPECIES) // ??
     int i_Fe=10; Z_solar = P[i].Metallicity[i_Fe]/All.SolarAbundances[i_Fe]; // use Fe, specifically, for computing stellar properties, as its most relevant here. MAKE SURE this is set to the correct abundance in the list, to match Fe!!!
 #endif
-    return DMIN(DMAX(Z_solar,0.01),3.)
+    return DMIN(DMAX(Z_solar,0.01),3.);
 }
 
 #endif // GALSF_FB_MECHANICAL+GALSF_FB_FIRE_STELLAREVOLUTION
@@ -442,7 +442,7 @@ double Z_for_stellar_evol(int i)
 /* 'master' function to update the size (and other properties like effective temperature) of accreting protostars along relevant stellar evolution tracks */
 double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt)
 {
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION==0)
+#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
     /* this is the simple version written by Phil: intentionally simplified PS evolution tracks, designed to make it easy to understand and model the evolution and reduce un-necessary complications */
     double lum_sol = 0.0, m_initial = DMAX(1.e-37 , (BPP(n).BH_Mass - dm)), mu = DMAX(0, dm/m_initial), m_solar = BPP(n).BH_Mass * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS)), T4000_4 = pow(m_solar, 0.55); // m_initial = mass before the accretion, mu = relative mass accreted, m_solar = mass in solar units, T4000_4 = (temperature/4000K)^4 along Hayashi track
     if(m_solar > 0.012) // below this limit, negligible luminosity //
@@ -472,7 +472,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 #endif
     }
 
-#elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1) /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */
+#elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2) /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */
     
     double frad = 0.18; //limit for forming radiative barrier, based on Offner+MckKee 2011 source code
     double fk = 0.5; //fraction of kinetic energy that is radiated away in the inner disk before reaching the surface, using default ORION value here as it is not a GIZMO input parameter
@@ -641,10 +641,10 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 #else
     BPP(n).StarLuminosity_Solar = (eps_protostar*All.G*mass*mdot/r + lum_Hayashi)/ (SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s)); //same as above but we don't count H burning for th emission. Thsi way the radial evolution follows the same track as with the full model, but we don't provide feedback from H burning to the nearby gas
 #endif
-#endif//end of SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1
+#endif//end of SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2
 
 #ifdef PS_EVOL_OUTPUT_MOREINFO // print out the basic star info
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
+#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2)
     if (BPP(n).ProtoStellarStage >= 5) //only for MS stars, for previous stages we will print out the properties before
 #endif
     {printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: 0 rel_dr: 0 dm: %g dm_D: 0 Tc: 0 Pc: 0 rhoc: 0 beta: 0 dt: %g n_ad: 0 lum_int: 0 lum_I: 0 lum_D: 0 age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: 0 n_subcycle: 0.ZAMS_Mass %g PS_end\n",All.Time, P[n].ID,BPP(n).BH_Mass*(All.UnitMass_in_g / SOLAR_MASS),BPP(n).ProtoStellarRadius_inSolar,BPP(n).ProtoStellarStage, BPP(n).BH_Mdot*(All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/All.UnitTime_in_s*SEC_PER_YEAR , dm* (All.UnitMass_in_g / SOLAR_MASS), dt*All.UnitTime_in_Megayears, (All.Time-P[n].ProtoStellarAge)*All.UnitTime_in_Megayears, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk*(All.UnitMass_in_g / SOLAR_MASS), BPP(n).SinkRadius, P[n].ZAMS_Mass );}
@@ -763,7 +763,7 @@ void single_star_SN_init_directions(void){
 #endif
 
 
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1) /* Functions for protosteller evolution model based on Offner 2009 */
+#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2) /* Functions for protosteller evolution model based on Offner 2009 */
 /* Calculate the mean ratio of the gas pressure to the gas+radiation pressure, either by solving the Eddington quartic (for n_ad=3, Eq B5) or by using tabulated values, based on Offner 2009, code taken from ORION */
 double ps_beta(double m, double n_ad, double rhoc, double Pc) {
     double mass=m*All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS);//in units of solar mass
@@ -886,7 +886,7 @@ double ps_radius_MS_in_solar(double m) {
     return (1.71535900*pow(m_solar,2.5)+6.59778800*pow(m_solar,6.5)+10.08855000*pow(m_solar,11)+1.01249500*pow(m_solar,19)+0.07490166*pow(m_solar,19.5)) /
         (0.01077422+3.08223400*pow(m_solar,2)+17.84778000*pow(m_solar,8.5)+pow(m_solar,18.5)+0.00022582*pow(m_solar,19.5)); //*SOLAR_RADIUS/All.UnitLength_in_cm);
 }
-#endif // (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1) /* end functions for protosteller evolution model based on Offner 2009 */
+#endif // (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2) /* end functions for protosteller evolution model based on Offner 2009 */
 
 
 #endif //end of protostellar evolution functions

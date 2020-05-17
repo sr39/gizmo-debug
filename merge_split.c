@@ -75,8 +75,9 @@ int does_particle_need_to_be_split(int i)
 double target_mass_renormalization_factor_for_mergesplit(int i)
 {
     double ref_factor=1.0;
-/*! #if defined(BH_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE) && !defined(SINGLE_STAR_SINK_DYNAMICS)
-    ref_factor = DMIN(1.,sqrt(P[i].min_dist_to_bh + 0.0001)); /* this is an example of the kind of routine you could use to scale resolution with BH distance */
+/*!
+ #if defined(BH_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE) && !defined(SINGLE_STAR_SINK_DYNAMICS)
+    ref_factor = DMIN(1.,sqrt(P[i].min_dist_to_bh + 0.0001)); // this is an example of the kind of routine you could use to scale resolution with BH distance //
 #endif
  */
     return ref_factor;

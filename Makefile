@@ -1184,7 +1184,7 @@ INCL    += 	allvars.h \
 			eos/eos.h \
 			galaxy_sf/blackholes/blackhole.h \
 			structure/fof.h \
-			structure/subfind/subfind.h
+			structure/subfind/subfind.h \
 			cooling/cooling.h \
 			nuclear/nuclear_network.h \
 			Makefile
@@ -1235,7 +1235,7 @@ endif
 
 # linking libraries (includes machine-dependent options above)
 CFLAGS = $(OPTIONS) $(GSL_INCL) $(FFTW_INCL) $(HDF5INCL) $(GMP_INCL) \
-		 $(GRACKLEINCL) $(CHIMESINCL)
+         $(GRACKLEINCL) $(CHIMESINCL)
 
 LIBS = $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas \
 	   $(FFTW_LIBS) $(FFTW_LIBNAMES) -lm $(GRACKLELIBS) $(CHIMESLIBS)
