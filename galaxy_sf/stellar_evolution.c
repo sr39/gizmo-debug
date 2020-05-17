@@ -17,80 +17,63 @@
 #ifdef GALSF
 
 
-/* return the light-to-mass ratio [in units of Lsun/Msun] of an SSP with a given age; used throughout the code */
+/* return the light-to-mass ratio [in units of Lsun/Msun] of a star or stellar population with a given age; used throughout the code below */
 double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i)
 {
-    double lum=1; if(stellar_age_in_gyr < 0.01) {lum=1000;} // default to a dumb imf-averaged 'young/high-mass' vs 'old/low-mass' distinction 
-#ifdef SINGLE_STAR_SINK_DYNAMICS // calculate single-star luminosity (and convert to solar luminosity-to-mass ratio, which this output assumes) 
-    lum=calculate_individual_stellar_luminosity(0, P[i].BH_Mass, i) / P[i].BH_Mass * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)) / (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS));
-#endif
+#ifdef SINGLE_STAR_SINK_DYNAMICS // SINGLE-STAR VERSION: calculate single-star luminosity (and convert to solar luminosity-to-mass ratio, which this output assumes)
+    double m0=P[i].Mass; if(P[i].Type == 5) {m0=P[i].BH_Mass;}
+    return calculate_individual_stellar_luminosity(0, m0, i) / m0 * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)) / (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS));
+
+#else // STELLAR-POPULATION VERSION: compute integrated mass-to-light ratio of an SSP
+    double lum=1; if(stellar_age_in_gyr < 0.01) {lum=1000;} // default to a dumb imf-averaged 'young/high-mass' vs 'old/low-mass' distinction
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION // fit to updated SB99 tracks: including rotation, new mass-loss tracks, etc.
     if(stellar_age_in_gyr < 0.0035) {lum=1136.59;} else {double log_age=log10(stellar_age_in_gyr/0.0035); lum=1500.*pow(10.,-1.8*log_age+0.3*log_age*log_age-0.025*log_age*log_age*log_age);}
+#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3)
+    // ??
+#endif
 #endif
     if(stellar_age_in_gyr<0.033) {lum*=calculate_relative_light_to_mass_ratio_from_imf(stellar_age_in_gyr,i);} // account for IMF variation model [if used]
     return lum;
+#endif
 }
 
 
 /* subroutine to calculate luminosity of an individual star, according to accretion rate, 
-    mass, age, etc. Modify your assumptions about main-sequence evolution here. */
+    mass, age, etc. Modify your assumptions about main-sequence evolution here. ONLY relevant for SINGLE-STAR inputs. */
 double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 {
-    double lum = 0;
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-    double c_code = C_LIGHT_CODE;
-    double m_solar = mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
-    /* if below the deuterium burning limit, just use the potential energy efficiency at the surface of a jupiter-density object */
-    double rad_eff_protostar = 5.0e-7;
+#if !defined(SINGLE_STAR_SINK_DYNAMICS)
+    return 0; /* not defined */
+#endif
+#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1) /* this is pre-calculated, simply return it */
+    return P[i].StarLuminosity_Solar * SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
+#endif
+    /* if above flags not defined, estimate accretion + main-sequence luminosity as simply as possible */
+    double lum=0, lum_sol=0, c_code = C_LIGHT_CODE, m_solar = mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
+    double rad_eff_protostar = 5.0e-7; /* if below the deuterium burning limit, just use the potential energy efficiency at the surface of a jupiter-density object */
     if(m_solar < 0.012) {rad_eff_protostar = 5.e-8 * pow(m_solar/0.00095,2./3.);}
     lum = rad_eff_protostar * mdot * c_code*c_code;
-    /* now for pre-main sequence, need to also check the mass-luminosity relation */
-    double lum_sol = 0;
-#if (defined(SINGLE_STAR_PROMOTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0))  
-    if(m_solar >= 0.012)
+    if(m_solar >= 0.012) /* now for pre-main sequence and main sequence, need to also check the mass-luminosity relation */
     {
         if(m_solar < 0.43) {lum_sol = 0.185 * m_solar*m_solar;}
         else if(m_solar < 2.) {lum_sol = m_solar*m_solar*m_solar*m_solar;}
         else if(m_solar < 53.9) {lum_sol = 1.5 * m_solar*m_solar*m_solar * sqrt(m_solar);}
         else {lum_sol = 32000. * m_solar;}
     }
+#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0) // now, account for pre-main sequence evolution and calculate accretion luminosity using protostellar radius
+    if(i > 0) {if(P[i].Type == 5) {
+        double eps_protostar=1.0, T4000_4 = pow(m_solar , 0.55), l_kh = 0.2263 * P[i].ProtoStellarRadius_inSolar*P[i].ProtoStellarRadius_inSolar * T4000_4; // protostellar temperature along Hayashi track and luminosity from KH contraction
+        lum = DMAX(lum_sol,l_kh) * SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s) + eps_protostar * (All.G * P[i].Mass / (P[i].ProtoStellarRadius_inSolar * 6.957e10 / All.UnitLength_in_cm)) * mdot; // assume GM/r liberated per unit mass. Note we need radius in code units here since everything else in 'lum' is code-units as well. for pre-ms evolution, if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
+        P[i].StarLuminosity_Solar = lum / ( SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s) ); //store total luminosity of the star in solar units
+    }}
 #endif
-
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-    if(i > 0)
-    {
-        if(P[i].Type == 5) /* account for pre-main sequence evolution */
-        {
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0)
-            double T4000_4 = pow(m_solar , 0.55); // protostellar temperature along Hayashi track
-            double l_kh = 0.2263 * P[i].ProtoStellarRadius_inSolar*P[i].ProtoStellarRadius_inSolar * T4000_4; // luminosity from KH contraction
-            if(l_kh > lum_sol) {lum_sol = l_kh;} // if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
-            // now, calculate accretion luminosity using protostellar radius
-#ifdef SINGLE_STAR_FB_JETS
-            double eps_protostar=1.0; // since mdot is already modified by All.BAL_f_accretion 
-#else
-            double eps_protostar=0.75; //fraction of gas that does not get launched out with a jet, default value, although 1.0 would be energy conserving
-#endif
-            lum = eps_protostar * (All.G * P[i].Mass / (P[i].ProtoStellarRadius_inSolar * 6.957e10 / All.UnitLength_in_cm)) * mdot; // assume GM/r liberated per unit mass. Note we need radius in code units here since everything else in 'lum' is code-units as well.
-
-#elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
-            lum = P[i].StarLuminosity_Solar * SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s); //get pre-calculated luminosity of the star
-#endif
-        }
-    }
-#endif
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0)
-    lum_sol *= SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
-    lum += lum_sol;
-    P[i].StarLuminosity_Solar = lum / ( SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s) ); //store total luminosity of the star in solar units
-#endif
-    
-#endif    
     return lum;
+
 }
 
 
-/* return the light-to-mass ratio, for the IMF of a given particle, relative to the Chabrier/Kroupa IMF */
+/* return the light-to-mass ratio, for the IMF of a given particle, relative to the Chabrier/Kroupa IMF.
+    ONLY relevant for STELLAR POPULATION integrated inputs. */
 double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr, int i)
 {
 #ifdef GALSF_SFR_IMF_VARIATION // fitting function from David Guszejnov's IMF calculations (ok for Mturnover in range 0.01-100) for how mass-to-light ratio varies with IMF shape/effective turnover mass 
@@ -107,26 +90,23 @@ double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr
 
 
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
+/* routine to compute the -ionizing- luminosity coming from either individual stars or an SSP */
 double particle_ionizing_luminosity_in_cgs(long i)
 {
+#ifdef SINGLE_STAR_SINK_DYNAMICS /* SINGLE STAR VERSION: use effective temperature as a function of stellar mass and size to get ionizing photon production */
+    double l_sol=bh_lum_bol(0,P[i].Mass,i)*(All.UnitEnergy_in_cgs/(All.UnitTime_in_s*SOLAR_LUM)), m_sol=P[i].Mass*(All.UnitMass_in_g/(All.HubbleParam*SOLAR_MASS)), r_sol=pow(m_sol,0.738); // L/Lsun, M/Msun, R/Rsun
+    double T_eff=5780.*pow(l_sol/(r_sol*r_sol),0.25), x0=157800./T_eff, fion=0; // ZAMS effective temperature; x0=h*nu/kT for nu>13.6 eV; fion=fraction of blackbody emitted above x0
+    if(x0 < 30.) {double q=18./(x0*x0) + 1./(8. + x0 + 20.*exp(-x0/10.)); fion = exp(-1./q);} // accurate to <10% for a Planck spectrum to x0>30, well into vanishing flux //
+    return fion * (l_sol / m_sol) * (1.95*P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // just needs to be multiplied by the actual stellar luminosity to get luminosity to mass ratio
+
+#else /* STELLAR POPULATION VERSION: use updated SB99 tracks: including rotation, new mass-loss tracks, etc. */
     double lm_ssp=0;
     if(P[i].Type != 5)
     {
-        /* use updated SB99 tracks: including rotation, new mass-loss tracks, etc. */
         double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-        if(star_age >= 0.02) return 0; // skip since old stars don't contribute
+        if(star_age >= 0.02) {return 0;} // skip since old stars don't contribute
         if(star_age < 0.0035) {lm_ssp=500.;} else {double log_age=log10(star_age/0.0035); lm_ssp=470.*pow(10.,-2.24*log_age-4.2*log_age*log_age) + 60.*pow(10.,-3.6*log_age);}
         lm_ssp *= calculate_relative_light_to_mass_ratio_from_imf(star_age, i);
-#ifdef SINGLE_STAR_SINK_DYNAMICS /* use effective temperature as a function of stellar mass and size to get ionizing photon production */
-        double l_sol = bh_lum_bol(0,P[i].Mass,i) * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)); // L/Lsun
-        double m_sol = P[i].Mass * (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS)); // M/Msun
-        double r_sol = pow(m_sol, 0.738); // R/Rsun
-        double T_eff = 5780. * pow(l_sol/(r_sol*r_sol), 0.25); // ZAMS effective temperature
-        double x0 = 157800./T_eff; // h*nu/kT for nu>13.6 eV
-        double fion = 0.0; // fraction of blackbody emitted above x0
-        if(x0 < 30.) {double q=18./(x0*x0) + 1./(8. + x0 + 20.*exp(-x0/10.)); fion = exp(-1./q);} // accurate to <10% for a Planck spectrum to x0>30, well into vanishing flux //
-        lm_ssp = fion * l_sol / m_sol; // just needs to be multiplied by the actual stellar luminosity to get luminosity to mass ratio
-#endif
     } // (P[i].Type != 5)
 #ifdef BH_HII_HEATING /* AGN template: light-to-mass ratio L(>13.6ev)/Mparticle in Lsun/Msun, above is dNion/dt = 5.5e54 s^-1 (Lbol/1e45 erg/s) */
     if(P[i].Type == 5) {lm_ssp = 1.741e6 * bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i) / (P[i].Mass*All.UnitTime_in_Megayears/All.HubbleParam*C_LIGHT_CODE*C_LIGHT_CODE);}
@@ -134,14 +114,9 @@ double particle_ionizing_luminosity_in_cgs(long i)
     lm_ssp *= (1.95*P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // convert to luminosity from L/M
     if((lm_ssp <= 0) || (!isfinite(lm_ssp))) {lm_ssp=0;} // trap for negative values and nans (shouldnt happen)
     return lm_ssp;
+#endif
 }
 #endif
-
-
-
-
-
-
 
 
 
@@ -162,7 +137,12 @@ void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int 
     if(P[i].SNe_ThisTimeStep<=0) {in->Msne=0; return;} // no event
     // 'dummy' example model assumes all SNe are identical with IMF-averaged properties from the AGORA model (Kim et al., 2016 ApJ, 833, 202)
     in->Msne = P[i].SNe_ThisTimeStep * (14.8*SOLAR_MASS)/(All.UnitMass_in_g/All.HubbleParam); // assume every SNe carries 14.8 solar masses (IMF-average)
-    in->SNe_v_ejecta = 2.607e8 / All.UnitVelocity_in_cm_per_s; // assume ejecta are ~2607 km/s [KE=1e51 erg, for M=14.8 Msun]
+    in->SNe_v_ejecta = 2.607e8 / All.UnitVelocity_in_cm_per_s; // assume ejecta are ~2607 km/s [KE=1e51 erg, for M=14.8 Msun], which is IMF-averaged
+#ifdef SINGLE_STAR_SINK_DYNAMICS // if single-star exploding or returning mass, use its actual mass & assumed energy to obtain the velocity
+    in->Msne = DMIN(1.,P[i].SNe_ThisTimeStep) * P[i].Mass; // mass fraction of star being returned this timestep
+    in->SNe_v_ejecta = sqrt(2.*(1.e51/All.UnitEnergy_in_cgs)/P[i].Mass); // for SNe [total return], simple v=sqrt(2E/m)should be fine without relativistic corrections
+    if(P[i].SNe_ThisTimeStep<1) {double m_msun=P[i].Mass*All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS); in->SNe_v_ejecta = (616.e5 * sqrt((1.+0.1125*m_msun)/(1.+0.0125*m_msun)) * pow(m_msun,0.131)) / All.UnitVelocity_in_cm_per_s;} // scaling from size-mass relation+eddington factor, assuming line-driven winds //
+#endif
 #ifdef METALS
     int k; for(k=0;k<NUM_METAL_SPECIES;k++) {in->yields[k]=0.178*All.SolarAbundances[k]/All.SolarAbundances[0];} // assume a universal solar-type yield with ~2.63 Msun of metals
     if(NUM_METAL_SPECIES>=10) {in->yields[1] = 0.4;} // (catch for Helium, which the above scaling would give bad values for)
@@ -177,24 +157,35 @@ void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int 
     quantities from stars. */
 double mechanical_fb_calculate_eventrates(int i, double dt)
 {
-    double RSNe = 0;
-#if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
-    // FIRE feedback rates: separate calculation for SNe, stellar mass loss, R-process injection //
-    RSNe = mechanical_fb_calculate_eventrates_SNe(i,dt);
+#if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) // FIRE-specific stellar population version: separate calculation for SNe, stellar mass loss, R-process injection //
+    double RSNe = mechanical_fb_calculate_eventrates_SNe(i,dt);
     mechanical_fb_calculate_eventrates_Winds(i,dt);
     mechanical_fb_calculate_eventrates_Rprocess(i,dt);
     return RSNe;
 #endif
-#ifdef GALSF_FB_THERMAL
-    // pure thermal feedback: assumes AGORA model (Kim et al., 2016 ApJ, 833, 202) where everything occurs at 5Myr exactly //
+    
+#ifdef SINGLE_STAR_SINK_DYNAMICS /* SINGLE-STAR version: simple implementation of single-star wind mass-loss and SNe rates */
+    double m_sol=P[i].Mass*All.UnitMass_in_g/(All.HubbleParam*SOLAR_MASS), l_sol=bh_lum_bol(0,P[i].Mass,i)*All.UnitEnergy_in_cgs/(All.UnitTime_in_s*SOLAR_LUM;
+#ifdef SINGLE_STAR_FB_WINDS
+    double gam=DMIN(0.5,3.2e-5*l_sol/m_sol), alpha=0.5+0.4/(1.+16./m_sol), q0=(1.-alpha)*gam/(1.-gam), k0=1./30.); // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons, approximate scaling for alpha factor with stellar type (weak effect)
+    P[i].SNe_ThisTimeStep = DMIN(0.5, (2.338 * alpha * pow(L_sol,7./8.) * pow(M_sol,0.1845) * (1./q0) * pow(q0*k0,1./alpha) / m_sol) * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam)); // Castor, Abbot, & Klein scaling
+#endif
+#ifdef SINGLE_STAR_FB_SNE
+    double t_lifetime_Gyr = 10.*(m_sol/l_sol) + 0.003; /* crude estimate of main-sequence lifetime, capped at 3 Myr*/
+    if(evaluate_stellar_age_Gyr(P[i].StellarAge) >= t_lifetime_Gyr) {P[i].SNe_ThisTimeStep=1;}
+#endif
+    return 1;
+#endif
+    
+#ifdef GALSF_FB_THERMAL /* STELLAR-POPULATION version: pure thermal feedback: assumes AGORA model (Kim et al., 2016 ApJ, 833, 202) where everything occurs at 5Myr exactly */
     if(P[i].SNe_ThisTimeStep != 0) {P[i].SNe_ThisTimeStep=-1; return 0;} // already had an event, so this particle is "done"
     if(evaluate_stellar_age_Gyr(P[i].StellarAge) < 0.005) {return 0;} // enforce age limit of 5 Myr
     P[i].SNe_ThisTimeStep = P[i].Mass * (All.UnitMass_in_g / All.HubbleParam) / (91. * SOLAR_MASS); // 1 event per 91 solar masses
     return 1;
 #endif
-#ifdef GALSF_FB_MECHANICAL
-    // mechanical feedback: 'dummy' example model below assumes a constant SNe rate for t < 30 Myr, then nothing. experiment! //
-    double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+    
+#ifdef GALSF_FB_MECHANICAL /* STELLAR-POPULATION version: mechanical feedback: 'dummy' example model below assumes a constant SNe rate for t < 30 Myr, then nothing. experiment! */
+    double RSNe=0, star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
     if(star_age < 0.03)
     {
         RSNe = 3.e-4; // assume a constant rate ~ 3e-4 SNe/Myr/solar mass for t = 0-30 Myr //
@@ -202,8 +193,10 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
         double n_sn_0=(float)floor(p); p-=n_sn_0; if(get_random_number(P[i].ID+6) < p) {n_sn_0++;} // determine if SNe occurs
         P[i].SNe_ThisTimeStep = n_sn_0; // assign to particle
     }
-#endif
     return RSNe;
+#endif
+
+    return 0;
 }
 
 
@@ -213,28 +206,35 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 
 double mechanical_fb_calculate_eventrates_SNe(int i, double dt) 
 {
-    if(All.SNeIIEnergyFrac <= 0) return 0;
-    double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && (!defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)) /* no single-star module to use here, for these flags its in the spawn routine */
+    return 0;
+#endif
+    if(All.SNe_Energy_Renormalization <= 0) return 0;
+    double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), RSNe=0, gemin=0.003401, agebrk=0.01037, agemax=0.03753; // some ages in Gyr used below
     /* here we are determining an expected SNe rate, so SNe occur stochastically but with an age dependence in the population */
-    double agemin=0.003401, agebrk=0.01037, agemax=0.03753, RSNe=0; // in Gyr //
-    // calculate: NSNe/Myr *if* each SNe had exactly 10^51 ergs; really from the energy curve; below for 1Msun pop //
-    if(star_age > agemin)
-    {
-        if(star_age<=agebrk) {RSNe=5.408e-4;} else {if(star_age<=agemax) {RSNe=2.516e-4;}} // core-collapse
-        if(star_age>agemax) {RSNe=5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01));} // Ia (prompt Gaussian+delay, Manucci+06)
-		
-        double renorm = calculate_relative_light_to_mass_ratio_from_imf(star_age,i); // account for higher # of O-stars with a different IMF
-        if(star_age<agemax) {RSNe *= renorm;}
-#ifdef GALSF_SFR_IMF_SAMPLING
-        if(star_age>agemax && P[i].IMF_NumMassiveStars>0) {RSNe += 2.516e-4*renorm;} // account for un-exploded O-stars
+    // calculate: NSNe/Myr *if* each SNe had exactly 10^51 ergs; really from the energy curve [do this so we are gauranteed to get the correct SNe energy] //
+#if (GALSF_FB_FIRE_STELLAREVOLUTION == 1) || (GALSF_FB_FIRE_STELLAREVOLUTION == 2)
+    if(star_age>agemin) {if(star_age<=agebrk) {RSNe=5.408e-4;} else {if(star_age<=agemax) {RSNe=2.516e-4;}}} // core-collapse rate [super-simple 2-piece constant //
+    if(star_age>agemax) {RSNe=5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01));} // Ia (prompt Gaussian+delay, Manucci+06)
+#elif (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+    agemin=0.0037; agebrk=0.7e-2; agemax=0.044; double f1=3.9e-4, f2=5.1e-4, f3=1.8e-4;
+    if(star_age<agemin) {RSNe=0;} else if(star_age<=agebrk) {RSNe=f1*pow(star_age/agemin,log(f2/f1)/log(agebrk/agemin));}
+        else if(star_age<=agemax) {RSNe=f2*pow(star_age/agebrk,log(f3/f2)/log(agemax/agebrk));} else {RSNe=0;} // core-collapse; updated with same stellar evolution models for wind mass loss [see there for references]. simple 2-part power-law provides extremely-accurate fit. models predict a totally negligible metallicity-dependence.
+    double t_Ia_min=0.1, norm_Ia=1.3e-3; // t_Ia_min = delay time to first Ia, in Gyr; norm_Ia = Hubble-time integrated number of Ia's per solar mass
+    if(star_age>t_Ia_min) {RSNe += norm_Ia * 7.94e-5 * pow(star_age,-1.1) / fabs(pow(t_Ia_min/0.1,-0.1) - 0.61);} // Ia DTD following Maoz & Graur 2017, ApJ, 848, 25
 #endif
-        double p = dt * RSNe * P[i].Mass * (All.UnitTime_in_Megayears/All.HubbleParam) * (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS; // unit conversion factor
-        double n_sn_0=(float)floor(p); p-=n_sn_0; if(get_random_number(P[i].ID+6) < p) {n_sn_0++;} // determine if SNe occurs
+    
+    double renorm = calculate_relative_light_to_mass_ratio_from_imf(star_age,i); // account for higher # of O-stars with a different IMF
+    if(star_age<agemax) {RSNe *= renorm;}
 #ifdef GALSF_SFR_IMF_SAMPLING
-        if(star_age<agemax && P[i].IMF_NumMassiveStars<n_sn_0) {n_sn_0=P[i].IMF_NumMassiveStars;} // limit to number of O-stars for SNe //
+    if(star_age>agemax && P[i].IMF_NumMassiveStars>0) {RSNe += 2.516e-4*renorm;} // account for un-exploded O-stars
 #endif
-        P[i].SNe_ThisTimeStep = n_sn_0; // assign to particle
-    }
+    double p = dt * RSNe * P[i].Mass * (All.UnitTime_in_Megayears/All.HubbleParam) * (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS; // unit conversion factor
+    double n_sn_0=(float)floor(p); p-=n_sn_0; if(get_random_number(P[i].ID+6) < p) {n_sn_0++;} // determine if SNe occurs
+#ifdef GALSF_SFR_IMF_SAMPLING
+    if(star_age<agemax && P[i].IMF_NumMassiveStars<n_sn_0) {n_sn_0=P[i].IMF_NumMassiveStars;} // limit to number of O-stars for SNe //
+#endif
+    P[i].SNe_ThisTimeStep = n_sn_0; // assign to particle
     return RSNe;
 }
 
@@ -255,60 +255,44 @@ void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt)
 #endif
 }
 
+
 void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 {
-    if(All.GasReturnFraction <= 0) return;
-    double D_RETURN_FRAC = 0.01; // fraction of particle mass to return on a recycling step //
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(SINGLE_STAR_FB_WINDS)
-    if(P[i].wind_mode != 2) return;
-    D_RETURN_FRAC = 1.0e-15; // needs to be much smaller to have quasi-continuous winds on these scales //
-    //double M_sol = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS); // M in solar
-    // /* use a standard scaling from e.g. Castor, Abbot, & Klein */
-    // double L_sol = bh_lum_bol(0, P[i].Mass, i) * All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM); // L in solar
-    // double gam = DMIN(0.5,3.2e-5*L_sol/M_sol); // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons
-    // double alpha = 0.5 + 0.4/(1. + 16./M_sol); // approximate scaling for alpha factor with stellar type (weak effect)
-    // double q0 = (1.-alpha)*gam / (1.-gam); double k0=1./30.; //k is a normalization factor in the model
-    // double mdot = 2.338 * alpha * pow(L_sol,7./8.) * pow(M_sol,0.1845) * (1./q0) * pow(q0*k0,1./alpha); // in Msun/Gyr
-    // double p = mdot / M_sol; // mass fraction returned per Gyr
-    // p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
-    /*Use Vink 2001 scaling*/
-    double mdot = single_star_wind_mdot(i);
-    double p = mdot / P[i].Mass; // mass fraction returned in code units
-    p *= All.GasReturnFraction * dt; // fraction of particle mass expected to return in the timestep //
-    p = 1.0 - exp(-p); // need to account for p>1 cases //
+    double D_RETURN_FRAC=1.e-15, p=0;
     
-#else
-    
-    double p=0, star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), ZZ = P[i].Metallicity[0]/All.SolarAbundances[0];
-    if(ZZ>3) {ZZ=3;}
-    if(ZZ<0.01) {ZZ=0.01;}
-    if(star_age<=0.001){p=11.6846*ZZ;} else {
-        if(star_age<=0.0035){p=11.6846*ZZ*
-            pow(10.,1.838*(0.79+log10(ZZ))*(log10(star_age)-(-3.00)));} else {
-                if(star_age<=0.1){p=72.1215*pow(star_age/0.0035,-3.25)+0.0103;} else {
-                    p=1.03*pow(star_age,-1.1)/(12.9-log(star_age));
-                }}}
-    if(star_age < 0.1) {p *= calculate_relative_light_to_mass_ratio_from_imf(star_age,i);} // late-time independent of massive stars
-    p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
-    p = 1.0 - exp(-p); // need to account for p>1 cases //
-    p *= 1.4 * 0.291175; // to give expected return fraction from stellar winds alone (~17%) //
-    
-    /* // updated fit from M Grudic. More accurate for early times.
-     //     Needs to add the above call for later times (t >~ 0.02-0.1 Gyr) since late-time AGB loss is not strongly
-     //     metallicity-dependent (as fit below only includes line-driven winds).
-     double f1 = 4.68 * pow(ZZ, 0.87); // fit for fractional mass loss in first 1.5Myr
-     double f3 = 0.44 * pow(ZZ, 0.77); // fit fractional mass loss from 20Myr onward
-     if(star_age<=0.0015){p = f1;} else {
-     if(star_age<=0.004){p = f1 * pow(star_age/0.0015,2.1);} else {
-     if(star_age<=0.02){p = f1 * 7.844 * pow(star_age/0.004, 0.621335*log(0.1275*f3/f1));} else {
-     p = f3 * pow(star_age/0.02, -1.1);
-     }}}
-     if(star_age < 0.1) {p *= calculate_relative_light_to_mass_ratio_from_imf(i);} // late-time independent of massive stars
-     p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
-     p = 1.0 - exp(-p); // need to account for p>1 cases //
-     */
-    
+#if defined(SINGLE_STAR_FB_WINDS) /* SINGLE-STAR VERSION: single-star wind mass-loss rates */
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION /* for 'fancy' multi-stage modules, have a separate subroutine to compute this */
+    if(P[i].wind_mode != 2) {return;} /* only some eligible particles have winds in this module */
+    p = single_star_wind_mdot(i) * dt / P[i].Mass; /* actual mdot from its own subroutine, given in code units */
+#else /* otherwise use standard scaling from e.g. Castor, Abbot, & Klein */
+    double m_sol=P[i].Mass*All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS), l_sol=bh_lum_bol(0,P[i].Mass,i)*All.UnitEnergy_in_cgs/(All.UnitTime_in_s*SOLAR_LUM); /* luminosity in solar */
+    double gam=DMIN(0.5,3.2e-5*l_sol/m_sol), alpha=0.5+0.4/(1.+16./m_sol), q0=(1.-alpha)*gam/(1.-gam), k0=1./30.; // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons, approximate scaling for alpha factor with stellar type (weak effect)
+    p = (2.338 * alpha * pow(L_sol,7./8.) * pow(M_sol,0.1845) * (1./q0) * pow(q0*k0,1./alpha) / m_sol) * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // mdot in M_sun/Gyr, times dt
 #endif
+    p=1.-exp(-p);
+    
+#else /* STELLAR POPULATION VERSION: now do stellar-population-averaged inputs */
+    
+    D_RETURN_FRAC = 0.01; // fraction of particle mass to return on a recycling step //
+    if(All.StellarMassLoss_Rate_Renormalization <= 0) {return;}
+    double star_age=evaluate_stellar_age_Gyr(P[i].StellarAge), ZZ=Z_for_stellar_evol(i);
+#if (GALSF_FB_FIRE_STELLAREVOLUTION == 1)
+    if(star_age<=0.001){p=4.76317;} else {if(star_age<=0.0035){p=4.76317*pow(10.,1.838*(0.79+log10(ZZ))*(log10(star_age)-(-3.00)));} else {
+        if(star_age<=0.1){p=29.4*pow(star_age/0.0035,-3.25)+0.0041987;} else {p=0.41987*pow(star_age,-1.1)/(12.9-log(star_age));}}} // normalized  to give expected return fraction from stellar winds alone (~17%)
+#elif (GALSF_FB_FIRE_STELLAREVOLUTION == 2)
+    if(star_age<=0.001){p=4.76317*ZZ;} else {if(star_age<=0.0035){p=4.76317*ZZ*pow(10.,1.838*(0.79+log10(ZZ))*(log10(star_age)-(-3.00)));} else {
+        if(star_age<=0.1){p=29.4*pow(star_age/0.0035,-3.25)+0.0041987;} else {p=0.41987*pow(star_age,-1.1)/(12.9-log(star_age));}}} // normalized  to give expected return fraction from stellar winds alone (~17%)
+#elif (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+    /* updated fit. separates the more robust line-driven winds [massive-star-dominated] component, and -very- uncertain AGB. extremely good fits to updated STARBURST99 result for a 3-part Kroupa IMF (0.3,1.3,2.3 slope, 0.01-0.08-0.5-100 Msun, 8-120 SNe/BH cutoff, wind model evolution, Geneva v40 [rotating, Geneva 2013 updated tracks, at all metallicities available, ~0.1-1 solar], sampling times 1e4-2e10 yr at high resolution */
+    double f1=3.*pow(ZZ,0.87), f2=20.*pow(ZZ,0.45), f3=0.6*ZZ, t1=0.0017, t2=0.004, t3=0.02, t=star_age; /* fit parameters for 'massive star' mass-loss */
+    if(t<=t1) {p=f1;} else if(t<=t2) {p=f1*pow(t/t1,log(f2/f1)/log(t2/t1));} else if(t<=t3) {p=f2*pow(t/t2,log(f3/f2)/log(t3/t2));} else {p=f3*pow(t/t3,-3.1);} /* piecewise continuous function linking constant early and rapid late decay */
+    double f_agb=0.01, t_agb=1.; p += f_agb/((1. + pow(t/t_agb,1.1)) * (1. + 0.01/(t/t_agb))); /* add AGB component. note that essentially no models [any of the SB99 geneva or padova tracks, or NuGrid, or recent other MESA models] predict a significant dependence on metallicity (that shifts slightly when the 'bump' occurs, but not the overall loss rate), so this term is effectively metallicity-independent */
+#endif
+    if(star_age < 0.1) {p *= calculate_relative_light_to_mass_ratio_from_imf(star_age,i);} // late-time independent of massive stars
+    p *= All.StellarMassLoss_Rate_Renormalization * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
+    p = 1.0 - exp(-p); // need to account for p>1 cases //
+#endif
+    
     double n_wind_0=(double)floor(p/D_RETURN_FRAC); p-=n_wind_0*D_RETURN_FRAC; // if p >> return frac, should have > 1 event, so we inject the correct wind mass
     P[i].MassReturn_ThisTimeStep += n_wind_0*D_RETURN_FRAC; // add this in, then determine if there is a 'remainder' to be added as well
     if(get_random_number(P[i].ID + 5) < p/D_RETURN_FRAC) {P[i].MassReturn_ThisTimeStep += D_RETURN_FRAC;} // add the 'remainder' stochastically
@@ -343,7 +327,10 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
     int k; if(P[i].SNe_ThisTimeStep<=0) {in->Msne=0; return;} // no event
     int SNeIaFlag=0; if(evaluate_stellar_age_Gyr(P[i].StellarAge) > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
     double Msne=10.5; if(SNeIaFlag) {Msne=1.4;} // average ejecta mass for single event (normalized to give total mass loss correctly)
-    double SNeEgy = All.SNeIIEnergyFrac*P[i].SNe_ThisTimeStep * 1.0e51/(All.UnitEnergy_in_cgs/All.HubbleParam); // assume each SNe has 1e51 erg
+#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+    Msne=8.72; if(SNeIaFlag) {Msne=1.4;} // updated table of SNe rates and energetics, this is the updated mean mass per explosion to give the correct total SNe mass
+#endif
+    double SNeEgy = All.SNe_Energy_Renormalization*P[i].SNe_ThisTimeStep * 1.0e51/(All.UnitEnergy_in_cgs/All.HubbleParam); // assume each SNe has 1e51 erg
 #ifdef METALS
     double yields[NUM_METAL_SPECIES]={0};
     if(NUM_METAL_SPECIES>=10) {
@@ -410,17 +397,36 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
     for(k=0;k<NUM_METAL_SPECIES;k++) in->yields[k]=yields[k];
 #endif
     in->Msne = P[i].Mass * P[i].MassReturn_ThisTimeStep; // mass (in code units) returned
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(SINGLE_STAR_FB_WINDS)
-    //double m_msun = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
-    //in->SNe_v_ejecta = (616.e5 * sqrt((1.+0.1125*m_msun)/(1.+0.0125*m_msun)) * pow(m_msun,0.131)) / All.UnitVelocity_in_cm_per_s; // scaling from size-mass relation+eddington factor, assuming line-driven winds //
-    //Wind velocity based on Leitherer 1992
-    in->SNe_v_ejecta = single_star_wind_velocity(i);
-#else
-    /* calculate wind kinetic luminosity + internal energy (hot winds from O-stars, slow from AGB winds) */
+    
+    /* STELLAR POPULATION-AVERAGED VERSION: calculate wind kinetic luminosity + internal energy (hot winds from O-stars, slow from AGB winds) */
+#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
     double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), E_wind_tscaling=0.0013;
     if(star_age <= 0.1) {E_wind_tscaling=0.0013 + 16.0/(1+pow(star_age/0.0025,1.4)+pow(star_age/0.01,5.0));} // stellar population age dependence of specific wind energy, in units of an effective internal energy/temperature
-    in->SNe_v_ejecta = sqrt(2.0 * (All.AGBGasEnergy * E_wind_tscaling * (3.0e7/((5./3.-1.)*U_TO_TEMP_UNITS)))); // get the actual wind velocity (multiply specific energy by units, user-set normalization, and convert)
+    in->SNe_v_ejecta = sqrt(2.0 * (All.StellarMassLoss_Energy_Renormalization * E_wind_tscaling * (3.0e7/((5./3.-1.)*U_TO_TEMP_UNITS)))); // get the actual wind velocity (multiply specific energy by units, user-set normalization, and convert)
+#elif (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+    double t=evaluate_stellar_age_Gyr(P[i].StellarAge), Z=Z_for_stellar_evol(i), f0=1.2e5*pow(Z,0.12); /* setup: updated fit here uses the same stellar evolution models/tracks as used to compute mass-loss rates. see those for references here. */
+    in->SNe_v_ejecta = sqrt(All.StellarMassLoss_Energy_Renormalization) * f0 * (2500./(1.+pow(t/0.003,2.5)) + 500./(1.+pow(sqrt(Z)*t/0.05,6.)+pow(Z/0.2,1.5)) + 25.) / All.UnitVelocity_in_cm_per_s; /* interpolates smoothly from OB winds through AGB, also versus Z */
 #endif
+
+
+#if defined(SINGLE_STAR_FB_WINDS) /* SINGLE-STAR VERSION: instead of a stellar population, this is wind from a single star */
+    double m_msun=P[i].Mass*All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS);
+    in->SNe_v_ejecta = (616.e5 * sqrt((1.+0.1125*m_msun)/(1.+0.0125*m_msun)) * pow(m_msun,0.131)) / All.UnitVelocity_in_cm_per_s; // scaling from size-mass relation+eddington factor, assuming line-driven winds //
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+    in->SNe_v_ejecta = single_star_wind_velocity(i); /* for fancy models, wind velocity in subroutine, based on Leitherer 1992 and stellar evolutions tage, size, etc. */
+#endif
+#endif
+
+}
+
+
+double Z_for_stellar_evol(int i)
+{
+    double Z_solar = P[i].Metallicity[0]/All.SolarAbundances[0]; // use total metallicity
+#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) && defined(COOL_METAL_LINES_BY_SPECIES) // ??
+    int i_Fe=10; Z_solar = P[i].Metallicity[i_Fe]/All.SolarAbundances[i_Fe]; // use Fe, specifically, for computing stellar properties, as its most relevant here. MAKE SURE this is set to the correct abundance in the list, to match Fe!!!
+#endif
+    return DMIN(DMAX(Z_solar,0.01),3.)
 }
 
 #endif // GALSF_FB_MECHANICAL+GALSF_FB_FIRE_STELLAREVOLUTION
@@ -431,7 +437,7 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
 
 
 
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* begins large block of 'fancy' protostar-through-MS stellar evolution models */
 
 /* 'master' function to update the size (and other properties like effective temperature) of accreting protostars along relevant stellar evolution tracks */
 double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt)
@@ -466,8 +472,8 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 #endif
     }
 
-#elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
-    /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */    
+#elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1) /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */
+    
     double frad = 0.18; //limit for forming radiative barrier, based on Offner+MckKee 2011 source code
     double fk = 0.5; //fraction of kinetic energy that is radiated away in the inner disk before reaching the surface, using default ORION value here as it is not a GIZMO input parameter
     double f_acc = 0.5; //fraction of accretion power that is radiated away instead of being used to drive winds, using default ORION value here as it is not a GIZMO input parameter
@@ -592,15 +598,14 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
                 P[n].ZAMS_Mass = P[n].BH_Mass; //store the mass at which we reached the main sequence
             }
 #ifdef PS_EVOL_OUTPUT_MOREINFO
-            //Debug message
-            printf("%u promoted to %d \n",P[n].ID,(stage+stage_increase));
+            printf("%u promoted to %d \n",P[n].ID,(stage+stage_increase)); //Debug message
 #endif
         } //increase evolutionary stage if the particle satisfies the requirements
     }
     else{ // for main sequence stars
         if (BPP(n).ProtoStellarStage == 5){ //MS stars
             BPP(n).ProtoStellarRadius_inSolar = ps_radius_MS_in_solar(mass); //update the mass if the mass changes (unlikely)
-#ifdef  SINGLE_STAR_FB_SNE
+#ifdef SINGLE_STAR_FB_SNE
             //Check age and see if we need to blow up this star
             double age_Gyr = evaluate_stellar_age_Gyr(P[n].StellarAge);
             if ( age_Gyr > stellar_lifetime_in_Gyr(n) ){
@@ -638,45 +643,39 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 #endif
 #endif//end of SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1
 
-#ifdef PS_EVOL_OUTPUT_MOREINFO
-    // print out the basic star info
+#ifdef PS_EVOL_OUTPUT_MOREINFO // print out the basic star info
 #if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
     if (BPP(n).ProtoStellarStage >= 5) //only for MS stars, for previous stages we will print out the properties before
 #endif
-    {
-        printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: 0 rel_dr: 0 dm: %g dm_D: 0 Tc: 0 Pc: 0 rhoc: 0 beta: 0 dt: %g n_ad: 0 lum_int: 0 lum_I: 0 lum_D: 0 age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: 0 n_subcycle: 0.ZAMS_Mass %g PS_end\n",All.Time, P[n].ID,BPP(n).BH_Mass*(All.UnitMass_in_g / SOLAR_MASS),BPP(n).ProtoStellarRadius_inSolar,BPP(n).ProtoStellarStage, BPP(n).BH_Mdot*(All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/All.UnitTime_in_s*SEC_PER_YEAR , dm* (All.UnitMass_in_g / SOLAR_MASS), dt*All.UnitTime_in_Megayears, (All.Time-P[n].ProtoStellarAge)*All.UnitTime_in_Megayears, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk*(All.UnitMass_in_g / SOLAR_MASS), BPP(n).SinkRadius, P[n].ZAMS_Mass );
-    }
+    {printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: 0 rel_dr: 0 dm: %g dm_D: 0 Tc: 0 Pc: 0 rhoc: 0 beta: 0 dt: %g n_ad: 0 lum_int: 0 lum_I: 0 lum_D: 0 age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: 0 n_subcycle: 0.ZAMS_Mass %g PS_end\n",All.Time, P[n].ID,BPP(n).BH_Mass*(All.UnitMass_in_g / SOLAR_MASS),BPP(n).ProtoStellarRadius_inSolar,BPP(n).ProtoStellarStage, BPP(n).BH_Mdot*(All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS))/All.UnitTime_in_s*SEC_PER_YEAR , dm* (All.UnitMass_in_g / SOLAR_MASS), dt*All.UnitTime_in_Megayears, (All.Time-P[n].ProtoStellarAge)*All.UnitTime_in_Megayears, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk*(All.UnitMass_in_g / SOLAR_MASS), BPP(n).SinkRadius, P[n].ZAMS_Mass );}
 #endif
 }
 
 #if defined(SINGLE_STAR_FB_WINDS)
-double single_star_wind_mdot(int n){
 /* Let's get the wind mass loss rate for MS stars. n is the index of the particle (P[n]). mode is 1 when called by the wind spawning routine (blackhole.c) and 2 if called by the FIRE wind module (in this file, mechanical_fb_calculate_eventrates_Winds). The function decides which type of wind feedback is appropriate for the current star and will only give a nonzero mdot to one of these */
+double single_star_wind_mdot(int n){
     double minimum_stellarmass_for_winds_solar  = 2.0;  // minimum stellar mass allowed to have winds
-    int    model_wolf_rayet_phase_explicitly   = 1;    // assumes that O stars turn into WR stars at the end of their lifetime, increasing their mass loss rate
-    double n_particles_for_discrete_wind_spawn  = 1e-2;   // parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds) -- particle number required to trigger 'explicit' spawn module. Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
+    int    model_wolf_rayet_phase_explicitly    = 1;    // assumes that O stars turn into WR stars at the end of their lifetime, increasing their mass loss rate
+    double n_particles_for_discrete_wind_spawn  = 1e-2; // parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds) -- particle number required to trigger 'explicit' spawn module. Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
     
     double wind_mass_loss_rate=0; //mass loss rate in code units
     if (P[n].Type != 5) {return 0;}
     if(BPP(n).ProtoStellarStage != 5) {return 0;}
     double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
     if (m_solar < minimum_stellarmass_for_winds_solar){return 0.0;} //no winds for low mass stars
-
-    //Winds are for MS only
-    // We are assuming that METALS are also on
+    //Winds are for MS only: we are assuming that METALS are also on
     double ZZ = BPP(n).Metallicity[0]/All.SolarAbundances[0]; //relative metallicity to solar
     double logmdot_wind; // log10(Mdot / (Msun/yr))
 
     // phenomenological prescription: "de Jager / 3" model from Smith 2014, with limiter for "weak-wind problem"
     logmdot_wind = -6 + 1.5 * log10(BPP(n).StarLuminosity_Solar / 1e6) + 0.69 * log10(ZZ); // "de Jager / 3"
-    logmdot_wind = DMIN(-7.65 + 2.9*log10(BPP(n).StarLuminosity_Solar/ 1e5), logmdot_wind); // weak-wind problem 
-    
+    logmdot_wind = DMIN(-7.65 + 2.9*log10(BPP(n).StarLuminosity_Solar/ 1e5), logmdot_wind); // weak-wind problem
     wind_mass_loss_rate = pow(10.0,logmdot_wind) * (SOLAR_MASS/SEC_PER_YEAR)/(All.UnitMass_in_g/All.UnitTime_in_s); //reducing the rate to be more in line with observations, see Nathan Smith 2014, conversion to code units from Msun/yr
     
     if(model_wolf_rayet_phase_explicitly) {if(evaluate_stellar_age_Gyr(P[n].StellarAge) > (stellar_lifetime_in_Gyr(n)-singlestar_WR_lifetime_Gyr(n))){wind_mass_loss_rate*=10;}} //Our star is in the WR phase, for now use the simple prescription of having 10x higher wind loss rates based on Smith 2014
     //Let's deal with the case of undefined wind mode (just promoted to MS or restart from snapshot)
     if (wind_mass_loss_rate>0){
-//        Let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
+        //Let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
         double v_wind = single_star_wind_velocity(n);
         double t_wind =sqrt( wind_mass_loss_rate * (3.0/(4.0*M_PI*P[n].DensAroundStar)) / (v_wind*v_wind*v_wind));
         double N_wind = wind_mass_loss_rate * t_wind / All.BAL_wind_particle_mass;
@@ -702,7 +701,6 @@ double singlestar_WR_lifetime_Gyr(int n){ //Calculate lifetime for star in Wolf-
     return DMAX(0., 1.5e-3 * DMIN(1., ((m_solar-20.)/80.)) * pow(ZZ,0.5) );
 }
 
-
 double single_star_wind_velocity(int n){
 /* Let's get the wind velocity for MS stars */
     double T_eff = 5814.33 * pow( P[n].StarLuminosity_Solar/(P[n].ProtoStellarRadius_inSolar*P[n].ProtoStellarRadius_inSolar), 0.25 ); //effective temperature in K
@@ -713,14 +711,14 @@ double single_star_wind_velocity(int n){
 }
 #endif
 
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-double stellar_lifetime_in_Gyr(int n){
-    //Estimate lifetime of star, using simple MS approximation t/Gyr ~ 9.6 M/L in solar
+
+double stellar_lifetime_in_Gyr(int n){ //Estimate lifetime of star, using simple MS approximation t/Gyr ~ 9.6 M/L in solar
     double m_solar = BPP(n).Mass * (All.UnitMass_in_g / SOLAR_MASS); // mass in units of Msun
     return 9.6 * (m_solar / P[n].StarLuminosity_Solar) + 0.003;     // gives ~10Gyr for solar-type stars, ~40Myr for 8msun ZAMS, and asymptotes to 3Myr at high mass
 }
-#endif
-#ifdef  SINGLE_STAR_FB_SNE
+
+
+#if defined(SINGLE_STAR_FB_SNE)
 double single_star_SN_velocity(int n){ // Initial velocity of SNe ejecta: 10^51 erg/SN, distributed evenly among the mass
     return sqrt(SINGLE_STAR_FB_SNE * (2e51/All.UnitEnergy_in_cgs)/P[n].Mass_final); //simple v=sqrt(2E/m)should be fine without relativistic corrections
 }
@@ -762,9 +760,8 @@ void single_star_SN_init_directions(void){
         }
     }
 }
-
-
 #endif
+
 
 #if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1) /* Functions for protosteller evolution model based on Offner 2009 */
 /* Calculate the mean ratio of the gas pressure to the gas+radiation pressure, either by solving the Eddington quartic (for n_ad=3, Eq B5) or by using tabulated values, based on Offner 2009, code taken from ORION */

@@ -46,13 +46,13 @@ int does_particle_need_to_be_merged(int i)
         MyFloat vr2 = (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) * All.cf_a2inv; // physical
         if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
 #else
-        if(P[i].Mass < (All.MaxMassForParticleSplit * ref_mass_factor(i))) {return 1;}
-        if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO) {return 1;}
+        if(P[i].Mass < (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
+        if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO*target_mass_renormalization_factor_for_mergesplit(i)) {return 1;}
 #endif
     }
 #endif
-    if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*ref_mass_factor(i))) {return 0;}
-    if(P[i].Mass <= (All.MinMassForParticleMerger* ref_mass_factor(i))) {return 1;}
+    if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 0;}
+    if(P[i].Mass <= (All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
     return 0;
 #endif
 }
@@ -66,21 +66,19 @@ int does_particle_need_to_be_split(int i)
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
-    if(P[i].Mass >= (All.MaxMassForParticleSplit * ref_mass_factor(i))) {return 1;}
+    if(P[i].Mass >= (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
     return 0;
 #endif
 }
 
-/*! A multiplcative factor that determines the target mass of a particle for the (de)refinement routines */
-double ref_mass_factor(int i)
+/*! A multiplicative factor that determines the target mass of a particle for the (de)refinement routines */
+double target_mass_renormalization_factor_for_mergesplit(int i)
 {
     double ref_factor=1.0;
-#if defined(BH_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
-#ifndef SINGLE_STAR_SINK_DYNAMICS
-    ref_factor = sqrt(P[i].min_dist_to_bh + 0.0001);
-    if(ref_factor>1.0) { ref_factor = 1.0; }
-#endif 
+/*! #if defined(BH_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE) && !defined(SINGLE_STAR_SINK_DYNAMICS)
+    ref_factor = DMIN(1.,sqrt(P[i].min_dist_to_bh + 0.0001)); /* this is an example of the kind of routine you could use to scale resolution with BH distance */
 #endif
+ */
     return ref_factor;
 }
 

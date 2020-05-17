@@ -28,7 +28,7 @@
  *   code standards and be properly multi-threaded. 
  */
 
-#ifdef BLACK_HOLES
+#ifdef BLACK_HOLES // master flag [needs to be here to prevent compiler breaking when this is not active] //
 
 
 /*  This is the master routine for the BH physics modules.
@@ -107,21 +107,20 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
     /* if pair is a gas particle make sure to account for its thermal pressure */
     double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
     
+    if(P[j].Type == 0)
+    {
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-    if(P[j].Type == 0) {
         if(Get_Particle_Size(j) > sink_radius*1.396263) {return 0;} // particle volume should be less than sink volume, enforcing a minimum spatial resolution around the sink
 #if defined(MAGNETIC)
-        double bmag=0; int k; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(j,k)*Get_Particle_BField(j,k);}
-        cs = sqrt(cs*cs + bmag/SphP[j].Density);
+        double bmag=0; int k; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(j,k)*Get_Particle_BField(j,k);} cs = sqrt(cs*cs + bmag/SphP[j].Density); // use fast Alfven speed
 #endif
-#if defined(COOLING)
+#if defined(COOLING)  // check if we're probably sitting at the bottom of a quasi-hydrostatic Larson core
         double nHcgs = HYDROGEN_MASSFRAC * (SphP[j].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
-        if(nHcgs > 1e13 && cs > 0.1 * vrel) { // we're probably sitting at the bottom of a quasi-hydrostatic Larson core
-            double m_eff = 4. * M_PI * dr_code * dr_code * dr_code * SphP[j].Density; vesc = DMAX(sqrt(2*All.G * m_eff / dr_code), vesc);} // assume an isothermal sphere interior, for Shu-type solution, and re-estimate vesc using self-gravity of the gas
+        if(nHcgs > 1e13 && cs > 0.1 * vrel) {double m_eff = 4. * M_PI * dr_code * dr_code * dr_code * SphP[j].Density; vesc = DMAX(sqrt(2*All.G * m_eff / dr_code), vesc);} // assume an isothermal sphere interior, for Shu-type solution, and re-estimate vesc using self-gravity of the gas
+#endif
 #endif
     }
-#endif // SINGLE_STAR_SINK_DYNAMICS
-    
+
     double v2 = (vrel*vrel+cs*cs)/(vesc*vesc); int bound = 0;
     if(v2 < 1) 
     {
@@ -147,7 +146,6 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 
 
 
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (defined(SINGLE_STAR_FB_WINDS) && defined(BH_THERMALFEEDBACK))
 /* weight function for local (short-range) coupling terms from the black hole, including the single-scattering radiation pressure and the bal winds */
 double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r, double H_bh)
 {
@@ -197,7 +195,6 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
     return bh_lum_input;
 }
 
-#endif /* end of #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) */
 
 
 
@@ -396,7 +393,7 @@ void set_blackhole_mdot(int i, int n, double dt)
         t_acc_disk = 2.*M_PI*j*j*j*Gm_i*Gm_i / fabs(BH_MDOT_FROM_ALPHAMODEL); // orbital time at circularization radius of the alpha-disk: BH_MDOT_FROM_ALPHAMODEL is approximately equivalent to the 'alpha' parameter, setting how rapidly accretion occurs (=0.01 -> 100 orbits)
         if(BH_MDOT_FROM_ALPHAMODEL>0) {t_acc_disk = 100. * t_acc_disk * (1 / (Gm_i * DMIN(reff, j*j*Gm_i))) / soundspeed2;} // Shakura-Sunyaev prescription with alpha=0.01, using minimum of sink and circularization radius
 #endif
-#endif // SINGLE_STAR_SINK_DYNAMICS
+#endif
         
 #if defined(BH_GRAVCAPTURE_GAS)
         t_acc_disk /= All.BlackHoleAccretionFactor; // when using GRAVCAPTURE, this won't multiply the continuous mdot, but rather mdot from disk to BH
@@ -771,8 +768,7 @@ void blackhole_final_operations(void)
         
 	
 #ifdef SINGLE_STAR_SINK_DYNAMICS /* save local effective signal velocity of gas for sink particle CFL-like timestep criterion */
-        P[n].BH_SurroundingGasVel = 0;
-        for(k=0; k<3; k++) {P[n].BH_SurroundingGasVel += BlackholeTempInfo[i].BH_SurroundingGasVel[k]*BlackholeTempInfo[i].BH_SurroundingGasVel[k];}
+        P[n].BH_SurroundingGasVel = 0; for(k=0; k<3; k++) {P[n].BH_SurroundingGasVel += BlackholeTempInfo[i].BH_SurroundingGasVel[k]*BlackholeTempInfo[i].BH_SurroundingGasVel[k];}
         P[n].BH_SurroundingGasVel += convert_internalenergy_soundspeed2(n,BlackholeTempInfo[i].BH_InternalEnergy);
         P[n].BH_SurroundingGasVel = sqrt(P[n].BH_SurroundingGasVel);
 #endif
@@ -793,16 +789,11 @@ void blackhole_final_operations(void)
         BPP(n).BH_Mass -= dm_wind;
 #endif 
 #endif
-#ifdef SINGLE_STAR_FB_WINDS
-       if (P[n].ProtoStellarStage == 5){ //for MS stars we have winds and no jets
-           double mdot_wind = single_star_wind_mdot(n);
-           if(P[n].wind_mode == 1){
-               dm_wind = mdot_wind * dt; //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep
-               BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
-           }
-       }
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_WINDS)
+       if(P[n].ProtoStellarStage == 5){if(P[n].wind_mode == 1) {dm_wind = single_star_wind_mdot(n) * dt; BPP(n).BH_Mass -= dm_wind;}} //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep: remove mass lost via winds
 #endif
-#ifdef SINGLE_STAR_FB_SNE
+#if defined(SINGLE_STAR_FB_SNE)
         if (P[n].ProtoStellarStage == 6){ //Star old enough to go out with a boom
             double t_clear=P[n].SinkRadius/single_star_SN_velocity(n); // time needed spawned wind particles to clear the sink
             double SN_mdot = (SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger)/t_clear; // we spawn SINGLE_STAR_FB_SNE_N_EJECTA per ejected shell, and we can have maximum 1 shell per t_clear
@@ -817,7 +808,8 @@ void blackhole_final_operations(void)
                 MaxUnSpanMassBH = DMAX(2*(BH_WIND_SPAWN)*All.BAL_wind_particle_mass,MaxUnSpanMassBH); // a high enough number to ensure that we do spawn winds
             }
         }
-#endif 
+#endif
+#endif
         BPP(n).unspawned_wind_mass += dm_wind;
         if(BPP(n).unspawned_wind_mass>MaxUnSpanMassBH) {MaxUnSpanMassBH=BPP(n).unspawned_wind_mass;}
 #endif

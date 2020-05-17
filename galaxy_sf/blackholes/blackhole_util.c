@@ -18,6 +18,8 @@
 * see notes in blackhole.c for details on code history.
 */
 
+#ifdef BLACK_HOLES // master flag [needs to be here to prevent compiler breaking when this is not active] //
+
 /* function for allocating temp BH data struc needed for feedback routines*/
 void blackhole_start(void)
 {
@@ -166,3 +168,6 @@ void blackhole_properties_loop(void) /* Note, normalize_temp_info_struct is now 
     }// for(i=0; i<N_active_loc_BHs; i++)
 }
 
+
+
+#endif // master flag

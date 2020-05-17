@@ -978,7 +978,7 @@ integertime get_timestep(int p,		/*!< particle index */
 
     if(P[p].Type == 5)
     {
-#ifndef SINGLE_STAR_SINK_DYNAMICS
+#if !defined(SINGLE_STAR_SINK_DYNAMICS) && defined(GALSF)
       double dt_accr = 1.e-2 * 4.2e7 * SEC_PER_YEAR / All.UnitTime_in_s; // this is the Eddington timescale; not relevant for low radiative efficiency
 #else
       double dt_accr = All.MaxSizeTimestep;
@@ -1041,18 +1041,15 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt > dt_min && dt_min > 0) dt = 1.01 * dt_min;
         }
 #endif
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_FB_WINDS
+        if(P[p].ProtoStellarStage == 5) {double dt_spawn = All.BAL_wind_particle_mass / single_star_wind_mdot(p); if(dt > dt_spawn) dt = 1.01 * dt_spawn;}
+#endif
 #ifdef SINGLE_STAR_FB_SNE
         if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ){ //Star going supernova, still has mass to eject
-            double t_clear=P[p].SinkRadius/single_star_SN_velocity(p); // time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
-            dt = DMIN(dt,DMAX(t_clear/2,DMAX(All.MinSizeTimestep,All.Timebase_interval)* 1.01)); // Let's make the timestep as low as possible but longer than the time needed for previous ejecta to clear the area and safely above the smallest allowable timestep to avoid crashing
-        }
+            double t_clear=P[p].SinkRadius/single_star_SN_velocity(p);  dt = DMIN(dt,DMAX(t_clear/2,DMAX(All.MinSizeTimestep,All.Timebase_interval)* 1.01)); } // time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
 #endif
-#ifdef SINGLE_STAR_FB_WINDS
-        if(P[p].ProtoStellarStage == 5) {
-            double dt_spawn = All.BAL_wind_particle_mass / single_star_wind_mdot(p);
-            if(dt > dt_spawn) dt = 1.01 * dt_spawn;
-        }
-#endif                    
+#endif
     } // if(P[p].Type == 5)
 
 #ifdef BH_DEBUG_SPAWN_JET_TEST /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
@@ -1088,7 +1085,7 @@ integertime get_timestep(int p,		/*!< particle index */
             PRINT_WARNING("Part-ID=%llu  dt=%g dtc=%g ac=%g agrav=%g ahydro=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g m=%g type=%d\n",
                           (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type], P[p].Mass,P[p].Type);
 #endif // ndef LONGIDS
-#ifdef SINGLE_STAR_DEFAULTS //extra info for single star runs
+#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE //extra info for single star runs
             PRINT_WARNING("Part-ID=%llu min_dist_to_bh=%g cs_est=%g u_int=%g Pressure=%g",  (MyIDType) P[p].ID, P[p].min_dist_to_bh, sqrt(convert_internalenergy_soundspeed2(p, SphP[p].InternalEnergy)), SphP[p].InternalEnergy, SphP[p].Pressure);
 #endif
         }
@@ -1099,7 +1096,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #else
             PRINT_WARNING("Part-ID=%llu  dt=%g ac=%g agrav=%g xyz=(%g|%g|%g) type=%d\n", (MyIDType) P[p].ID, dt, ac, agrav, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],P[p].Type);
 #endif // ndef LONGIDS
-#ifdef SINGLE_STAR_DEFAULTS //extra info for single star runs
+#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE //extra info for single star runs
             PRINT_WARNING("Part-ID=%llu min_dist_to_bh=%g DensAroundStar=%g BH_Mdot=%g min_bh_approach_time=%g min_bh_freefall_time=%g BH_SurroundingGasVel=%g BH_dr_to_NearestGasNeighbor=%g\n", (MyIDType) P[p].ID, P[p].min_dist_to_bh, P[p].DensAroundStar, P[p].BH_Mdot, P[p].min_bh_approach_time, P[p].min_bh_freefall_time, P[p].BH_SurroundingGasVel, P[p].BH_dr_to_NearestGasNeighbor);
 #endif
         }

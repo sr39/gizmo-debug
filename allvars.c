@@ -246,7 +246,7 @@ FILE *FdBlackHoles;		/*!< file handle for blackholes.txt log-file. */
 #ifdef BH_OUTPUT_GASSWALLOW
 FILE *FdBhSwallowDetails;
 #endif
-#ifdef SINGLE_STAR_FB_SNE
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
 FILE *FdBhSNDetails;
 #endif
 #ifdef BH_OUTPUT_FORMATION_PROPERTIES

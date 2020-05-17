@@ -12,6 +12,8 @@
 * see notes in blackhole.c for details on code history.
 */
 
+#ifdef BLACK_HOLES // master flag [needs to be here to prevent compiler breaking when this is not active] //
+
 
 #define MASTER_FUNCTION_NAME blackhole_feed_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define CONDITIONFUNCTION_FOR_EVALUATION if(P[i].Type==5) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
@@ -88,7 +90,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 /* this structure defines the variables that need to be sent -back to- the 'searching' element */
 struct OUTPUT_STRUCT_NAME
 { /* define variables below as e.g. "double X;" */
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (defined(SINGLE_STAR_FB_WINDS) && defined(BH_THERMALFEEDBACK))
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     double BH_angle_weighted_kernel_sum;
 #endif
 #ifdef BH_REPOSITION_ON_POTMIN
@@ -102,7 +104,7 @@ struct OUTPUT_STRUCT_NAME
 static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
     int k, target; k=0; target = P[i].IndexMapToTempStruc;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (defined(SINGLE_STAR_FB_WINDS) && defined(BH_THERMALFEEDBACK))
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     ASSIGN_ADD_PRESET(BlackholeTempInfo[target].BH_angle_weighted_kernel_sum, out->BH_angle_weighted_kernel_sum, mode);
 #endif
 #ifdef BH_REPOSITION_ON_POTMIN
@@ -308,12 +310,8 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                             }
 #endif
 #ifdef BH_THERMALFEEDBACK
-#ifdef SINGLE_STAR_FB_WINDS
-                            out.BH_angle_weighted_kernel_sum += bh_angleweight_localcoupling(j,0,0,r,h_i); // we're gonna couple the energy in the swallow_and_kick loop
-#else                            
                             double energy = bh_lum_bol(local.Mdot, local.BH_Mass, -1) * local.Dt;
                             if(local.Density > 0) {SphP[j].Injected_BH_Energy += (wk/local.Density) * energy * P[j].Mass;}
-#endif                            
 #endif                            
                         } // if(P[j].Type == 0)
 
@@ -337,3 +335,6 @@ void blackhole_feed_loop(void)
 CPU_Step[CPU_BLACKHOLES] += measure_time(); /* collect timings and reset clock for next timing */
 }
 #include "../../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
+
+
+#endif // master flag

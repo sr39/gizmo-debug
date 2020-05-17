@@ -22,7 +22,7 @@ void radiation_pressure_winds_consolidated(void)
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     age_thold = 1.0e10;
 #endif
-    if(All.WindMomentumLoading<=0) return;
+    if(All.RP_Local_Momentum_Renormalization<=0) return;
     Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
     PRINT_STATUS("Local Radiation-Pressure acceleration calculation");
 
@@ -62,7 +62,7 @@ void radiation_pressure_winds_consolidated(void)
                 dE_over_c *= (dt*All.UnitTime_in_s/All.HubbleParam) / 2.9979e10; // dE/c in CGS
                 dv_units = KAPPA_IR * dE_over_c / (4*M_PI * All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime);
                 dv_units /= All.UnitVelocity_in_cm_per_s; // dv in code units per unit distance
-                dv_units *= All.WindMomentumLoading; // rescale tau_ir component here
+                dv_units *= All.RP_Local_Momentum_Renormalization; // rescale tau_ir component here
                 dE_over_c /= (All.UnitMass_in_g/All.HubbleParam) * All.UnitVelocity_in_cm_per_s; // dv per unit mass
                 total_prob_kick += dE_over_c; dv_imparted = dE_over_c/P[i].Mass; // estimate of summed dv_imparted from neighbors from L/c part
                 dv_imparted += dv_units * (0.1+P[i].Metallicity[0]/All.SolarAbundances[0]) * (4.0*M_PI*rho/P[i].Mass*h); // sum over neighbor IR term
@@ -119,7 +119,7 @@ void radiation_pressure_winds_consolidated(void)
                         dE_over_c *= (dt*All.UnitTime_in_s/All.HubbleParam) / 2.9979e10; // dE/c in CGS
                         dv_units = KAPPA_IR * dE_over_c / (4*M_PI * All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime);
                         dv_units /= All.UnitVelocity_in_cm_per_s; // dv in code units per unit distance
-                        dv_units *= All.WindMomentumLoading; // rescale tau_ir component here
+                        dv_units *= All.RP_Local_Momentum_Renormalization; // rescale tau_ir component here
                         dE_over_c /= (All.UnitMass_in_g/All.HubbleParam) * All.UnitVelocity_in_cm_per_s; // dv per unit mass
                         total_prob_kick += dE_over_c;
 #endif

@@ -220,10 +220,12 @@
 
 
 #ifdef FIRE_PHYSICS_DEFAULTS
+
 #if !(CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(FIRE_PHYSICS_DEFAULTS)) /* no numerical value is set, so set one as our 'default' */
 #undef FIRE_PHYSICS_DEFAULTS
 #define FIRE_PHYSICS_DEFAULTS 2             /*! defaults currently to FIRE-2 baseline */
 #endif
+
 #define COOLING                             /*! master switch for cooling */
 #define COOL_LOW_TEMPERATURES               /*! include low-temperature (<1e4 K) cooling */
 #define COOL_METAL_LINES_BY_SPECIES         /*! include high-temperature metal-line cooling, species-by-species */
@@ -231,12 +233,13 @@
 #define METALS                              /*! follow metals as passive scalars, use in cooling, etc */
 #define TURB_DIFF_METALS                    /*! explicit sub-grid diffusivity for metals/passive scalars */
 #define TURB_DIFF_METALS_LOWORDER           /*! memory-saving custom mod */
+
 #define GALSF_SFR_MOLECULAR_CRITERION       /*! molecular criterion for star formation */
 #if !defined(GALSF_SFR_VIRIAL_SF_CRITERION)
 #define GALSF_SFR_VIRIAL_SF_CRITERION 0     /*! sink-particle like self-gravity requirement for star formation: original implementation */
 #endif
 #define GALSF_FB_MECHANICAL                 /*! master switch for mechanical feedback modules */
-#define GALSF_FB_FIRE_STELLAREVOLUTION      /*! turns on default FIRE processes+lookup tables including gas return, SNe, R-process, etc. */
+#define GALSF_FB_FIRE_STELLAREVOLUTION (FIRE_PHYSICS_DEFAULTS) /*! turns on default FIRE processes+lookup tables including gas return, SNe, R-process, etc. this carries a number matching the defaults set you choose */
 #define GALSF_FB_FIRE_RT_HIIHEATING         /*! gas within HII regions around young stars is photo-heated to 10^4 K - local stromgren approximation */
 #define GALSF_FB_FIRE_RT_LOCALRP            /*! turn on local radiation pressure coupling to gas - account for local multiple-scattering and isotropic local absorption */
 #define GALSF_FB_FIRE_RT_LONGRANGE          /*! continuous acceleration from starlight (uses luminosity tree) to propagate FIRE RT */
@@ -244,6 +247,7 @@
 //#define GALSF_FB_FIRE_RPROCESS 4          /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
+
 #if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
 #define ADAPTIVE_GRAVSOFT_FORGAS            /*! default choice is adaptive force softening for gas, but not stars [since ambiguously defined] */
 #endif
@@ -253,14 +257,7 @@
 #if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
 #define ALLOW_IMBALANCED_GASPARTICLELOAD
 #endif
-#if defined(PMGRID)
-#if !defined(PM_PLACEHIGHRESREGION)
-#define PM_PLACEHIGHRESREGION 19 /* 1+2+16 */
-#endif
-#if !defined(PM_HIRES_REGION_CLIPPING)
-#define PM_HIRES_REGION_CLIPPING 3000 /* just a safety factor here */
-#endif
-#endif
+
 #if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(FIRE_PHYSICS_DEFAULTS) /* check if a numerical value is set */
 #if (FIRE_PHYSICS_DEFAULTS == 1)
 #define FIRE1_SNE_COUPLING      /* reverts to old mass-scalar-weight, 1-way-search, non-tensor-renormalized SNe model */
@@ -276,10 +273,69 @@
 #undef GALSF_SFR_VIRIAL_SF_CRITERION 
 #define GALSF_SFR_VIRIAL_SF_CRITERION 4 /*! sink-particle like self-gravity requirement for star formation: slightly more sophisticated version per Mike */
 #define GALSF_SFR_VIRIAL_CONTINUOUS_THOLD /*! continuous behavior through virial threshold */
-#endif
+#endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
+
+#if defined(FIRE_MHD)
+#define MAGNETIC            /* master flag */
+#define MHD_B_SET_IN_PARAMS /* B-field must be set in ICs */
+#define CONDUCTION          /* enable conduction */
+#define CONDUCTION_SPITZER  /* compute proper coefficients and anisotropy for conduction */
+#define VISCOSITY           /* enable viscosity */
+#define VISCOSITY_BRAGINSKII /* compute proper coefficients and anisotropy for viscosity */
+#define DIFFUSION_OPTIMIZERS /* custom fire-related optimizations for timestepping */
+#endif // FIRE_MHD
+
+#if defined(FIRE_CRS)
+#define COSMIC_RAYS /*! master flag */
+#if (FIRE_CRS <= 0)
+#define COSMIC_RAYS_M1 (500.) /*! maximum CR transport speed: 500 safe for our default diffusivities in constant-kappa model */
+#define COSMIC_RAYS_DIFFUSION_MODEL 0 /*! constant diffusivity (set by params file) */
+#else
+#define COSMIC_RAYS_M1 (1000.) /*! maximum CR transport speed: 1000 safe for our default diffusivities in variable-kappa model */
+#define COSMIC_RAYS_DIFFUSION_MODEL 7 /*! best-guess for variable-kappa model, combining updated SC+ET */
+#define COSMIC_RAYS_ION_ALFVEN_SPEED /*! use appropriate ion Alfven speed */
+#define COSMIC_RAYS_SET_SC_MODEL 2 /*! set mode for SC model using best-estimate of fQLT and fCAS */
+#endif
+#endif // FIRE_CRS
+
+#if defined(FIRE_BHS)
+#define BLACK_HOLES                 /* master flag */
+#define BH_SEED_FROM_LOCALGAS       /* seed BHs locally in SF-ing gas */
+#define BH_REPOSITION_ON_POTMIN 2   /* anchor BHs to centers smoothly */
+#define BH_SWALLOWGAS               /* allow BHs to accrete in principle */
+#define BH_GRAVACCRETION 1          /* accrete following our standard gravitational torques model */
+#define BH_SIGMAMULTIPLIER          /* account for additional acceleration-dependent retention from stellar FB in Mdot */
+#define BH_ALPHADISK_ACCRETION (10.) /* smooth out accretion + allow super-eddington capture with alpha-disk model */
+#define BH_PHOTONMOMENTUM           /* allow AGN radiation pressure */
+#define BH_COMPTON_HEATING          /* allow Compton heating from AGN spectrum */
+#define BH_HII_HEATING              /* allow photo-ionization heating from AGN spectrum */
+#define BH_FB_COLLIMATED            /* BHFB directed along collimated axis following BH ang. mom */
+#define BH_WIND_SPAWN (2)           /* spawn module: N=min num spawned/step */
+//#define BH_WIND_CONTINUOUS        /* continuous 'pushing' module for material in BH kernel [we prefer spawn module, even though it can get expensive sometimes] */
+#ifdef COSMIC_RAYS
+#define BH_COSMIC_RAYS              /* allow CR injection from AGN */
+#endif
+#endif // FIRE_BHS
+
+#if defined(PMGRID)
+#if !defined(PM_PLACEHIGHRESREGION)
+#if defined(BLACK_HOLES)
+#define PM_PLACEHIGHRESREGION 51 /* 1+2+16+32 */
+#else
+#define PM_PLACEHIGHRESREGION 19 /* 1+2+16 */
+#endif
+#endif
+#if !defined(PM_HIRES_REGION_CLIPPING)
+#define PM_HIRES_REGION_CLIPPING 3000 /* just a safety factor here */
+#endif
+#endif // PMGRID check
+
 #else
 #endif // FIRE_PHYSICS_DEFAULTS clauses
+
+
+
 
 #ifdef PROTECT_FROZEN_FIRE
 #define GALSF_USE_SNE_ONELOOP_SCHEME // set to use the 'base' FIRE-2 SNe coupling. if commented out, will user newer version that more accurately manages the injected energy with neighbors moving to inject a specific target
@@ -364,11 +420,8 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif // CHIMES_METAL_DEPLETION 
 #endif // CHIMES 
 
-#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE //QoL flag so that we don't need to replace every config file just yet, will be removed later
-#define SINGLE_STAR_DEFAULTS
-#endif
 
-#ifdef SINGLE_STAR_DEFAULTS /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
+#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
 #define LONGIDS
 #define OUTPUT_POSITIONS_IN_DOUBLE
 #define INPUT_POSITIONS_IN_DOUBLE
@@ -398,6 +451,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #ifdef COOLING
 #define EOS_SUBSTELLAR_ISM
+#endif
+#if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#define GALSF_FB_FIRE_STELLAREVOLUTION 3 // enable multi-loop feedback from such sources [this is specific to the DG-MG implementations here, not for public use right now!]
 #endif
 #endif // SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE
 
@@ -451,7 +507,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #endif
 
-#if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)
+#if defined(SINGLE_STAR_FB_JETS) || ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION))
 #define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
 #define MAINTAIN_TREE_IN_REARRANGE // don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed
 #if !(CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(SINGLE_STAR_FB_JETS)) /* no numerical value is set, so set one as our 'default' */
@@ -459,10 +515,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define SINGLE_STAR_FB_JETS 1 // scales the amount of accretion power going into jets, we eject (1-All.BAL_f_accretion) fraction of the accreted mass at this value times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.BAL_f_accretion)
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
-//#define BH_THERMALFEEDBACK // flag for pure thermal injection - use either this or the 3 flags below for momentum injection
 #define GALSF_FB_MECHANICAL //We will use the FIRE wind module for low mass loss rate stars (spawning leads to issues)
-//#define MECHANICAL_FB_MOMENTUM_ONLY // enable with GALSF_FB_MECHANICAL to couple only mass and momentum in winds
-#define GALSF_FB_FIRE_STELLAREVOLUTION //flag needed to calculate properties
 #endif
 #ifdef SINGLE_STAR_FB_SNE
 #if !(CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(SINGLE_STAR_FB_SNE)) /* no numerical value is set, so set one as our 'default' */
@@ -474,14 +527,8 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #endif
 
-
-
-#ifdef SINGLE_STAR_PROMOTION
-#define GALSF_FB_MECHANICAL // allow SNe + winds in promoted stars [at end of main sequence lifetimes]
-#define GALSF_FB_FIRE_STELLAREVOLUTION // mass return and other properties for stellar winds [scaled appropriately for particle masses]
-#define GALSF_FB_FIRE_RT_HIIHEATING // FIRE approximate photo-ionization [for particle masses; could also use real-RT]
-#define GALSF_FB_FIRE_RT_LOCALRP // local radiation pressure [scaled with mass, single-scattering term here]
-#define GALSF_FB_FIRE_RT_CONTINUOUSRP // force the local rad-pressure term to be continuous instead of small impulses
+#if ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && !defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION))
+#define GALSF_FB_MECHANICAL // enable mechanical feedback from single stellar sources
 #endif
 
 #if defined(COOLING) && !defined(COOL_GRACKLE) // if not using grackle modules, need to make sure appropriate cooling is enabled
@@ -1717,7 +1764,7 @@ extern FILE *FdBlackHoles;	/*!< file handle for blackholes.txt log-file. */
 #ifdef BH_OUTPUT_GASSWALLOW
 extern FILE *FdBhSwallowDetails;
 #endif
-#ifdef SINGLE_STAR_FB_SNE
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
 extern FILE *FdBhSNDetails;
 #endif
 #ifdef BH_OUTPUT_FORMATION_PROPERTIES
@@ -2042,7 +2089,7 @@ extern struct global_data_all_processes
     double Rad_Intensity_Direction[N_RT_INTENSITY_BINS][3];
 #endif
 
-#ifdef SINGLE_STAR_FB_SNE
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
     double SN_Ejecta_Direction[SINGLE_STAR_FB_SNE_N_EJECTA][3];
 #endif
 
@@ -2121,7 +2168,7 @@ extern struct global_data_all_processes
 #endif
     
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
-  double WindMomentumLoading;
+  double RP_Local_Momentum_Renormalization;
 #endif
     
 #ifdef GALSF_SUBGRID_WINDS
@@ -2139,14 +2186,13 @@ extern struct global_data_all_processes
 #endif // GALSF_SUBGRID_WINDS //
 
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-    double SNeIIEnergyFrac;
-    double GasReturnFraction;
-    double AGBGasEnergy;
+    double SNe_Energy_Renormalization;
+    double StellarMassLoss_Rate_Renormalization;
+    double StellarMassLoss_Energy_Renormalization;
 #ifdef COSMIC_RAYS
     double CosmicRay_SNeFraction;
 #endif
 #endif
-
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
   double HIIRegion_fLum_Coupled;
 #endif
@@ -2542,13 +2588,7 @@ extern ALIGN(32) struct particle_data
 #endif  
 #endif
 
-#if ( (!defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)) && (defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_JETS)) )
-#ifndef SINGLE_STAR_PROMOTION
-#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 1 //default PS evolution based on ORION module
-#else
-#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 0 // the promotion module is incompatible with the evolution model from ORION we use in SINGLE_STAR_PROTOSTELLAR_EVOLUTION 1, so we revert to the simpler one
-#endif 
-#endif
+
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION    
     MyFloat ProtoStellarAge; /*!< record the proto-stellar age instead of age */
     MyFloat ProtoStellarRadius_inSolar; /*!< protostellar radius (also tracks evolution from protostar to ZAMS star) */
@@ -2556,13 +2596,13 @@ extern ALIGN(32) struct particle_data
     MyFloat Mass_D; /* Mass of gas in the protostar that still contains D to burn */ // IO flag IO_MASS_D_PROTOSTAR
     MyFloat StarLuminosity_Solar; /*the total luminosity of the star in L_solar units*/ //IO flag IO_LUM_SINGLESTAR
     MyFloat ZAMS_Mass; /*The mass the star has when reaching the main sequence */ //IO flag IO_ZAMS_MASS
-#endif
 #ifdef SINGLE_STAR_FB_WINDS
     MyFloat Wind_direction[6]; //direction of wind launches, to reduce anisotropy launches go along a random axis then a random perpendicular one, then one perpendicular to both.
     int wind_mode; //tells what kind of wind model to use, 1 for particle spawning and 2 for using the FIRE wind module
 #endif
 #ifdef  SINGLE_STAR_FB_SNE
     MyFloat Mass_final; //final mass of the star before going SN (Since this is not saved to snapshots, hard restarts in the middle of spawning an SN will do weird things)
+#endif
 #endif
     
 #if defined(DM_SIDM)

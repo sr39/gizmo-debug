@@ -330,7 +330,7 @@ void begrun(void)
       All.BlackHoleMaxAccretionRadius = all.BlackHoleMaxAccretionRadius;
 #endif
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
-        All.WindMomentumLoading = all.WindMomentumLoading;
+        All.RP_Local_Momentum_Renormalization = all.RP_Local_Momentum_Renormalization;
 #endif
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
         All.HIIRegion_fLum_Coupled = all.HIIRegion_fLum_Coupled;
@@ -343,9 +343,9 @@ void begrun(void)
         All.PhotonMomentum_fOPT = all.PhotonMomentum_fOPT;
 #endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-        All.SNeIIEnergyFrac = all.SNeIIEnergyFrac;
-        All.GasReturnFraction = all.GasReturnFraction;
-        All.AGBGasEnergy = all.AGBGasEnergy;
+        All.SNe_Energy_Renormalization = all.SNe_Energy_Renormalization;
+        All.StellarMassLoss_Rate_Renormalization = all.StellarMassLoss_Rate_Renormalization;
+        All.StellarMassLoss_Energy_Renormalization = all.StellarMassLoss_Energy_Renormalization;
 #ifdef COSMIC_RAYS
         All.CosmicRay_SNeFraction = all.CosmicRay_SNeFraction;
 #endif
@@ -438,7 +438,7 @@ void begrun(void)
 #endif
 #endif
 
-#ifdef  SINGLE_STAR_FB_SNE
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
     single_star_SN_init_directions();
 #endif
 #ifdef RADTRANSFER
@@ -780,7 +780,7 @@ void open_outputfiles(void)
     }
 #endif
 
-#ifdef SINGLE_STAR_FB_SNE
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
   sprintf(buf, "%s%s", All.OutputDir, "SN_details.txt");
   if(!(FdBhSNDetails = fopen(buf, mode)))
     {
@@ -1147,17 +1147,17 @@ void read_parameter_file(char *fname)
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
         strcpy(tag[nt], "SNeIIEnergyFrac");
         strcpy(alternate_tag[nt], "SNe_Energy_Renormalization");
-        addr[nt] = &All.SNeIIEnergyFrac;
+        addr[nt] = &All.SNe_Energy_Renormalization;
         id[nt++] = REAL;
 
         strcpy(tag[nt],"GasReturnFraction");
         strcpy(alternate_tag[nt], "StellarMassLoss_Rate_Renormalization");
-        addr[nt] = &All.GasReturnFraction;
+        addr[nt] = &All.StellarMassLoss_Rate_Renormalization;
         id[nt++] = REAL;
         
         strcpy(tag[nt],"GasReturnEnergy");
         strcpy(alternate_tag[nt], "StellarMassLoss_Energy_Renormalization");
-        addr[nt] = &All.AGBGasEnergy;
+        addr[nt] = &All.StellarMassLoss_Energy_Renormalization;
         id[nt++] = REAL;
 
 #ifdef COSMIC_RAYS
@@ -1168,6 +1168,12 @@ void read_parameter_file(char *fname)
 #endif
 #endif
         
+#ifdef GALSF_FB_FIRE_RT_LOCALRP
+        strcpy(tag[nt], "WindMomentumLoading");
+        strcpy(alternate_tag[nt], "RP_Local_Momentum_Renormalization");
+        addr[nt] = &All.RP_Local_Momentum_Renormalization;
+        id[nt++] = REAL;
+#endif
 
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
         strcpy(tag[nt], "HIIRegion_fLum_Coupled");
@@ -1565,11 +1571,6 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
         
-#ifdef GALSF_FB_FIRE_RT_LOCALRP
-        strcpy(tag[nt], "WindMomentumLoading");
-        addr[nt] = &All.WindMomentumLoading;
-        id[nt++] = REAL;
-#endif
         
 #ifdef GALSF_SUBGRID_WINDS
       strcpy(tag[nt], "WindEfficiency");
@@ -2142,6 +2143,28 @@ void read_parameter_file(char *fname)
                 if(strcmp("UnitMagneticField_in_gauss",tag[i])==0) {*((double *)addr[i])=3.5449077018110318; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitMagneticField_in_gauss); continue;}
 #endif
 #endif
+#ifdef CONDUCTION_SPITZER
+                if(strcmp("ConductionCoeff",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with Spitzer-Braginski conductivity, so will default to calculating the physical coefficient without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.ConductionCoeff); continue;}
+#endif
+#ifdef VISCOSITY_BRAGINSKII
+                if(strcmp("ShearViscosityCoeff",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with Spitzer-Braginski viscosity, so will default to calculating the physical coefficient without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.ShearViscosityCoeff); continue;}
+                if(strcmp("BulkViscosityCoeff",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: code was compiled with Spitzer-Braginski viscosity, so will default to 0 bulk viscosity as defined by those physics (=%g) \n",tag[i],alternate_tag[i],All.BulkViscosityCoeff); continue;}
+#endif
+#ifdef TURB_DIFFUSION
+                if(strcmp("TurbDiffusionCoefficient",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with turbulent diffusion, so will default to calculating the coefficients without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.TurbDiffusion_Coefficient); continue;}
+#endif
+                ????
+                if(strcmp("InitMetallicity",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to zero (Z=%g) \n",tag[i],alternate_tag[i],All.InitMetallicityinSolar); continue;}
+                if(strcmp("InitStellarAge",tag[i])==0) {*((double *)addr[i])=10.; printf("Tag %s (%s) not set in parameter file: defaulting to very old pre-existing stars [if any exist, otherwise this is irrelevant] (=%g Gyr) \n",tag[i],alternate_tag[i],All.InitStellarAgeinGyr); continue;}
+                if(strcmp("SNeIIEnergyFrac",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.SNe_Energy_Renormalization); continue;}
+                if(strcmp("GasReturnFraction",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.StellarMassLoss_Rate_Renormalization); continue;}
+                if(strcmp("GasReturnEnergy",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.StellarMassLoss_Energy_Renormalization); continue;}
+                if(strcmp("WindMomentumLoading",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.RP_Local_Momentum_Renormalization); continue;}
+                if(strcmp("HIIRegion_fLum_Coupled",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.HIIRegion_fLum_Coupled); continue;}
+                if(strcmp("PhotonMomentum_Coupled_Fraction",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_Coupled_Fraction); continue;}
+                if(strcmp("PhotonMomentum_fUV",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_fUV); continue;}
+                if(strcmp("PhotonMomentum_fOPT",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_fOPT); continue;}
+
                 printf("ERROR. I miss a required value for tag '%s' (or alternate name '%s') in parameter file '%s'.\n", tag[i], alternate_tag[i], fname);
                 errorFlag = 1;
             }

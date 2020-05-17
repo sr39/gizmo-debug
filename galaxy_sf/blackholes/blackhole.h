@@ -6,11 +6,7 @@
 * see notes in blackhole.c for details on code history.
 */
 
-#ifndef gizmo_blackhole_h
-#define gizmo_blackhole_h
-
-
-#if defined(BLACK_HOLES)
+#ifdef BLACK_HOLES // master flag [needs to be here to prevent compiler breaking when this is not active] //
 
 
 #ifndef BH_CSND_FRAC_BH_MERGE
@@ -39,7 +35,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #if defined(BH_GRAVACCRETION) && (BH_GRAVACCRETION == 0)
     MyFloat MgasBulge_in_Kernel, MstarBulge_in_Kernel;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (defined(SINGLE_STAR_FB_WINDS) && defined(BH_THERMALFEEDBACK))
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat GradRho_in_Kernel[3], BH_angle_weighted_kernel_sum;
 #endif
 #ifdef BH_DYNFRICTION

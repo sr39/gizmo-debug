@@ -16,6 +16,9 @@
 */
 
 
+#ifdef BLACK_HOLES // master flag [needs to be here to prevent compiler breaking when this is not active] //
+
+
 #define MASTER_FUNCTION_NAME blackhole_environment_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define CONDITIONFUNCTION_FOR_EVALUATION if(P[i].Type==5) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
 #include "../../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
@@ -336,9 +339,7 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
                             if( bh_check_boundedness(j,vrel,vbound,dr_code,local_sink_radius)==1 )
                             { /* apocenter within 2.8*epsilon (softening length) */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                                double eps = DMAX(P[j].Hsml/2.8, DMAX(dr_code, ags_h_i/2.8));
-                                double tff = eps*eps*eps / (local.Mass + P[j].Mass);
-                                if(tff < P[j].SwallowTime) {P[j].SwallowTime = tff;}
+                                double eps = DMAX(P[j].Hsml/2.8, DMAX(dr_code, ags_h_i/2.8)), tff = eps*eps*eps / (local.Mass + P[j].Mass); if(tff < P[j].SwallowTime) {P[j].SwallowTime = tff;}
 #endif
 #if defined(BH_ACCRETE_NEARESTFIRST)
                                 if((out.BH_dr_to_NearestGasNeighbor > dr_code) && (P[j].SwallowID < local.ID)) {out.BH_dr_to_NearestGasNeighbor = dr_code; out.mass_to_swallow_edd = P[j].Mass;}
@@ -454,3 +455,8 @@ CPU_Step[CPU_BLACKHOLES] += measure_time(); /* collect timings and reset clock f
 #include "../../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 
 #endif   //BH_GRAVACCRETION == 0
+
+
+
+
+#endif // master flag

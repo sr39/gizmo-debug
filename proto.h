@@ -45,7 +45,7 @@ long long report_comittable_memory(long long *MemTotal,
 void merge_and_split_particles(void);
 int does_particle_need_to_be_merged(int i);
 int does_particle_need_to_be_split(int i);
-double ref_mass_factor(int i);
+double target_mass_renormalization_factor_for_mergesplit(int i);
 void merge_particles_ij(int i, int j);
 //void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
 void split_particle_i(int i, int n_particles_split, int i_nearest); 
@@ -527,6 +527,7 @@ void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt);
 void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i);
+double Z_for_stellar_evol(int i);
 #endif
 #endif
 
@@ -547,7 +548,6 @@ double ps_radius_MS_in_solar(double m);
 double ps_lum_Hayashi_BB(double m, double r);
 #endif
 double stellar_lifetime_in_Gyr(int n);
-#endif
 #if defined(SINGLE_STAR_FB_WINDS)
 double single_star_wind_mdot(int n);
 double single_star_wind_velocity(int n);
@@ -556,6 +556,7 @@ double singlestar_WR_lifetime_Gyr(int n);
 #if defined(SINGLE_STAR_FB_SNE)
 double single_star_SN_velocity(int n);
 void single_star_SN_init_directions(void);
+#endif
 #endif
 
 #ifdef GRAIN_FLUID
@@ -610,10 +611,8 @@ char *GetMultiSpeciesFilename(int i, int hk);
 #endif 
 #endif
 
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (defined(SINGLE_STAR_FB_WINDS) && defined(BH_THERMALFEEDBACK))
 double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz);
 double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r, double H_bh);
-#endif
 
 #if defined(GALSF_SUBGRID_WINDS)
 void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double* pvtau_return);

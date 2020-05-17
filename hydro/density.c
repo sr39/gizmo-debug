@@ -68,7 +68,7 @@ int density_isactive(int n)
         if(All.ComovingIntegrationOn==0) // only do stellar age evaluation if we have to //
         {
             double star_age = evaluate_stellar_age_Gyr(P[n].StellarAge);
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES)
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES) && defined(PM_HIRES_REGION_CLIPPING)
             if(star_age < 0.0035) return 1;
 #else
             if(star_age < 0.035) return 1;
@@ -392,7 +392,7 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
             if(kernel->r < DMAX(P[j].Hsml, All.ForceSoftening[5])) P[j].BH_Ngb_Flag = 1; 
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        P[j].SwallowTime = MAX_REAL_NUMBER;
+            P[j].SwallowTime = MAX_REAL_NUMBER;
 #endif
 #if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
             double dr_eff_wtd = Get_Particle_Size(j); dr_eff_wtd=sqrt(dr_eff_wtd*dr_eff_wtd + (kernel->r)*(kernel->r)); /* effective distance for Gaussian-type kernel, weighted by density */
@@ -664,7 +664,7 @@ void density(void)
 #ifdef SINGLE_STAR_SINK_DYNAMICS
 		        if(P[i].Type == 5) {minsoft = All.ForceSoftening[5] / All.cf_atime;} // we should always find all neighbours within the softening kernel/accretion radius, which is a lower bound on the accretion radius
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-			if(P[i].Type == 5) {minsoft = DMAX(minsoft, P[i].SinkRadius);}
+                if(P[i].Type == 5) {minsoft = DMAX(minsoft, P[i].SinkRadius);}
 #endif			
 #endif		
 #endif

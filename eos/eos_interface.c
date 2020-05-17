@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
 #include <gsl/gsl_const_cgsm.h>
 
 #ifdef _OPENMP
@@ -220,3 +219,5 @@ static int eos_compute_from_valid(struct eos_input const * in, struct eos_output
 
   return 0;
 }
+
+

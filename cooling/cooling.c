@@ -229,11 +229,7 @@ void do_the_cooling_for_particle(int i)
         
         
 #if defined(BH_THERMALFEEDBACK)
-        if(SphP[i].Injected_BH_Energy)
-		{
-            unew += SphP[i].Injected_BH_Energy / P[i].Mass;
-            SphP[i].Injected_BH_Energy = 0;
-		}
+        if(SphP[i].Injected_BH_Energy) {unew += SphP[i].Injected_BH_Energy / P[i].Mass; SphP[i].Injected_BH_Energy = 0;}
 #endif
         
 
@@ -1389,11 +1385,8 @@ char *GetMultiSpeciesFilename(int i, int hk)
 
 
 /* table input (from file TREECOOL) for ionizing parameters */
-/* NOTE: we've switched to using the updated TREECOOL from CAFG, june11 version */
-
 #define JAMPL	1.0		/* amplitude factor relative to input table */
 #define TABLESIZE 250		/* Max # of lines in TREECOOL */
-
 static float inlogz[TABLESIZE];
 static float gH0[TABLESIZE], gHe[TABLESIZE], gHep[TABLESIZE];
 static float eH0[TABLESIZE], eHe[TABLESIZE], eHep[TABLESIZE];
@@ -1402,34 +1395,13 @@ static int nheattab;		/* length of table */
 
 void ReadIonizeParams(char *fname)
 {
-    int i;
-    FILE *fdcool;
-    
-    if(!(fdcool = fopen(fname, "r")))
-    {
-        printf(" Cannot read ionization table in file `%s'\n", fname);
-        endrun(456);
-    }
-    
-    for(i = 0; i < TABLESIZE; i++)
-        gH0[i] = 0;
-    
-    for(i = 0; i < TABLESIZE; i++)
-        if(fscanf(fdcool, "%g %g %g %g %g %g %g",
-                  &inlogz[i], &gH0[i], &gHe[i], &gHep[i], &eH0[i], &eHe[i], &eHep[i]) == EOF)
-            break;
-    
+    int i; FILE *fdcool;
+    if(!(fdcool = fopen(fname, "r"))) {printf(" Cannot read ionization table in file `%s'. Make sure the correct TREECOOL file is placed in the code run-time directory, and that any leading comments (e.g. lines preceded by ##) are deleted from the file.\n", fname); endrun(456);}
+    for(i=0; i<TABLESIZE; i++) {gH0[i]=0;}
+    for(i=0; i<TABLESIZE; i++) {if(fscanf(fdcool, "%g %g %g %g %g %g %g", &inlogz[i], &gH0[i], &gHe[i], &gHep[i], &eH0[i], &eHe[i], &eHep[i]) == EOF) {break;}}
     fclose(fdcool);
-    
-    /*  nheattab is the number of entries in the table */
-    
-    for(i = 0, nheattab = 0; i < TABLESIZE; i++)
-        if(gH0[i] != 0.0)
-            nheattab++;
-        else
-            break;
-    
-    if(ThisTask == 0) printf(" ..read ionization table with %d entries in file `%s'.\n", nheattab, fname);
+    for(i=0, nheattab=0; i<TABLESIZE; i++) {if(gH0[i] != 0.0) {nheattab++;} else {break;}} /*  nheattab is the number of entries in the table */
+    if(ThisTask == 0) printf(" ..read ionization table [TREECOOL] with %d entries in file `%s'. Make sure to cite the authors from which the UV background was compiled! (See user guide for the correct references).\n", nheattab, fname);
 }
 
 

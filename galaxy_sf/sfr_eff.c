@@ -361,7 +361,7 @@ void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double t
         }
         SphP[i].Injected_BH_Energy = 0;
     }
-#endif // defined(BH_THERMALFEEDBACK)
+#endif 
 
     /* now update the thermal variables */
     SphP[i].InternalEnergy = (egyeff + (egycurrent - egyeff) * exp(-dtime / trelax));
@@ -535,14 +535,12 @@ void star_formation_parent_routine(void)
                 TreeReconstructFlag = 1;
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
                 P[i].SinkRadius = All.ForceSoftening[5];
-#ifdef SINGLE_STAR_SINK_DYNAMICS
                 double cs = 2e4 / All.UnitVelocity_in_cm_per_s;
 #if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) || defined(EOS_GMC_BAROTROPIC)
                 double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
                 if(nHcgs > 1e10) cs *= pow(nHcgs/1e10, 1./5); // if we're getting opacity-limited then we can set a smaller sink radius, since cs ~ n^1/5
 #endif
                 P[i].SinkRadius = DMAX(3 * P[i].Mass * All.G / (M_PI * cs * cs), All.ForceSoftening[5]); // volume-equivalent particle radius R= (3V/(4PI))^(1/3) at the density where M_Jeans = particle mass
-#endif	
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
                 P[i].min_bh_t_orbital=MAX_REAL_NUMBER; P[i].comp_dx[0]=P[i].comp_dx[1]=P[i].comp_dx[2]=P[i].comp_dv[0]=P[i].comp_dv[1]=P[i].comp_dv[2]=P[i].is_in_a_binary = 0;
