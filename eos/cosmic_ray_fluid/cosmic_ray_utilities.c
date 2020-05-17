@@ -113,9 +113,14 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
     double vA_noion, double rho_cgs, double temperature, double cs_thermal, double nh0, double nHe0, double f_ion)
 {
     double vol_inv = SphP[target].Density*All.cf_a3inv / P[target].Mass, fturb_multiplier=1, f_QLT=1, R_CR_GV=return_CRbin_CR_rigidity_in_GV(target,k_CRegy), Z_charge_CR=return_CRbin_CR_charge_in_e(target,k_CRegy);
-    double e_CR = SphP[target].CosmicRayEnergyPred[k_CRegy] * vol_inv, n_cgs = rho_cgs/PROTONMASS;
-    double cos_Bgrad=0,B2=0,P2=0,EPSILON_SMALL=1.e-50; int k; for(k=0;k<3;k++) {double b0=SphP[target].BPred[k]*vol_inv*All.cf_a2inv, p0=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]; cos_Bgrad+=b0*p0; B2+=b0*b0; P2+=p0*p0;}
-    cos_Bgrad/=sqrt(B2*P2+EPSILON_SMALL); double Omega_gyro=0.00898734*b_muG*(All.UnitTime_in_s/All.HubbleParam)/R_CR_GV, r_L=C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*C_LIGHT_CODE;
+    double e_CR = SphP[target].CosmicRayEnergyPred[k_CRegy]*vol_inv, n_cgs=rho_cgs/PROTONMASS, cos_Bgrad=0,B2=0,P2=0,EPSILON_SMALL=1.e-50; int k;
+#ifdef MAGNETIC
+    for(k=0;k<3;k++) {double b0=SphP[target].BPred[k]*vol_inv*All.cf_a2inv, p0=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]; cos_Bgrad+=b0*p0; B2+=b0*b0; P2+=p0*p0;}
+    cos_Bgrad/=sqrt(B2*P2+EPSILON_SMALL);
+#else
+    B2=e_CR; cos_Bgrad=1; for(k=0;k<3;k++) {double p0=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]; P2+=p0*p0;} /* this model doesn't really make sense without B-fields, but included for completeness here */
+#endif
+    double Omega_gyro=0.00898734*b_muG*(All.UnitTime_in_s/All.HubbleParam)/R_CR_GV, r_L=C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*C_LIGHT_CODE;
     double x_LL = DMAX( C_LIGHT_CODE / (Omega_gyro * L_scale), EPSILON_SMALL ), CRPressureGradScaleLength=Get_CosmicRayGradientLength(target,k_CRegy), vA_code=vA_noion, k_turb=1./L_scale, k_L=1./r_L, x_EB_ECR=(0.5*B2+EPSILON_SMALL)/(e_CR+EPSILON_SMALL);
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
     if(f_ion>0) {vA_code /= sqrt(f_ion);} // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //

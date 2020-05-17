@@ -158,17 +158,17 @@ void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int 
 double mechanical_fb_calculate_eventrates(int i, double dt)
 {
 #if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) // FIRE-specific stellar population version: separate calculation for SNe, stellar mass loss, R-process injection //
-    double RSNe = mechanical_fb_calculate_eventrates_SNe(i,dt);
+    double R_SNe = mechanical_fb_calculate_eventrates_SNe(i,dt);
     mechanical_fb_calculate_eventrates_Winds(i,dt);
     mechanical_fb_calculate_eventrates_Rprocess(i,dt);
-    return RSNe;
+    return R_SNe;
 #endif
     
 #ifdef SINGLE_STAR_SINK_DYNAMICS /* SINGLE-STAR version: simple implementation of single-star wind mass-loss and SNe rates */
-    double m_sol=P[i].Mass*All.UnitMass_in_g/(All.HubbleParam*SOLAR_MASS), l_sol=bh_lum_bol(0,P[i].Mass,i)*All.UnitEnergy_in_cgs/(All.UnitTime_in_s*SOLAR_LUM;
+    double m_sol=P[i].Mass*All.UnitMass_in_g/(All.HubbleParam*SOLAR_MASS), l_sol=bh_lum_bol(0,P[i].Mass,i)*All.UnitEnergy_in_cgs/(All.UnitTime_in_s*SOLAR_LUM);
 #ifdef SINGLE_STAR_FB_WINDS
-    double gam=DMIN(0.5,3.2e-5*l_sol/m_sol), alpha=0.5+0.4/(1.+16./m_sol), q0=(1.-alpha)*gam/(1.-gam), k0=1./30.); // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons, approximate scaling for alpha factor with stellar type (weak effect)
-    P[i].SNe_ThisTimeStep = DMIN(0.5, (2.338 * alpha * pow(L_sol,7./8.) * pow(M_sol,0.1845) * (1./q0) * pow(q0*k0,1./alpha) / m_sol) * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam)); // Castor, Abbot, & Klein scaling
+    double gam=DMIN(0.5,3.2e-5*l_sol/m_sol), alpha=0.5+0.4/(1.+16./m_sol), q0=(1.-alpha)*gam/(1.-gam), k0=1./30.; // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons, approximate scaling for alpha factor with stellar type (weak effect)
+    P[i].SNe_ThisTimeStep = DMIN(0.5, (2.338 * alpha * pow(l_sol,7./8.) * pow(m_sol,0.1845) * (1./q0) * pow(q0*k0,1./alpha) / m_sol) * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam)); // Castor, Abbot, & Klein scaling
 #endif
 #ifdef SINGLE_STAR_FB_SNE
     double t_lifetime_Gyr = 10.*(m_sol/l_sol) + 0.003; /* crude estimate of main-sequence lifetime, capped at 3 Myr*/
@@ -185,7 +185,7 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 #endif
     
 #ifdef GALSF_FB_MECHANICAL /* STELLAR-POPULATION version: mechanical feedback: 'dummy' example model below assumes a constant SNe rate for t < 30 Myr, then nothing. experiment! */
-    RSNe=0; double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+    double RSNe=0, star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
     if(star_age < 0.03)
     {
         RSNe = 3.e-4; // assume a constant rate ~ 3e-4 SNe/Myr/solar mass for t = 0-30 Myr //
