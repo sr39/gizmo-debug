@@ -28,8 +28,9 @@ double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i)
     double lum=1; if(stellar_age_in_gyr < 0.01) {lum=1000;} // default to a dumb imf-averaged 'young/high-mass' vs 'old/low-mass' distinction
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION // fit to updated SB99 tracks: including rotation, new mass-loss tracks, etc.
     if(stellar_age_in_gyr < 0.0035) {lum=1136.59;} else {double log_age=log10(stellar_age_in_gyr/0.0035); lum=1500.*pow(10.,-1.8*log_age+0.3*log_age*log_age-0.025*log_age*log_age*log_age);}
-#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3)
-    // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+    double t1=0.0012, t2=0.0037, f1=800., f2=1100.*pow(Z_for_stellar_evol(i),-0.1), tx=log10(stellar_age_in_gyr/t2), t_g=log10(stellar_age_in_gyr/1.2)/0.05;
+    if(stellar_age_in_gyr<=t1) {lum=f1;} else if(stellar_age_in_gyr<=t2) {lum=f1*pow(stellar_age_in_gyr/t1,log(f2/f1)/log(t2/t1));} else {lum=f2*pow(10.,-1.82*tx+0.42*tx*tx-0.07*tx*tx*tx)*(1.+1.2*exp(-0.5*t_g*t_g));}
 #endif
 #endif
     if(stellar_age_in_gyr<0.033) {lum*=calculate_relative_light_to_mass_ratio_from_imf(stellar_age_in_gyr,i);} // account for IMF variation model [if used]
@@ -103,10 +104,14 @@ double particle_ionizing_luminosity_in_cgs(long i)
     double lm_ssp=0;
     if(P[i].Type != 5)
     {
-        double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-        if(star_age >= 0.02) {return 0;} // skip since old stars don't contribute
-        if(star_age < 0.0035) {lm_ssp=500.;} else {double log_age=log10(star_age/0.0035); lm_ssp=470.*pow(10.,-2.24*log_age-4.2*log_age*log_age) + 60.*pow(10.,-3.6*log_age);}
+        double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), t0=0.0035, tmax=0.02;
+#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+        tmax=0.15; lm_ssp=evaluate_light_to_mass_ratio(star_age,i); if(star_age<t0) {lm_ssp*=0.5;} else {lm_ssp*=0.5*pow(star_age/t0,-2.9);} /* slightly revised fit scales simply with Lbol [easier to modify]; see same references for stellar wind mass-loss rates; and extends to later ages (though most comes out at <100 Myr) */
+#else
+        if(star_age < t0) {lm_ssp=500.;} else {double log_age=log10(star_age/t0); lm_ssp=470.*pow(10.,-2.24*log_age-4.2*log_age*log_age) + 60.*pow(10.,-3.6*log_age);}
         lm_ssp *= calculate_relative_light_to_mass_ratio_from_imf(star_age, i);
+#endif
+        if(star_age >= tmax) {return 0;} // skip since old stars don't contribute
     } // (P[i].Type != 5)
 #ifdef BH_HII_HEATING /* AGN template: light-to-mass ratio L(>13.6ev)/Mparticle in Lsun/Msun, above is dNion/dt = 5.5e54 s^-1 (Lbol/1e45 erg/s) */
     if(P[i].Type == 5) {lm_ssp = 1.741e6 * bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i) / (P[i].Mass*All.UnitTime_in_Megayears/All.HubbleParam*C_LIGHT_CODE*C_LIGHT_CODE);}
@@ -422,6 +427,7 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
 
 double Z_for_stellar_evol(int i)
 {
+    if(i<0) {return 1;}
     double Z_solar = P[i].Metallicity[0]/All.SolarAbundances[0]; // use total metallicity
 #if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) && defined(COOL_METAL_LINES_BY_SPECIES) // ??
     int i_Fe=10; Z_solar = P[i].Metallicity[i_Fe]/All.SolarAbundances[i_Fe]; // use Fe, specifically, for computing stellar properties, as its most relevant here. MAKE SURE this is set to the correct abundance in the list, to match Fe!!!
