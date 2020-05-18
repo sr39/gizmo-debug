@@ -810,7 +810,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         v_magnitude = All.BAL_f_launch_v * sqrt(All.G * P[i].BH_Mass / (P[i].ProtoStellarRadius_inSolar * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
-        if(P[i].ProtoStellarStage == 5) {v_magnitude = single_star_wind_velocity(i);} //Only MS stars launch winds: get velocity from fancy model
+        if ( (P[i].ProtoStellarStage == 5) && (P[i].wind_mode == 1) ){v_magnitude = single_star_wind_velocity(i);} //Only MS stars launch winds: get velocity from fancy model
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
         if(P[i].ProtoStellarStage == 6) {v_magnitude = single_star_SN_velocity(i);} // This star is about to go SNe: get velocity from fancy model
