@@ -663,7 +663,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
     mode = 0;
 #if defined(SINGLE_STAR_FB_JETS)
-    if(P[i].ProtoStellarStage < 5) {mode = 1;} // pre-MS stars launch polar jets
+    mode = 1; // launch polar jets
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
     if(P[i].ProtoStellarStage == 5) {
