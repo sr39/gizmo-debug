@@ -666,7 +666,12 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     if(P[i].ProtoStellarStage < 5) {mode = 1;} // pre-MS stars launch polar jets
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
-    if(P[i].ProtoStellarStage == 5) {mode = 2;} // winds use 3-axis isotropized directions
+    if(P[i].ProtoStellarStage == 5) {
+        mode = 2; // winds use 3-axis isotropized directions
+#if defined(SINGLE_STAR_FB_JETS)
+        if(P[i].wind_mode == 2) {mode = 1;} // we inject winds with the FIRE module, we only spawn polar jets here
+#endif
+    } 
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
     if(P[i].ProtoStellarStage == 6) {mode = 3;} // SNe use an angular grid
@@ -803,11 +808,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 
         double v_magnitude = All.BAL_v_outflow * All.cf_atime; // velocity of the jet: default mode is to set this manually to a specific value
 #ifdef SINGLE_STAR_FB_JETS
-        v_magnitude = All.BAL_f_launch_v * sqrt(All.G * P[i].BH_Mass / (10. * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum; without a better guess, assume fiducial protostellar radius of 10*Rsun, as in Federrath 2014
-#endif
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* use the fancy stellar evolution modules to calculate these for stars or protostars */
-#if defined(SINGLE_STAR_FB_JETS)
-        v_magnitude = All.BAL_f_launch_v * sqrt(All.G * P[i].BH_Mass / (P[i].ProtoStellarRadius_inSolar * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
+        v_magnitude = single_star_jet_velocity(i);
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
         if ( (P[i].ProtoStellarStage == 5) && (P[i].wind_mode == 1) ){v_magnitude = single_star_wind_velocity(i);} //Only MS stars launch winds: get velocity from fancy model

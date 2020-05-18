@@ -793,14 +793,8 @@ void blackhole_final_operations(void)
 #if defined(SINGLE_STAR_FB_WINDS)
        if(P[n].ProtoStellarStage == 5){
            if(P[n].wind_mode == 1) {
-#ifdef SINGLE_STAR_FB_JETS
-                if (dm_wind>0) {P[n].wind_mode = 2;} //we are spawning jets, so wind should use the FIRE injection method instead of spawning. This effectively skips winds on this timestep, but this only gets triggered if the sink did not accrete on the previous timestep and was set to spawn winds
-                else
-#endif
-                {
                 dm_wind = single_star_wind_mdot(n,0) * dt; 
                 BPP(n).BH_Mass -= dm_wind;
-                }
             }
            } //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep: remove mass lost via winds
 #endif

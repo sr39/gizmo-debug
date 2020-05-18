@@ -440,7 +440,16 @@ double Z_for_stellar_evol(int i)
     
 
 
-
+#ifdef SINGLE_STAR_FB_JETS
+double single_star_jet_velocity(int n){
+    /*Calculates the launch velocity of jets*/
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* use the fancy stellar evolution modules to calculate these for stars or protostars */
+    return (All.BAL_f_launch_v * sqrt(All.G * P[n].BH_Mass / (P[n].ProtoStellarRadius_inSolar * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime); // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
+#else
+    return (All.BAL_f_launch_v * sqrt(All.G * P[n].BH_Mass / (10. * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime); // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum; without a better guess, assume fiducial protostellar radius of 10*Rsun, as in Federrath 2014
+#endif
+}
+#endif
 
 
 #if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* begins large block of 'fancy' protostar-through-MS stellar evolution models */
@@ -663,6 +672,7 @@ double single_star_wind_mdot(int n, int set_mode){ //if set_mode is zero then th
     double minimum_stellarmass_for_winds_solar  = 2.0;  // minimum stellar mass allowed to have winds
     int    model_wolf_rayet_phase_explicitly    = 1;    // assumes that O stars turn into WR stars at the end of their lifetime, increasing their mass loss rate
     double n_particles_for_discrete_wind_spawn  = 1e-2; // parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds) -- particle number required to trigger 'explicit' spawn module. Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
+    double spawning_min_wind_jet_mom_ratio = 10.0; //If winds are much more powerful than jets ( (wind momentum injection/jet momentum injection) > this value) then we can safely spawn the winds and neglect the jets if we want to
     
     double wind_mass_loss_rate=0; //mass loss rate in code units
     if (P[n].Type != 5) {return 0;}
@@ -693,7 +703,11 @@ double single_star_wind_mdot(int n, int set_mode){ //if set_mode is zero then th
             P[n].wind_mode = 2; //we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
         }
 #ifdef SINGLE_STAR_FB_JETS
-        if (P[n].BH_Mdot>0) {P[n].wind_mode = 2;} //if we are launching jets then we should use the FIRE wind injection method
+        if ( (P[n].wind_mode == 1) && (P[n].BH_Mdot>0) ){ //we want to spawn winds but we have jets too
+            double jet_mom_inj = single_star_jet_velocity(n) * P[n].BH_Mdot;
+            double wind_mom_inj = v_wind * wind_mass_loss_rate;
+            if (spawning_min_wind_jet_mom_ratio < (spawning_min_wind_jet_mom_ratio * jet_mom_inj) ){ P[n].wind_mode = 2;} //we switch back to the FIRE wind injection so that we can spawn the jet and have winds at the same time
+        }
 #endif
         if (old_wind_mode != P[n].wind_mode){
             printf("Wind mode change for star %llu to %d at %g. Mdot_wind %g\n",P[n].ID,P[n].wind_mode,All.Time, wind_mass_loss_rate);
