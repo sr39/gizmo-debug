@@ -331,6 +331,23 @@
 #endif
 #endif // PMGRID check
 
+/* below is text to include on the FIRE wiki when we update with this */
+/*!
+FIRE_PHYSICS_DEFAULTS=2  # enable this version of FIRE default physics
+## options for additional physics
+FIRE_MHD      # optional: enable MHD, anisotropic conduction+viscosity
+FIRE_CRS=0    # optional: enable default CR model, 0=constant diffusivity, 1=variable
+FIRE_BHS      # optional: enable BHs, with default accretion+feedback+seed modules
+## options for cosmological zoom-in sims
+BOX_PERIODIC  # include if cosmological or otherwise periodic sim
+PMGRID=512    # include if cosmological, larger value at higher-res but must optimize
+## optimization options
+OPENMP=4      # set appropriately for machine and resolution, larger at higher-res
+MULTIPLEDOMAINS=16 # can vary if severe load-balancing problems present
+OUTPUT_ADDITIONAL_RUNINFO # output additional information for diagnostics, etc
+USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
+*/
+
 #else
 #endif // FIRE_PHYSICS_DEFAULTS clauses
 
@@ -2282,7 +2299,7 @@ extern struct global_data_all_processes
 #endif
 #endif /* MAGNETIC */
     
-#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
+#if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
   double TimeNextOnTheFlyFoF;
   double TimeBetOnTheFlyFoF;
 #endif

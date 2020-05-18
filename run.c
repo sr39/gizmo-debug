@@ -292,19 +292,11 @@ void calculate_non_standard_physics(void)
 #endif
     
     
-#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
-#ifdef FOF
-    /* this will find new black hole seed halos and/or assign host halo masses for the variable wind model */
-    if(All.Time >= All.TimeNextOnTheFlyFoF)
-    {
-        fof_fof(-1);
-        if(All.ComovingIntegrationOn)
-            All.TimeNextOnTheFlyFoF *= All.TimeBetOnTheFlyFoF;
-        else
-            All.TimeNextOnTheFlyFoF += All.TimeBetOnTheFlyFoF;
-    }
-#endif // ifdef FOF
-#endif // ifdef BLACK_HOLES or GALSF_SUBGRID_WINDS
+#if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
+    if(All.Time >= All.TimeNextOnTheFlyFoF) {
+        fof_fof(-1); /* this will find new black hole seed halos and/or assign host halo masses for the variable wind model */
+        if(All.ComovingIntegrationOn) {All.TimeNextOnTheFlyFoF *= All.TimeBetOnTheFlyFoF;} else {All.TimeNextOnTheFlyFoF += All.TimeBetOnTheFlyFoF;}}
+#endif
     
     
 #ifdef COOLING	/**** radiative cooling and star formation *****/

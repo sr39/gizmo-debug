@@ -192,7 +192,7 @@ void init(void)
 #endif
     
     All.TimeLastStatistics = All.TimeBegin - All.TimeBetStatistics;
-#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
+#if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
     All.TimeNextOnTheFlyFoF = All.TimeBegin;
 #endif
     
