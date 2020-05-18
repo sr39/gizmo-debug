@@ -1506,6 +1506,12 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.BAL_v_outflow;
         id[nt++] = REAL;
 #endif
+
+#if defined(SINGLE_STAR_FB_JETS)
+        strcpy(tag[nt],"BAL_f_launch_kinetic");
+        addr[nt] = &All.BAL_f_launch_kinetic;
+        id[nt++] = REAL;
+#endif
         
 #if defined(BH_COSMIC_RAYS)
         strcpy(tag[nt],"BH_CosmicRay_Injection_Efficiency");
@@ -2142,6 +2148,9 @@ void read_parameter_file(char *fname)
 #ifdef MAGNETIC
                 if(strcmp("UnitMagneticField_in_gauss",tag[i])==0) {*((double *)addr[i])=3.5449077018110318; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitMagneticField_in_gauss); continue;}
 #endif
+#endif
+#if defined(SINGLE_STAR_FB_JETS)
+                if(strcmp("BAL_f_launch_kinetic",tag[i])==0) {*((double *)addr[i])=0.3; printf("Tag %s (%s) not set in parameter file: will default to %g \n",tag[i],alternate_tag[i],All.BAL_f_launch_kinetic); continue;}
 #endif
 #ifdef CONDUCTION_SPITZER
                 if(strcmp("ConductionCoeff",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with Spitzer-Braginski conductivity, so will default to calculating the physical coefficient without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.ConductionCoeff); continue;}
