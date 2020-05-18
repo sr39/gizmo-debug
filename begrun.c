@@ -1508,8 +1508,8 @@ void read_parameter_file(char *fname)
 #endif
 
 #if defined(SINGLE_STAR_FB_JETS)
-        strcpy(tag[nt],"BAL_f_launch_kinetic");
-        addr[nt] = &All.BAL_f_launch_kinetic;
+        strcpy(tag[nt],"BAL_f_launch_v");
+        addr[nt] = &All.BAL_f_launch_v;
         id[nt++] = REAL;
 #endif
         
@@ -2150,7 +2150,7 @@ void read_parameter_file(char *fname)
 #endif
 #endif
 #if defined(SINGLE_STAR_FB_JETS)
-                if(strcmp("BAL_f_launch_kinetic",tag[i])==0) {*((double *)addr[i])=0.3; printf("Tag %s (%s) not set in parameter file: will default to %g \n",tag[i],alternate_tag[i],All.BAL_f_launch_kinetic); continue;}
+                if(strcmp("BAL_f_launch_v",tag[i])==0) {*((double *)addr[i])=0.3; printf("Tag %s (%s) not set in parameter file: will default to %g \n",tag[i],alternate_tag[i],All.BAL_f_launch_v); continue;}
 #endif
 #ifdef CONDUCTION_SPITZER
                 if(strcmp("ConductionCoeff",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with Spitzer-Braginski conductivity, so will default to calculating the physical coefficient without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.ConductionCoeff); continue;}

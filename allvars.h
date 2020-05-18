@@ -2227,7 +2227,7 @@ extern struct global_data_all_processes
 #endif
 
 #if defined(SINGLE_STAR_FB_JETS)
-        double BAL_f_launch_kinetic; // scales the amount of accretion power going into jets, we eject (1-All.BAL_f_accretion) fraction of the accreted mass at this value times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.BAL_f_accretion)
+        double BAL_f_launch_v; // scales the amount of accretion power going into jets, we eject (1-All.BAL_f_accretion) fraction of the accreted mass at this value times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.BAL_f_accretion)
 #endif
     
 #if defined(BH_COSMIC_RAYS)
