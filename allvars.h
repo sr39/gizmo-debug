@@ -460,6 +460,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1
 #endif
+#if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) )
+#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 2 //we are using the protostellar evolution model from ORION
+#endif
 #ifdef RT_INFRARED
 #define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
 #endif
