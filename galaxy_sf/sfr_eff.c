@@ -278,7 +278,7 @@ double get_starformation_rate(int i)
 
     
 #ifdef CHIMES_SFR_MOLECULAR_CRITERION
-    rateOfSF *= DMIN(1,DMAX(0,ChimesGasVars[i].abundances[H2] * 2.0)); /* This is similar to GALSF_SFR_MOLECULAR_CRITERION, except that the H2 fraction is taken from the CHIMES network. */
+    rateOfSF *= DMIN(1,DMAX(0, ((double) ChimesGasVars[i].abundances[sp_H2]) * 2.0)); /* This is similar to GALSF_SFR_MOLECULAR_CRITERION, except that the H2 fraction is taken from the CHIMES network. */
 #endif
     
     
