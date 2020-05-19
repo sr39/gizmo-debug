@@ -2018,10 +2018,12 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
 
         case IO_CHIMES_FLUX_G0:
         case IO_CHIMES_FLUX_ION:
+#ifdef CHIMES_STELLAR_FLUXES
             if(mode)
                 bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyInputFloat);
             else
                 bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyOutputFloat);
+#endif 
             break;
 #endif // CHIMES
             
