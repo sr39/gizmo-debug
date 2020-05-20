@@ -437,7 +437,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif // CHIMES_METAL_DEPLETION 
 #endif // CHIMES 
 
-
+#ifdef SINGLE_STAR_DEFAULTS //legacy flag
+#define SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE 
+#endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
 #define LONGIDS
 #define OUTPUT_POSITIONS_IN_DOUBLE
