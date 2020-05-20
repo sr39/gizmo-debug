@@ -47,7 +47,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
     /* now for pre-main sequence, need to also check the mass-luminosity relation */
     double lum_sol = 0;
 
-#if (defined(SINGLE_STAR_PROMOTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0))  
+#if (defined(SINGLE_STAR_PROMOTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 0))
     if(m_solar >= 0.012)
     {
         if(m_solar < 0.43) {lum_sol = 0.185 * m_solar*m_solar;}
@@ -68,7 +68,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
             if(l_kh > lum_sol) {lum_sol = l_kh;} // if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
             // now, calculate accretion luminosity using protostellar radius
 #ifdef SINGLE_STAR_FB_JETS
-            double eps_protostar=1.0; // since mdot is already modified by All.BAL_f_accretion 
+            double eps_protostar=1.0; // since mdot is already modified by All.BAL_f_accretion
 #else
             double eps_protostar=0.75; //fraction of gas that does not get launched out with a jet, default value, although 1.0 would be energy conserving
 #endif
@@ -85,8 +85,8 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
     lum += lum_sol;
     P[i].StarLuminosity_Solar = lum / ( SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s) ); //store total luminosity of the star in solar units
 #endif
-    
-#endif    
+
+#endif
     return lum;
 }
 
@@ -305,7 +305,7 @@ int get_age_tracer_bin(const double age){
     index = binarySearch(All.AgeTracerTimeBins, age, 0, NUM_AGE_TRACERS+1,
                                                       NUM_AGE_TRACERS+1);
     if (age < All.AgeTracerTimeBins[index]){
-        printf("Binary search not working %d  %f  %f  %f\n",index, age,
+        printf("Age tracer binary search not working %d  %f  %f  %f\n",index, age,
                                                 All.AgeTracerTimeBins[index],
                                                 All.AgeTracerTimeBins[index+1]);
         endrun(8888);
@@ -325,17 +325,25 @@ int get_age_tracer_bin(const double age){
 
 void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
 {
+  // Determine if deposition into age-tracer bins occurs this time step
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
     P[i].AgeDeposition_ThisTimeStep = 0;
     if (P[i].Type != 4) return;
 
-    // return; // this stops things
+    // AgeTracerReturnFraction < 0 means deposit every time step
     if (All.AgeTracerReturnFraction <= 0) {
       P[i].AgeDeposition_ThisTimeStep = 1.0;
       return;
     }
 
-    // find bin - make sure dt is not comparable to width
+    // otherwise, AgeTracerReturnFraction represents the fraction of time
+    // spent depositing the tracers (i.e. in the simple case of constant dt,
+    // the fraction of time steps in which this is deposited)
+
+    //
+    // find bin - make sure dt is not comparable to width of bin, otherwise
+    // we might miss deposition if using stochastic method
+    //
     const double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge) * 1000.0; // Age in Myr
     dt                   *= All.UnitTime_in_Megayears; // convert to Myr
     const int k           = get_age_tracer_bin(star_age);
@@ -375,9 +383,7 @@ void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
 void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 {
     if(All.GasReturnFraction <= 0) return;
-#ifdef NO_WIND_YIELDS
-    return;
-#endif
+
     double D_RETURN_FRAC = 0.01; // fraction of particle mass to return on a recycling step //
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     D_RETURN_FRAC = 1.0e-7; // needs to be much smaller to have quasi-continuous winds on these scales //
@@ -393,9 +399,8 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     p = 1.0 - exp(-p); // need to account for p>1 cases //
 #else
     double p=0, star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), ZZ = P[i].Metallicity[0]/All.SolarAbundances[0];
-#ifdef NO_METAL_DEP_YIELDS
-    ZZ = 1.0; // AJE: fix to solar
-#endif
+
+
     if(ZZ>3) {ZZ=3;}
     if(ZZ<0.01) {ZZ=0.01;}
     if(star_age<=0.001){p=11.6846*ZZ;} else {
@@ -455,7 +460,7 @@ void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i)
 
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
-int binarySearch(const double * arr, const double x, 
+int binarySearch(const double * arr, const double x,
                  const int l, const int r, const int total)
 {
 
@@ -500,8 +505,6 @@ void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
   produced per solar mass of star formation to get an abundance)
 */
 
-// AJE: NOTE - do I need to worry about HubbleParam in the yield normalization?
-
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
     int k; if(P[i].AgeDeposition_ThisTimeStep<=0) {in->Msne=0; return;} // no deposition
     if (P[i].Type != 4) return; // do nothing!
@@ -509,7 +512,7 @@ void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
     const int k_age_start = NUM_METAL_SPECIES-NUM_AGE_TRACERS;
     const int k_age_end   = NUM_METAL_SPECIES;
     /* pull surface "abundances" - really... these are surface "ages" */
-    double yields[NUM_AGE_TRACERS]; for(k=0;k<NUM_AGE_TRACERS;k++) {yields[k]=0.0;} // AJE: Normalization here might be hard - test without P[i].Metallicity[k+k_age_start];}
+    double yields[NUM_AGE_TRACERS]; for(k=0;k<NUM_AGE_TRACERS;k++) {yields[k]=0.0;}
     // set default abundances
     for (k=0; k<NUM_AGE_TRACERS; k++){
         in->yields[k+k_age_start] = yields[k];
@@ -537,9 +540,9 @@ void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
 
     double bin_dt = pow(10.0, binstart+(k+1)*log_bin_dt) - (k==0? 0.0 :pow(10.0, binstart + k*log_bin_dt));
 
-    if ((star_age + dt*0.5 > pow(10.0, binstart+(k+1)*log_bin_dt)) || 
+    if ((star_age + dt*0.5 > pow(10.0, binstart+(k+1)*log_bin_dt)) ||
        ( star_age - 0.5*dt < pow(10.0, binstart+(k)*log_bin_dt))){ // goes over multiple bins!!
-       
+
        if (star_age - 0.5*dt < pow(10.0, binstart+(k)*log_bin_dt)){
          k = k - 1;
        }
@@ -586,65 +589,12 @@ void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
    }
 #endif // custom bins
 
-/*
-#ifdef GALSF_FB_FIRE_AGE_TRACERS_SURFACE_YIELDS
-    // Now (optionally) compute the return of surface yields. Since accumulation
-    //   of metals in stars, and thus surface abundance return, is non-linear
-    //   we cannot simply return some trivial factor times the current tracer
-    //   abundances. Must assume a mass loss rate model:
-   // To Do: change flag to integer parameter to switch between potential models
-
-   //
-   // use native FIRE wind model [CHANGE THIS IF WIND MODEL CHANGES]
-   //
-   double p=0, ZZ = P[i].Metallicity[0]/All.SolarAbundances[0];
-   star_age *= 0.001; // Convert to Gyr for the below
-#ifdef NO_METAL_DEP_YIELDS
-   ZZ = 1.0; // AJE: fix to solar
-#endif
-   if(ZZ>3) {ZZ=3;}
-   if(ZZ<0.01) {ZZ=0.01;}
-   if(star_age<=0.001){p=11.6846;} else {
-       if(star_age<=0.0035){p=11.6846*ZZ*
-           pow(10.,1.838*(0.79+log10(ZZ))*(log10(star_age)-(-3.00)));} else {
-               if(star_age<=0.1){p=72.1215*pow(star_age/0.0035,-3.25)+0.0103;} else {
-                   p=1.03*pow(star_age,-1.1)/(12.9-log(star_age));
-               }}}
-   if(star_age < 0.1) {p *= calculate_relative_light_to_mass_ratio_from_imf(star_age,i);} // late-time independent of massive stars
-   p *= All.GasReturnFraction * (dt*0.001);
-   //p = 1.0 - exp(-p); // need to account for p>1 cases //
-   //p  = DMIN(1.0, p);
-   p *= 1.4 * 0.291175;
-
-   // now add in SN-rate mass loss
-   double agemin=0.003401, agebrk=0.01037, agemax=0.03753, RSNe=0, MSNe=0; // in Gyr //
-   if(star_age > agemin)
-   {
-        MSNe = 10.5; // Msun - ccSNE mass
-     	if(star_age<=agebrk) {RSNe=5.408e-4;} else {if(star_age<=agemax) {RSNe=2.516e-4;}} // core-collapse
-        if(star_age>agemax) {RSNe=5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01)); MSNe = 1.4;} // Ia
-   }
-   
-   p = p + RSNe * (dt) * ((MSNe*SOLAR_MASS)/(All.UnitMass_in_g/All.HubbleParam)) / (P[i].Mass );
-   p *= P[i].AgeDeposition_ThisTimeStep; // scale if necessary
-
-   for(k=0; k<NUM_AGE_TRACERS;k++){
-     in->yields[k + k_age_start] += (p*P[i].Metallicity[k+k_age_start]);
-
-     // subtract off tracers since we track total amount and not fraction
-     P[i].Metallicity[k+k_age_start] *= (1.0-p);
-   }
-#endif
-*/
-
 #endif // metals
     in->Msne = 1.0E-10 * SOLAR_MASS / All.UnitMass_in_g / All.HubbleParam; // small number just to be nonzero
 
 #endif // age tracer model
     return;
 }
-
-
 
 void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
 {
@@ -668,11 +618,10 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
             yields[1]=3.87;/*He*/ yields[2]=0.133;/*C*/ yields[3]=0.0479;/*N*/ yields[4]=1.17;/*O*/
             yields[5]=0.30;/*Ne*/ yields[6]=0.0987;/*Mg*/ yields[7]=0.0933;/*Si*/
             yields[8]=0.0397;/*S*/ yields[9]=0.00458;/*Ca*/ yields[10]=0.0741;/*Fe*/
-#ifndef NO_METAL_DEP_YIELDS
+
             // metal-dependent yields:
             if(P[i].Metallicity[0]<0.033) {yields[3]*=P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[3]*=1.65;} // N scaling is strongly dependent on initial metallicity of the star //
             yields[0] += yields[3]-0.0479; // correct total metal mass for this correction //
-#endif
         }
     }
     if(NUM_METAL_SPECIES==3 || NUM_METAL_SPECIES==4)
@@ -686,16 +635,9 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
     if(NUM_METAL_SPECIES==1) {if(SNeIaFlag) {yields[0]=1.4;} else {yields[0]=2.0;}}
     for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]/Msne;} // normalize to mass fraction //
 
-#ifndef AGE_TRACER_TEST_MODE
     /* add a check to allow for larger abundances in the progenitor stars (usually irrelevant) */
     for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]);}
-#else
-    // direct add in surface abundances without scaling to do better test
-#ifndef NO_SURFACE_ABUNDANCES
-    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k] + P[i].Metallicity[k];}
-    for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){in->yields[k]=yields[k];} // since this isn't handled later
-#endif
-#endif
+
 
 
     if(SNeIaFlag) {if(NUM_METAL_SPECIES>=10) {yields[1]=0.0;}} // no He yield for Ia SNe //
@@ -716,27 +658,20 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
 #ifdef METALS
     /* assume track initial metallicity; turn on COOL_METAL_LINES_BY_SPECIES for more detailed tracking of light elements */
     double yields[NUM_METAL_SPECIES]={0.0};
-#ifndef NO_SURFACE_ABUNDANCES
     for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k];} // return surface abundances, to leading order //
-#endif
+
     if(NUM_METAL_SPECIES>=10)
     {
         /* All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe ;; follow AGB/O star yields in more detail for the light elements */
         /*   the interesting species are He & CNO: below is based on a compilation of van den Hoek & Groenewegen 1997, Marigo 2001, Izzard 2004 */
-#ifndef NO_WIND_YIELDS
         yields[1]=0.36; /*He*/ yields[2]=0.016; /*C*/ yields[3]=0.0041; /*N*/ yields[4]=0.0118; /*O*/
-#ifndef NO_METAL_DEP_YIELDS
         // metal-dependent yields: O scaling is strongly dependent on initial metallicity of the star //
         if(P[i].Metallicity[0]<0.033) {yields[4] *= P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[4] *= 1.65;}
-#endif // metal dep yields
 
-#ifndef AGE_TRACER_TEST_MODE // turn this scaling off when testing tracers!!!
         for(k=1;k<=4;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]); if(yields[k]<0) {yields[k]=0.0;} if(yields[k]>1) {yields[k]=1;} in->yields[k]=yields[k];} // enforce yields obeying pre-existing surface abundances, and upper/lower limits //
 //  - no #else statement needed since default yield abundances are surface (see above)
-#endif // test mode
 
         yields[0]=0.0; for(k=2;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {yields[0]+=yields[k];}
-#endif // wind yields
 
     } else {
         yields[0]=0.032; for(k=1;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {yields[k]=0.0;}
@@ -794,7 +729,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 
 #elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
     /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */
-    
+
     const double frad = 0.33; //limit for forming radiative barrier
     const double fk = 0.5; //fraction of kinetic energy that is radiated away in the inner disk before reaching the surface, using default ORION value here as it is not a GIZMO input parameter
     const double max_rel_dr = 0.01; //Maximum relative change in radius per step, if the change over a single timestep is larger than this than we subcycle the evolution of the stellar radius
@@ -853,7 +788,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
                     dm_D = 0; //all new D is burned
                     mass_D = 0; //no D left in protostar
                     }
-                }                
+                }
                 //Let's evolve the stellar radius
                 rel_dr = 2. * ( dm_rel * (1.-(1.-fk)/(ag*beta)+0.5*dlogbeta_dlogm) - dt_curr/(ag*beta)*r/(All.G*mass*mass) * (lum_int+lum_I-lum_D) ); //Eq B4 of Offner 2009 divided by r
                 //Let's check if we need to subcycle
@@ -861,7 +796,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
                     n_subcycle = (int) DMAX(ceil(rel_dr/max_rel_dr), 2.0*n_subcycle); //number of subcycle steps, at least 2, either double the previous number or estimated from dr
                     //reset protostar properties, restart loop
                     loop_subcycle = 0;
-                    mass = m_initial; mass_D = BPP(n).Mass_D; 
+                    mass = m_initial; mass_D = BPP(n).Mass_D;
                     dm_curr = dm/((double)n_subcycle); dt_curr = dt/((double)n_subcycle);
                     r = BPP(n).ProtoStellarRadius_inSolar * SOLAR_RADIUS/All.UnitLength_in_cm;
                 }
@@ -902,9 +837,9 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
         }
         else{ //the protostar is in the "pre-collapse" state, no internal evolution, just check if it can be promoted to the next stage
             BPP(n).Mass_D = BPP(n).BH_Mass; //no D burned so far
-            if (m_solar >= 0.01){ 
+            if (m_solar >= 0.01){
             stage_increase = 1; //particle qualifies to the "no burning stage"
-            } 
+            }
         }
         if (stage_increase){
             BPP(n).ProtoStellarStage += stage_increase;

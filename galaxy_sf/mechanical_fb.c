@@ -76,14 +76,14 @@ void determine_where_SNe_occur(void)
         if(P[i].SNe_ThisTimeStep>0) {ntotal+=P[i].SNe_ThisTimeStep; nhosttotal++;}
         dtmean += dt;
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) //
-    
+
     MPI_Reduce(&dtmean, &mpi_dtmean, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&rmean, &mpi_rmean, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&ptotal, &mpi_ptotal, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&nhosttotal, &mpi_nhosttotal, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&ntotal, &mpi_ntotal, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&npossible, &mpi_npossible, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    
+
     if(ThisTask == 0)
     {
         if(mpi_ntotal > 0 && mpi_nhosttotal > 0 && mpi_dtmean > 0)
@@ -94,7 +94,7 @@ void determine_where_SNe_occur(void)
         }
         if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {fflush(FdSneIIHeating);}
     } // if(ThisTask == 0) //
-    
+
 } // void determine_where_SNe_occur() //
 
 
@@ -161,17 +161,17 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     struct addFB_evaluate_data_in_ local;
     struct OUTPUT_STRUCT_NAME out;
     memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME));
-    
+
     v_ejecta_max = 5000.0 * 1.0e5/ All.UnitVelocity_in_cm_per_s;
     // 'speed limit' to prevent numerically problematic kicks at low resolution //
     kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0;
-    
+
     /* Load the data for the particle injecting feedback */
     if(mode == 0)
     particle2in_addFB(&local, target, loop_iteration);
     else
     local = DATAGET_NAME[target];
-    
+
     if(local.Msne<=0) return 0; // no SNe for the master particle! nothing to do here //
     if(local.Hsml<=0) return 0; // zero-extent kernel, no particles //
     h2 = local.Hsml*local.Hsml;
@@ -368,23 +368,20 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #if defined(METALS)
                 /* inject metals */
-                /* AJE: Make sure this works with age tracers. Particularly the normalization (massratio and metallicity scaling) */
                 for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
 
-                
-                if (loop_iteration == 3){ // add age tracers in taking yields to mean MASS 
+
+                if (loop_iteration == 3){ // add age tracers in taking yields to mean MASS
                     for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + pnorm*local.yields[k]/P[j].Mass;}
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_SURFACE_YIELDS
-                } else { // else:
+                } else {
                     for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k]=(1.0-massratio_ejecta)*P[j].Metallicity[k]+massratio_ejecta*local.yields[k];}
 #endif
                 }
 
-                /* AJE make sure normalization is OK here - just plain ol' sum this*/
-//                for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + wk*local.yields[k];}
 #endif
 
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
@@ -412,7 +409,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* apply limiter for energy conservation */
                 double mom_boost_fac = 1 + sqrt(DMIN(mj_preshock , m_cooling) / m_ej_input);
                 if(loop_iteration > 0) {mom_boost_fac=1;}
-                
+
                 /* save summation values for outputs */
                 dP = local.unit_mom_SNe / P[j].Mass * pnorm;
                 dP_sum += dP;
@@ -453,7 +450,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     out2particle_addFB(&out, target, 0, loop_iteration);
     else
     DATARESULT_NAME[target] = out;
-    
+
     return 0;
 } // int addFB_evaluate
 
@@ -467,16 +464,10 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     int startnode, numngb_inbox, listindex = 0, j, k, n;
     double u,r2,kernel_zero,wk,dM_ejecta_in,dP,E_coupled,dP_sum,dP_boost_sum;
     struct kernel_addFB kernel;
-    /* AJE: Found mass check - make sure this doesn't break things */
-  //#ifdef GALSF_FB_FIRE_AGE_TRACERS
-    // only skip if not iteration 3, which is the age-tracer deposition step
-    // AJE: may need to put in if on NUM_AGE_TRACERS > 0 instead...
-//    if(local.Msne<=0 && !(fb_loop_iteration==3)) {return 0;}
-//  #else
     struct addFB_evaluate_data_in_ local;
     struct OUTPUT_STRUCT_NAME out;
     memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME));
-    
+
     /* Load the data for the particle injecting feedback */
     if(mode == 0) {particle2in_addFB(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
     if(local.Msne<=0) {return 0;} // no SNe for the master particle! nothing to do here //
@@ -704,14 +695,11 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + pnorm*local.yields[k]/P[j].Mass;}
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_SURFACE_YIELDS
-       	       	} else { // else:              
+       	       	} else {
        	       	    for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k]=(1.0-massratio_ejecta)*P[j].Metallicity[k]+massratio_ejecta*local.yields[k];}
 #endif
                 }
 
-//                  for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + pnorm*local.yields[k]/P[j].Mass;}
-//                /* AJE make sure normalization is OK here - just plain ol' sum this*/
-//                for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + pnorm*local.yields[k];}
 #endif
 
 
@@ -795,7 +783,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 
     /* Now collect the result at the right place */
     if(mode == 0) {out2particle_addFB(&out, target, 0, loop_iteration);} else {DATARESULT_NAME[target] = out;}
-    
+
     return 0;
 } // int addFB_evaluate
 

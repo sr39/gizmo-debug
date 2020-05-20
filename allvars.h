@@ -233,10 +233,7 @@
 #define GALSF_FB_FIRE_RT_LONGRANGE          /*! continuous acceleration from starlight (uses luminosity tree) to propagate FIRE RT */
 #define GALSF_FB_FIRE_RT_UVHEATING          /*! use estimate of local spectral information from FIRE RT for photoionization and photoelectric heating */
 #define GALSF_FB_FIRE_RPROCESS 4            /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
-// #define GALSF_FB_FIRE_AGE_TRACERS 20        /*! tracks a set of passive scalars corresponding to stellar ages for chemical evolution model postprocessing */
-// #define NO_SURFACE_ABUNDANCES               /*! AJE: Testing purposes - turns OFF return of surface abundances in all yields */
-// #define NO_WIND_YIELDS                      /*! AJE: Testing purposes - turns OFF return of wind yields */
-// #define NO_METAL_DEP_YIELDS                 /*! AJE: Testing purposes - turns OFF metal dep yields (fixes wind yields to solar) and turns OFF metallicity scaling of surface abundances */
+// #define GALSF_FB_FIRE_AGE_TRACERS 16        /*! tracks a set of passive scalars corresponding to stellar ages for chemical evolution model postprocessing */
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
 #if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -312,40 +309,40 @@ extern int N_chimes_full_output_freq;
 extern struct All_rate_variables_structure *AllRates;
 extern struct Reactions_Structure *all_reactions_root;
 extern struct Reactions_Structure *nonmolecular_reactions_root;
-extern double *dustG_arr; 
-extern double *H2_dissocJ_arr; 
-#ifdef CHIMES_STELLAR_FLUXES 
-// The following defines the stellar age bins 
-// that we will use to define the UV spectra 
-// from stars used in CHIMES. 
-#define CHIMES_LOCAL_UV_NBINS 8 
-#define CHIMES_LOCAL_UV_AGE_LOW 0.0 
-#define CHIMES_LOCAL_UV_DELTA_AGE_LOW 0.2 
-#define CHIMES_LOCAL_UV_AGE_MID 1.0 
-#define CHIMES_LOCAL_UV_DELTA_AGE_HI 1.0 
-#endif 
+extern double *dustG_arr;
+extern double *H2_dissocJ_arr;
+#ifdef CHIMES_STELLAR_FLUXES
+// The following defines the stellar age bins
+// that we will use to define the UV spectra
+// from stars used in CHIMES.
+#define CHIMES_LOCAL_UV_NBINS 8
+#define CHIMES_LOCAL_UV_AGE_LOW 0.0
+#define CHIMES_LOCAL_UV_DELTA_AGE_LOW 0.2
+#define CHIMES_LOCAL_UV_AGE_MID 1.0
+#define CHIMES_LOCAL_UV_DELTA_AGE_HI 1.0
+#endif
 #ifdef _OPENMP
 extern struct All_rate_variables_structure **AllRates_omp;
 extern struct Reactions_Structure **all_reactions_root_omp;
 extern struct Reactions_Structure **nonmolecular_reactions_root_omp;
 #endif
-#ifdef CHIMES_METAL_DEPLETION 
-#define DEPL_N_ELEM 17 
-struct Chimes_depletion_data_structure 
-{ 
-  double SolarAbund[DEPL_N_ELEM]; 
-  double DeplPars[DEPL_N_ELEM][3]; 
-  double DustToGasSaturated; 
-  double ChimesDepletionFactors[7]; 
-  double ChimesDustRatio; 
-}; 
-#ifdef _OPENMP 
-extern struct Chimes_depletion_data_structure ChimesDepletionData[OPENMP]; 
-#else 
-extern struct Chimes_depletion_data_structure ChimesDepletionData[1]; 
-#endif // OPENMP 
-#endif // CHIMES_METAL_DEPLETION 
-#endif // CHIMES 
+#ifdef CHIMES_METAL_DEPLETION
+#define DEPL_N_ELEM 17
+struct Chimes_depletion_data_structure
+{
+  double SolarAbund[DEPL_N_ELEM];
+  double DeplPars[DEPL_N_ELEM][3];
+  double DustToGasSaturated;
+  double ChimesDepletionFactors[7];
+  double ChimesDustRatio;
+};
+#ifdef _OPENMP
+extern struct Chimes_depletion_data_structure ChimesDepletionData[OPENMP];
+#else
+extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
+#endif // OPENMP
+#endif // CHIMES_METAL_DEPLETION
+#endif // CHIMES
 
 
 
@@ -375,7 +372,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
 #endif
 #if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY))
-#define RT_USE_TREECOL_FOR_NH 6 
+#define RT_USE_TREECOL_FOR_NH 6
 #endif
 #ifdef COOLING
 #define EOS_SUBSTELLAR_ISM
@@ -1970,7 +1967,7 @@ extern struct global_data_all_processes
 #ifdef PIC_MHD
     double PIC_Charge_to_Mass_Ratio;
 #endif
-    
+
 #ifdef COSMIC_RAYS
     double CosmicRayDiffusionCoeff;
 #endif
@@ -2036,15 +2033,15 @@ extern struct global_data_all_processes
 #endif
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-  double AgeTracerReturnFraction;
+  double AgeTracerReturnFraction;       /* Fraction of time to do age tracer deposition (with checks depending on time bin width for current star) */
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
 /* Bin edges (left) for stellar age passive scalar tracers when using custom (uneven) bins
-   the final value is the right edge of the final bin */
+   the final value is the right edge of the final bin, hence a total size +1 the number of tracers */
   double AgeTracerTimeBins[NUM_AGE_TRACERS+1];
-  char   AgeTracerListFilename[100];
+  char   AgeTracerListFilename[100];            /* file name to read ages from (in Myr) as a single column */
 #else
-  double AgeTracerBinStart; // left bin edge of first age tracers (Myr)
-  double AgeTracerBinEnd;   // right bin edge of last age tracer (Myr)
+  double AgeTracerBinStart; // left bin edge of first age tracers (Myr) - for log spaced bins
+  double AgeTracerBinEnd;   // right bin edge of last age tracer (Myr)  - for log spaced bins
 #endif
 #endif
 
@@ -2322,7 +2319,7 @@ extern ALIGN(32) struct particle_data
 #ifdef RT_USE_TREECOL_FOR_NH
     MyFloat ColumnDensityBins[RT_USE_TREECOL_FOR_NH];     /*!< angular bins for column density */
     MyFloat SigmaEff;              /*!< effective column density -log(avg(exp(-sigma))) averaged over column density bins from the gravity tree (does not include the self-contribution) */
-#endif         
+#endif
 #if defined(RT_SOURCE_INJECTION)
     MyFloat KernelSum_Around_RT_Source; /*!< kernel summation around sources for radiation injection (save so can be different from 'density') */
 #endif
@@ -2334,7 +2331,7 @@ extern ALIGN(32) struct particle_data
     MyFloat RProcessEvent_ThisTimeStep; /* R-process event tracker */
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-    MyFloat AgeDeposition_ThisTimeStep;
+    MyFloat AgeDeposition_ThisTimeStep; /* age-tracer deposition */
 #endif
 #endif
 #endif
@@ -2368,18 +2365,18 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_COUNTPROGS
     int BH_CountProgs;
 #endif
-    MyFloat BH_Mass;    
+    MyFloat BH_Mass;
 #if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
     MyFloat SinkRadius;
 #endif
 #ifdef GRAIN_FLUID
     MyFloat BH_Dust_Mass;
-#endif    
-#ifdef SINGLE_STAR_SINK_DYNAMICS  
+#endif
+#ifdef SINGLE_STAR_SINK_DYNAMICS
     MyFloat SwallowTime; /* freefall time of a particle onto a sink particle  */
     int BH_Ngb_Flag; /* Whether or not the gas live's in a sink's hydro stencil */
     MyFloat BH_SurroundingGasVel; /* Relative speed of sink to surrounding gas  */
-#endif 
+#endif
 
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
@@ -2440,17 +2437,17 @@ extern ALIGN(32) struct particle_data
 #define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 0 //default
 #else
 #define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 0 // the promotion module is incompatible with the evolution model from ORION we use in SINGLE_STAR_PROTOSTELLAR_EVOLUTION 1, so we revert to the simpler one
-#endif 
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION    
+#endif
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
     MyFloat ProtoStellarAge; /*!< record the proto-stellar age instead of age */
     MyFloat ProtoStellarRadius_inSolar; /*!< protostellar radius (also tracks evolution from protostar to ZAMS star) */
     int ProtoStellarStage; /*Track the stage of protostellar evolution, 0: pre collapse, 1: no burning, 2: fixed Tc burning, 3: variable Tc burning, 4: shell burning, 5: main sequence, see Offner 2009 Appendix B*/ //IO flag IO_STAGE_PROTOSTAR
     MyFloat Mass_D; /* Mass of gas in the protostar that still contains D to burn */ // IO flag IO_MASS_D_PROTOSTAR
     MyFloat StarLuminosity_Solar; /*the total luminosity of the star in L_solar units*/ //IO flag IO_LUM_SINGLESTAR
-    
+
 #endif
-    
+
 #if defined(DM_SIDM)
     integertime dt_step_sidm; /*!< timestep used if self-interaction probabilities greater than 0.2 are found */
     long unsigned int NInteractions; /*!< Total number of interactions */
@@ -2487,7 +2484,7 @@ extern ALIGN(32) struct particle_data
 #ifdef WAKEUP
     integertime dt_step;
 #endif
-    
+
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     MyDouble AGS_Hsml;          /*!< smoothing length (for gravitational forces) */
     MyFloat AGS_zeta;           /*!< factor in the correction term */
@@ -2674,7 +2671,7 @@ extern struct sph_particle_data
 
     MyFloat MaxSignalVel;           /*!< maximum signal velocity (needed for time-stepping) */
 
-#ifdef GALSF_FB_FIRE_RT_UVHEATING 
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
     MyFloat RadFluxUV;              /*!< local UV field strength */
     MyFloat RadFluxEUV;             /*!< local (ionizing/hard) UV field strength */
 #endif // GALSF_FB_FIRE_RT_UVHEATING
@@ -2846,8 +2843,8 @@ extern struct sph_particle_data
     MyDouble Dt_Elastic_Stress_Tensor[3][3];
 #endif
 #endif
-    
-    
+
+
 #if defined(WAKEUP) && !defined(AGS_HSML_CALCULATION_IS_ACTIVE)
     short int wakeup;                     /*!< flag to wake up particle */
 #endif
@@ -2985,7 +2982,7 @@ extern struct gravdata_out
     MyLongDouble Acc[3];
 #ifdef RT_USE_TREECOL_FOR_NH
     MyDouble ColumnDensityBins[RT_USE_TREECOL_FOR_NH];
-#endif    
+#endif
 #ifdef RT_OTVET
     MyLongDouble ET[N_RT_FREQ_BINS][6];
 #endif
@@ -3344,7 +3341,7 @@ extern ALIGN(32) struct NODE
   integertime Ti_current;
 #ifdef RT_USE_TREECOL_FOR_NH
   MyFloat gasmass;
-#endif    
+#endif
 #ifdef RT_USE_GRAVTREE
   MyFloat stellar_lum[N_RT_FREQ_BINS]; /*!< luminosity in the node*/
 #ifdef CHIMES_STELLAR_FLUXES
