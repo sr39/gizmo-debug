@@ -342,7 +342,7 @@ integertime get_timestep(int p,		/*!< particle index */
         az += All.cf_a2inv * P[p].GravPM[2];
 #endif
 #if defined(TIDAL_TIMESTEP_CRITERION)
-#if defined(RT_USE_GRAVTREE)
+#if defined(RT_USE_GRAVTREE) && !defined(SINGLE_STAR_FB_RT_HEATING)
         if(P[p].Type>0) // strictly this is better for accuracy, but not necessary
 #endif
         ax = ay = az = 0.0; // we're getting our gravitational timestep criterion from the tidal tensor, but still want to do the accel criterion for other forces
@@ -359,9 +359,9 @@ integertime get_timestep(int p,		/*!< particle index */
             az += SphP[p].TurbAccel[2];
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
-            ax += SphP[p].RadAccel[0];
-            ay += SphP[p].RadAccel[1];
-            az += SphP[p].RadAccel[2];
+            ax += SphP[p].Rad_Accel[0];
+            ay += SphP[p].Rad_Accel[1];
+            az += SphP[p].Rad_Accel[2];
 #endif
         }
 
@@ -438,7 +438,7 @@ integertime get_timestep(int p,		/*!< particle index */
     if(P[p].Type == 5)
     {
         double dt_2body = sqrt(2*All.ErrTolIntAccuracy) * 0.3 / (1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
-#ifdef HERMITE_INTEGRATION	
+#ifdef HERMITE_INTEGRATION
         if(eligible_for_hermite(p)) dt_2body /= 0.3;
 #endif
 #if (SINGLE_STAR_TIMESTEPPING > 0)
@@ -503,8 +503,28 @@ integertime get_timestep(int p,		/*!< particle index */
         csnd = sqrt(csnd);
         double L_particle = Get_Particle_Size(p);
         dt_courant = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / csnd;
+#if defined(GRAIN_BACKREACTION)
+        if(P[p].Grain_AccelTimeMin < dt_courant) {dt_courant = P[p].Grain_AccelTimeMin;}
+#endif
+#ifdef PIC_MHD
+        if(P[p].Grain_SubType==3)
+        {
+            double lorentz_units = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); // code B to Gauss
+            lorentz_units *= All.UnitVelocity_in_cm_per_s * (ELECTRONCHARGE/(PROTONMASS*C_LIGHT)); // code velocity to CGS, times base units e/(mp*c)
+            lorentz_units /= All.UnitVelocity_in_cm_per_s / (All.UnitTime_in_s / All.HubbleParam); // convert 'back' to code-units acceleration
+            double reduced_C = PIC_SPEEDOFLIGHT_REDUCTION * C_LIGHT_CODE;
+            double charge_to_mass_ratio_dimensionless = All.PIC_Charge_to_Mass_Ratio;
+            double v2=0, B2=0; for(k=0;k<3;k++) {v2=P[p].Vel[k]*P[p].Vel[k]; B2+=P[p].Gas_B[k]*P[p].Gas_B[k];}
+            double gamma=1/sqrt(1-v2/(reduced_C*reduced_C));
+            double dt_courant_pic = 0.5 * gamma / (charge_to_mass_ratio_dimensionless * sqrt(B2) * lorentz_units); /* dt = 0.5/omega_g */
+            if(dt_courant_pic < dt_courant) dt_courant = dt_courant_pic;
+        }
+#endif
         if(dt_courant < dt) dt = dt_courant;
     }
+#ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
+    if(P[p].Type>0) {double dt_inj = 0.1 * PPP[p].Hsml / C_LIGHT_CODE_REDUCED; if(dt_inj < dt) {dt = dt_inj;}}
+#endif
 #endif
     
     
@@ -577,22 +597,24 @@ integertime get_timestep(int p,		/*!< particle index */
             
             
 #ifdef COSMIC_RAYS
+            int k_CRegy;
+            for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
             {
-                if(Get_Particle_CosmicRayPressure(p) > 1.0e-20)
+                if(Get_Particle_CosmicRayPressure(p,k_CRegy) > 1.0e-20)
                 {
                     int explicit_timestep_on, cr_diffusion_opt = 0;
 #if defined(DIFFUSION_OPTIMIZERS) || defined(COSMIC_RAYS_M1)
                     cr_diffusion_opt = 1;
 #endif
                     if(All.ComovingIntegrationOn) {cr_diffusion_opt = 1;}
-                    double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p);
+                    double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p,k_CRegy);
                     double L_cr_weak = CRPressureGradScaleLength;
 #if defined(COSMIC_RAYS_M1)
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
 #else
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + (1.-0.5*cr_diffusion_opt)/(L_particle*All.cf_atime)));
 #endif
-                    double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + fabs(SphP[p].CosmicRayDiffusionCoeff) * GAMMA_COSMICRAY_MINUS1);
+                    double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + fabs(SphP[p].CosmicRayDiffusionCoeff[k_CRegy]) * GAMMA_COSMICRAY_MINUS1);
                     double dt_conduction =  L_cr_strong * coeff_inv; /* true diffusion requires the stronger timestep criterion be applied */
                     explicit_timestep_on = 1;
 #if (COSMIC_RAYS_DIFFUSION_MODEL < 0)
@@ -602,23 +624,23 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifndef COSMIC_RAYS_DISABLE_STREAMING
                     /* estimate whether diffusion is streaming-dominated: use stronger/weaker criterion accordingly */
                     double diffusion_from_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * Get_CosmicRayStreamingVelocity(p) * CRPressureGradScaleLength;
-                    if(diffusion_from_streaming > 0.75*fabs(SphP[p].CosmicRayDiffusionCoeff)) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
+                    if(diffusion_from_streaming > 0.75*fabs(SphP[p].CosmicRayDiffusionCoeff[k_CRegy])) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
 #endif
 #ifdef GALSF
                     /* for multi-physics problems, we will use a more aggressive timestep criterion
                      based on whether or not the cosmic ray physics are relevant for what we are modeling */
-                    if((SphP[p].CosmicRayEnergy==0)||(SphP[p].DtCosmicRayEnergy==0))
+                    if((SphP[p].CosmicRayEnergy[k_CRegy]==0)||(SphP[p].DtCosmicRayEnergy[k_CRegy]==0))
                     {
                         dt_conduction = 10. * dt;
                     } else {
-                        double delta_cr = dt_conduction*fabs(SphP[p].DtCosmicRayEnergy);
+                        double delta_cr = dt_conduction*fabs(SphP[p].DtCosmicRayEnergy[k_CRegy]);
                         double dL_cr = CRPressureGradScaleLength / (L_particle*All.cf_atime);
                         double thres_dL = 2., thres_egy = 1.e-3;
                         if(cr_diffusion_opt==1) {thres_dL = 1.; thres_egy = 1.e-2;}
-                        if((dL_cr > thres_dL) || (delta_cr < thres_egy*SphP[p].CosmicRayEnergy))
+                        if((dL_cr > thres_dL) || (delta_cr < thres_egy*SphP[p].CosmicRayEnergy[k_CRegy]))
                         {
-                            double dt_weak = DMIN(L_cr_weak*coeff_inv , (delta_cr + 1.e-4*SphP[p].CosmicRayEnergy)/fabs(SphP[p].DtCosmicRayEnergy));
-                            if((dL_cr > thres_dL+1.) && (delta_cr < 0.1*thres_egy*SphP[p].CosmicRayEnergy)) {dt_conduction = dt_weak; explicit_timestep_on = 0;}
+                            double dt_weak = DMIN(L_cr_weak*coeff_inv , (delta_cr + 1.e-4*SphP[p].CosmicRayEnergy[k_CRegy])/fabs(SphP[p].DtCosmicRayEnergy[k_CRegy]));
+                            if((dL_cr > thres_dL+1.) && (delta_cr < 0.1*thres_egy*SphP[p].CosmicRayEnergy[k_CRegy])) {dt_conduction = dt_weak; explicit_timestep_on = 0;}
                         }
                     }
 #endif
@@ -636,14 +658,14 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef COSMIC_RAYS_M1
                     if(cr_diffusion_opt==1)
                     {
-                        if(SphP[p].CosmicRayEnergy > 0)
+                        if(SphP[p].CosmicRayEnergy[k_CRegy] > 0)
                         {
                             double cr_speed = COSMIC_RAYS_M1;
-                            int k; double crv=0; for(k=0;k<3;k++) {crv+=SphP[p].CosmicRayFlux[k]*SphP[p].CosmicRayFlux[k];}
+                            int k; double crv=0; for(k=0;k<3;k++) {crv+=SphP[p].CosmicRayFlux[k_CRegy][k]*SphP[p].CosmicRayFlux[k_CRegy][k];}
                             if(crv > 0)
                             {
-                                crv = sqrt(crv) / SphP[p].CosmicRayEnergy;
-                                cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , fabs(SphP[p].CosmicRayDiffusionCoeff)/(Get_Particle_Size(p)*All.cf_atime)));
+                                crv = sqrt(crv) / SphP[p].CosmicRayEnergy[k_CRegy];
+                                cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , fabs(SphP[p].CosmicRayDiffusionCoeff[k_CRegy])/(Get_Particle_Size(p)*All.cf_atime)));
 #ifdef COSMIC_RAYS_ALFVEN
                                 cr_speed = COSMIC_RAYS_ALFVEN;
 #endif
@@ -670,30 +692,32 @@ integertime get_timestep(int p,		/*!< particle index */
                 for(kf=0;kf<N_RT_FREQ_BINS;kf++)
                 {
 #if defined(RT_SOLVER_EXPLICIT) && defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX) /* for explicit diffusion, we include the usual second-order diffusion timestep */
-                    double gradETmag=0; for(k=0;k<3;k++) {gradETmag += SphP[p].Gradients.E_gamma_ET[kf][k]*SphP[p].Gradients.E_gamma_ET[kf][k];}
-                    double L_ETgrad_inv = sqrt(gradETmag) / (1.e-37 + SphP[p].E_gamma[kf] * SphP[p].Density/P[p].Mass);
-                    double L_RT_diffusion = DMAX(L_particle , 1./(L_ETgrad_inv + 1./L_particle)) * All.cf_atime;
+                    double gradETmag=0; for(k=0;k<3;k++) {gradETmag += SphP[p].Gradients.Rad_E_gamma_ET[kf][k]*SphP[p].Gradients.Rad_E_gamma_ET[kf][k];}
+                    double L_ETgrad_inv = sqrt(gradETmag) / (1.e-37 + SphP[p].Rad_E_gamma[kf] * SphP[p].Density/P[p].Mass);
+                    double L_RT_diffusion = DMIN(L_particle , 1./(3.*L_ETgrad_inv)) * All.cf_atime;
                     double dt_rt_diffusion = dt_prefac_diffusion * L_RT_diffusion*L_RT_diffusion / (MIN_REAL_NUMBER + rt_diffusion_coefficient(p,kf));
                     double dt_advective = dt_rt_diffusion * DMAX(1,DMAX(L_particle , 1/(MIN_REAL_NUMBER + L_ETgrad_inv))*All.cf_atime / L_RT_diffusion);
+                    double dt_rt_work = All.CourantFac * DMIN( L_RT_diffusion / csnd , L_particle*All.cf_atime / ((2./3.)*sqrt(SphP[p].Rad_E_gamma[kf]/P[p].Mass)) ); /* time-step related to radiation work, radiation soundspeed, relevant in strongly-coupled limit */
 #ifdef RT_FLUXLIMITER
-                    if(dt_advective > dt_rt_diffusion) {dt_rt_diffusion *= 1. + (1.-SphP[p].Lambda_FluxLim[kf]) * (dt_advective/dt_rt_diffusion-1.);}
-                    if((SphP[p].Lambda_FluxLim[kf] <= 0)||(dt_rt_diffusion<=0)) {dt_rt_diffusion = 1.e9 * dt;}
+                    if(dt_advective > dt_rt_diffusion) {dt_rt_diffusion *= 1. + (1.-SphP[p].Rad_Flux_Limiter[kf]) * DMAX(0,(dt_advective/dt_rt_diffusion-1.));}
+                    dt_advective = All.CourantFac * 0.5 * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED;
+                    dt_rt_diffusion = DMAX(dt_rt_diffusion, dt_advective);
+                    dt_rt_work /= MIN_REAL_NUMBER + SphP[p].Rad_Flux_Limiter[kf];
+                    if((SphP[p].Rad_Flux_Limiter[kf] <= 0)||(dt_rt_diffusion<=0)) {dt_rt_diffusion = 1.e9 * dt;}
 #endif
-                    if((SphP[p].E_gamma[kf] <= MIN_REAL_NUMBER) || (SphP[p].E_gamma_Pred[kf] <= MIN_REAL_NUMBER)) {dt_rt_diffusion = dt_advective;}
+                    if((SphP[p].Rad_E_gamma[kf] <= MIN_REAL_NUMBER) || (SphP[p].Rad_E_gamma_Pred[kf] <= MIN_REAL_NUMBER)) {dt_rt_diffusion = dt_advective;}
 #ifdef SUPER_TIMESTEP_DIFFUSION
                     if(dt_rt_diffusion < dt_superstep_explicit) dt_superstep_explicit = dt_rt_diffusion; // explicit time-step
-                    double dt_advective = dt_rt_diffusion * DMAX(1,DMAX(L_particle , 1/(MIN_REAL_NUMBER + L_ETgrad_inv))*All.cf_atime / L_RT_diffusion);
+                    dt_advective = dt_rt_diffusion * DMAX(1,DMAX(L_particle , 1/(MIN_REAL_NUMBER + L_ETgrad_inv))*All.cf_atime / L_RT_diffusion);
                     if(dt_advective < dt_rad) dt_rad = dt_advective; // 'advective' timestep: needed to limit super-stepping
 #else
                     if(dt_rt_diffusion < dt_rad) dt_rad = dt_rt_diffusion; // normal explicit time-step
+                    if(dt_rt_work < dt_rad) {dt_rad = dt_rt_work;} // normal explicit time-step
 #endif
 #endif
-#if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX) // here the acceleration isn't saved to RadAccel so we calculate that timestep constraint
-                    double gradErad=0; for(k=0;k<3;k++) {gradErad+=SphP[p].Gradients.E_gamma_ET[kf][k]*SphP[p].Gradients.E_gamma_ET[kf][k];}
-                    double radacc = (sqrt(gradErad) / SphP[p].Density) / All.cf_atime; // radiation acceleration for a timestep criterion
-#ifdef RT_FLUXLIMITER
-                    radacc *= SphP[p].Lambda_FluxLim[kf]; // apply flux-limiter
-#endif
+#if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX) // here the acceleration isn't saved to Rad_Accel so we calculate that timestep constraint
+                    double gradErad=0; for(k=0;k<3;k++) {gradErad+=SphP[p].Gradients.Rad_E_gamma_ET[kf][k]*SphP[p].Gradients.Rad_E_gamma_ET[kf][k];}
+                    double radacc = return_flux_limiter(p,kf) * (sqrt(gradErad) / SphP[p].Density) / All.cf_atime; // radiation acceleration for a timestep criterion
                     if(gradErad > 0 && radacc > 0)
                     {
                         double dt_radacc = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMIN(All.ForceSoftening[0], PPP[p].Hsml) / radacc);
@@ -713,9 +737,9 @@ integertime get_timestep(int p,		/*!< particle index */
                     double dt_rt_diffusion = dt_prefac_diffusion * L_RT_diffusion*L_RT_diffusion / (MIN_REAL_NUMBER + rt_diffusion_coefficient(p,kf));
 #ifdef GALSF
                     /* ignore particles where the radiation energy density is basically non-existant */
-                    if((SphP[p].E_gamma[kf] <= MIN_REAL_NUMBER) ||
-                       (SphP[p].E_gamma_Pred[kf] <= MIN_REAL_NUMBER) ||
-                       (SphP[p].E_gamma[kf] < 1.e-5*P[p].Mass*SphP[p].InternalEnergy)) {dt_rt_diffusion = 1.e10 * dt;}
+                    if((SphP[p].Rad_E_gamma[kf] <= MIN_REAL_NUMBER) ||
+                       (SphP[p].Rad_E_gamma_Pred[kf] <= MIN_REAL_NUMBER) ||
+                       (SphP[p].Rad_E_gamma[kf] < 1.e-5*P[p].Mass*SphP[p].InternalEnergy)) {dt_rt_diffusion = 1.e10 * dt;}
 #endif
                     if(dt_rt_diffusion < dt_rad) dt_rad = dt_rt_diffusion;
                 }
@@ -728,7 +752,7 @@ integertime get_timestep(int p,		/*!< particle index */
                 {
                     double ne_cgs = (SphP[p].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
                     double dt_recombination = All.CourantFac * (3.3e12/ne_cgs) / (All.UnitTime_in_s / All.HubbleParam);
-                    double dt_change = 1.e10*dt; if((SphP[p].E_gamma[kf] > 0)&&(fabs(SphP[p].Dt_E_gamma[kf])>0)) {dt_change = SphP[p].E_gamma[kf] / fabs(SphP[p].Dt_E_gamma[kf]);}
+                    double dt_change = 1.e10*dt; if((SphP[p].Rad_E_gamma[kf] > 0)&&(fabs(SphP[p].Dt_Rad_E_gamma[kf])>0)) {dt_change = SphP[p].Rad_E_gamma[kf] / fabs(SphP[p].Dt_Rad_E_gamma[kf]);}
                     dt_recombination = DMIN(DMAX(dt_recombination,dt_change), DMAX(dt_courant,dt_rad));
                     if(dt_recombination < dt_rad) {dt_rad = dt_recombination;}
                 }
@@ -768,7 +792,10 @@ integertime get_timestep(int p,		/*!< particle index */
             }
 #endif
             
-            
+#if defined(GRAIN_BACKREACTION)
+            if(P[p].Grain_AccelTimeMin < dt) {dt = P[p].Grain_AccelTimeMin;}
+#endif
+
 
 #ifdef TURB_DIFFUSION
             {
@@ -951,7 +978,7 @@ integertime get_timestep(int p,		/*!< particle index */
 
     if(P[p].Type == 5)
     {
-#ifndef SINGLE_STAR_SINK_DYNAMICS
+#if !defined(SINGLE_STAR_SINK_DYNAMICS) && defined(GALSF)
       double dt_accr = 1.e-2 * 4.2e7 * SEC_PER_YEAR / All.UnitTime_in_s; // this is the Eddington timescale; not relevant for low radiative efficiency
 #else
       double dt_accr = All.MaxSizeTimestep;
@@ -968,7 +995,10 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_accr = 0.05 * DMAX(BPP(p).BH_Mass , All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
 #endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS)	    
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-            dt_accr = 0.1 * DMAX(BPP(p).BH_Mass, All.MinMassForParticleMerger) / BPP(p).BH_Mdot;
+            dt_accr = All.MinMassForParticleMerger / BPP(p).BH_Mdot;
+#ifdef SINGLE_STAR_FB_JETS
+            dt_accr = DMIN(dt_accr, All.BAL_wind_particle_mass / BPP(p).BH_Mdot);
+#endif
 #endif
         } // if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
 #ifdef BH_SEED_GROWTH_TESTS
@@ -981,30 +1011,44 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt_accr > 0 && dt_accr < dt) {dt = dt_accr;}
 
         double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (((integertime) 1) << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
+#ifndef SINGLE_STAR_SINK_DYNAMICS
+        dt_ngbs *= 4.; /* standard wakeup-type threshold: use this by default here, unless dynamical interaction important (e.g. back-rx term from oscillation of BH c-o-m, which is important for single-sink sims */
+#endif
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 
 #if defined(SINGLE_STAR_TIMESTEPPING)
 	    if(P[p].DensAroundStar > 0)
 	    {
-		double eps = DMAX(DMAX(BPP(p).SinkRadius, KERNEL_CORE_SIZE*All.ForceSoftening[5]), BPP(p).BH_dr_to_NearestGasNeighbor);
-		if(eps < MAX_REAL_NUMBER) {eps = DMAX(Get_Particle_Size(p), eps);} else {eps = Get_Particle_Size(p);}
+            double eps = DMAX( KERNEL_CORE_SIZE*All.ForceSoftening[5], BPP(p).BH_dr_to_NearestGasNeighbor);
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+            eps = DMAX(eps, BPP(p).SinkRadius);
+#endif
+            if(eps < MAX_REAL_NUMBER) {eps = DMAX(Get_Particle_Size(p), eps);} else {eps = Get_Particle_Size(p);}
 #if (ADAPTIVE_GRAVSOFT_FORALL & 32)
-		eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
+            eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
 #endif		
-		double dt_ff = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest		
-		if(dt > dt_ff && dt_ff > 0) {dt = 1.01 * dt_ff;}
+            double dt_ff = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest
+            if(dt > dt_ff && dt_ff > 0) {dt = 1.01 * dt_ff;}
 		
-		double L_particle = Get_Particle_Size(p);
-		double dt_cour_sink = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / P[p].BH_SurroundingGasVel;
-		if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
-	    }
-            
-            if(P[p].StellarAge == All.Time){
-                // want a brand new sink to be on the lowest occupied timebin
-                long bin; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;}
-                double dt_min =  ((bin ? (((integertime) 1) << bin) : 0) * All.Timebase_interval / All.cf_hubble_a);
-                if(dt > dt_min && dt_min > 0) dt = 1.01 * dt_min;
-            }
+            double L_particle = Get_Particle_Size(p);           
+            double dt_cour_sink = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / P[p].BH_SurroundingGasVel;
+            if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
+        }
+        if(P[p].StellarAge == All.Time)
+        {   // want a brand new sink to be on the lowest occupied timebin
+            long bin; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;}
+            double dt_min =  ((bin ? (((integertime) 1) << bin) : 0) * All.Timebase_interval / All.cf_hubble_a);
+            if(dt > dt_min && dt_min > 0) dt = 1.01 * dt_min;
+        }
+#endif
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_FB_WINDS
+        if(P[p].ProtoStellarStage == 5) {double dt_spawn = All.BAL_wind_particle_mass / single_star_wind_mdot(p); if(dt > dt_spawn) dt = 1.01 * dt_spawn;}
+#endif
+#ifdef SINGLE_STAR_FB_SNE
+        if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ){ //Star going supernova, still has mass to eject
+            double t_clear=P[p].SinkRadius/single_star_SN_velocity(p);  dt = DMIN(dt,DMAX(t_clear/2,DMAX(All.MinSizeTimestep,All.Timebase_interval)* 1.01)); } // time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
+#endif
 #endif
     } // if(P[p].Type == 5)
 
@@ -1029,26 +1073,32 @@ integertime get_timestep(int p,		/*!< particle index */
     
     if((dt < All.MinSizeTimestep)||(((integertime) (dt / All.Timebase_interval)) <= 1))
     {
-        PRINT_WARNING("warning: Timestep wants to be below the limit `MinSizeTimestep'");
+        PRINT_WARNING("Timestep wants to be below the limit `MinSizeTimestep'");
+        double agrav = sqrt(P[p].GravAccel[0]*P[p].GravAccel[0] + P[p].GravAccel[1]*P[p].GravAccel[1] + P[p].GravAccel[2]*P[p].GravAccel[2]);
         if(P[p].Type == 0)
         {
+            double ahydro = sqrt(SphP[p].HydroAccel[0]*SphP[p].HydroAccel[0] + SphP[p].HydroAccel[1]*SphP[p].HydroAccel[1] + SphP[p].HydroAccel[2]*SphP[p].HydroAccel[2]);
 #ifndef LONGIDS
-            PRINT_WARNING("Part-ID=%d  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
-             (int) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],
-             PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type]);
+            PRINT_WARNING("Part-ID=%d  dt=%g dtc=%g ac=%g agrav=%g ahydro=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g m=%g type=%d\n",
+                          (int) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type], P[p].Mass,P[p].Type);
 #else
-            PRINT_WARNING("Part-ID=%llu  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
-             (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],
-             PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type]);
+            PRINT_WARNING("Part-ID=%llu  dt=%g dtc=%g ac=%g agrav=%g ahydro=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g m=%g type=%d\n",
+                          (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type], P[p].Mass,P[p].Type);
 #endif // ndef LONGIDS
+#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE //extra info for single star runs
+            PRINT_WARNING("Part-ID=%llu min_dist_to_bh=%g cs_est=%g u_int=%g Pressure=%g",  (MyIDType) P[p].ID, P[p].min_dist_to_bh, sqrt(convert_internalenergy_soundspeed2(p, SphP[p].InternalEnergy)), SphP[p].InternalEnergy, SphP[p].Pressure);
+#endif
         }
         else // if(P[p].Type == 0)
         {
 #ifndef LONGIDS
-            PRINT_WARNING("Part-ID=%d  dt=%g ac=%g xyz=(%g|%g|%g)\n", (int) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
+            PRINT_WARNING("Part-ID=%d  dt=%g ac=%g agrav=%g xyz=(%g|%g|%g) type=%d\n", (int) P[p].ID, dt, ac, agrav, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],P[p].Type);
 #else
-            PRINT_WARNING("Part-ID=%llu  dt=%g ac=%g xyz=(%g|%g|%g)\n", (MyIDType) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
+            PRINT_WARNING("Part-ID=%llu  dt=%g ac=%g agrav=%g xyz=(%g|%g|%g) type=%d\n", (MyIDType) P[p].ID, dt, ac, agrav, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],P[p].Type);
 #endif // ndef LONGIDS
+#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE //extra info for single star runs
+            PRINT_WARNING("Part-ID=%llu min_dist_to_bh=%g DensAroundStar=%g BH_Mdot=%g min_bh_approach_time=%g min_bh_freefall_time=%g BH_SurroundingGasVel=%g BH_dr_to_NearestGasNeighbor=%g\n", (MyIDType) P[p].ID, P[p].min_dist_to_bh, P[p].DensAroundStar, P[p].BH_Mdot, P[p].min_bh_approach_time, P[p].min_bh_freefall_time, P[p].BH_SurroundingGasVel, P[p].BH_dr_to_NearestGasNeighbor);
+#endif
         }
         fflush(stdout); fprintf(stderr, "\n @ fflush \n");
 #ifdef STOP_WHEN_BELOW_MINTIMESTEP

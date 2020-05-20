@@ -47,17 +47,13 @@ void begrun(void)
 #endif
   if(ThisTask == 0)
     {
-     printf("\nRunning on %d MPI tasks.\n", NTask);
+     printf("Running on %d MPI tasks.\n", NTask);
 #ifdef _OPENMP
 #pragma omp parallel private(tid)
       {
 #pragma omp master
-	printf("\nUsing %d OpenMP threads\n", omp_get_num_threads());
-
+	printf("Using %d OpenMP threads\n", omp_get_num_threads());
 	tid = omp_get_thread_num();
-	/*
-	   printf("Hello from thread = %d\n", tid);
-	 */
       }
 #endif
 
@@ -113,39 +109,88 @@ void begrun(void)
 #endif
 
 #ifdef BOX_PERIODIC
-  boxSize = All.BoxSize;
-  boxHalf = 0.5 * All.BoxSize;
-  inverse_boxSize = 1. / boxSize;
+    boxSize = All.BoxSize;
+    boxHalf = 0.5 * All.BoxSize;
+#endif
 #ifdef BOX_LONG_X
-  boxHalf_X = boxHalf * BOX_LONG_X;
-  boxSize_X = boxSize * BOX_LONG_X;
-  inverse_boxSize_X = 1. / boxSize_X;
+    boxSize_X = All.BoxSize * BOX_LONG_X;
+    boxHalf_X = 0.5 * boxSize_X;
 #endif
 #ifdef BOX_LONG_Y
-  boxHalf_Y = boxHalf * BOX_LONG_Y;
-  boxSize_Y = boxSize * BOX_LONG_Y;
-  inverse_boxSize_Y = 1. / boxSize_Y;
+    boxSize_Y = All.BoxSize * BOX_LONG_Y;
+    boxHalf_Y = 0.5 * boxSize_Y;
 #endif
 #ifdef BOX_LONG_Z
-  boxHalf_Z = boxHalf * BOX_LONG_Z;
-  boxSize_Z = boxSize * BOX_LONG_Z;
-  inverse_boxSize_Z = 1. / boxSize_Z;
-#endif
+    boxSize_Z = All.BoxSize * BOX_LONG_Z;
+    boxHalf_Z = 0.5 * boxSize_Z;
 #endif
     
 #ifdef BOX_SHEARING
 #ifdef BOX_LONG_X
-    Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * boxSize * BOX_LONG_X;
+    Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * All.BoxSize * BOX_LONG_X;
 #else
-    Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * boxSize;
+    Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * All.BoxSize;
 #endif
     calc_shearing_box_pos_offset();
 #endif
+
+    /* begin pre-definitions for special boundaries */
+#if defined(BOX_REFLECT_X) || defined(BOX_REFLECT_Y) || defined(BOX_REFLECT_Z) || defined(BOX_OUTFLOW_X) || defined(BOX_OUTFLOW_Y) || defined(BOX_OUTFLOW_Z)
+    special_boundary_condition_xyz_def_reflect[0]=special_boundary_condition_xyz_def_reflect[1]=special_boundary_condition_xyz_def_reflect[2]=BOX_VALUE_FOR_NOTHING_SPECIAL_BOUNDARY_; /* sets arbitrary value code for 'nothing special' */
+    special_boundary_condition_xyz_def_outflow[0]=special_boundary_condition_xyz_def_outflow[1]=special_boundary_condition_xyz_def_outflow[2]=BOX_VALUE_FOR_NOTHING_SPECIAL_BOUNDARY_; /* sets arbitrary value code for 'nothing special' */
+
+#if defined(BOX_REFLECT_X)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_REFLECT_X)
+    special_boundary_condition_xyz_def_reflect[0] = BOX_REFLECT_X; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_reflect[0] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+#if defined(BOX_REFLECT_Y)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_REFLECT_Y)
+    special_boundary_condition_xyz_def_reflect[1] = BOX_REFLECT_Y; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_reflect[1] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+#if defined(BOX_REFLECT_Z)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_REFLECT_Z)
+    special_boundary_condition_xyz_def_reflect[2] = BOX_REFLECT_Z; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_reflect[2] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+
+#if defined(BOX_OUTFLOW_X)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_OUTFLOW_X)
+    special_boundary_condition_xyz_def_outflow[0] = BOX_OUTFLOW_X; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_outflow[0] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+#if defined(BOX_OUTFLOW_Y)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_OUTFLOW_Y)
+    special_boundary_condition_xyz_def_outflow[1] = BOX_OUTFLOW_Y; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_outflow[1] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+#if defined(BOX_OUTFLOW_Z)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_OUTFLOW_Z)
+    special_boundary_condition_xyz_def_outflow[2] = BOX_OUTFLOW_Z; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_outflow[2] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+
+#endif /* end set of clauses to deal with causal flags for special boundary conditions */
+
+    
     
 
   random_generator = gsl_rng_alloc(gsl_rng_ranlxd1);
 
-  gsl_rng_set(random_generator, 42);	/* start-up seed */
+  gsl_rng_set(random_generator, 42 + ThisTask);	/* start-up seed */
 
   set_random_numbers();
 
@@ -285,7 +330,7 @@ void begrun(void)
       All.BlackHoleMaxAccretionRadius = all.BlackHoleMaxAccretionRadius;
 #endif
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
-        All.WindMomentumLoading = all.WindMomentumLoading;
+        All.RP_Local_Momentum_Renormalization = all.RP_Local_Momentum_Renormalization;
 #endif
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
         All.HIIRegion_fLum_Coupled = all.HIIRegion_fLum_Coupled;
@@ -298,9 +343,9 @@ void begrun(void)
         All.PhotonMomentum_fOPT = all.PhotonMomentum_fOPT;
 #endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-        All.SNeIIEnergyFrac = all.SNeIIEnergyFrac;
-        All.GasReturnFraction = all.GasReturnFraction;
-        All.AGBGasEnergy = all.AGBGasEnergy;
+        All.SNe_Energy_Renormalization = all.SNe_Energy_Renormalization;
+        All.StellarMassLoss_Rate_Renormalization = all.StellarMassLoss_Rate_Renormalization;
+        All.StellarMassLoss_Energy_Renormalization = all.StellarMassLoss_Energy_Renormalization;
 #ifdef COSMIC_RAYS
         All.CosmicRay_SNeFraction = all.CosmicRay_SNeFraction;
 #endif
@@ -393,7 +438,9 @@ void begrun(void)
 #endif
 #endif
 
-
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+    single_star_SN_init_directions();
+#endif
 #ifdef RADTRANSFER
 #if defined(RT_EVOLVE_INTENSITIES)
     rt_init_intensity_directions();
@@ -569,6 +616,14 @@ void open_outputfiles(void)
       endrun(1);
     }
 #endif // output-gas-swallow if
+#ifdef BH_OUTPUT_FORMATION_PROPERTIES
+  sprintf(buf, "%sblackhole_details/bhformation_%d.txt", All.OutputDir, ThisTask); 
+  if(!(FdBhFormationDetails = fopen(buf, mode)))
+    {
+      printf("error in opening file '%s'\n", buf);
+      endrun(1);
+    }
+#endif // output-gas-formation if
 #ifdef BH_OUTPUT_MOREINFO
   sprintf(buf, "%sblackhole_details/bhmergers_%d.txt", All.OutputDir, ThisTask); 
   if(!(FdBhMergerDetails = fopen(buf, mode)))
@@ -631,62 +686,51 @@ void open_outputfiles(void)
         endrun(1);
     }
     fprintf(FdBalance, "\n");
-    fprintf(FdBalance, "Treewalk1      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWALK1],
-            CPU_SymbolImbalance[CPU_TREEWALK1]);
-    fprintf(FdBalance, "Treewalk2      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWALK2],
-            CPU_SymbolImbalance[CPU_TREEWALK2]);
-    fprintf(FdBalance, "Treewait1      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWAIT1],
-            CPU_SymbolImbalance[CPU_TREEWAIT1]);
-    fprintf(FdBalance, "Treewait2      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWAIT2],
-            CPU_SymbolImbalance[CPU_TREEWAIT2]);
-    fprintf(FdBalance, "Treesend       = '%c' / '%c'\n", CPU_Symbol[CPU_TREESEND],
-            CPU_SymbolImbalance[CPU_TREESEND]);
-    fprintf(FdBalance, "Treerecv       = '%c' / '%c'\n", CPU_Symbol[CPU_TREERECV],
-            CPU_SymbolImbalance[CPU_TREERECV]);
-    fprintf(FdBalance, "Treebuild      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEBUILD],
-            CPU_SymbolImbalance[CPU_TREEBUILD]);
-    fprintf(FdBalance, "Treeupdate     = '%c' / '%c'\n", CPU_Symbol[CPU_TREEUPDATE],
-            CPU_SymbolImbalance[CPU_TREEUPDATE]);
-    fprintf(FdBalance, "Treehmaxupdate = '%c' / '%c'\n", CPU_Symbol[CPU_TREEHMAXUPDATE],
-            CPU_SymbolImbalance[CPU_TREEHMAXUPDATE]);
-    fprintf(FdBalance, "Treemisc =       '%c' / '%c'\n", CPU_Symbol[CPU_TREEMISC],
-            CPU_SymbolImbalance[CPU_TREEMISC]);
-    fprintf(FdBalance, "Domain decomp  = '%c' / '%c'\n", CPU_Symbol[CPU_DOMAIN],
-            CPU_SymbolImbalance[CPU_DOMAIN]);
-    fprintf(FdBalance, "Density compute= '%c' / '%c'\n", CPU_Symbol[CPU_DENSCOMPUTE],
-            CPU_SymbolImbalance[CPU_DENSCOMPUTE]);
-    fprintf(FdBalance, "Density imbal  = '%c' / '%c'\n", CPU_Symbol[CPU_DENSWAIT],
-            CPU_SymbolImbalance[CPU_DENSWAIT]);
-    fprintf(FdBalance, "Density commu  = '%c' / '%c'\n", CPU_Symbol[CPU_DENSCOMM],
-            CPU_SymbolImbalance[CPU_DENSCOMM]);
-    fprintf(FdBalance, "Density misc   = '%c' / '%c'\n", CPU_Symbol[CPU_DENSMISC],
-            CPU_SymbolImbalance[CPU_DENSMISC]);
-    fprintf(FdBalance, "Hydro compute  = '%c' / '%c'\n", CPU_Symbol[CPU_HYDCOMPUTE],
-            CPU_SymbolImbalance[CPU_HYDCOMPUTE]);
-    fprintf(FdBalance, "Hydro imbalance= '%c' / '%c'\n", CPU_Symbol[CPU_HYDWAIT],
-            CPU_SymbolImbalance[CPU_HYDWAIT]);
-    fprintf(FdBalance, "Hydro comm     = '%c' / '%c'\n", CPU_Symbol[CPU_HYDCOMM],
-            CPU_SymbolImbalance[CPU_HYDCOMM]);
-    fprintf(FdBalance, "Hydro misc     = '%c' / '%c'\n", CPU_Symbol[CPU_HYDMISC],
-            CPU_SymbolImbalance[CPU_HYDMISC]);
-    fprintf(FdBalance, "Drifts         = '%c' / '%c'\n", CPU_Symbol[CPU_DRIFT], CPU_SymbolImbalance[CPU_DRIFT]);
-    fprintf(FdBalance, "Blackhole      = '%c' / '%c'\n", CPU_Symbol[CPU_BLACKHOLES],
-            CPU_SymbolImbalance[CPU_BLACKHOLES]);
-    fprintf(FdBalance, "Kicks          = '%c' / '%c'\n", CPU_Symbol[CPU_TIMELINE],
-            CPU_SymbolImbalance[CPU_TIMELINE]);
-    fprintf(FdBalance, "Potential      = '%c' / '%c'\n", CPU_Symbol[CPU_POTENTIAL],
-            CPU_SymbolImbalance[CPU_POTENTIAL]);
-    fprintf(FdBalance, "PM             = '%c' / '%c'\n", CPU_Symbol[CPU_MESH], CPU_SymbolImbalance[CPU_MESH]);
+    fprintf(FdBalance, "Treewalk1      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWALK1], CPU_SymbolImbalance[CPU_TREEWALK1]);
+    fprintf(FdBalance, "Treewalk2      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWALK2], CPU_SymbolImbalance[CPU_TREEWALK2]);
+    fprintf(FdBalance, "Treewait1      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWAIT1], CPU_SymbolImbalance[CPU_TREEWAIT1]);
+    fprintf(FdBalance, "Treewait2      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWAIT2], CPU_SymbolImbalance[CPU_TREEWAIT2]);
+    fprintf(FdBalance, "Treesend       = '%c' / '%c'\n", CPU_Symbol[CPU_TREESEND], CPU_SymbolImbalance[CPU_TREESEND]);
+    fprintf(FdBalance, "Treerecv       = '%c' / '%c'\n", CPU_Symbol[CPU_TREERECV], CPU_SymbolImbalance[CPU_TREERECV]);
+    fprintf(FdBalance, "Treebuild      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEBUILD], CPU_SymbolImbalance[CPU_TREEBUILD]);
+    fprintf(FdBalance, "Treehmaxupdate = '%c' / '%c'\n", CPU_Symbol[CPU_TREEHMAXUPDATE], CPU_SymbolImbalance[CPU_TREEHMAXUPDATE]);
+    fprintf(FdBalance, "Treemisc =       '%c' / '%c'\n", CPU_Symbol[CPU_TREEMISC], CPU_SymbolImbalance[CPU_TREEMISC]);
+    fprintf(FdBalance, "Domain decomp  = '%c' / '%c'\n", CPU_Symbol[CPU_DOMAIN], CPU_SymbolImbalance[CPU_DOMAIN]);
     fprintf(FdBalance, "Peano-Hilbert  = '%c' / '%c'\n", CPU_Symbol[CPU_PEANO], CPU_SymbolImbalance[CPU_PEANO]);
-#ifdef COOLING
-    fprintf(FdBalance, "Cooling & SFR  = '%c' / '%c'\n", CPU_Symbol[CPU_COOLINGSFR],
-            CPU_SymbolImbalance[CPU_COOLINGSFR]);
-#endif
-    fprintf(FdBalance, "Snapshot dump  = '%c' / '%c'\n", CPU_Symbol[CPU_SNAPSHOT],
-            CPU_SymbolImbalance[CPU_SNAPSHOT]);
-#ifdef FOF
-    fprintf(FdBalance, "FoF            = '%c' / '%c'\n", CPU_Symbol[CPU_FOF], CPU_SymbolImbalance[CPU_FOF]);
-#endif
+    fprintf(FdBalance, "Density compute= '%c' / '%c'\n", CPU_Symbol[CPU_DENSCOMPUTE], CPU_SymbolImbalance[CPU_DENSCOMPUTE]);
+    fprintf(FdBalance, "Density imbal  = '%c' / '%c'\n", CPU_Symbol[CPU_DENSWAIT], CPU_SymbolImbalance[CPU_DENSWAIT]);
+    fprintf(FdBalance, "Density commu  = '%c' / '%c'\n", CPU_Symbol[CPU_DENSCOMM], CPU_SymbolImbalance[CPU_DENSCOMM]);
+    fprintf(FdBalance, "Density misc   = '%c' / '%c'\n", CPU_Symbol[CPU_DENSMISC], CPU_SymbolImbalance[CPU_DENSMISC]);
+    fprintf(FdBalance, "Hydro compute  = '%c' / '%c'\n", CPU_Symbol[CPU_HYDCOMPUTE], CPU_SymbolImbalance[CPU_HYDCOMPUTE]);
+    fprintf(FdBalance, "Hydro imbalance= '%c' / '%c'\n", CPU_Symbol[CPU_HYDWAIT], CPU_SymbolImbalance[CPU_HYDWAIT]);
+    fprintf(FdBalance, "Hydro comm     = '%c' / '%c'\n", CPU_Symbol[CPU_HYDCOMM], CPU_SymbolImbalance[CPU_HYDCOMM]);
+    fprintf(FdBalance, "Hydro misc     = '%c' / '%c'\n", CPU_Symbol[CPU_HYDMISC], CPU_SymbolImbalance[CPU_HYDMISC]);
+    fprintf(FdBalance, "Drifts         = '%c' / '%c'\n", CPU_Symbol[CPU_DRIFT], CPU_SymbolImbalance[CPU_DRIFT]);
+    fprintf(FdBalance, "Kicks          = '%c' / '%c'\n", CPU_Symbol[CPU_TIMELINE], CPU_SymbolImbalance[CPU_TIMELINE]);
+    fprintf(FdBalance, "Potential      = '%c' / '%c'\n", CPU_Symbol[CPU_POTENTIAL], CPU_SymbolImbalance[CPU_POTENTIAL]);
+    fprintf(FdBalance, "PM-gravity     = '%c' / '%c'\n", CPU_Symbol[CPU_MESH], CPU_SymbolImbalance[CPU_MESH]);
+    fprintf(FdBalance, "Snapshot dump  = '%c' / '%c'\n", CPU_Symbol[CPU_SNAPSHOT], CPU_SymbolImbalance[CPU_SNAPSHOT]);
+    fprintf(FdBalance, "Blackhole      = '%c' / '%c'\n", CPU_Symbol[CPU_BLACKHOLES], CPU_SymbolImbalance[CPU_BLACKHOLES]);
+    fprintf(FdBalance, "Cooling & SFR  = '%c' / '%c'\n", CPU_Symbol[CPU_COOLINGSFR], CPU_SymbolImbalance[CPU_COOLINGSFR]);
+    fprintf(FdBalance, "Coolimbal check= '%c' / '%c'\n", CPU_Symbol[CPU_COOLSFRIMBAL], CPU_SymbolImbalance[CPU_COOLSFRIMBAL]);
+    fprintf(FdBalance, "FoF & subfind  = '%c' / '%c'\n", CPU_Symbol[CPU_FOF], CPU_SymbolImbalance[CPU_FOF]);
+    fprintf(FdBalance, "Grain/PIC part = '%c' / '%c'\n", CPU_Symbol[CPU_DRAGFORCE], CPU_SymbolImbalance[CPU_DRAGFORCE]);
+    fprintf(FdBalance, "Mech/Thermal FB= '%c' / '%c'\n", CPU_Symbol[CPU_SNIIHEATING], CPU_SymbolImbalance[CPU_SNIIHEATING]);
+    fprintf(FdBalance, "HII-module     = '%c' / '%c'\n", CPU_Symbol[CPU_HIIHEATING], CPU_SymbolImbalance[CPU_HIIHEATING]);
+    fprintf(FdBalance, "Local wind kick= '%c' / '%c'\n", CPU_Symbol[CPU_LOCALWIND], CPU_SymbolImbalance[CPU_LOCALWIND]);
+    fprintf(FdBalance, "RHD-nonfluxops = '%c' / '%c'\n", CPU_Symbol[CPU_RTNONFLUXOPS], CPU_SymbolImbalance[CPU_RTNONFLUXOPS]);
+    fprintf(FdBalance, "AGS-nongas-comp= '%c' / '%c'\n", CPU_Symbol[CPU_AGSDENSCOMPUTE], CPU_SymbolImbalance[CPU_AGSDENSCOMPUTE]);
+    fprintf(FdBalance, "AGS-imbal      = '%c' / '%c'\n", CPU_Symbol[CPU_AGSDENSWAIT], CPU_SymbolImbalance[CPU_AGSDENSWAIT]);
+    fprintf(FdBalance, "AGS-comm       = '%c' / '%c'\n", CPU_Symbol[CPU_AGSDENSCOMM], CPU_SymbolImbalance[CPU_AGSDENSCOMM]);
+    fprintf(FdBalance, "AGS-misc       = '%c' / '%c'\n", CPU_Symbol[CPU_AGSDENSMISC], CPU_SymbolImbalance[CPU_AGSDENSMISC]);
+    fprintf(FdBalance, "DynDiffusn-comp= '%c' / '%c'\n", CPU_Symbol[CPU_DYNDIFFCOMPUTE], CPU_SymbolImbalance[CPU_DYNDIFFCOMPUTE]);
+    fprintf(FdBalance, "DynDiffusn-imbl= '%c' / '%c'\n", CPU_Symbol[CPU_DYNDIFFWAIT], CPU_SymbolImbalance[CPU_DYNDIFFWAIT]);
+    fprintf(FdBalance, "DynDiffusn-comm= '%c' / '%c'\n", CPU_Symbol[CPU_DYNDIFFCOMM], CPU_SymbolImbalance[CPU_DYNDIFFCOMM]);
+    fprintf(FdBalance, "DynDiffusn-misc= '%c' / '%c'\n", CPU_Symbol[CPU_DYNDIFFMISC], CPU_SymbolImbalance[CPU_DYNDIFFMISC]);
+    fprintf(FdBalance, "MultiDiff-comp = '%c' / '%c'\n", CPU_Symbol[CPU_IMPROVDIFFCOMPUTE], CPU_SymbolImbalance[CPU_IMPROVDIFFCOMPUTE]);
+    fprintf(FdBalance, "MultiDiff-imbl = '%c' / '%c'\n", CPU_Symbol[CPU_IMPROVDIFFWAIT], CPU_SymbolImbalance[CPU_IMPROVDIFFWAIT]);
+    fprintf(FdBalance, "MultiDiff-comm = '%c' / '%c'\n", CPU_Symbol[CPU_IMPROVDIFFCOMM], CPU_SymbolImbalance[CPU_IMPROVDIFFCOMM]);
+    fprintf(FdBalance, "MultiDiff-misc = '%c' / '%c'\n", CPU_Symbol[CPU_IMPROVDIFFMISC], CPU_SymbolImbalance[CPU_IMPROVDIFFMISC]);
     fprintf(FdBalance, "Miscellaneous  = '%c' / '%c'\n", CPU_Symbol[CPU_MISC], CPU_SymbolImbalance[CPU_MISC]);
     fprintf(FdBalance, "\n");
 #endif
@@ -730,6 +774,15 @@ void open_outputfiles(void)
 #if defined(RT_CHEM_PHOTOION) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "rt_photoion_chem.txt");
   if(!(FdRad = fopen(buf, mode)))
+    {
+      printf("error in opening file '%s'\n", buf);
+      endrun(1);
+    }
+#endif
+
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+  sprintf(buf, "%s%s", All.OutputDir, "SN_details.txt");
+  if(!(FdBhSNDetails = fopen(buf, mode)))
     {
       printf("error in opening file '%s'\n", buf);
       endrun(1);
@@ -807,6 +860,7 @@ void read_parameter_file(char *fname)
   int id[MAXTAGS];
   void *addr[MAXTAGS];
   char tag[MAXTAGS][50];
+  char alternate_tag[MAXTAGS][50];
   int pnum, errorFlag = 0;
 
   if(sizeof(long long) != 8)
@@ -841,102 +895,134 @@ void read_parameter_file(char *fname)
   if(ThisTask == 0)		/* read parameter file on process 0 */
     {
       nt = 0;
+      for(j=0;j<MAXTAGS;j++) {strcpy(alternate_tag[nt], "-null[invalid_tag_name]-");}
 
       strcpy(tag[nt], "InitCondFile");
+      strcpy(alternate_tag[nt], "Initial_Conditions_File");
       addr[nt] = All.InitCondFile;
       id[nt++] = STRING;
 
       strcpy(tag[nt], "OutputDir");
+      strcpy(alternate_tag[nt], "Output_Directory");
       addr[nt] = All.OutputDir;
       id[nt++] = STRING;
 
       strcpy(tag[nt], "SnapshotFileBase");
+      strcpy(alternate_tag[nt], "Snapshot_Filename_Base");
       addr[nt] = All.SnapshotFileBase;
       id[nt++] = STRING;
 
       strcpy(tag[nt], "RestartFile");
+      strcpy(alternate_tag[nt], "Restart_Filename_Base");
       addr[nt] = All.RestartFile;
       id[nt++] = STRING;
 
+#ifdef DEVELOPER_MODE
+      strcpy(tag[nt], "ResubmitOn");
+      addr[nt] = &All.ResubmitOn;
+      id[nt++] = INT;
+
       strcpy(tag[nt], "ResubmitCommand");
+      strcpy(alternate_tag[nt], "Shell_Resubmission_Command");
       addr[nt] = All.ResubmitCommand;
       id[nt++] = STRING;
-
+#endif
+        
       strcpy(tag[nt], "OutputListFilename");
+      strcpy(alternate_tag[nt], "Snapshot_Times_Table_Filename");
       addr[nt] = All.OutputListFilename;
       id[nt++] = STRING;
 
       strcpy(tag[nt], "OutputListOn");
+      strcpy(alternate_tag[nt], "Use_Tabulated_Snapshot_Times");
       addr[nt] = &All.OutputListOn;
       id[nt++] = INT;
 
       strcpy(tag[nt], "Omega0");
+      strcpy(alternate_tag[nt], "Omega_Matter");
       addr[nt] = &All.Omega0;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "OmegaBaryon");
+      strcpy(alternate_tag[nt], "Omega_Baryon");
       addr[nt] = &All.OmegaBaryon;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "OmegaLambda");
+      strcpy(alternate_tag[nt], "Omega_Lambda");
       addr[nt] = &All.OmegaLambda;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "HubbleParam");
+      strcpy(alternate_tag[nt], "Hubble_Param_Little_h");
       addr[nt] = &All.HubbleParam;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "BoxSize");
+      strcpy(alternate_tag[nt], "Box_Size_In_Code_Units");
       addr[nt] = &All.BoxSize;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "MaxMemSize");
+      strcpy(alternate_tag[nt], "Max_Memory_Per_MPI_Task_in_MB");
       addr[nt] = &All.MaxMemSize;
       id[nt++] = INT;
 
       strcpy(tag[nt], "TimeOfFirstSnapshot");
+      strcpy(alternate_tag[nt], "Simulation_Time_of_First_Snapshot");
       addr[nt] = &All.TimeOfFirstSnapshot;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "CpuTimeBetRestartFile");
+      strcpy(alternate_tag[nt], "Walltime_in_Seconds_Between_Restartfiles");
       addr[nt] = &All.CpuTimeBetRestartFile;
       id[nt++] = REAL;
 
+#ifdef DEVELOPER_MODE
       strcpy(tag[nt], "TimeBetStatistics");
       addr[nt] = &All.TimeBetStatistics;
       id[nt++] = REAL;
-
+#endif
+        
       strcpy(tag[nt], "TimeBegin");
+      strcpy(alternate_tag[nt], "Time_at_ICs_Begin");
       addr[nt] = &All.TimeBegin;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "TimeMax");
+      strcpy(alternate_tag[nt], "Time_at_End_of_Simulation");
       addr[nt] = &All.TimeMax;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "TimeBetSnapshot");
+      strcpy(alternate_tag[nt], "Time_Between_Snapshots");
       addr[nt] = &All.TimeBetSnapshot;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "UnitVelocity_in_cm_per_s");
+      strcpy(alternate_tag[nt], "UnitVelocity_in_cm_per_seconds");
       addr[nt] = &All.UnitVelocity_in_cm_per_s;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "UnitLength_in_cm");
+      strcpy(alternate_tag[nt], "UnitLength_in_cms");
       addr[nt] = &All.UnitLength_in_cm;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "UnitMass_in_g");
+      strcpy(alternate_tag[nt], "UnitMass_in_grams");
       addr[nt] = &All.UnitMass_in_g;
       id[nt++] = REAL;
 
 #ifdef MAGNETIC
       strcpy(tag[nt], "UnitMagneticField_in_gauss");
+      strcpy(alternate_tag[nt], "UnitMagneticField_in_Gauss_for_ICSnapshotIO");
       addr[nt] = &All.UnitMagneticField_in_gauss;
       id[nt++] = REAL;
 #endif
 
       strcpy(tag[nt], "TreeDomainUpdateFrequency");
+      strcpy(alternate_tag[nt], "DomainTreeRebuild_ActiveFractionThreshold");
       addr[nt] = &All.TreeDomainUpdateFrequency;
       id[nt++] = REAL;
 
@@ -1047,10 +1133,12 @@ void read_parameter_file(char *fname)
 
 #if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         strcpy(tag[nt],"InitMetallicity");
+        strcpy(alternate_tag[nt],"Initial_Metallicity");
         addr[nt] = &All.InitMetallicityinSolar;
         id[nt++] = REAL;
         
         strcpy(tag[nt],"InitStellarAge");
+        strcpy(alternate_tag[nt],"Initial_StellarAge_NonTypeFourStars");
         addr[nt] = &All.InitStellarAgeinGyr;
         id[nt++] = REAL;
 #endif
@@ -1058,24 +1146,34 @@ void read_parameter_file(char *fname)
 
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
         strcpy(tag[nt], "SNeIIEnergyFrac");
-        addr[nt] = &All.SNeIIEnergyFrac;
+        strcpy(alternate_tag[nt], "SNe_Energy_Renormalization");
+        addr[nt] = &All.SNe_Energy_Renormalization;
         id[nt++] = REAL;
 
         strcpy(tag[nt],"GasReturnFraction");
-        addr[nt] = &All.GasReturnFraction;
+        strcpy(alternate_tag[nt], "StellarMassLoss_Rate_Renormalization");
+        addr[nt] = &All.StellarMassLoss_Rate_Renormalization;
         id[nt++] = REAL;
         
         strcpy(tag[nt],"GasReturnEnergy");
-        addr[nt] = &All.AGBGasEnergy;
+        strcpy(alternate_tag[nt], "StellarMassLoss_Energy_Renormalization");
+        addr[nt] = &All.StellarMassLoss_Energy_Renormalization;
         id[nt++] = REAL;
 
 #ifdef COSMIC_RAYS
         strcpy(tag[nt], "CosmicRay_SNeFraction");
+        strcpy(alternate_tag[nt], "CosmicRay_SNeEnergyFraction");
         addr[nt] = &All.CosmicRay_SNeFraction;
         id[nt++] = REAL;
 #endif
 #endif
         
+#ifdef GALSF_FB_FIRE_RT_LOCALRP
+        strcpy(tag[nt], "WindMomentumLoading");
+        strcpy(alternate_tag[nt], "RP_Local_Momentum_Renormalization");
+        addr[nt] = &All.RP_Local_Momentum_Renormalization;
+        id[nt++] = REAL;
+#endif
 
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
         strcpy(tag[nt], "HIIRegion_fLum_Coupled");
@@ -1091,10 +1189,12 @@ void read_parameter_file(char *fname)
         
 #ifdef GALSF_FB_FIRE_RT_LONGRANGE
         strcpy(tag[nt], "PhotonMomentum_fUV");
+        strcpy(alternate_tag[nt], "PhotonMomentum_min_fUV_in_SED");
         addr[nt] = &All.PhotonMomentum_fUV;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "PhotonMomentum_fOPT");
+        strcpy(alternate_tag[nt], "PhotonMomentum_min_fOPT_in_SED");
         addr[nt] = &All.PhotonMomentum_fOPT;
         id[nt++] = REAL;
 #endif
@@ -1139,29 +1239,35 @@ void read_parameter_file(char *fname)
         
 
         strcpy(tag[nt], "MinGasHsmlFractional");
+        strcpy(alternate_tag[nt], "Minimum_Gas_KernelSize_RelativetoSoftening");
         addr[nt] = &All.MinGasHsmlFractional;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "MaxHsml");
+        strcpy(alternate_tag[nt], "Maximum_KernelSize_CodeUnits");
         addr[nt] = &All.MaxHsml;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "MaxSizeTimestep");
+        strcpy(alternate_tag[nt], "Maximum_Timestep_Allowed");
         addr[nt] = &All.MaxSizeTimestep;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "MinSizeTimestep");
+        strcpy(alternate_tag[nt], "Minimum_Timestep_Allowed");
         addr[nt] = &All.MinSizeTimestep;
         id[nt++] = REAL;
         
         
         strcpy(tag[nt], "DesNumNgb");
+        strcpy(alternate_tag[nt], "Effective_Kernel_NeighborNumber");
         addr[nt] = &All.DesNumNgb;
         id[nt++] = REAL;
 
 
 #ifdef SUBFIND
       strcpy(tag[nt], "DesLinkNgb");
+      strcpy(alternate_tag[nt], "Subfind_FOFLink_NeighborNumber");
       addr[nt] = &All.DesLinkNgb;
       id[nt++] = INT;
 #endif
@@ -1173,27 +1279,28 @@ void read_parameter_file(char *fname)
 #endif
         
       strcpy(tag[nt], "ComovingIntegrationOn");
+      strcpy(alternate_tag[nt], "Cosmological_Simulation_On");
       addr[nt] = &All.ComovingIntegrationOn;
       id[nt++] = INT;
 
       strcpy(tag[nt], "ICFormat");
+      strcpy(alternate_tag[nt], "Initial_Conditions_Format");
       addr[nt] = &All.ICFormat;
       id[nt++] = INT;
 
       strcpy(tag[nt], "SnapFormat");
+      strcpy(alternate_tag[nt], "Snapshot_Format");
       addr[nt] = &All.SnapFormat;
       id[nt++] = INT;
 
       strcpy(tag[nt], "NumFilesPerSnapshot");
+      strcpy(alternate_tag[nt], "Number_of_Files_per_Snapshot");
       addr[nt] = &All.NumFilesPerSnapshot;
       id[nt++] = INT;
 
       strcpy(tag[nt], "NumFilesWrittenInParallel");
+      strcpy(alternate_tag[nt], "Number_of_Files_Written_in_Parallel");
       addr[nt] = &All.NumFilesWrittenInParallel;
-      id[nt++] = INT;
-
-      strcpy(tag[nt], "ResubmitOn");
-      addr[nt] = &All.ResubmitOn;
       id[nt++] = INT;
 
 #ifdef COOL_GRACKLE
@@ -1203,74 +1310,92 @@ void read_parameter_file(char *fname)
 #endif
         
       strcpy(tag[nt], "TimeLimitCPU");
+      strcpy(alternate_tag[nt], "MaxSimulationWallTime_in_Seconds");
       addr[nt] = &All.TimeLimitCPU;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningHalo");
+      strcpy(alternate_tag[nt], "Softening_Type1");
       addr[nt] = &All.SofteningHalo;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningDisk");
+      strcpy(alternate_tag[nt], "Softening_Type2");
       addr[nt] = &All.SofteningDisk;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningBulge");
+      strcpy(alternate_tag[nt], "Softening_Type3");
       addr[nt] = &All.SofteningBulge;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningGas");
+      strcpy(alternate_tag[nt], "Softening_Type0");
       addr[nt] = &All.SofteningGas;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningStars");
+      strcpy(alternate_tag[nt], "Softening_Type4");
       addr[nt] = &All.SofteningStars;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningBndry");
+      strcpy(alternate_tag[nt], "Softening_Type5");
       addr[nt] = &All.SofteningBndry;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningHaloMaxPhys");
+      strcpy(alternate_tag[nt], "Softening_Type1_MaxPhysLimit");
       addr[nt] = &All.SofteningHaloMaxPhys;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningDiskMaxPhys");
+      strcpy(alternate_tag[nt], "Softening_Type2_MaxPhysLimit");
       addr[nt] = &All.SofteningDiskMaxPhys;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningBulgeMaxPhys");
+      strcpy(alternate_tag[nt], "Softening_Type3_MaxPhysLimit");
       addr[nt] = &All.SofteningBulgeMaxPhys;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningGasMaxPhys");
+      strcpy(alternate_tag[nt], "Softening_Type0_MaxPhysLimit");
       addr[nt] = &All.SofteningGasMaxPhys;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningStarsMaxPhys");
+      strcpy(alternate_tag[nt], "Softening_Type4_MaxPhysLimit");
       addr[nt] = &All.SofteningStarsMaxPhys;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "SofteningBndryMaxPhys");
+      strcpy(alternate_tag[nt], "Softening_Type5_MaxPhysLimit");
       addr[nt] = &All.SofteningBndryMaxPhys;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "BufferSize");
+      strcpy(alternate_tag[nt], "MPI_Buffersize_in_MB");
       addr[nt] = &All.BufferSize;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "PartAllocFactor");
+      strcpy(alternate_tag[nt], "ParticleNumberMemoryImbalance_Limit");
       addr[nt] = &All.PartAllocFactor;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "GravityConstantInternal");
+      strcpy(alternate_tag[nt], "GravityConstant_SetByHand_inCodeUnits");
       addr[nt] = &All.GravityConstantInternal;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "InitGasTemp");
+      strcpy(alternate_tag[nt], "Initial_Gas_Temperature");
       addr[nt] = &All.InitGasTemp;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "MinGasTemp");
+      strcpy(alternate_tag[nt], "Minimum_Gas_Temperature");
       addr[nt] = &All.MinGasTemp;
       id[nt++] = REAL;
 
@@ -1309,7 +1434,7 @@ void read_parameter_file(char *fname)
 #endif
         
 
-#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
+#if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
       strcpy(tag[nt], "TimeBetOnTheFlyFoF");
       addr[nt] = &All.TimeBetOnTheFlyFoF;
       id[nt++] = REAL;
@@ -1401,7 +1526,8 @@ void read_parameter_file(char *fname)
 
 #ifdef BH_PHOTONMOMENTUM
         strcpy(tag[nt],"BH_FluxMomentumFactor");
-        addr[nt] = &All.BH_FluxMomentumFactor;
+        strcpy(alternate_tag[nt], "BH_Rad_MomentumFactor");
+        addr[nt] = &All.BH_Rad_MomentumFactor;
         id[nt++] = REAL;
 #endif
 
@@ -1445,11 +1571,6 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
         
-#ifdef GALSF_FB_FIRE_RT_LOCALRP
-        strcpy(tag[nt], "WindMomentumLoading");
-        addr[nt] = &All.WindMomentumLoading;
-        id[nt++] = REAL;
-#endif
         
 #ifdef GALSF_SUBGRID_WINDS
       strcpy(tag[nt], "WindEfficiency");
@@ -1553,14 +1674,17 @@ void read_parameter_file(char *fname)
 #ifdef MAGNETIC
 #ifdef MHD_B_SET_IN_PARAMS
       strcpy(tag[nt], "BiniX");
+      strcpy(alternate_tag[nt], "B_initialvalue_x");
       addr[nt] = &All.BiniX;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "BiniY");
+      strcpy(alternate_tag[nt], "B_initialvalue_y");
       addr[nt] = &All.BiniY;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "BiniZ");
+      strcpy(alternate_tag[nt], "B_initialvalue_z");
       addr[nt] = &All.BiniZ;
       id[nt++] = REAL;
 #endif
@@ -1659,6 +1783,7 @@ void read_parameter_file(char *fname)
 
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
         strcpy(tag[nt], "AGS_DesNumNgb");
+        strcpy(alternate_tag[nt], "AdaptGravSoft_Effective_NeighborNumber");
         addr[nt] = &All.AGS_DesNumNgb;
         id[nt++] = REAL;
         
@@ -1914,7 +2039,7 @@ void read_parameter_file(char *fname)
                         continue;
                     
                     for(i = 0, j = -1; i < nt; i++)
-                        if(strcmp(buf1, tag[i]) == 0)
+                        if((strcmp(buf1, tag[i]) == 0) || (strcmp(buf1, alternate_tag[i]) == 0))
                         {
                             j = i;
                             tag[i][0] = 0;
@@ -1927,18 +2052,18 @@ void read_parameter_file(char *fname)
                         {
                             case REAL:
                                 *((double *) addr[j]) = atof(buf2);
-                                fprintf(fdout, "%-35s%g\n", buf1, *((double *) addr[j]));
-                                fprintf(stdout, "%-35s%g\n", buf1, *((double *) addr[j]));
+                                fprintf(fdout, "%-50s%g\n", buf1, *((double *) addr[j]));
+                                fprintf(stdout, "%-50s%g\n", buf1, *((double *) addr[j]));
                                 break;
                             case STRING:
                                 strcpy((char *) addr[j], buf2);
-                                fprintf(fdout, "%-35s%s\n", buf1, buf2);
-                                fprintf(stdout, "%-35s%s\n", buf1, buf2);
+                                fprintf(fdout, "%-50s%s\n", buf1, buf2);
+                                fprintf(stdout, "%-50s%s\n", buf1, buf2);
                                 break;
                             case INT:
                                 *((int *) addr[j]) = atoi(buf2);
-                                fprintf(fdout, "%-35s%d\n", buf1, *((int *) addr[j]));
-                                fprintf(stdout, "%-35s%d\n", buf1, *((int *) addr[j]));
+                                fprintf(fdout, "%-50s%d\n", buf1, *((int *) addr[j]));
+                                fprintf(stdout, "%-50s%d\n", buf1, *((int *) addr[j]));
                                 break;
                         }
                     }
@@ -1957,17 +2082,13 @@ void read_parameter_file(char *fname)
                 printf("\n");
                 
                 i = strlen(All.OutputDir);
-                if(i > 0)
-                    if(All.OutputDir[i - 1] != '/')
-                        strcat(All.OutputDir, "/");
+                if(i > 0) {if(All.OutputDir[i - 1] != '/') {strcat(All.OutputDir, "/");}}
                 
                 sprintf(buf1, "%s%s", fname, "-usedvalues");
                 sprintf(buf2, "%s%s", All.OutputDir, "parameters-usedvalues");
                 sprintf(buf3, "cp %s %s", buf1, buf2);
 #ifndef NOCALLSOFSYSTEM
-                int ret;
-                
-                ret = system(buf3);
+                int ret; ret = system(buf3);
 #endif
             }
         }
@@ -1982,15 +2103,111 @@ void read_parameter_file(char *fname)
         {
             if(*tag[i])
             {
-                printf("Error. I miss a value for tag '%s' in parameter file '%s'.\n", tag[i], fname);
+                if(strcmp("RestartFile",tag[i])==0) {strcpy((char *)addr[i],"restart"); printf("Tag %s (%s) not set in parameter file: defaulting to value = 'restart' \n",tag[i],alternate_tag[i]); continue;}
+                if(strcmp("SnapshotFileBase",tag[i])==0) {strcpy((char *)addr[i],"snapshot"); printf("Tag %s (%s) not set in parameter file: defaulting to value = 'snapshot' \n",tag[i],alternate_tag[i]); continue;}
+                if(All.ComovingIntegrationOn==0)
+                {
+                    if(strcmp("Omega0",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.Omega0); continue;}
+                    if(strcmp("OmegaLambda",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.OmegaLambda); continue;}
+                    if(strcmp("OmegaBaryon",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.OmegaBaryon); continue;}
+                    if(strcmp("HubbleParam",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.HubbleParam); continue;}
+                    if(strcmp("SofteningGasMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                    if(strcmp("SofteningHaloMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                    if(strcmp("SofteningDiskMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                    if(strcmp("SofteningBulgeMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                    if(strcmp("SofteningStarsMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                    if(strcmp("SofteningBndryMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                }
+                if(All.OutputListOn==0) {
+                    if(strcmp("OutputListFilename",tag[i])==0) {strcpy((char *)addr[i],"output_times_dummy.txt"); continue;}
+                } else {
+                    if(strcmp("TimeOfFirstSnapshot",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                    if(strcmp("TimeBetSnapshot",tag[i])==0) {*((double *)addr[i])=1.1; continue;}
+                }
+                if(strcmp("InitGasTemp",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume temperatures defined in ICs (=%g) \n",tag[i],alternate_tag[i],All.InitGasTemp); continue;}
+                if(strcmp("MinGasTemp",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasTemp); continue;}
+                if(strcmp("MinGasHsmlFractional",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasHsmlFractional); continue;}
+                if(strcmp("MaxHsml",tag[i])==0) {*((double *)addr[i])=MAX_REAL_NUMBER; printf("Tag %s (%s) not set in parameter file: defaulting to assume no maximum (=%g) \n",tag[i],alternate_tag[i],All.MaxHsml); continue;}
+                if(strcmp("GravityConstantInternal",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to calculating in terms of other specified units if needed (=%g) \n",tag[i],alternate_tag[i],All.GravityConstantInternal); continue;}
+                if(strcmp("MinSizeTimestep",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to minimum allowed by memory table-size (=%g) \n",tag[i],alternate_tag[i],All.MinSizeTimestep); continue;}
+                if(strcmp("NumFilesWrittenInParallel",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to only main-task writes (=%d) \n",tag[i],alternate_tag[i],All.NumFilesWrittenInParallel); continue;}
+                if(strcmp("NumFilesPerSnapshot",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to single-file snapshots (=%d) \n",tag[i],alternate_tag[i],All.NumFilesPerSnapshot); continue;}
+                if(strcmp("SnapFormat",tag[i])==0) {*((int *)addr[i])=3; printf("Tag %s (%s) not set in parameter file: defaulting to standard hdf5 snapshot format (=%d) \n",tag[i],alternate_tag[i],All.SnapFormat); continue;}
+                if(strcmp("TimeLimitCPU",tag[i])==0) {*((double *)addr[i])=8.6e4; printf("Tag %s (%s) not set in parameter file: defaulting to 24-hours before auto-shutdown (=%g) \n",tag[i],alternate_tag[i],All.TimeLimitCPU); continue;}
+                if(strcmp("CpuTimeBetRestartFile",tag[i])==0) {*((double *)addr[i])=3450.; printf("Tag %s (%s) not set in parameter file: defaulting to write restart checkpoints just under every hour (=%g) \n",tag[i],alternate_tag[i],All.CpuTimeBetRestartFile); continue;}
+#if !defined(COOLING) && !defined(GALSF) && !defined(EOS_HELMHOLTZ) && !defined(EOS_ELASTIC) && !defined(EOS_TILLOTSON)
+                if(strcmp("UnitLength_in_cm",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitLength_in_cm); continue;}
+                if(strcmp("UnitMass_in_g",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitMass_in_g); continue;}
+                if(strcmp("UnitVelocity_in_cm_per_s",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitVelocity_in_cm_per_s); continue;}
+#ifdef MAGNETIC
+                if(strcmp("UnitMagneticField_in_gauss",tag[i])==0) {*((double *)addr[i])=3.5449077018110318; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitMagneticField_in_gauss); continue;}
+#endif
+#endif
+#ifdef CONDUCTION_SPITZER
+                if(strcmp("ConductionCoeff",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with Spitzer-Braginski conductivity, so will default to calculating the physical coefficient without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.ConductionCoeff); continue;}
+#endif
+#ifdef VISCOSITY_BRAGINSKII
+                if(strcmp("ShearViscosityCoeff",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with Spitzer-Braginski viscosity, so will default to calculating the physical coefficient without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.ShearViscosityCoeff); continue;}
+                if(strcmp("BulkViscosityCoeff",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: code was compiled with Spitzer-Braginski viscosity, so will default to 0 bulk viscosity as defined by those physics (=%g) \n",tag[i],alternate_tag[i],All.BulkViscosityCoeff); continue;}
+#endif
+#ifdef TURB_DIFFUSION
+                if(strcmp("TurbDiffusionCoefficient",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with turbulent diffusion, so will default to calculating the coefficients without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.TurbDiffusion_Coefficient); continue;}
+#endif
+#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
+                if(strcmp("InitMetallicity",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to zero (Z=%g) \n",tag[i],alternate_tag[i],All.InitMetallicityinSolar); continue;}
+                if(strcmp("InitStellarAge",tag[i])==0) {*((double *)addr[i])=10.; printf("Tag %s (%s) not set in parameter file: defaulting to very old pre-existing stars [if any exist, otherwise this is irrelevant] (=%g Gyr) \n",tag[i],alternate_tag[i],All.InitStellarAgeinGyr); continue;}
+#endif
+#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
+                if(strcmp("SNeIIEnergyFrac",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.SNe_Energy_Renormalization); continue;}
+                if(strcmp("GasReturnFraction",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.StellarMassLoss_Rate_Renormalization); continue;}
+                if(strcmp("GasReturnEnergy",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.StellarMassLoss_Energy_Renormalization); continue;}
+#endif
+#ifdef GALSF_FB_FIRE_RT_LOCALRP
+                if(strcmp("WindMomentumLoading",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.RP_Local_Momentum_Renormalization); continue;}
+#endif
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
+                if(strcmp("HIIRegion_fLum_Coupled",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.HIIRegion_fLum_Coupled); continue;}
+#endif
+#ifdef RT_LEBRON
+                if(strcmp("PhotonMomentum_Coupled_Fraction",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_Coupled_Fraction); continue;}
+#endif
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
+                if(strcmp("PhotonMomentum_fUV",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_fUV); continue;}
+                if(strcmp("PhotonMomentum_fOPT",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_fOPT); continue;}
+#endif
+#if defined(FIRE_CRS) // ??
+#if (COSMIC_RAYS_DIFFUSION_MODEL == 0)
+                if(strcmp("CosmicRayDiffusionCoeff",tag[i])==0) {*((double *)addr[i])=690.; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored diffusivity ~3e29, assuming units kpc/h and km/s (=%g) \n",tag[i],alternate_tag[i],All.CosmicRayDiffusionCoeff); continue;}
+#endif
+                if(strcmp("CosmicRay_SNeFraction",tag[i])==0) {*((double *)addr[i])=0.1; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored ~10 percent conversion to CRs (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_SNeFraction); continue;}
+#endif
+#if defined(FIRE_BHS)
+                if(strcmp("BlackHoleAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins+Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleAccretionFactor); continue;}
+                if(strcmp("BlackHoleEddingtonFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Eddington-limited accretion from disk to BH (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleEddingtonFactor); continue;}
+                if(strcmp("SeedBlackHoleMass",tag[i])==0) {*((double *)addr[i])=0.7e-8; printf("Tag %s (%s) not set in parameter file: defaulting to upper-limit of normal stellar BHs, assuming code mass units of 1e10 Msun/h (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMass); continue;}
+                if(strcmp("BlackHoleNgbFactor",tag[i])==0) {*((double *)addr[i])=8.0; printf("Tag %s (%s) not set in parameter file: defaulting to standard augment of BH neighbors vs gas (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleNgbFactor); continue;}
+                if(strcmp("BlackHoleMaxAccretionRadius",tag[i])==0) {*((double *)addr[i])=5.0; printf("Tag %s (%s) not set in parameter file: defaulting to typical galaxy size assuming code units of hpc/h (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleMaxAccretionRadius); continue;}
+                if(strcmp("BlackHoleRadiativeEfficiency",tag[i])==0) {*((double *)addr[i])=0.1; printf("Tag %s (%s) not set in parameter file: defaulting to canonical radiative efficiency (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleRadiativeEfficiency); continue;}
+                if(strcmp("BlackHoleFeedbackFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to follow user-defined coefficients for each mechanism (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleFeedbackFactor); continue;}
+                if(strcmp("SeedBlackHoleMassSigma",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to a uniform blackhole seed mass (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMassSigma); continue;}
+                if(strcmp("SeedBlackHoleMinRedshift",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to allow seed creation at all times (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMinRedshift); continue;}
+                if(strcmp("SeedAlphaDiskMass",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to BHs beginning their existence without an active accretion disk (=%g) \n",tag[i],alternate_tag[i],All.SeedAlphaDiskMass); continue;}
+                if(strcmp("BH_FluxMomentumFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to using actual AGN spectrum for radiative feedback (=%g) \n",tag[i],alternate_tag[i],All.BH_Rad_MomentumFactor); continue;}
+                if(strcmp("BAL_f_accretion",tag[i])==0) {*((double *)addr[i])=0.5; printf("Tag %s (%s) not set in parameter file: defaulting to assume equal BH accretion and outflow rate intrinsically (=%g) \n",tag[i],alternate_tag[i],All.BAL_f_accretion); continue;}
+                if(strcmp("BAL_v_outflow",tag[i])==0) {*((double *)addr[i])=1.e4; printf("Tag %s (%s) not set in parameter file: defaulting to assume mechanical outflow with 1e4 km/s assuming km/s code units (=%g) \n",tag[i],alternate_tag[i],All.BAL_v_outflow); continue;}
+#if defined(BH_WIND_SPAWN)
+                if(strcmp("BAL_internal_temperature",tag[i])==0) {*((double *)addr[i])=1.e4; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.BAL_internal_temperature); continue;}
+#endif
+#if defined(COSMIC_RAYS)
+                if(strcmp("BH_CosmicRay_Injection_Efficiency",tag[i])==0) {*((double *)addr[i])=1.e-2; printf("Tag %s (%s) not set in parameter file: defaulting to assuming CR injection efficiency of ~1 percent (=%g) \n",tag[i],alternate_tag[i],All.BH_CosmicRay_Injection_Efficiency); continue;}
+#endif
+#endif
+                printf("ERROR. I miss a required value for tag '%s' (or alternate name '%s') in parameter file '%s'.\n", tag[i], alternate_tag[i], fname);
                 errorFlag = 1;
             }
         }
         
-        if(All.OutputListOn && errorFlag == 0)
-            errorFlag += read_outputlist(All.OutputListFilename);
-        else
-            All.OutputListLength = 0;
+        if(All.OutputListOn && errorFlag == 0) {errorFlag += read_outputlist(All.OutputListFilename);} else {All.OutputListLength = 0;}
     }
 
     MPI_Bcast(&errorFlag, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -2058,6 +2275,9 @@ void read_parameter_file(char *fname)
     All.ErrTolTheta = 0.7;
     All.ErrTolForceAcc = 0.0025;
     All.MaxRMSDisplacementFac = 0.25;
+    All.TimeBetStatistics = 1.0e10;
+    strcpy(All.ResubmitCommand,"none");
+    All.ResubmitOn = 0;
 #ifdef HYDRO_SPH
     All.ArtBulkViscConst = 1.0;
 #ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
@@ -2095,11 +2315,10 @@ void read_parameter_file(char *fname)
 #endif
     if(All.AGS_MaxNumNgbDeviation < 0.05) All.AGS_MaxNumNgbDeviation = 0.05;
 #endif
-#ifdef BH_WIND_SPAWN
-      All.AGNWindID = 1913298393;       // this seems weird, but is the bitshifted version of 1234568912345 for not long IDs.
-#endif
 #endif // closes DEVELOPER_MODE check //
-    
+#ifdef BH_WIND_SPAWN
+    All.AGNWindID = 1913298393;       // this seems weird, but is the bitshifted version of 1234568912345 for not long IDs.
+#endif    
     
 #ifdef GALSF
     All.CritOverDensity = 1000.0;
@@ -2285,8 +2504,7 @@ void read_parameter_file(char *fname)
     
 #ifdef PTHREADS_NUM_THREADS
 #ifdef _OPENMP
-    if(ThisTask == 0)
-        printf("PTHREADS_NUM_THREADS is incompatible with enabling OpenMP in the compiler options \n");
+    if(ThisTask == 0) {printf("PTHREADS_NUM_THREADS is incompatible with enabling OpenMP in the compiler options \n");}
     endrun(0);
 #endif
 #endif

@@ -14,7 +14,7 @@
 /* return photon number density in physical code units */
 double rt_return_photon_number_density(int i, int k)
 {
-    return SphP[i].E_gamma[k] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (rt_nu_eff_eV[k]*ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam);
+    return SphP[i].Rad_E_gamma[k] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (rt_nu_eff_eV[k]*ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam);
 }
 
 double rt_photoion_chem_return_temperature(int i, double internal_energy)
@@ -171,7 +171,7 @@ void rt_update_chemistry(void)
             if(n_photons_vol < 0 || isnan(n_photons_vol))
             {
                 printf("NEGATIVE n_photons_per_volume: %g %d %d \n", n_photons_vol, i, ThisTask);
-                printf("E_gamma %g mass %g All.cf_a3inv %g \n", SphP[i].E_gamma[0], P[i].Mass, All.cf_a3inv);
+                printf("Rad_E_gamma %g mass %g All.cf_a3inv %g \n", SphP[i].Rad_E_gamma[0], P[i].Mass, All.cf_a3inv);
                 endrun(111);
             }
             
@@ -297,7 +297,7 @@ void rt_update_chemistry(void)
                 printf("temp %g \n",temp);
                 printf("pressure %g \n",SphP[i].Pressure);
                 printf("kHI %g \n",k_HI);
-                printf("E_gamma %g \n",SphP[i].E_gamma[0]);
+                printf("Rad_E_gamma %g \n",SphP[i].Rad_E_gamma[0]);
                 endrun(333);
             }
             SphP[i].Ne = nHII;
@@ -367,7 +367,7 @@ void rt_write_chemistry_stats(void)
     total_nHeI = total_nHeII = 0.0;
 #endif
     
-    for(i = 0; i < N_gas; i++)
+    for(i = 0; i < NumPart; i++)
         if(P[i].Type == 0)
         {
             rho = SphP[i].Density * All.cf_a3inv;

@@ -68,8 +68,15 @@ int density_isactive(int n)
         if(All.ComovingIntegrationOn==0) // only do stellar age evaluation if we have to //
         {
             double star_age = evaluate_stellar_age_Gyr(P[n].StellarAge);
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES) && defined(PM_HIRES_REGION_CLIPPING)
+            if(star_age < 0.0035) return 1;
+#else
             if(star_age < 0.035) return 1;
+#endif
         }
+#endif
+#if (defined(GRAIN_FLUID) || defined(RADTRANSFER)) && (!defined(GALSF) && !(defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)))
+        return 1;
 #endif
     }
 #endif
@@ -332,10 +339,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         kernel.dv[0] = local.Vel[0] - SphP[j].VelPred[0];
                         kernel.dv[1] = local.Vel[1] - SphP[j].VelPred[1];
                         kernel.dv[2] = local.Vel[2] - SphP[j].VelPred[2];
-#ifdef BOX_SHEARING
-                        if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {kernel.dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-                        if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {kernel.dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-#endif
+                        NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,kernel.dv,1); /* wrap velocities for shearing boxes if needed */
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
                         // do neighbor contribution to smoothed particle velocity here, after wrap, so can account for shearing boxes correctly //
                         {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * (local.Vel[kv] - kernel.dv[kv]);}}
@@ -388,7 +392,7 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
             if(kernel->r < DMAX(P[j].Hsml, All.ForceSoftening[5])) P[j].BH_Ngb_Flag = 1; 
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        P[j].SwallowTime = MAX_REAL_NUMBER;
+            P[j].SwallowTime = MAX_REAL_NUMBER;
 #endif
 #if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
             double dr_eff_wtd = Get_Particle_Size(j); dr_eff_wtd=sqrt(dr_eff_wtd*dr_eff_wtd + (kernel->r)*(kernel->r)); /* effective distance for Gaussian-type kernel, weighted by density */
@@ -452,7 +456,7 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
 void density(void)
 {
     /* initialize variables used below, in particlar the structures we need to call throughout the iteration */
-    MyFloat *Left, *Right; double fac, fac_lim, desnumngb, desnumngbdev; long long ntot;
+    CPU_Step[CPU_MISC] += measure_time(); double t00_truestart = my_second(); MyFloat *Left, *Right; double fac, fac_lim, desnumngb, desnumngbdev; long long ntot;
     int i, npleft, iter=0, redo_particle, particle_set_to_minhsml_flag = 0, particle_set_to_maxhsml_flag = 0;
     Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));
     Right = (MyFloat *) mymalloc("Right", NumPart * sizeof(MyFloat));
@@ -623,17 +627,33 @@ void density(void)
                 /* use a much looser check for N_neighbors when the central point is a star particle,
                  since the accuracy is limited anyways to the coupling efficiency -- the routines use their
                  own estimators+neighbor loops, anyways, so this is just to get some nearby particles */
-                if((P[i].Type!=0)&&(P[i].Type!=5))
+                int valid_stellar_types = 2+4+8+16, invalid_stellar_types = 1+32; // allow types 1,2,3,4 here //
+#if (defined(GRAIN_FLUID) || defined(RADTRANSFER)) && (!defined(GALSF) && !(defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)))
+                valid_stellar_types = 16; invalid_stellar_types = 1+2+4+8+32; // -only- type-4 sources in these special problems
+#ifdef RADTRANSFER
+                invalid_stellar_types = 64; valid_stellar_types = RT_SOURCES; // any valid 'injection' source is allowed
+#endif
+#ifdef GRAIN_FLUID
+                invalid_stellar_types = GRAIN_PTYPES;
+#endif
+#endif
+                if( ((1 << P[i].Type) & (valid_stellar_types)) && !((1 << P[i].Type) & (invalid_stellar_types)) )
                 {
                     desnumngb = All.DesNumNgb;
 #if defined(RT_SOURCE_INJECTION)
                     if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
+#endif
+#ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
+                    if(desnumngb < 128) {desnumngb = 128;} // we do want a decent number to ensure the area around the particle is 'covered'
 #endif
 #ifdef GALSF
                     if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
                     // if we're finding this for feedback routines, there isn't any good reason to search beyond a modest physical radius //
                     double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
                     maxsoft = 2.0 / unitlength_in_kpc;
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES) && (defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL))
+                    if(P[i].SNe_ThisTimeStep>0 || P[i].MassReturn_ThisTimeStep>0 || All.Time==All.TimeBegin) {maxsoft=2.0/unitlength_in_kpc;} else {maxsoft=0.1/unitlength_in_kpc;};
+#endif
 #endif
                     desnumngbdev = desnumngb / 2; // enforcing exact number not important
                 }
@@ -644,7 +664,7 @@ void density(void)
 #ifdef SINGLE_STAR_SINK_DYNAMICS
 		        if(P[i].Type == 5) {minsoft = All.ForceSoftening[5] / All.cf_atime;} // we should always find all neighbours within the softening kernel/accretion radius, which is a lower bound on the accretion radius
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-			if(P[i].Type == 5) {minsoft = DMAX(minsoft, P[i].SinkRadius);}
+                if(P[i].Type == 5) {minsoft = DMAX(minsoft, P[i].SinkRadius);}
 #endif			
 #endif		
 #endif
@@ -702,7 +722,7 @@ void density(void)
                 {
                     /* ok we have reached the desired number of neighbors: save the condition number for next timestep */
                     if(ConditionNumber > 1e6 * (double)CONDITION_NUMBER_DANGER) {
-                        PRINT_WARNING("Warning: Condition number=%g CNum_prevtimestep=%g Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g\n",
+                        PRINT_WARNING("Condition number=%g CNum_prevtimestep=%g Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g",
                                ConditionNumber,SphP[i].ConditionNumber,PPP[i].NumNgb,desnumngb,PPP[i].Hsml,All.MinHsml,All.MaxHsml);}
                     SphP[i].ConditionNumber = ConditionNumber;
                 }
@@ -711,7 +731,7 @@ void density(void)
                 {
                     if(iter >= MAXITER - 10)
                     {
-                        PRINT_WARNING("i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)\n",
+                        PRINT_WARNING("i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)",
                                i, ThisTask, (unsigned long long) P[i].ID, P[i].Type, PPP[i].Hsml, PPP[i].DhsmlNgbFactor, Left[i], Right[i],
                                (float) PPP[i].NumNgb, Right[i] - Left[i], particle_set_to_maxhsml_flag, particle_set_to_minhsml_flag, minsoft,
                                maxsoft, desnumngb, desnumngbdev, redo_particle, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
@@ -1015,6 +1035,15 @@ void density(void)
 #endif
             
 #ifdef PM_HIRES_REGION_CLIPPING
+#ifdef GALSF
+            if(All.ComovingIntegrationOn)
+            {
+                double rho_igm = All.OmegaBaryon*(All.HubbleParam*HUBBLE_CGS)*(All.HubbleParam*HUBBLE_CGS)*(3./(8.*M_PI*GRAVITY_G)) * DMIN(All.cf_a3inv, 1000.);
+                double rho_gas = DMAX( SphP[i].Density , All.DesNumNgb*P[i].Mass/(4.*M_PI/3.*PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml) )* All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;
+                if(P[i].Type == 0 && rho_gas < 1.e-6*rho_igm) {P[i].Mass = 0;}
+                if(P[i].Type != 0 && SphP[i].Density > 0 & rho_gas < 1.e-9*rho_igm) {P[i].Mass = 0;}
+            }
+#endif
 #ifdef BLACK_HOLES
             if (P[i].Type != 5)
             {
@@ -1040,7 +1069,7 @@ void density(void)
     
     
     /* collect some timing information */
-    double t1; t1 = WallclockTime = my_second(); timeall += timediff(t0, t1);
+    double t1; t1 = WallclockTime = my_second(); timeall = timediff(t00_truestart, t1);
     CPU_Step[CPU_DENSCOMPUTE] += timecomp; CPU_Step[CPU_DENSWAIT] += timewait;
     CPU_Step[CPU_DENSCOMM] += timecomm; CPU_Step[CPU_DENSMISC] += timeall - (timecomp + timewait + timecomm);
 }

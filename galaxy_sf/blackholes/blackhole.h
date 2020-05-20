@@ -6,16 +6,11 @@
 * see notes in blackhole.c for details on code history.
 */
 
-#ifndef gizmo_blackhole_h
-#define gizmo_blackhole_h
-
-
-#if defined(BLACK_HOLES)
+#ifdef BLACK_HOLES // master flag [needs to be here to prevent compiler breaking when this is not active] //
 
 
 #ifndef BH_CSND_FRAC_BH_MERGE
-/* Relative velocity fraction (in units of soundspeed) for merging blackholes, default=1.0 */
-#define BH_CSND_FRAC_BH_MERGE 1.0
+#define BH_CSND_FRAC_BH_MERGE 1.0 /* Relative velocity fraction (in units of soundspeed) for merging blackholes, default=1.0 */
 #endif
 
 
@@ -28,6 +23,9 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat BH_InternalEnergy, Mgas_in_Kernel, Mstar_in_Kernel, Malt_in_Kernel;
     MyFloat Jgas_in_Kernel[3], Jstar_in_Kernel[3], Jalt_in_Kernel[3]; // mass/angular momentum for GAS/STAR/TOTAL components computed always now
     MyLongDouble accreted_Mass, accreted_BH_Mass, accreted_BH_Mass_alphadisk;
+#ifdef GRAIN_FLUID
+    MyFloat accreted_dust_Mass;
+#endif    
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat mdot_alphadisk;             /*!< gives mdot of mass going into alpha disk */
 #endif
@@ -46,15 +44,21 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
     MyFloat BH_SurroundingGasVel[3];
 #endif
+#ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK
+    MyFloat BH_SurroundingGasCOM[3];
+#endif
 #if (BH_GRAVACCRETION == 8)
     MyFloat hubber_mdot_vr_estimator, hubber_mdot_disk_estimator, hubber_mdot_bondi_limiter;
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
     MyLongDouble accreted_momentum[3];        /*!< accreted linear momentum */
 #endif
+#if defined(BH_RETURN_BFLUX)
+    MyLongDouble accreted_B[3]; 
+#endif    
 #if defined(BH_FOLLOW_ACCRETED_COM)
     MyLongDouble accreted_centerofmass[3];    /*!< accreted center-of-mass */
-#endif
+#endif    
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
     MyLongDouble accreted_J[3];               /*!< accreted angular momentum */
 #endif
@@ -65,6 +69,9 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat angmom_prepass_sum_for_passback[3]; /*!< Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013 */
     MyFloat angmom_norm_topass_in_swallowloop;  /*!< corresponding scalar normalization calculated from the vector above */
 #endif
+#if defined(BH_RETURN_BFLUX)
+    MyFloat kernel_norm_topass_in_swallowloop;
+#endif    
 }
 *BlackholeTempInfo;
 
@@ -105,5 +112,4 @@ void set_blackhole_long_range_rp(int i, int n);
 
 
 
-#endif
-#endif
+#endif // master flag

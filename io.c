@@ -184,10 +184,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     int *ip_int;
     float *fp_single;
     integertime dt_step;
-    
-#ifdef BOX_PERIODIC
-    MyFloat boxSize;
-#endif
+
 #ifdef PMGRID
     double dt_gravkick_pm = 0;
 #endif
@@ -242,12 +239,12 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     {
                         fp_pos[k] = P[pindex].Pos[k];
 #ifdef BOX_PERIODIC
-                        boxSize = All.BoxSize;
-                        if(k==0) {boxSize = boxSize_X;}
-                        if(k==1) {boxSize = boxSize_Y;}
-                        if(k==2) {boxSize = boxSize_Z;}
-                        while(fp_pos[k] < 0) {fp_pos[k] += boxSize;}
-                        while(fp_pos[k] >= boxSize) {fp_pos[k] -= boxSize;}
+                        double box_length_xyz;
+                        if(k==0) {box_length_xyz = boxSize_X;}
+                        if(k==1) {box_length_xyz = boxSize_Y;}
+                        if(k==2) {box_length_xyz = boxSize_Z;}
+                        while(fp_pos[k] < 0) {fp_pos[k] += box_length_xyz;}
+                        while(fp_pos[k] >= box_length_xyz) {fp_pos[k] -= box_length_xyz;}
 #endif
                     }
                     n++;
@@ -552,7 +549,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = P[pindex].Grain_SubType;
+                    *ip_int++ = P[pindex].Grain_SubType;
                     n++;
                 }
 #endif
@@ -597,10 +594,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < NUM_METAL_SPECIES; k++)
-                    {
-                        fp[k] = P[pindex].Metallicity[k];
-                    }
+                    for(k=0;k<NUM_METAL_SPECIES;k++) {fp[k] = P[pindex].Metallicity[k];}
                     fp += NUM_METAL_SPECIES;
                     n++;
                 }
@@ -665,7 +659,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for (n = 0; n < pc; pindex++)
                 if (P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,PPP[pindex].Hsml,P[pindex].DensAroundStar,PPP[pindex].NumNgb,0,pindex) * 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm));  // g cm^-2
+                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,PPP[pindex].Hsml,P[pindex].DensAroundStar,PPP[pindex].NumNgb,0,pindex) * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm));  // g cm^-2
                     n++;
                 }
 #endif 
@@ -869,6 +863,13 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
             
         case IO_VDIV:		/* Divergence of Vel */
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    for(k = 0; k < 3; k++)
+                        *fp++ = P[pindex].Particle_DivVel;
+                    n++;
+                }
             break;
             
         case IO_VROT:		/* Velocity Curl */
@@ -906,7 +907,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = SphP[pindex].CosmicRayEnergyPred;
+                    for(k=0;k<N_CR_PARTICLE_BINS;k++) {fp[k] = SphP[pindex].CosmicRayEnergyPred[k];}
+                    fp += N_CR_PARTICLE_BINS;
                     n++;
                 }
 #endif
@@ -918,7 +920,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = SphP[pindex].CosmicRayDiffusionCoeff;
+                    for(k=0;k<N_CR_PARTICLE_BINS;k++) {fp[k] = SphP[pindex].CosmicRayDiffusionCoeff[k];}
+                    fp += N_CR_PARTICLE_BINS;
                     n++;
                 }
 #endif
@@ -930,8 +933,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 2; k++)
-                        *fp++ = SphP[pindex].CosmicRayAlfvenEnergyPred[k];
+                    for(k=0;k<2;k++) {int k2; for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {fp[N_CR_PARTICLE_BINS*k + k2] = SphP[pindex].CosmicRayAlfvenEnergyPred[k2][k];}}
+                    fp += 2*N_CR_PARTICLE_BINS;
                     n++;
                 }
 #endif
@@ -1035,6 +1038,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+
+        case IO_BHDUSTMASS:
+#if defined(BLACK_HOLES) && defined(GRAIN_FLUID)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = BPP(pindex).BH_Dust_Mass;
+                    n++;
+                }
+#endif
+            break;            
             
         case IO_BHMASSALPHA:
 #ifdef BH_ALPHADISK_ACCRETION
@@ -1065,6 +1079,61 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 if(P[pindex].Type == type)
                 {
                     *fp++ = BPP(pindex).BH_Mdot;
+                    n++;
+                }
+#endif
+            break;
+            
+        case IO_R_PROTOSTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = BPP(pindex).ProtoStellarRadius_inSolar;
+                    n++;
+                }
+#endif
+            break;
+            
+        case IO_MASS_D_PROTOSTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = BPP(pindex).Mass_D;
+                    n++;
+                }
+#endif
+            break;
+            
+        case IO_ZAMS_MASS:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = BPP(pindex).ZAMS_Mass;
+                    n++;
+                }
+#endif
+            break;
+            
+        case IO_STAGE_PROTOSTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *ip_int++ = BPP(pindex).ProtoStellarStage;
+                    n++;
+                }
+#endif
+            break;
+            
+        case IO_LUM_SINGLESTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = BPP(pindex).StarLuminosity_Solar;
                     n++;
                 }
 #endif
@@ -1425,7 +1494,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 if(P[pindex].Type == type)
                 {
                     for(k = 0; k < N_RT_FREQ_BINS; k++)
-                        fp[k] = SphP[pindex].E_gamma[k];
+                        fp[k] = SphP[pindex].Rad_E_gamma[k];
                     
                     n++;
                     fp += N_RT_FREQ_BINS;
@@ -1438,7 +1507,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 3; k++) {fp[k] = SphP[pindex].RadAccel[k];}                    
+                    for(k = 0; k < 3; k++) {fp[k] = SphP[pindex].Rad_Accel[k];}                    
                     n++;
                     fp += 3;
                 }
@@ -1741,35 +1810,34 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_VORT:
         case IO_MG_ACCEL:
         case IO_BH_ANGMOM:
+        case IO_ANNIHILATION_RADIATION:
             if(mode)
                 bytes_per_blockelement = 3 * sizeof(MyInputFloat);
             else
                 bytes_per_blockelement = 3 * sizeof(MyOutputFloat);
             break;
 
-        case IO_COSMICRAY_ALFVEN:
-            if(mode)
-                bytes_per_blockelement = 2 * sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = 2 * sizeof(MyOutputFloat);
-            break;
-
         case IO_ID:
-            bytes_per_blockelement = sizeof(MyIDType);
-            break;
-
         case IO_CHILD_ID:
             bytes_per_blockelement = sizeof(MyIDType);
             break;
 
-        case IO_EOSCOMP:
         case IO_GENERATION_ID:
+            bytes_per_blockelement = sizeof(int);
+#ifdef BH_WIND_SPAWN  //we use this to store progenitor info so this needs to be able to handle any valid ID, rather than the usual 0-32
+            bytes_per_blockelement = sizeof(MyIDType);
+#endif
+            break;
+
         case IO_BHPROGS:
         case IO_TRUENGB:
         case IO_AGS_NGBS:
+        case IO_GRAINTYPE:
+        case IO_EOSCOMP:
+        case IO_STAGE_PROTOSTAR:
             bytes_per_blockelement = sizeof(int);
             break;
-            
+
         case IO_MASS:
         case IO_BH_DIST:
         case IO_SECONDORDERMASS:
@@ -1798,7 +1866,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_AGE:
         case IO_OSTAR:
         case IO_GRAINSIZE:
-        case IO_GRAINTYPE:
         case IO_DELAYTIME:
         case IO_HSMS:
         case IO_POT:
@@ -1806,8 +1873,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_STRESSBULK:
         case IO_SHEARCOEFF:
         case IO_TSTP:
-        case IO_COSMICRAY_ENERGY:
-        case IO_COSMICRAY_KAPPA:
         case IO_DIVB:
         case IO_VRMS:
         case IO_VRAD:
@@ -1821,10 +1886,15 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_CONDRATE:
         case IO_DENN:
         case IO_BHMASS:
+        case IO_BHDUSTMASS:
         case IO_BHMASSALPHA:
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_BHMDOT:
+        case IO_R_PROTOSTAR:
+        case IO_MASS_D_PROTOSTAR:
+        case IO_ZAMS_MASS:
+        case IO_LUM_SINGLESTAR:
         case IO_CAUSTIC_COUNTER:
         case IO_FLOW_DETERMINANT:
         case IO_STREAM_DENSITY:
@@ -1861,13 +1931,38 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_TURB_DIFF_COEFF:
         case IO_DYNERROR:
         case IO_DYNERRORDEFAULT:
+        case IO_CHIMES_MU:
+        case IO_CHIMES_NH:
+        case IO_CHIMES_STAR_SIGMA:
+        case IO_CHIMES_STAR_DENS:
+        case IO_CHIMES_DELAY_HII:
+        case IO_CHEM:
             if(mode)
                 bytes_per_blockelement = sizeof(MyInputFloat);
             else
                 bytes_per_blockelement = sizeof(MyOutputFloat);
             break;
             
-            
+
+        case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_KAPPA:
+#ifdef COSMIC_RAYS
+            if(mode)
+                bytes_per_blockelement = (N_CR_PARTICLE_BINS) * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = (N_CR_PARTICLE_BINS) * sizeof(MyOutputFloat);
+#endif
+            break;
+
+        case IO_COSMICRAY_ALFVEN:
+#ifdef COSMIC_RAYS_ALFVEN
+            if(mode)
+                bytes_per_blockelement = (2 * N_CR_PARTICLE_BINS) * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = (2 * N_CR_PARTICLE_BINS) * sizeof(MyOutputFloat);
+#endif
+            break;
+
         case IO_IMF:
 #ifdef GALSF_SFR_IMF_VARIATION
             if(mode)
@@ -1880,9 +1975,9 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_RADGAMMA:
 #ifdef RADTRANSFER
             if(mode)
-                bytes_per_blockelement = N_RT_FREQ_BINS * sizeof(MyInputFloat);
+                bytes_per_blockelement = (N_RT_FREQ_BINS) * sizeof(MyInputFloat);
             else
-                bytes_per_blockelement = N_RT_FREQ_BINS * sizeof(MyOutputFloat);
+                bytes_per_blockelement = (N_RT_FREQ_BINS) * sizeof(MyOutputFloat);
 #endif
             break;
             
@@ -1914,86 +2009,21 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = ChimesGlobalVars.totalNumberOfSpecies * sizeof(MyOutputFloat);
             break;
 
-        case IO_CHIMES_MU: 
-            if(mode)
-                bytes_per_blockelement = sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = sizeof(MyOutputFloat);
-            break;
-
-        case IO_CHIMES_REDUCED: 
-#ifdef CHIMES_REDUCED_OUTPUT 
+        case IO_CHIMES_REDUCED:
             if(mode)
                 bytes_per_blockelement = 4 * sizeof(MyInputFloat);
             else
                 bytes_per_blockelement = 4 * sizeof(MyOutputFloat);
-#endif 
             break;
 
-        case IO_CHIMES_NH:
-#ifdef CHIMES_NH_OUTPUT 
-            if(mode)
-                bytes_per_blockelement = sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = sizeof(MyOutputFloat);
-#endif 
-	    break; 
-
-        case IO_CHIMES_STAR_SIGMA: 
-#if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
-            if(mode)
-                bytes_per_blockelement = sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = sizeof(MyOutputFloat);
-#endif 
-	    break;
-
-        case IO_CHIMES_FLUX_G0: 
-#ifdef CHIMES_STELLAR_FLUXES  
+        case IO_CHIMES_FLUX_G0:
+        case IO_CHIMES_FLUX_ION:
             if(mode)
                 bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyInputFloat);
             else
                 bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyOutputFloat);
-#endif 
             break;
-
-        case IO_CHIMES_FLUX_ION: 
-#ifdef CHIMES_STELLAR_FLUXES  
-            if(mode)
-                bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyOutputFloat);
-#endif 
-            break;
-
-        case IO_CHIMES_STAR_DENS: 
-#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
-            if(mode)
-                bytes_per_blockelement = sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = sizeof(MyOutputFloat);
-            break;
-#endif 
-
-        case IO_CHIMES_DELAY_HII: 
-#ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
-            if(mode)
-                bytes_per_blockelement = sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = sizeof(MyOutputFloat);
-            break;
-#endif 
- 
-#endif // CHIMES 
-            
-            
-        case IO_EOS_STRESS_TENSOR:
-            if(mode)
-                bytes_per_blockelement = 9 * sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = 9 * sizeof(MyOutputFloat);
-            break;
-
+#endif // CHIMES
             
         case IO_CBE_MOMENTS:
 #ifdef CBE_INTEGRATOR
@@ -2003,9 +2033,10 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = (CBE_INTEGRATOR_NBASIS*CBE_INTEGRATOR_NMOMENTS) * sizeof(MyOutputFloat);
             break;
 #endif
-
             
+        case IO_EOS_STRESS_TENSOR:
         case IO_TIDALTENSORPS:
+        case IO_SHEET_ORIENTATION:
             if(mode)
                 bytes_per_blockelement = 9 * sizeof(MyInputFloat);
             else
@@ -2019,31 +2050,12 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = 36 * sizeof(MyOutputFloat);
             break;
             
-        case IO_ANNIHILATION_RADIATION:
-            if(mode)
-                bytes_per_blockelement = 3 * sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = 3 * sizeof(MyOutputFloat);
-            break;
-            
         case IO_LAST_CAUSTIC:
             if(mode)
                 bytes_per_blockelement = 20 * sizeof(MyInputFloat);
             else
                 bytes_per_blockelement = 20 * sizeof(MyOutputFloat);
             break;
-            
-        case IO_SHEET_ORIENTATION:
-            if(mode)
-                bytes_per_blockelement = 9 * sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = 9 * sizeof(MyOutputFloat);
-            break;
-            
-        case IO_CHEM:
-            bytes_per_blockelement = 0;
-            break;
-            
             
         case IO_LASTENTRY:
             endrun(214);
@@ -2056,7 +2068,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
 int get_datatype_in_block(enum iofields blocknr)
 {
     int typekey;
-    
     switch (blocknr)
     {
 #if defined(OUTPUT_POSITIONS_IN_DOUBLE) || defined(INPUT_POSITIONS_IN_DOUBLE)
@@ -2066,13 +2077,6 @@ int get_datatype_in_block(enum iofields blocknr)
 #endif
             
         case IO_ID:
-#ifdef LONGIDS
-            typekey = 2;		/* native long long */
-#else
-            typekey = 0;		/* native int */
-#endif
-            break;
-
         case IO_CHILD_ID:
 #ifdef LONGIDS
             typekey = 2;		/* native long long */
@@ -2082,8 +2086,18 @@ int get_datatype_in_block(enum iofields blocknr)
             break;
 
         case IO_GENERATION_ID:
+#if defined(BH_WIND_SPAWN) && defined(LONGIDS) //we use this to store progenitor info so this needs to be able to handle any valid ID, rather than the usual 0-32       
+            typekey = 2;		/* native long long */
+#else
+            typekey = 0;		/* native int */
+#endif            
+            break;
+            
         case IO_TRUENGB:
         case IO_BHPROGS:
+        case IO_GRAINTYPE:
+        case IO_EOSCOMP:
+        case IO_STAGE_PROTOSTAR:
             typekey = 0;		/* native int */
             break;
             
@@ -2118,6 +2132,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_VORT:
         case IO_MG_ACCEL:
         case IO_BH_ANGMOM:
+        case IO_ANNIHILATION_RADIATION:
             values = 3;
             break;
             
@@ -2166,8 +2181,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_VRAD:
         case IO_VDIV:
         case IO_VROT:
-        case IO_COSMICRAY_ENERGY:
-        case IO_COSMICRAY_KAPPA:
         case IO_DIVB:
         case IO_ABVC:
         case IO_AMDC:
@@ -2176,10 +2189,16 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_CONDRATE:
         case IO_DENN:
         case IO_BHMASS:
+        case IO_BHDUSTMASS:
         case IO_BHMASSALPHA:
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_BHMDOT:
+        case IO_R_PROTOSTAR:
+        case IO_MASS_D_PROTOSTAR:
+        case IO_ZAMS_MASS:
+        case IO_STAGE_PROTOSTAR:
+        case IO_LUM_SINGLESTAR:
         case IO_BHPROGS:
         case IO_CAUSTIC_COUNTER:
         case IO_FLOW_DETERMINANT:
@@ -2219,22 +2238,34 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_TURB_DIFF_COEFF:
         case IO_DYNERROR:
         case IO_DYNERRORDEFAULT:
+        case IO_CHIMES_MU:
+        case IO_CHIMES_NH:
+        case IO_CHIMES_STAR_SIGMA:
+        case IO_CHIMES_STAR_DENS:
+        case IO_CHIMES_DELAY_HII:
+        case IO_CHEM:
             values = 1;
+            break;
+
+        case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_KAPPA:
+            values = 0;
+#ifdef COSMIC_RAYS
+            values = N_CR_PARTICLE_BINS;
+#endif
             break;
 
         case IO_COSMICRAY_ALFVEN:
             values = 2;
-            break;
-
-        case IO_EOS_STRESS_TENSOR:
-            values = 9;
+#ifdef COSMIC_RAYS_ALFVEN
+            values = (2*N_CR_PARTICLE_BINS);
+#endif
             break;
 
         case IO_CBE_MOMENTS:
+            values = 0;
 #ifdef CBE_INTEGRATOR
             values = (CBE_INTEGRATOR_NBASIS*CBE_INTEGRATOR_NMOMENTS);
-#else
-            values = 0;
 #endif
             break;
 
@@ -2264,100 +2295,44 @@ int get_values_per_blockelement(enum iofields blocknr)
 
 #ifdef CHIMES 
         case IO_CHIMES_ABUNDANCES: 
-	  values = ChimesGlobalVars.totalNumberOfSpecies; 
-	  break; 
+            values = ChimesGlobalVars.totalNumberOfSpecies;
+            break;
 
-        case IO_CHIMES_MU: 
-	  values = 1; 
-	  break; 
-	  
-        case IO_CHIMES_REDUCED: 
-#ifdef CHIMES_REDUCED_OUTPUT 
-	  values = 4; 
-#else 
-	  values = 0; 
-#endif 
-	  break; 
+        case IO_CHIMES_REDUCED:
+            values = 0;
+#ifdef CHIMES_REDUCED_OUTPUT
+            values = 4;
+#endif
+            break;
 
-        case IO_CHIMES_NH:
-#ifdef CHIMES_NH_OUTPUT 
-	  values = 1; 
-#else 
-	  values = 0; 
-#endif 
-	  break; 
-
-        case IO_CHIMES_STAR_SIGMA: 
-#if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
-	  values = 1; 
-#else 
-	  values = 0; 
-#endif 
-	  break; 
-
-        case IO_CHIMES_FLUX_G0: 
-#ifdef CHIMES_STELLAR_FLUXES  
-	  values = CHIMES_LOCAL_UV_NBINS; 
-#else 
-	  values = 0; 
-#endif 
-	  break; 
-
-        case IO_CHIMES_FLUX_ION: 
-#ifdef CHIMES_STELLAR_FLUXES  
-	  values = CHIMES_LOCAL_UV_NBINS; 
-#else 
-	  values = 0; 
-#endif 
-	  break; 
-
-        case IO_CHIMES_STAR_DENS: 
-#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
-	  values = 1; 
-#else 
-	  values = 0; 
-#endif 
-	  break; 
-
-        case IO_CHIMES_DELAY_HII: 
-#ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
-	  values = 1; 
-#else 
-	  values = 0; 
-#endif 
-	  break; 
-
-#endif // CHIMES 
+        case IO_CHIMES_FLUX_G0:
+        case IO_CHIMES_FLUX_ION:
+            values = 0;
+#ifdef CHIMES_STELLAR_FLUXES
+            values = CHIMES_LOCAL_UV_NBINS;
+#endif
+            break;
+#endif // CHIMES
             
         case IO_IMF:
+            values = 0;
 #ifdef GALSF_SFR_IMF_VARIATION
             values = N_IMF_FORMPROPS;
-#else
-            values = 0;
 #endif
             break;
 
             
         case IO_TIDALTENSORPS:
+        case IO_SHEET_ORIENTATION:
+        case IO_EOS_STRESS_TENSOR:
             values = 9;
             break;
         case IO_GDE_DISTORTIONTENSOR:
             values = 36;
             break;
-        case IO_ANNIHILATION_RADIATION:
-            values = 3;
-            break;
         case IO_LAST_CAUSTIC:
             values = 20;
             break;
-        case IO_SHEET_ORIENTATION:
-            values = 9;
-            break;
-            
-        case IO_CHEM:
-            values = 0;
-            break;
-            
             
         case IO_LASTENTRY:
             endrun(215);
@@ -2429,8 +2404,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             for(i = 0; i < 6; i++)
             {
                 typelist[i] = 0;
-                if(All.MassTable[i] == 0 && header.npart[i] > 0)
-                    typelist[i] = 1;
+                if(All.MassTable[i] == 0 && header.npart[i] > 0) {typelist[i] = 1;}
             }
             return ntot_withmasses;
             break;
@@ -2513,16 +2487,14 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_TURB_DIFF_COEFF:
         case IO_DYNERROR:
         case IO_DYNERRORDEFAULT:
-            for(i = 1; i < 6; i++)
-                typelist[i] = 0;
+            for(i = 1; i < 6; i++) {typelist[i] = 0;}
             return ngas;
             break;
             
         case IO_AGE:
             for(i = 0; i < 6; i++)
 #ifdef BLACK_HOLES
-                if(i != 4 && i != 5)
-                    typelist[i] = 0;
+                if(i != 4 && i != 5) {typelist[i] = 0;}
             return nstars + header.npart[5];
 #else
             if(i != 4)
@@ -2538,20 +2510,14 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return nstars;
             break;
              
-#ifdef GRAIN_FLUID
         case IO_GRAINSIZE:
-            nngb=0;
-            for(i=0;i<6;i++) {if((1 << i) & (GRAIN_PTYPES)) {nngb+=header.npart[i];} else {typelist[i]=0;}}
-            return nngb;
-            break;
-
         case IO_GRAINTYPE:
             nngb=0;
+#ifdef GRAIN_FLUID
             for(i=0;i<6;i++) {if((1 << i) & (GRAIN_PTYPES)) {nngb+=header.npart[i];} else {typelist[i]=0;}}
+#endif
             return nngb;
             break;
-#endif
-
 
         case IO_IMF:
             for(i = 1; i < 6; i++) {if(i != 4 && i != 5) {typelist[i] = 0;}}
@@ -2561,8 +2527,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             
         case IO_TRUENGB:
             nngb = ngas;
-            for(i = 1; i < 4; i++)
-                typelist[i] = 0;
+            for(i = 1; i < 4; i++) {typelist[i] = 0;}
             typelist[4] = 0;
 #ifdef BLACK_HOLES
             nngb += header.npart[5];
@@ -2618,7 +2583,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
 	      typelist[3] = 0; 
 	    } 
 	  else 
-	    nngb += header.npart[2] + header.npart[3]; 
+	    {nngb += header.npart[2] + header.npart[3]; }
 	  return nngb; 
 	  break; 
 
@@ -2645,7 +2610,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
 	      typelist[3] = 0; 
 	    } 
 	  else 
-	    nngb += header.npart[2] + header.npart[3]; 
+	    nngb += {header.npart[2] + header.npart[3];}
 	  return nngb; 
 	  break; 
 
@@ -2658,11 +2623,17 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
 #endif // CHIMES 
             
         case IO_BHMASS:
+        case IO_BHDUSTMASS:
         case IO_BHMASSALPHA:
         case IO_BH_ANGMOM:
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_BHMDOT:
+        case IO_R_PROTOSTAR:
+        case IO_MASS_D_PROTOSTAR:
+        case IO_ZAMS_MASS:
+        case IO_STAGE_PROTOSTAR:
+        case IO_LUM_SINGLESTAR:
         case IO_BHPROGS:
             for(i = 0; i < 6; i++)
                 if(i != 5)
@@ -2722,13 +2693,12 @@ int blockpresent(enum iofields blocknr)
         case IO_RHO:
         case IO_HSML:
             return 1;			/* always present */
+            break;
             
         case IO_NE:
         case IO_NH:
-#if defined(COOLING) || defined(RADTRANSFER)
-#ifndef CHIMES 
+#if (defined(COOLING) || defined(RADTRANSFER)) && !defined(CHIMES)
             return 1;
-#endif
 #endif
             return 0;
             break;
@@ -2747,7 +2717,8 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_HSMS:
 #if defined(SUBFIND)
             return 1;
@@ -2794,76 +2765,77 @@ int blockpresent(enum iofields blocknr)
 #ifdef CHIMES 
         case IO_CHIMES_ABUNDANCES:
 #ifdef CHIMES_REDUCED_OUTPUT 
-	  if (Chimes_incl_full_output == 1) 
-	    return 1; 
-	  else 
-	    return 0; 
+            if (Chimes_incl_full_output == 1)
+                return 1;
+            else
+                return 0;
 #else 
-	  return 1; 
+            return 1;
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_MU: 
-	  return 1; 
+            return 1;
+            break;
 
         case IO_CHIMES_REDUCED: 
 #ifdef CHIMES_REDUCED_OUTPUT 
-	  if (Chimes_incl_full_output == 0) 
-	    return 1; 
-	  else 
-	    return 0; 
+            if (Chimes_incl_full_output == 0)
+                return 1;
+            else
+                return 0;
 #else 
-	  return 0; 
+            return 0;
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_NH:
 #ifdef CHIMES_NH_OUTPUT 
-	  return 1;
+            return 1;
 #else 
-	  return 0; 
+            return 0;
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_STAR_SIGMA: 
 #if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
-	  return 1; 
+            return 1;
 #else 
-	  return 0; 
+            return 0;
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_FLUX_G0: 
 #ifdef CHIMES_STELLAR_FLUXES  
-	  return 1; 
+            return 1;
 #else 
-	  return 0; 
+            return 0;
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_FLUX_ION: 
 #ifdef CHIMES_STELLAR_FLUXES  
-	  return 1; 
+            return 1;
 #else 
-	  return 0; 
+            return 0;
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_STAR_DENS:
 #ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
-	  return 1;
+            return 1;
 #else 
-	  return 0; 
+            return 0;
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_DELAY_HII:
 #ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
-	  return 1;
+            return 1;
 #else 
-	  return 0; 
+            return 0;
 #endif 
-	  break; 
+            break;
 
 #endif // CHIMES 
             
@@ -2888,8 +2860,6 @@ int blockpresent(enum iofields blocknr)
         case IO_HeIII:
             return 0;
             break;
-            
-            
             
         case IO_H2I:
         case IO_H2II:
@@ -2922,7 +2892,6 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             
-            
         case IO_VSTURB_DISS:
         case IO_VSTURB_DRIVE:
 #if defined(TURB_DRIVING)
@@ -2932,7 +2901,6 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
             
-            
         case IO_ACCEL:
 #ifdef OUTPUT_ACCELERATION
             return 1;
@@ -2940,7 +2908,6 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-            
             
         case IO_DTENTR:
 #ifdef OUTPUT_CHANGEOFENERGY
@@ -2972,7 +2939,7 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
+            break;
             
         case IO_BFLD:
 #ifdef MAGNETIC
@@ -2982,7 +2949,6 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
             
-            
         case IO_DBDT:
             return 0;
             break;
@@ -2990,19 +2956,13 @@ int blockpresent(enum iofields blocknr)
         case IO_VRMS:
         case IO_VBULK:
         case IO_TRUENGB:
-            return 0;
-            break;
-            
         case IO_VRAD:
         case IO_VTAN:
-            return 0;
-            break;
-            
-        case IO_VDIV:
         case IO_VROT:
             return 0;
             break;
             
+        case IO_VDIV:
         case IO_VORT:
 #if defined(TURB_DRIVING) || defined(OUTPUT_VORTICITY)
             return 1;
@@ -3052,7 +3012,6 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
 
-            
         case IO_DIVB:
 #ifdef MAGNETIC
             return 1;
@@ -3068,7 +3027,6 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-            
             
         case IO_AMDC:
 #if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
@@ -3094,11 +3052,9 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
             
-            
         case IO_ROTB:
             return 0;
             break;
-            
             
         case IO_COOLRATE:
 #ifdef OUTPUT_COOLRATE
@@ -3108,7 +3064,6 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
             
-            
         case IO_CONDRATE:
 #ifdef OUTPUTCONDRATE
             return 1;
@@ -3117,12 +3072,10 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
             
-            
         case IO_DENN:
             return 0;
             break;
             
-
         case IO_BH_ANGMOM:
 #ifdef BH_FOLLOW_ACCRETED_ANGMOM
             return 1;
@@ -3141,14 +3094,71 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_BHMASS:
+#ifdef BLACK_HOLES
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+            
+        case IO_BHDUSTMASS:
+#if defined(BLACK_HOLES) && defined(GRAIN_FLUID)
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+            
         case IO_BHMASSALPHA:
 #ifdef BH_ALPHADISK_ACCRETION
-	    return 1;
+            return 1;
 #else
-	    return 0;
-#endif	    
+            return 0;
+#endif
+            break;
+            
         case IO_BHMDOT:
 #ifdef BLACK_HOLES
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+            
+        case IO_R_PROTOSTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+            
+        case IO_MASS_D_PROTOSTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+            
+        case IO_ZAMS_MASS:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+            
+        case IO_STAGE_PROTOSTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+            
+        case IO_LUM_SINGLESTAR:
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
             return 1;
 #else
             return 0;
@@ -3161,6 +3171,7 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+            break;
             
         case IO_BHPROGS:
 #ifdef BH_COUNTPROGS
@@ -3170,13 +3181,13 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
                         
-            
         case IO_TIDALTENSORPS:
 #ifdef OUTPUT_TIDAL_TENSOR
             return 1;
 #else
             return 0;
 #endif
+            break;
             
         case IO_GDE_DISTORTIONTENSOR:
         case IO_CAUSTIC_COUNTER:
@@ -3185,6 +3196,7 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+            break;
             
         case IO_FLOW_DETERMINANT:
 #if defined(GDE_DISTORTIONTENSOR) && !defined(GDE_LEAN)
@@ -3192,7 +3204,8 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_STREAM_DENSITY:
         case IO_PHASE_SPACE_DETERMINANT:
 #ifdef GDE_DISTORTIONTENSOR
@@ -3200,21 +3213,24 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_ANNIHILATION_RADIATION:
 #if defined(GDE_DISTORTIONTENSOR) && !defined(GDE_LEAN)
             return 1;
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_LAST_CAUSTIC:
 #ifdef OUTPUT_GDE_LASTCAUSTIC
             return 1;
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_SHEET_ORIENTATION:
         case IO_INIT_DENSITY:
 #if defined(GDE_DISTORTIONTENSOR) && (!defined(GDE_LEAN) || defined(GDE_READIC))
@@ -3222,20 +3238,22 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
+            break;
             
         case IO_SECONDORDERMASS:
             if(header.flag_ic_info == FLAG_SECOND_ORDER_ICS)
                 return 1;
             else
                 return 0;
-            
+            break;
+
         case IO_EOSTEMP:
 #ifdef EOS_CARRIES_TEMPERATURE
             return 1;
 #else
             return 0;
 #endif
+            break;
 
         case IO_PRESSURE:
         case IO_EOSCS:
@@ -3244,6 +3262,7 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+            break;
 
         case IO_EOS_STRESS_TENSOR:
 #ifdef EOS_ELASTIC
@@ -3251,6 +3270,7 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+            break;
 
         case IO_EOSCOMP:
 #ifdef EOS_TILLOTSON
@@ -3258,6 +3278,7 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+            break;
 
         case IO_EOSABAR:
 #ifdef EOS_CARRIES_ABAR
@@ -3265,6 +3286,7 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+            break;
 
         case IO_EOSYE:
 #ifdef EOS_CARRIES_YE
@@ -3272,13 +3294,15 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_CBE_MOMENTS:
 #ifdef CBE_INTEGRATOR
             return 1;
 #else
             return 0;
 #endif
+            break;
 
         case IO_PARTVEL:
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -3286,14 +3310,16 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_EDDINGTON_TENSOR:
 #if defined(RADTRANSFER)
             return 1;
 #else
             return 0;
 #endif
-            
+            break;
+
         case IO_CHEM:
             return 0;
             break;
@@ -3308,7 +3334,7 @@ int blockpresent(enum iofields blocknr)
 
         case IO_AGS_RHO:
         case IO_AGS_QPT:
-#if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
+#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
             return 1;
 #else
             return 0;
@@ -3317,7 +3343,7 @@ int blockpresent(enum iofields blocknr)
 
         case IO_AGS_PSI_RE:
         case IO_AGS_PSI_IM:
-#if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
+#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
 #if (DM_FUZZY > 0)
             return 1;
 #else
@@ -3329,7 +3355,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_AGS_ZETA:
-#if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTZETA)
+#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTZETA)
             return 1;
 #else
             return 0;
@@ -3376,27 +3402,28 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
 
-    case IO_TURB_DYNAMIC_COEFF:
-    case IO_TURB_DIFF_COEFF:
+        case IO_TURB_DYNAMIC_COEFF:
+        case IO_TURB_DIFF_COEFF:
 #ifdef TURB_DIFF_DYNAMIC
-        return 1;
+            return 1;
 #else
-        return 0;
+            return 0;
 #endif
-        break;
+            break;
 
-    case IO_DYNERRORDEFAULT:
-    case IO_DYNERROR:
+        case IO_DYNERRORDEFAULT:
+        case IO_DYNERROR:
 #ifdef IO_TURB_DIFF_DYNAMIC_ERROR
-        return 1;
+            return 1;
 #else
-        return 0;
+            return 0;
 #endif
-        break; 
+            break;
+
         case IO_LASTENTRY:
             return 0;			/* will not occur */
+            break;
     }
-    
     
     return 0;			/* default: not present */
 }
@@ -3641,6 +3668,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_BHMASS:
             strncpy(label, "BHMA", 4);
             break;
+        case IO_BHDUSTMASS:
+            strncpy(label, "BHDM", 4);
+            break;
         case IO_BH_DIST:
             strncpy(label, "BHR ", 4);
             break;
@@ -3658,6 +3688,21 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
             break;
         case IO_BHMDOT:
             strncpy(label, "BHMD", 4);
+            break;
+        case IO_R_PROTOSTAR:
+            strncpy(label, "RPST", 4);
+            break;
+        case IO_STAGE_PROTOSTAR:
+            strncpy(label, "PSST", 4);
+            break;
+        case IO_MASS_D_PROTOSTAR:
+            strncpy(label, "PSMD", 4);
+            break;
+        case IO_ZAMS_MASS:
+            strncpy(label, "PSMS", 4);
+            break;
+        case IO_LUM_SINGLESTAR:
+            strncpy(label, "LUMS", 4);
             break;
         case IO_BHPROGS:
             strncpy(label, "BHPC", 4);
@@ -3977,7 +4022,7 @@ void get_dataset_name(enum iofields blocknr, char *buf)
 	  strcpy(buf, "SigmaEff"); 
 	  break; 
         case IO_CHIMES_FLUX_G0: 
-	  strcpy(buf, "ChimesFluxG0"); 
+	  strcpy(buf, "ChimesFluxG0");
 	  break; 
         case IO_CHIMES_FLUX_ION: 
 	  strcpy(buf, "ChimesFluxIon"); 
@@ -4088,6 +4133,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_BHMASS:
             strcpy(buf, "BH_Mass");
             break;
+        case IO_BHDUSTMASS:
+            strcpy(buf, "BH_Dust_Mass");
+            break;
         case IO_BH_DIST:
             strcpy(buf, "BH_Dist");
             break;
@@ -4105,6 +4153,21 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_BHMDOT:
             strcpy(buf, "BH_Mdot");
+            break;
+        case IO_R_PROTOSTAR:
+            strcpy(buf, "ProtoStellarRadius_inSolar");
+            break;
+        case IO_MASS_D_PROTOSTAR:
+            strcpy(buf, "Mass_D");
+            break;
+        case IO_ZAMS_MASS:
+            strcpy(buf, "ZAMS_Mass");
+            break;
+        case IO_STAGE_PROTOSTAR:
+            strcpy(buf, "ProtoStellarStage");
+            break;
+        case IO_LUM_SINGLESTAR:
+            strcpy(buf, "StarLuminosity_Solar");
             break;
         case IO_BHPROGS:
             strcpy(buf, "BH_NProgs");

@@ -12,6 +12,8 @@
 * see notes in blackhole.c for details on code history.
 */
 
+#ifdef BLACK_HOLES // master flag [needs to be here to prevent compiler breaking when this is not active] //
+
 
 #define MASTER_FUNCTION_NAME blackhole_feed_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define CONDITIONFUNCTION_FOR_EVALUATION if(P[i].Type==5) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
@@ -22,7 +24,7 @@
 struct INPUT_STRUCT_NAME
 {
     int NodeList[NODELISTLENGTH]; MyDouble Pos[3]; MyFloat Vel[3], Hsml, Mass, BH_Mass, Dt, Density, Mdot; MyIDType ID;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat Jgas_in_Kernel[3];
 #endif
 #if defined(BH_GRAVCAPTURE_GAS)
@@ -166,10 +168,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                 {
                     for(k=0;k<3;k++) {dpos[k] = P[j].Pos[k] - local.Pos[k]; dvel[k]=P[j].Vel[k]-local.Vel[k];}
                     NEAREST_XYZ(dpos[0],dpos[1],dpos[2],-1); r2=0; for(k=0;k<3;k++) {r2 += dpos[k]*dpos[k];}
-#ifdef BOX_SHEARING
-                    if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dvel[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                    if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dvel[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-#endif
+                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dvel,-1); /* wrap velocities for shearing boxes if needed */
                     if(r2 < h_i2 || r2 < PPP[j].Hsml*PPP[j].Hsml)
                     {
                         vrel=0; for(k=0;k<3;k++) {vrel += dvel[k]*dvel[k];}
@@ -212,7 +211,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                             {
                                 if((vrel < BH_CSND_FRAC_BH_MERGE * vesc) && (bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1))
                                 {
-                                    PRINT_STATUS(" ..BH-BH Merger: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) local.ID);
+                                    printf(" ..BH-BH Merger: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) local.ID);
                                     if((P[j].SwallowID == 0) && (BPP(j).BH_Mass < local.BH_Mass)) {P[j].SwallowID = local.ID;} // most massive BH swallows the other - simplifies analysis
                                 }
                                 else
@@ -266,7 +265,9 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                                         w = get_random_number(P[j].ID);
                                         if(w < p)
                                         {
-                                            PRINT_STATUS(" ..BH-Food Marked: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) local.ID);
+#ifdef BH_OUTPUT_MOREINFO
+                                            printf(" ..BH-Food Marked: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) local.ID);
+#endif
                                             if(P[j].SwallowID < local.ID) P[j].SwallowID = local.ID;
                                         }
 #else //if defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
@@ -295,7 +296,9 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                             w = get_random_number(P[j].ID);
                             if(w < p)
                             {
-                                PRINT_STATUS(" ..BH-Food Marked: j %d w %g p %g TO_BE_SWALLOWED \n",j,w,p);
+#ifdef BH_OUTPUT_MOREINFO
+                                printf(" ..BH-Food Marked: j %d w %g p %g TO_BE_SWALLOWED \n",j,w,p);
+#endif
                                 if(P[j].SwallowID < local.ID) {P[j].SwallowID = local.ID; mass_markedswallow += P[j].Mass*f_accreted;}
                             } // if(w < p)
 #endif // BH_SWALLOWGAS
@@ -329,5 +332,9 @@ void blackhole_feed_loop(void)
 #include "../../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
 #include "../../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
 #include "../../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */
+CPU_Step[CPU_BLACKHOLES] += measure_time(); /* collect timings and reset clock for next timing */
 }
 #include "../../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
+
+
+#endif // master flag

@@ -27,6 +27,9 @@ int addFB_evaluate_active_check(int i, int fb_loop_iteration)
     if(P[i].MassReturn_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==1) return 1;}
     if(P[i].RProcessEvent_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==2) return 1;}
 #endif
+#if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+    if(P[i].wind_mode != 2 || P[i].ProtoStellarStage != 5) return 0;
+#endif    
     return 0;
 }
 
@@ -46,8 +49,15 @@ void determine_where_SNe_occur(void)
         P[i].MassReturn_ThisTimeStep=0;
         P[i].RProcessEvent_ThisTimeStep=0;
 #endif
+#if defined(SINGLE_STAR_SINK_DYNAMICS)
+        if(P[i].Type == 0) {continue;} // any non-gas type is eligible to be a 'star' here
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+        if(P[i].ProtoStellarStage < 5) {continue;} // We need to have started MS to have winds or SN
+#endif
+#else
         if(All.ComovingIntegrationOn) {if(P[i].Type != 4) {continue;}} // in cosmological simulations, 'stars' have particle type=4
         if(All.ComovingIntegrationOn==0) {if((P[i].Type<2)||(P[i].Type>4)) {continue;}} // in non-cosmological sims, types 2,3,4 are valid 'stars'
+#endif
         if(P[i].Mass<=0) {continue;}
 #ifndef WAKEUP
         dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; // dloga to dt_physical
@@ -367,14 +377,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(loop_iteration == 2) continue; // for r-process, nothing left here to bother coupling //
 #endif
 #endif
-#if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
-                /* inject cosmic rays */
-                SphP[j].CosmicRayEnergy += pnorm * CR_energy_to_inject;
-                SphP[j].CosmicRayEnergyPred += pnorm * CR_energy_to_inject;
-#ifdef COSMIC_RAYS_M1
-                double dflux = -pnorm * CR_energy_to_inject * COSMIC_RAYS_M1 / kernel.r; // add free-streaming flux of these CRs to the neighbor cells (so initial flux is correct and not from gradient which can suppress transport)
-                for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dflux*kernel.dp[k]; SphP[j].CosmicRayFluxPred[k]+=dflux*kernel.dp[k];}
-#endif
+#if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) /* inject cosmic rays */
+                double crdir[3]; for(k=0;k<3;k++) {crdir[k]=-kernel.dp[k]/kernel.r;}
+                inject_cosmic_rays(pnorm * CR_energy_to_inject, local.SNe_v_ejecta, loop_iteration, j, crdir);
 #endif
                 /* inject the post-shock energy and momentum (convert to specific units as needed first) */
                 e_shock *= 1 / P[j].Mass;
@@ -401,7 +406,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     P[j].Vel[k] += q;
                     SphP[j].VelPred[k] += q;
                 }
-                
+
 #ifdef PM_HIRES_REGION_CLIPPING
                 dP=0; for(k=0;k<3;k++) dP+=P[j].Vel[k]*P[j].Vel[k]; dP=sqrt(dP);
                 if(dP>5.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) P[j].Mass=0;
@@ -669,12 +674,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #endif
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
-                /* inject cosmic rays */
-                SphP[j].CosmicRayEnergy += pnorm * CR_energy_to_inject; SphP[j].CosmicRayEnergyPred += pnorm * CR_energy_to_inject;
-#ifdef COSMIC_RAYS_M1
-                double dflux = -pnorm * CR_energy_to_inject * COSMIC_RAYS_M1 / kernel.r; // add free-streaming flux of these CRs to the neighbor cells (so initial flux is correct and not from gradient which can suppress transport)
-                for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dflux*kernel.dp[k]; SphP[j].CosmicRayFluxPred[k]+=dflux*kernel.dp[k];}
-#endif
+                double crdir[3]; for(k=0;k<3;k++) {crdir[k]=-kernel.dp[k]/kernel.r;}
+                inject_cosmic_rays(pnorm * CR_energy_to_inject, local.SNe_v_ejecta, loop_iteration, j, crdir);
 #endif
                 /* inject momentum: account for ejecta being energy-conserving inside the cooling radius (or Hsml, if thats smaller) */
                 double wk_m_cooling = pnorm * m_cooling; // effective cooling mass for this particle
@@ -695,7 +696,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double boostfac_max = DMIN(1000. , v_ejecta_eff/v_cooling_lim); // boost factor cant exceed velocity limiter - if recession vel large, limits boost
                     if(mom_boost_fac > boostfac_max) {mom_boost_fac = boostfac_max;} // apply limiter
                 } else {
+#if !defined(SINGLE_STAR_FB_WINDS)
                     mom_boost_fac = DMIN(boost_egycon , boost_max); // simply take minimum - nothing fancy for winds
+#endif
                 }
                 
                 /* save summation values for outputs */
@@ -715,18 +718,25 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 KE_final *= 0.5 * P[j].Mass * All.cf_a2inv;
                 double E_sne_initial = pnorm * Energy_injected_codeunits;
                 double d_Egy_internal = KE_initial + E_sne_initial - KE_final;
-                if(d_Egy_internal < 0.5*E_sne_initial) {d_Egy_internal = 0.5*E_sne_initial;}
+#if !defined(SINGLE_STAR_FB_WINDS)
                 /* if coupling radius > R_cooling, account for thermal energy loss in the post-shock medium: from Thornton et al. thermal energy scales as R^(-6.5) for R>R_cool */
+                if(d_Egy_internal < 0.5*E_sne_initial) {d_Egy_internal = 0.5*E_sne_initial;}  /* (for stellar wind module we ignore this b/c assume always trying to resolve R_cool */
                 double r_eff_ij = kernel.r - Get_Particle_Size(j);
                 if(r_eff_ij > RsneKPC) {d_Egy_internal *= RsneKPC_3 / (r_eff_ij*r_eff_ij*r_eff_ij);}
+#endif          
                 d_Egy_internal /= P[j].Mass; // convert to specific internal energy, finally //
+#ifndef MECHANICAL_FB_MOMENTUM_ONLY
                 if(d_Egy_internal > 0) {SphP[j].InternalEnergy += d_Egy_internal; SphP[j].InternalEnergyPred += d_Egy_internal; E_coupled += d_Egy_internal;}
+#endif                 
                 
 #ifdef PM_HIRES_REGION_CLIPPING
                 double dP=0; for(k=0;k<3;k++) dP+=P[j].Vel[k]*P[j].Vel[k]; dP=sqrt(dP);
                 if(dP>5.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) P[j].Mass=0;
                 if(dP>1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) for(k=0;k<3;k++) P[j].Vel[k]*=(1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s)/dP;
 #endif
+#ifdef SINGLE_STAR_FB_WINDS
+                SphP[j].wakeup = 1; NeedToWakeupParticles_local = 1;
+#endif          
             } // for(n = 0; n < numngb; n++)
         } // while(startnode >= 0)
         
@@ -758,6 +768,7 @@ void mechanical_fb_calc(int fb_loop_iteration)
     loop_iteration = fb_loop_iteration; /* sets the appropriate feedback type for the calls below */
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */
+    CPU_Step[CPU_SNIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */
 }
 #include "../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 

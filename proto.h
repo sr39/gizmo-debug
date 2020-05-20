@@ -45,7 +45,7 @@ long long report_comittable_memory(long long *MemTotal,
 void merge_and_split_particles(void);
 int does_particle_need_to_be_merged(int i);
 int does_particle_need_to_be_split(int i);
-double ref_mass_factor(int i);
+double target_mass_renormalization_factor_for_mergesplit(int i);
 void merge_particles_ij(int i, int j);
 //void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
 void split_particle_i(int i, int n_particles_split, int i_nearest); 
@@ -77,7 +77,10 @@ void   sub_turb_read_table(void);
 void   sub_turb_parent_halo_accel(double dx, double dy, double dz, double *acc);
 double sub_turb_enclosed_mass(double r, double msub, double vmax, double radvmax, double c);
 
-
+void interpolate_fluxes_opacities_gasgrains(void);
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
+double return_grain_absorption_efficiency_Q(int i, int k_freq);
+#endif
 int powerspec_turb_find_nearest_evaluate(int target, int mode, int *nexport, int *nsend_local);
 void powerspec_turb_calc_dispersion(void);
 double powerspec_turb_obtain_fields(void);
@@ -279,13 +282,32 @@ int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend
 double INLINE_FUNC Get_Particle_Size(int i);
 double INLINE_FUNC Particle_density_for_energy_i(int i);
 double INLINE_FUNC Get_Particle_Expected_Area(double h);
-#ifdef COSMIC_RAYS
-double INLINE_FUNC Get_Particle_CosmicRayPressure(int i);
-double Get_CosmicRayGradientLength(int i);
 double Get_Gas_Ionized_Fraction(int i);
+#ifdef COSMIC_RAYS
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i);
+double INLINE_FUNC Get_Particle_CosmicRayPressure(int i, int k_CRegy);
+double Get_CosmicRayGradientLength(int i, int k_CRegy);
 double Get_CosmicRayStreamingVelocity(int i);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
+double CR_cooling_and_gas_heating(int target, double n_elec, double nH_cgs, double dtime_cgs, int mode);
+double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, double shock_vel);
+double inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir);
+double Get_AlfvenMachNumber_Local(int i, double vA_idealMHD_codeunits, int use_shear_corrected_vturb_flag);
+double diffusion_coefficient_constant(int target, int k_CRegy);
+double diffusion_coefficient_extrinsic_turbulence(int mode, int target, int k_CRegy, double M_A, double L_scale, double b_muG, double vA_noion, double rho_cgs, double temperature, double cs_thermal, double nh0, double nHe0, double f_ion);
+double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy, double M_A, double L_scale, double b_muG, double vA_noion, double rho_cgs, double temperature, double cs_thermal, double nh0, double nHe0, double f_ion);
+double return_CRbin_numberdensity_in_cgs(int target, int k_CRegy);
+double return_CRbin_CR_energies_in_GeV(int target, int k_CRegy);
+double return_CRbin_CR_charge_in_e(int target, int k_CRegy);
+double return_CRbin_kinetic_energy_in_GeV(int target, int k_CRegy);
+double return_CRbin_gamma_factor(int target, int k_CRegy);
+double return_CRbin_beta_factor(int target, int k_CRegy);
+double get_cell_Bfield_in_microGauss(int i);
+double get_cell_Urad_in_eVcm3(int i);
+void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime_cgs);
+double CR_gas_heating(int target, double n_elec, double nHcgs);
+double return_CRbin_CRmass_in_mp(int target, int k_CRegy);
+double return_CRbin_CR_rigidity_in_GV(int target, int k_CRegy);
 #endif
 #ifdef EOS_ELASTIC
 void elastic_body_update_driftkick(int i, double dt_entr, int mode);
@@ -326,6 +348,8 @@ double INLINE_FUNC hubble_function_external(double a);
 
 void blackhole_accretion(void);
 #ifdef BH_WIND_SPAWN
+void get_random_orthonormal_basis(int seed, double *nx, double *ny, double *nz);
+void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double *ny, double *nz, double *veldir);
 int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int num_already_spawned );
 void spawn_bh_wind_feedback(void);
 #endif
@@ -415,6 +439,7 @@ void set_injection_accel(void);
 
 
 int density_isactive(int n);
+int GasGrad_isactive(int i);
 
 size_t sizemax(size_t a, size_t b);
 
@@ -502,9 +527,37 @@ void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt);
 void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i);
+double Z_for_stellar_evol(int i);
 #endif
 #endif
 
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt);
+#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2)
+double ps_adiabatic_index(int stage, double mdot);
+double ps_rhoc(double m, double n_ad, double r);
+double ps_Pc(double m, double n_ad, double r);
+double ps_Tc(double rhoc, double Pc);
+double ps_beta(double m, double n_ad, double rhoc, double Pc);
+double ps_betac(double rhoc, double Pc, double Tc);
+double ps_dlogbeta_dlogm(double m, double r, double n_ad, double beta, double rhoc, double Pc);
+double ps_dlogbetaperbetac_dlogm(double m, double r, double n_ad, double beta, double rhoc, double Pc, double Tc);
+double ps_lum_I(double mdot);
+double ps_lum_MS(double m);
+double ps_radius_MS_in_solar(double m);
+double ps_lum_Hayashi_BB(double m, double r);
+#endif
+double stellar_lifetime_in_Gyr(int n);
+#if defined(SINGLE_STAR_FB_WINDS)
+double single_star_wind_mdot(int n);
+double single_star_wind_velocity(int n);
+double singlestar_WR_lifetime_Gyr(int n);
+#endif
+#if defined(SINGLE_STAR_FB_SNE)
+double single_star_SN_velocity(int n);
+void single_star_SN_init_directions(void);
+#endif
+#endif
 
 #ifdef GRAIN_FLUID
 void apply_grain_dragforce(void);
@@ -558,10 +611,8 @@ char *GetMultiSpeciesFilename(int i, int hk);
 #endif 
 #endif
 
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
 double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz);
 double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r, double H_bh);
-#endif
 
 #if defined(GALSF_SUBGRID_WINDS)
 void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double* pvtau_return);
@@ -655,6 +706,8 @@ void read_ic(char *fname);
 int read_outputlist(char *fname);
 void read_parameter_file(char *fname);
 void rearrange_particle_sequence(void);
+void swap_treewalk_pointers(int i, int j);
+void remove_particle_from_tree(int i);
 void reorder_gas(void);
 void reorder_particles(void);
 void restart(int modus);
@@ -666,6 +719,7 @@ void set_softenings(void);
 void set_sph_kernel(void);
 void set_units(void);
 void setup_smoothinglengths(void);
+void apply_special_boundary_conditions(int i, double mass_for_dp, int mode);
 
 void minimum_large_ints(int n, long long *src, long long *res);
 void sumup_large_ints(int n, int *src, long long *res);
@@ -714,10 +768,12 @@ void pm_setup_nonperiodic_kernel(void);
 #ifdef CHIMES_STELLAR_FLUXES 
 double chimes_G0_luminosity(double stellar_age, double stellar_mass); 
 double chimes_ion_luminosity(double stellar_age, double stellar_mass); 
-int rt_get_source_luminosity(int i, double sigma_0, double *lum, double *chimes_lum_G0, double *chimes_lum_ion); 
+int rt_get_source_luminosity(int i, int mode, double *lum, double *chimes_lum_G0, double *chimes_lum_ion);
 #else 
-int rt_get_source_luminosity(int i, double sigma_0, double *lum);
-#endif 
+int rt_get_source_luminosity(int i, int mode, double *lum);
+#endif
+void eddington_tensor_dot_vector(double ET[6], double vec_in[3], double vec_out[3]);
+double return_flux_limiter(int target, int k_freq);
 double rt_kappa(int j, int k_freq);
 double rt_absorb_frac_albedo(int j, int k_freq);
 double rt_absorption_rate(int i, int k_freq);
@@ -823,7 +879,8 @@ void subtract_companion_gravity(int i);
 
 void hydro_gradient_calc(void);
 int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
-void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol);
+void construct_gradient(double *grad, int i);
+void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol, int pos_preserve, double d_max, double val_cen);
 
 #ifdef TURB_DIFF_DYNAMIC
 void dynamic_diff_vel_calc(void);

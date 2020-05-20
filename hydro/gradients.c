@@ -27,8 +27,11 @@
 
 #define ASSIGN_ADD_PRESET(x,y,mode) (x+=y)
 #define MINMAX_CHECK(x,xmin,xmax) ((x<xmin)?(xmin=x):((x>xmax)?(xmax=x):(1)))
+#if defined(COOLING)
 #define SHOULD_I_USE_SPH_GRADIENTS(condition_number) ((condition_number > CONDITION_NUMBER_DANGER) ? (1):(0))
-
+#else
+#define SHOULD_I_USE_SPH_GRADIENTS(condition_number) ((condition_number > CONDITION_NUMBER_DANGER) ? (0):(0))
+#endif
 
 
 #if defined(MHD_CONSTRAINED_GRADIENT)
@@ -41,9 +44,6 @@
 #define NUMBER_OF_GRADIENT_ITERATIONS 1
 #endif
 
-#if defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_ENERGY)
-#define E_gamma_Pred E_gamma
-#endif
 
 
 #ifdef PTHREADS_NUM_THREADS
@@ -60,6 +60,19 @@ extern pthread_mutex_t mutex_partnodedrift;
 
 void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
 void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
+
+
+/* function that tells us whether a given element should be active for gradient calculation*/
+int GasGrad_isactive(int i)
+{
+    if(P[i].Type != 0) return 0;
+    if(P[i].Mass <= 0) return 0;
+    if(SphP[i].Density <= 0 || PPP[i].Hsml <= 0) return 0;
+#if defined(GALSF_SUBGRID_WINDS) && !defined(TURB_DIFF_DYNAMIC)
+    if(SphP[j].DelayTime > 0) return 0;
+#endif
+    return 1;
+}
 
 /* define a common 'gradients' structure to hold
  everything we're going to take derivatives of */
@@ -78,14 +91,14 @@ struct Quantities_for_Gradients
     MyDouble Metallicity[NUM_METAL_SPECIES];
 #endif
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
-    MyFloat E_gamma[N_RT_FREQ_BINS];
-    MyFloat E_gamma_ET[N_RT_FREQ_BINS][6];
+    MyFloat Rad_E_gamma[N_RT_FREQ_BINS];
+    MyFloat Rad_E_gamma_ET[N_RT_FREQ_BINS][6];
 #endif
 #ifdef DOGRAD_INTERNAL_ENERGY
     MyDouble InternalEnergy;
 #endif
 #ifdef COSMIC_RAYS
-    MyDouble CosmicRayPressure;
+    MyDouble CosmicRayPressure[N_CR_PARTICLE_BINS];
 #endif
 #ifdef DOGRAD_SOUNDSPEED
     MyDouble SoundSpeed;
@@ -211,7 +224,7 @@ static struct temporary_data_topass
 #endif
 #endif
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
-    MyFloat Gradients_E_gamma[N_RT_FREQ_BINS][3];
+    MyFloat Gradients_Rad_E_gamma[N_RT_FREQ_BINS][3];
 #endif
 #ifdef TURB_DIFF_DYNAMIC
     MyDouble GradVelocity_bar[3][3];
@@ -296,15 +309,15 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
         for(k = 0; k < N_RT_FREQ_BINS; k++) 
         {
-        	in->GQuant.E_gamma[k] = SphP[i].E_gamma_Pred[k];
-        	int k_et; for(k_et = 0; k_et < 6; k_et++) {in->GQuant.E_gamma_ET[k][k_et] = SphP[i].ET[k][k_et];}
+        	in->GQuant.Rad_E_gamma[k] = SphP[i].Rad_E_gamma_Pred[k];
+        	int k_et; for(k_et = 0; k_et < 6; k_et++) {in->GQuant.Rad_E_gamma_ET[k][k_et] = SphP[i].ET[k][k_et];}
         }
 #endif
 #ifdef DOGRAD_INTERNAL_ENERGY
         in->GQuant.InternalEnergy = SphP[i].InternalEnergyPred;
 #endif
 #ifdef COSMIC_RAYS
-        in->GQuant.CosmicRayPressure = Get_Particle_CosmicRayPressure(i);
+        for(k=0;k<N_CR_PARTICLE_BINS;k++) {in->GQuant.CosmicRayPressure[k] = Get_Particle_CosmicRayPressure(i,k);}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
         in->GQuant.SoundSpeed = Particle_effective_soundspeed_i(i);
@@ -404,9 +417,12 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
         for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.InternalEnergy[k],out->Gradients[k].InternalEnergy,mode);}
 #endif
 #ifdef COSMIC_RAYS
-        MAX_ADD(GasGradDataPasser[i].Maxima.CosmicRayPressure,out->Maxima.CosmicRayPressure,mode);
-        MIN_ADD(GasGradDataPasser[i].Minima.CosmicRayPressure,out->Minima.CosmicRayPressure,mode);
-        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.CosmicRayPressure[k],out->Gradients[k].CosmicRayPressure,mode);}
+        for(j=0;j<N_CR_PARTICLE_BINS;j++)
+        {
+            MAX_ADD(GasGradDataPasser[i].Maxima.CosmicRayPressure[j],out->Maxima.CosmicRayPressure[j],mode);
+            MIN_ADD(GasGradDataPasser[i].Minima.CosmicRayPressure[j],out->Minima.CosmicRayPressure[j],mode);
+            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.CosmicRayPressure[j][k],out->Gradients[k].CosmicRayPressure[j],mode);}
+        }
 #endif
 #ifdef DOGRAD_SOUNDSPEED
         MAX_ADD(GasGradDataPasser[i].Maxima.SoundSpeed,out->Maxima.SoundSpeed,mode);
@@ -486,9 +502,9 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
         for(j=0;j<N_RT_FREQ_BINS;j++)
         {
-            MAX_ADD(GasGradDataPasser[i].Maxima.E_gamma[j],out->Maxima.E_gamma[j],mode);
-            MIN_ADD(GasGradDataPasser[i].Minima.E_gamma[j],out->Minima.E_gamma[j],mode);
-            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].Gradients_E_gamma[j][k],out->Gradients[k].E_gamma[j],mode);}
+            MAX_ADD(GasGradDataPasser[i].Maxima.Rad_E_gamma[j],out->Maxima.Rad_E_gamma[j],mode);
+            MIN_ADD(GasGradDataPasser[i].Minima.Rad_E_gamma[j],out->Minima.Rad_E_gamma[j],mode);
+            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].Gradients_Rad_E_gamma[j][k],out->Gradients[k].Rad_E_gamma[j],mode);}
         }
 		/* the gradient dotted into the Eddington tensor is more complicated: let's handle this below */
         {
@@ -504,7 +520,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
         			{
         				for(i_xyz=0;i_xyz<3;i_xyz++)
         				{
-        					SphP[i].Gradients.E_gamma_ET[k_freq][k_xyz] += SphP[i].NV_T[j_xyz][i_xyz] * out->Gradients[i_xyz].E_gamma_ET[k_freq][k_et_loop[j_xyz]];
+        					SphP[i].Gradients.Rad_E_gamma_ET[k_freq][k_xyz] += SphP[i].NV_T[j_xyz][i_xyz] * out->Gradients[i_xyz].Rad_E_gamma_ET[k_freq][k_et_loop[j_xyz]];
 						}
         			}
         		}
@@ -517,29 +533,27 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
 
 
 
-void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol)
+void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol, int pos_preserve, double d_max, double val_cen)
 {
     int k;
     double d_abs = 0.0;
     for(k=0;k<3;k++) {d_abs += grad[k]*grad[k];}
     if(d_abs > 0)
     {
-        double cfac = 1 / (alim * h * sqrt(d_abs));
-        double fabs_max = fabs(valmax);
-        double fabs_min = fabs(valmin);
-        double abs_min = DMIN(fabs_max,fabs_min);
-        if(shoot_tol > 0)
+        d_abs=sqrt(d_abs); double cfac = 1 / (alim * h * d_abs); /* inverse change over distance for limiter */
+        double fabs_max = fabs(valmax), fabs_min = fabs(valmin), abs_max=fabs_max, abs_min=fabs_min, f_corr_overshoot;
+        if(abs_max<abs_min) {abs_max=fabs_min; abs_min=fabs_max;} /* get largest positive/negative deviations, determine smaller in absolute value */
+        f_corr_overshoot = DMIN(abs_min + shoot_tol*abs_max, abs_max); /* = abs_min for shoot_tol = 0; don't let gradient deviate by more than this in size, slightly larger if 'shoot_tol' allows some overshoot tolerance */
+        cfac *= f_corr_overshoot; /* multiply by the correction factor of interest */
+        if(pos_preserve == 1) /* demand that the limited slope be strictly positivity-preserving over the maximal range to any neighbors */
         {
-            double abs_max = DMAX(fabs_max,fabs_min);
-            cfac *= DMIN(abs_min + shoot_tol*abs_max, abs_max);
-        } else {
-            cfac *= abs_min;
+            double fmin = DMIN(val_cen, DMAX(0, DMAX(MIN_REAL_NUMBER*val_cen, DMIN(0.5*(val_cen+valmin), val_cen-f_corr_overshoot)))); /* minimum value: smaller of overshoot target or half positive-definite value, but cannot go negative in larger range */
+            cfac = DMIN( (((val_cen-fmin) / d_max) / d_abs) , cfac ); /* use more conservative limiter, of cfac above or this, over longer range d_max, to restrict here */
         }
-        if(cfac < 1) {for(k=0;k<3;k++) {grad[k] *= cfac;}}
+        if(cfac < 1) {for(k=0;k<3;k++) {grad[k] *= cfac;}} /* scalar gradient correction */
     }
 }
 
-void construct_gradient(double *grad, int i);
 
 void construct_gradient(double *grad, int i)
 {
@@ -561,11 +575,10 @@ void construct_gradient(double *grad, int i)
 
 void hydro_gradient_calc(void)
 {
-    int i, j, k, k1, ndone, ndone_flag;
-    int recvTask, place;
+    CPU_Step[CPU_DENSMISC] += measure_time(); double t0 = my_second();
+    int i, j, k, k1, ndone, ndone_flag, recvTask, place, save_NextParticle;
     double timeall = 0, timecomp1 = 0, timecomp2 = 0, timecommsumm1 = 0, timecommsumm2 = 0, timewait1 = 0, timewait2 = 0;
-    double timecomp, timecomm, timewait, tstart, tend, t0, t1;
-    int save_NextParticle;
+    double timecomp, timecomm, timewait, tstart, tend, t1;
     long long n_exported = 0;
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
     double NV_dt,NV_dummy,NV_limiter,NV_A,divVel_physical,h_eff,alphaloc,cs_nv;
@@ -577,14 +590,10 @@ void hydro_gradient_calc(void)
     /* allocate buffers to arrange communication */
     long long NTaskTimesNumPart;
     GasGradDataPasser = (struct temporary_data_topass *) mymalloc("GasGradDataPasser",N_gas * sizeof(struct temporary_data_topass));
-    NTaskTimesNumPart = maxThreads * NumPart;
-    size_t MyBufferSize = All.BufferSize;
+    NTaskTimesNumPart = maxThreads * NumPart; size_t MyBufferSize = All.BufferSize;
     All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
-                                                             sizeof(struct GasGraddata_in) +
-                                                             sizeof(struct GasGraddata_out) +
+                                                             sizeof(struct GasGraddata_in) + sizeof(struct GasGraddata_out) +
                                                              sizemax(sizeof(struct GasGraddata_in),sizeof(struct GasGraddata_out))));
-    CPU_Step[CPU_DENSMISC] += measure_time();
-    t0 = my_second();
     Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
@@ -624,7 +633,7 @@ void hydro_gradient_calc(void)
                 SphP[i].Gradients.InternalEnergy[k] = 0;
 #endif
 #ifdef COSMIC_RAYS
-                SphP[i].Gradients.CosmicRayPressure[k] = 0;
+                for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {SphP[i].Gradients.CosmicRayPressure[k2][k] = 0;}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
                 SphP[i].Gradients.SoundSpeed[k] = 0;
@@ -643,7 +652,7 @@ void hydro_gradient_calc(void)
                 for(k2=0;k2<NUM_METAL_SPECIES;k2++) {SphP[i].Gradients.Metallicity[k2][k] = 0;}
 #endif
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
-                for(k2=0;k2<N_RT_FREQ_BINS;k2++) {SphP[i].Gradients.E_gamma_ET[k2][k] = 0;}
+                for(k2=0;k2<N_RT_FREQ_BINS;k2++) {SphP[i].Gradients.Rad_E_gamma_ET[k2][k] = 0;}
 #endif
             }
         }
@@ -766,7 +775,7 @@ void hydro_gradient_calc(void)
                     if(flagall) {N_chunks_for_import /= 2;} else {break;}
                 } while(N_chunks_for_import > 0);
                 if(N_chunks_for_import == 0) {printf("Memory is insufficient for even one import-chunk: N_chunks_for_import=%d  ngrp_initial=%d  Nimport=%ld  FreeBytes=%lld , but we need to allocate=%lld \n",N_chunks_for_import, ngrp_initial, Nimport, (long long)FreeBytes,(long long)(Nimport * sizeof(struct GasGraddata_in) + Nimport * sizeof(struct GasGraddata_out) + 16384)); endrun(9999);}
-                if(ngrp_initial == 1 && N_chunks_for_import != ((1 << PTask) - ngrp_initial) && ThisTask == 0) PRINT_WARNING("Splitting import operation into sub-chunks as we are hitting memory limits (check this isn't imposing large communication cost)");
+                if(ngrp_initial == 1 && N_chunks_for_import != ((1 << PTask) - ngrp_initial)) PRINT_WARNING("Splitting import operation into sub-chunks as we are hitting memory limits (check this isn't imposing large communication cost)");
                 
                 /* now allocated the import and results buffers */
                 GasGradDataGet = (struct GasGraddata_in *) mymalloc("GasGradDataGet", Nimport * sizeof(struct GasGraddata_in));
@@ -819,8 +828,9 @@ void hydro_gradient_calc(void)
                 pthread_mutex_destroy(&mutex_nexport);
                 pthread_attr_destroy(&attr);
 #endif
-                tend = my_second(); timecomp2 += timediff(tstart, tend);
-
+                tend = my_second(); timecomp2 += timediff(tstart, tend); tstart = my_second();
+                MPI_Barrier(MPI_COMM_WORLD); /* insert MPI Barrier here - will be forced by comms below anyways but this allows for clean timing measurements */
+                tend = my_second(); timewait2 += timediff(tstart, tend);
                 
                 tstart = my_second(); Nimport = 0;
                 for(ngrp = ngrp_initial; ngrp < ngrp_initial + N_chunks_for_import; ngrp++) /* send the results for imported elements back to their host tasks */
@@ -990,9 +1000,7 @@ void hydro_gradient_calc(void)
                                 }
                                 /* slope-limit the corrected gradients again, but with a more tolerant slope-limiter */
 #if (MHD_CONSTRAINED_GRADIENT <= 1)
-                                local_slopelimiter(SphP[i].Gradients.B[k],
-                                                   GasGradDataPasser[i].Maxima.B[k],GasGradDataPasser[i].Minima.B[k],
-                                                   0.25, PPP[i].Hsml, 0.25);
+                                local_slopelimiter(SphP[i].Gradients.B[k],GasGradDataPasser[i].Maxima.B[k],GasGradDataPasser[i].Minima.B[k],0.25, PPP[i].Hsml, 0.25, 0, 0, 0);
 #endif
                             }
                         } // closes j_gloop loop
@@ -1004,7 +1012,7 @@ void hydro_gradient_calc(void)
                 for(k=0;k<3;k++) {SphP[i].Gradients.Phi[k] = GasGradDataPasser[i].PhiGrad[k];}
                 /* build and limit the gradient */
                 construct_gradient(SphP[i].Gradients.Phi,i);
-                local_slopelimiter(SphP[i].Gradients.Phi,GasGradDataPasser[i].Maxima.Phi,GasGradDataPasser[i].Minima.Phi,a_limiter,PPP[i].Hsml,0.0);
+                local_slopelimiter(SphP[i].Gradients.Phi,GasGradDataPasser[i].Maxima.Phi,GasGradDataPasser[i].Minima.Phi,a_limiter,PPP[i].Hsml,0.0, 0, 0, 0);
 #endif
             } // closes Ptype == 0 check
 #endif
@@ -1032,8 +1040,8 @@ void hydro_gradient_calc(void)
             construct_gradient(SphP[i].Gradients.InternalEnergy,i);
 #endif
 #ifdef COSMIC_RAYS
-            construct_gradient(SphP[i].Gradients.CosmicRayPressure,i);
-            int is_particle_local_extremum; is_particle_local_extremum = 0; // test for local extremum to revert to lower-order reconstruction if necessary
+            for(k=0;k<N_CR_PARTICLE_BINS;k++) {construct_gradient(SphP[i].Gradients.CosmicRayPressure[k],i);}
+            int is_particle_local_extremum[N_CR_PARTICLE_BINS]={0}; // test for local extremum to revert to lower-order reconstruction if necessary
 #endif
 #ifdef DOGRAD_SOUNDSPEED
             construct_gradient(SphP[i].Gradients.SoundSpeed,i);
@@ -1050,7 +1058,7 @@ void hydro_gradient_calc(void)
             for(k=0;k<NUM_METAL_SPECIES;k++) {construct_gradient(SphP[i].Gradients.Metallicity[k],i);}
 #endif
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
-            for(k=0;k<N_RT_FREQ_BINS;k++) {construct_gradient(GasGradDataPasser[i].Gradients_E_gamma[k],i);}
+            for(k=0;k<N_RT_FREQ_BINS;k++) {construct_gradient(GasGradDataPasser[i].Gradients_Rad_E_gamma[k],i);}
 #endif
             
             /* now the gradients are calculated: below are simply useful operations on the results */
@@ -1288,8 +1296,8 @@ void hydro_gradient_calc(void)
 		        // define some variables we need below //
 		        double zeta_cr = 1.0e-17; // cosmic ray ionization rate (fixed as constant for non-CR runs)
 #ifdef COSMIC_RAYS
-                double u_cr = ((SphP[i].CosmicRayEnergyPred / P[i].Mass * SphP[i].Density * All.cf_a3inv) * (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam)); // cgs
-		        zeta_cr = u_cr * 2.2e-6; // convert to ionization rate
+                double u_cr=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_CR += SphP[i].CosmicRayEnergyPred[k];}
+		        zeta_cr = u_cr * 2.2e-6 * ((1. / P[i].Mass * SphP[i].Density * All.cf_a3inv) * (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam)); // convert to ionization rate
 #endif
                 double a_grain_micron = 0.1; // effective size of grains that matter at these densities
                 double m_ion = 24.3; // Mg dominates ions in dense gas [where this is relevant]; this is ion mass in units of proton mass
@@ -1379,56 +1387,46 @@ void hydro_gradient_calc(void)
             
 #ifdef RADTRANSFER
             {
-                int k_freq;
-                for(k_freq = 0; k_freq < N_RT_FREQ_BINS; k_freq++)
+                int k_freq; for(k_freq = 0; k_freq < N_RT_FREQ_BINS; k_freq++)
                 {
                     /* calculate the opacity */
-                    SphP[i].Kappa_RT[k_freq] = rt_kappa(i, k_freq); // physical units //
+                    SphP[i].Rad_Kappa[k_freq] = rt_kappa(i, k_freq); // physical units //
 #if defined(RT_FLUXLIMITER) && defined(RT_COMPGRAD_EDDINGTON_TENSOR)
                     /* compute the flux-limiter for radiation transport: also convenient here to compute the relevant opacities for all particles */
                     double lambda = 1;
-                    if(SphP[i].E_gamma_Pred[k_freq] > 0)
+                    if(SphP[i].Rad_E_gamma_Pred[k_freq] > 0) /* can compute gradient length scale */
                     {
-                        /* 1/gradient length scale of grad.Prad */
-                        double R_ET = sqrt(SphP[i].Gradients.E_gamma_ET[k_freq][0] * SphP[i].Gradients.E_gamma_ET[k_freq][0] +
-                                           SphP[i].Gradients.E_gamma_ET[k_freq][1] * SphP[i].Gradients.E_gamma_ET[k_freq][1] +
-                                           SphP[i].Gradients.E_gamma_ET[k_freq][2] * SphP[i].Gradients.E_gamma_ET[k_freq][2]) / (1.e-37 + SphP[i].E_gamma_Pred[k_freq] * SphP[i].Density/(1.e-37+P[i].Mass));
-                        R_ET = 3.*DMAX(R_ET , 1.e-6/Get_Particle_Size(i)) / (1.e-55 + All.cf_atime*SphP[i].Kappa_RT[k_freq]*(SphP[i].Density*All.cf_a3inv)); // limit to be > 0, divide by kappa-rho to get desired dimensionless ratio
+                        double R_ET = sqrt(SphP[i].Gradients.Rad_E_gamma_ET[k_freq][0] * SphP[i].Gradients.Rad_E_gamma_ET[k_freq][0] + SphP[i].Gradients.Rad_E_gamma_ET[k_freq][1] * SphP[i].Gradients.Rad_E_gamma_ET[k_freq][1] + SphP[i].Gradients.Rad_E_gamma_ET[k_freq][2] * SphP[i].Gradients.Rad_E_gamma_ET[k_freq][2]) / (MIN_REAL_NUMBER + SphP[i].Rad_E_gamma_Pred[k_freq] * SphP[i].Density/(MIN_REAL_NUMBER+P[i].Mass));
+                        R_ET = 3.*DMAX(R_ET , 1.e-6/Get_Particle_Size(i)) / (1.e-55 + All.cf_atime*SphP[i].Rad_Kappa[k_freq]*(SphP[i].Density*All.cf_a3inv)); // limit to be > 0, divide by kappa-rho to get desired dimensionless ratio
                         lambda = DMIN(1., DMAX( 3.*(2. + R_ET) / (6. + 3.*R_ET + R_ET*R_ET), MIN_REAL_NUMBER )); // slope-limiter
 #ifdef RT_OTVET         /* note that the OTVET eddington tensor is close to the correct value for the optically-thin limit. for the diffusion limit
                             it may be incorrect. we can therefore interpolate using an M1-like relation below, based on the gradients above (used 
-                            to determine which limit we are actually in: ratio f=|Flux|/(c_eff*Energy_density_rad): f<<1 = diffusion limit, f~1 = free-streaming limit: this is our slope-limiter above */
+                            to determine which limit we are actually in: ratio f=|flux|/(c_eff*Energy_density_rad): f<<1 = diffusion limit, f~1 = free-streaming limit: this is our slope-limiter above */
                         double chi=DMAX(1./3.,DMIN(1.,(3.+4.*lambda*lambda)/(5.+2.*sqrt(4.-3.*lambda*lambda)))), chifac_iso=3.*(1-chi)/2., chifac_ot=(3.*chi-1.)/2.;
-                        for(k=0;k<3;k++) {SphP[i].Gradients.E_gamma_ET[k_freq][k] = chifac_ot*SphP[i].Gradients.E_gamma_ET[k_freq][k] + chifac_iso/3.*GasGradDataPasser[i].Gradients_E_gamma[k_freq][k];}
+                        for(k=0;k<3;k++) {SphP[i].Gradients.Rad_E_gamma_ET[k_freq][k] = chifac_ot*SphP[i].Gradients.Rad_E_gamma_ET[k_freq][k] + chifac_iso/3.*GasGradDataPasser[i].Gradients_Rad_E_gamma[k_freq][k];}
 #ifdef RT_DIFFUSION_CG
                         for(k=0;k<6;k++) {SphP[i].ET[k_freq][k] *= chifac_ot; if(k<3) {SphP[i].ET[k_freq][k] += chifac_iso/3.;}} // diagonal components // (this only makes sense if ET is freq-dependent) [note this will cause instability in the explicit methods; only use for CG where ET is explicitly called and this is done only on global timesteps]
 #endif
 #endif // ifdef otvet
-#ifdef RT_FLUXLIMITEDDIFFUSION /* this is simple because the Eddington tensor is always isotropic */
-                        for(k=0;k<3;k++) {SphP[i].Gradients.E_gamma_ET[k_freq][k] = GasGradDataPasser[i].Gradients_E_gamma[k_freq][k]/3.;}
-#endif
                     }
-                    SphP[i].Lambda_FluxLim[k_freq] = lambda;
+                    SphP[i].Rad_Flux_Limiter[k_freq] = lambda;
 #endif // ifdef fluxlimiter
+                    
+#if defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_OTVET)
+                    /* set the output gradient grad.(D*Prad) = D.(grad Prad), i.e. move the tensor outside the gradient. while not strictly self-consistent, this is more stable, and correct at the level of the ad-hoc M1 or OTVET closure, b/c otherwise M1 introduces unphysical behaviors from the gradients of the tensor where the ad-hoc closure relation causes changes to D [see e.g. Hopkins 'Anisotropic Diffusion in Mesh-Free Numerical Magnetohydrodynamics' Fig 8 and associated discussion]. Also works for FLD trivially. */
+                    eddington_tensor_dot_vector(SphP[i].ET[k_freq],GasGradDataPasser[i].Gradients_Rad_E_gamma[k_freq],SphP[i].Gradients.Rad_E_gamma_ET[k_freq]);
+#endif
                 }
             }
 #endif // ifdef radtransfer
             
-#if defined(EOS_ELASTIC)
-            // update time-derivative of stress tensor (needs to be done before slope-limiting to use full velocity gradient information) //
+#if defined(EOS_ELASTIC) // update time-derivative of stress tensor (needs to be done before slope-limiting to use full velocity gradient information) //
             elastic_body_update_driftkick(i,1.,2);
 #endif
             
             /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
-            double stol = 0.0;
-            double stol_tmp, stol_diffusion;
-            stol_diffusion = 0.1; stol_tmp = stol;
-            double h_lim = PPP[i].Hsml;
-//#if (defined(MAGNETIC) && defined(COOLING)) ||
-            h_lim = DMAX(PPP[i].Hsml,GasGradDataPasser[i].MaxDistance);
-//#else
-//            h_lim = DMIN(GasGradDataPasser[i].MaxDistance , 4.0*PPP[i].Hsml);
-//#endif
+            double stol = 0.0, stol_tmp, stol_diffusion; stol_diffusion = 0.1; stol_tmp = stol;
+            double h_lim = PPP[i].Hsml, d_max = DMAX(PPP[i].Hsml,GasGradDataPasser[i].MaxDistance); h_lim = d_max;
             /* fraction of H at which maximum reconstruction is allowed (=0.5 for 'standard'); for pure hydro we can
              be a little more aggresive and the equations are still stable (but this is as far as you want to push it) */
             double a_limiter = 0.25; if(SphP[i].ConditionNumber>100) a_limiter=DMIN(0.5, 0.25 + 0.25 * (SphP[i].ConditionNumber-100)/100);
@@ -1441,52 +1439,57 @@ void hydro_gradient_calc(void)
 #if (SLOPE_LIMITER_TOLERANCE == 0)
             a_limiter *= 2.0; stol = 0.0;
 #endif
-#if defined(KERNEL_CRK_FACES)
-            //a_limiter = 0.5; h_lim = DMAX(PPP[i].Hsml,GasGradDataPasser[i].MaxDistance); stol = 0.0;
-            //a_limiter = 0.25; h_lim = GasGradDataPasser[i].MaxDistance; stol = 0.125;
-#endif
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
             SphP[i].Density_Relative_Maximum_in_Kernel = GasGradDataPasser[i].Maxima.Density;
 #endif
-            local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,0);
-            local_slopelimiter(SphP[i].Gradients.Pressure,GasGradDataPasser[i].Maxima.Pressure,GasGradDataPasser[i].Minima.Pressure,a_limiter,h_lim,stol);
+            local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,0, 1,d_max,SphP[i].Density);
+            int pressure_is_positive_definite = 1;
+#if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
+            pressure_is_positive_definite = 0; /* some physics allow negative pressures - account for that here */
+#endif
+            local_slopelimiter(SphP[i].Gradients.Pressure,GasGradDataPasser[i].Maxima.Pressure,GasGradDataPasser[i].Minima.Pressure,a_limiter,h_lim,stol, pressure_is_positive_definite,d_max,SphP[i].Pressure);
             stol_tmp = stol;
 #if defined(VISCOSITY)
             stol_tmp = DMAX(stol,stol_diffusion);
 #endif
 #ifdef TURB_DIFF_DYNAMIC
-            for (k1 = 0; k1 < 3; k1++) {
-                local_slopelimiter(GasGradDataPasser[i].GradVelocity_bar[k1], GasGradDataPasser[i].Maxima.Velocity_bar[k1], GasGradDataPasser[i].Minima.Velocity_bar[k1], a_limiter, h_lim, stol);
-            }
+            for (k1=0;k1<3;k1++) {local_slopelimiter(GasGradDataPasser[i].GradVelocity_bar[k1], GasGradDataPasser[i].Maxima.Velocity_bar[k1], GasGradDataPasser[i].Minima.Velocity_bar[k1], a_limiter, h_lim, stol, 0,0,0);}
 #endif
-            for(k1=0;k1<3;k1++) {local_slopelimiter(SphP[i].Gradients.Velocity[k1],GasGradDataPasser[i].Maxima.Velocity[k1],GasGradDataPasser[i].Minima.Velocity[k1],a_limiter,h_lim,stol_tmp);}
+            for(k1=0;k1<3;k1++) {local_slopelimiter(SphP[i].Gradients.Velocity[k1],GasGradDataPasser[i].Maxima.Velocity[k1],GasGradDataPasser[i].Minima.Velocity[k1],a_limiter,h_lim,stol_tmp, 0,0,0);}
 #ifdef DOGRAD_INTERNAL_ENERGY
             stol_tmp = stol;
 #if defined(CONDUCTION)
             stol_tmp = DMAX(stol,stol_diffusion);
 #endif
-            local_slopelimiter(SphP[i].Gradients.InternalEnergy,GasGradDataPasser[i].Maxima.InternalEnergy,GasGradDataPasser[i].Minima.InternalEnergy,a_limiter,h_lim,stol_tmp);
+            local_slopelimiter(SphP[i].Gradients.InternalEnergy,GasGradDataPasser[i].Maxima.InternalEnergy,GasGradDataPasser[i].Minima.InternalEnergy,a_limiter,h_lim,stol_tmp, 1,d_max,SphP[i].InternalEnergyPred);
 #endif
 #ifdef COSMIC_RAYS
             stol_tmp = stol;
 #ifndef COSMIC_RAYS_M1
-            local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,DMAX(1.,a_limiter),h_lim,0.);
-            if((GasGradDataPasser[i].Maxima.CosmicRayPressure==0)||(GasGradDataPasser[i].Minima.CosmicRayPressure==0)) {is_particle_local_extremum = 1;}
+            for(k1=0;k1<N_CR_PARTICLE_BINS;k1++)
+            {
+                local_slopelimiter(SphP[i].Gradients.CosmicRayPressure[k1],GasGradDataPasser[i].Maxima.CosmicRayPressure[k1],GasGradDataPasser[i].Minima.CosmicRayPressure[k1],DMAX(1.,a_limiter),h_lim,0., 1,d_max,Get_Particle_CosmicRayPressure(i,k1));
+                if((GasGradDataPasser[i].Maxima.CosmicRayPressure[k1]==0)||(GasGradDataPasser[i].Minima.CosmicRayPressure[k1]==0)) {is_particle_local_extremum[k1] = 1;}
+            }
 #endif
 #endif
 #ifdef DOGRAD_SOUNDSPEED
-            local_slopelimiter(SphP[i].Gradients.SoundSpeed,GasGradDataPasser[i].Maxima.SoundSpeed,GasGradDataPasser[i].Minima.SoundSpeed,a_limiter,h_lim,stol);
+            local_slopelimiter(SphP[i].Gradients.SoundSpeed,GasGradDataPasser[i].Maxima.SoundSpeed,GasGradDataPasser[i].Minima.SoundSpeed,a_limiter,h_lim,stol, 1,d_max,Particle_effective_soundspeed_i(i));
 #endif
 #if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
-            for(k1=0;k1<NUM_METAL_SPECIES;k1++)
-                local_slopelimiter(SphP[i].Gradients.Metallicity[k1],GasGradDataPasser[i].Maxima.Metallicity[k1],GasGradDataPasser[i].Minima.Metallicity[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion));
+            for(k1=0;k1<NUM_METAL_SPECIES;k1++) {local_slopelimiter(SphP[i].Gradients.Metallicity[k1],GasGradDataPasser[i].Maxima.Metallicity[k1],GasGradDataPasser[i].Minima.Metallicity[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion), 1,d_max,P[i].Metallicity[k1]);}
 #endif
-#ifdef RT_COMPGRAD_EDDINGTON_TENSOR
+#if defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_EVOLVE_FLUX)
             for(k1=0;k1<N_RT_FREQ_BINS;k1++)
             {
-                local_slopelimiter(SphP[i].Gradients.E_gamma_ET[k1],GasGradDataPasser[i].Maxima.E_gamma[k1],GasGradDataPasser[i].Minima.E_gamma[k1],a_limiter,h_lim,stol);
-                local_slopelimiter(GasGradDataPasser[i].Gradients_E_gamma[k1],GasGradDataPasser[i].Maxima.E_gamma[k1],GasGradDataPasser[i].Minima.E_gamma[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion));
+#if 0 /* stricter limiter here */
+                local_slopelimiter(SphP[i].Gradients.Rad_E_gamma_ET[k1],GasGradDataPasser[i].Maxima.Rad_E_gamma[k1],GasGradDataPasser[i].Minima.Rad_E_gamma[k1],DMAX(1.,a_limiter),DMAX(h_lim,d_max),0, 1,d_max,SphP[i].Rad_E_gamma_Pred[k1]*SphP[i].Density/P[i].Mass);
+                local_slopelimiter(GasGradDataPasser[i].Gradients_Rad_E_gamma[k1],GasGradDataPasser[i].Maxima.Rad_E_gamma[k1],GasGradDataPasser[i].Minima.Rad_E_gamma[k1],DMAX(1.,a_limiter),DMAX(h_lim,d_max),0, 1,d_max,SphP[i].Rad_E_gamma_Pred[k1]*SphP[i].Density/P[i].Mass);
+#else /* weaker limiter here [choose with current tests] */
+                local_slopelimiter(SphP[i].Gradients.Rad_E_gamma_ET[k1],GasGradDataPasser[i].Maxima.Rad_E_gamma[k1],GasGradDataPasser[i].Minima.Rad_E_gamma[k1],a_limiter,h_lim,stol, 1,d_max,SphP[i].Rad_E_gamma_Pred[k1]*SphP[i].Density/P[i].Mass);
+                local_slopelimiter(GasGradDataPasser[i].Gradients_Rad_E_gamma[k1],GasGradDataPasser[i].Maxima.Rad_E_gamma[k1],GasGradDataPasser[i].Minima.Rad_E_gamma[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion), 1,d_max,SphP[i].Rad_E_gamma_Pred[k1]*SphP[i].Density/P[i].Mass);
+#endif
             }
 #endif
 #ifdef MAGNETIC
@@ -1494,19 +1497,15 @@ void hydro_gradient_calc(void)
             double v_tmp = P[i].Mass / SphP[i].Density;
             double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/All.cf_afac1 * SphP[i].Pressure*v_tmp*v_tmp) +
                                 SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
-            double q = fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d;
-            //double q = 80.0 * fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d; // 300,100 work; 30-50 not great; increased coefficient owing to new formulation with wt_i,wt_j in hydro
-            double alim2 = a_limiter * (1. + q*q);
-            if(alim2 > 0.5) alim2=0.5;
+            double q = fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d, alim2 = a_limiter * (1. + q*q); if(alim2 > 0.5) alim2=0.5;
             stol_tmp = stol;
 #ifdef MHD_NON_IDEAL
             stol_tmp = DMAX(stol,stol_diffusion);
 #endif
-            for(k1=0;k1<3;k1++)
-                local_slopelimiter(SphP[i].Gradients.B[k1],GasGradDataPasser[i].Maxima.B[k1],GasGradDataPasser[i].Minima.B[k1],alim2,h_lim,stol_tmp);
+            for(k1=0;k1<3;k1++) {local_slopelimiter(SphP[i].Gradients.B[k1],GasGradDataPasser[i].Maxima.B[k1],GasGradDataPasser[i].Minima.B[k1],alim2,h_lim,stol_tmp, 0,0,0);}
 #endif
 #if defined(DIVBCLEANING_DEDNER) && !defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
-            local_slopelimiter(SphP[i].Gradients.Phi,GasGradDataPasser[i].Maxima.Phi,GasGradDataPasser[i].Minima.Phi,a_limiter,h_lim,stol);
+            local_slopelimiter(SphP[i].Gradients.Phi,GasGradDataPasser[i].Maxima.Phi,GasGradDataPasser[i].Minima.Phi,a_limiter,h_lim,stol, 0,0,0);
 #endif
 #endif
 
@@ -1577,9 +1576,10 @@ void hydro_gradient_calc(void)
             
             
 #if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_ALFVEN) /* note that because of the way this depends on the gradient scale-length, we should calculate it -after- the slope-limiters are applied */
-            SphP[i].CosmicRayDiffusionCoeff=0; if(SphP[i].Density > 0 && P[i].Mass > 0) {CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(i);}/* only assign diffusivities to 'valid' gas particles */
+            for(k=0;k<N_CR_PARTICLE_BINS;k++) {SphP[i].CosmicRayDiffusionCoeff[k]=0;}
+            if(SphP[i].Density > 0 && P[i].Mass > 0) {CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(i);}/* only assign diffusivities to 'valid' gas particles */
 #ifndef COSMIC_RAYS_M1
-            if(is_particle_local_extremum==1) {SphP[i].CosmicRayDiffusionCoeff *= -1;} // negative here codes for local extrema
+            for(k=0;k<N_CR_PARTICLE_BINS;k++) {if(is_particle_local_extremum[k]==1) {SphP[i].CosmicRayDiffusionCoeff[k] *= -1;}} // negative here codes for local extrema
 #endif
 #endif
             
@@ -1713,7 +1713,7 @@ void hydro_gradient_calc(void)
     
     /* collect some timing information */
     t1 = WallclockTime = my_second();
-    timeall += timediff(t0, t1);
+    timeall = timediff(t0, t1);
     timecomp = timecomp1 + timecomp2;
     timewait = timewait1 + timewait2;
     timecomm = timecommsumm1 + timecommsumm2;
@@ -1753,8 +1753,6 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
         local = GasGradDataGet[target];
     
     /* check if we should bother doing a neighbor loop */
-    if(local.Hsml <= 0) return 0;
-    if(local.Mass == 0) return 0;
     if(gradient_iteration == 0)
         if(local.GQuant.Density <= 0) return 0;
     
@@ -1795,24 +1793,21 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
             if (gradient_iteration == 0) {
                 numngb = ngb_treefind_pairs_threads(local.Pos, All.TurbDynamicDiffFac * kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             }
-            else {
+            else
 #endif
-            numngb = ngb_treefind_pairs_threads(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
-#ifdef TURB_DIFF_DYNAMIC
+            {
+                numngb = ngb_treefind_pairs_threads(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             }
-#endif
             
-            if(numngb < 0)
-                return -1;
+            if(numngb < 0) {return -1;}
             
             for(n = 0; n < numngb; n++)
             {
                 j = ngblist[n];
-                if(P[j].Type != 0) continue;
-                if(j >= N_gas) continue;
+                if(GasGrad_isactive(j)==0) continue;
 
                 integertime TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
-#ifndef BOX_SHEARING // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
+#if !defined(BOX_SHEARING) && !defined(_OPENMP) // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this; OpenMP on some new compilers goes bad here because pointers [e.g. P...] are not thread-safe shared with predictive operations, and vectorization means no gain here with OMP anyways) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
                 /* use relative positions to break degeneracy */
                 if(local.Timestep == TimeStep_J)
@@ -1824,8 +1819,6 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #else
                 swap_to_j = 0;
 #endif
-                if(P[j].Mass <= 0) continue;
-                if(SphP[j].Density <= 0) continue;
                 
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
@@ -1895,15 +1888,16 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 
 #if defined(MHD_CONSTRAINED_GRADIENT)
                 double V_j = P[j].Mass / SphP[j].Density;
-                double Face_Area_Vec[3];
-                double wt_i,wt_j;
-#ifdef COOLING
-                //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
-                if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=2.*V_i*V_j/(V_i+V_j);} else {wt_i=V_i; wt_j=V_j;}
+                double Face_Area_Vec[3];                               
+                double wt_i,wt_j; wt_i=V_i; wt_j=V_j;
+#if (SLOPE_LIMITER_TOLERANCE != 2) && !((defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)) // unless using the most aggressive reconstruction, we will limit face-area disparity here //
+#if defined(COOLING) || (SLOPE_LIMITER_TOLERANCE==0)
+                if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=2.*V_i*V_j/(V_i+V_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
 #else
-                //wt_i=wt_j = (V_i*PPP[j].Hsml + V_j*local.Hsml) / (local.Hsml+PPP[j].Hsml); // should these be H, or be -effective sizes- //
-                if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*PPP[j].Hsml+V_j*local.Hsml)/(local.Hsml+PPP[j].Hsml);} else {wt_i=V_i; wt_j=V_j;}
+                if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*PPP[j].Hsml+V_j*local.Hsml)/(local.Hsml+PPP[j].Hsml);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = (V_i*PPP[j].Hsml + V_j*local.Hsml) / (local.Hsml+PPP[j].Hsml); // should these be H, or be -effective sizes- //
 #endif
+#endif
+                double Face_Area_Norm = 0;
                 for(k=0;k<3;k++)
                 {
                     /* calculate the face area between the particles (must match what is done in the actual hydro routine! */
@@ -1911,6 +1905,19 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                                      + kernel.wk_j * wt_j * (SphP[j].NV_T[k][0]*kernel.dp[0] + SphP[j].NV_T[k][1]*kernel.dp[1] + SphP[j].NV_T[k][2]*kernel.dp[2]);
                     if(All.ComovingIntegrationOn) {Face_Area_Vec[k] *= All.cf_atime*All.cf_atime;} /* Face_Area_Norm has units of area, need to convert to physical */
                     /* on the first pass, we need to save the face information to be used to correct the gradients; this only needs to be done once */
+                    Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k];
+                }
+                Face_Area_Norm = sqrt(Face_Area_Norm);                
+                
+#if (defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)
+        /* check if face area exceeds maximum geometric allowed limit (can occur when particles with -very- different Hsml interact at the edge of the kernel, limited to geometric max to prevent numerical instability */
+                double Particle_Size_j = Get_Particle_Size(j);
+                double Particle_Size_i = pow(local.Mass/local.GQuant.Density, 1./NUMDIMS); // pow call too expensive?
+                double Amax = DMIN(Get_Particle_Expected_Area(Particle_Size_i) , Get_Particle_Expected_Area(Particle_Size_j)); // minimum of area "i" or area "j": this subroutine takes care of dimensionality, etc. note inputs are all in -physical- units here
+                if(Face_Area_Norm > Amax) {for(k=0;k<3;k++) {Face_Area_Vec[k] = (Amax/Face_Area_Norm) * Face_Area_Vec[k];}} /* set the face area to the maximum limit, and reset the face vector as well [ direction is preserved, just area changes] */
+#endif
+                
+                for(k=0;k<3;k++){
                     if(gradient_iteration == 0)
                     {
                         out.Face_Area[k] += Face_Area_Vec[k];
@@ -2028,17 +2035,10 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if(swap_to_j) {MINMAX_CHECK(-dp,GasGradDataPasser[j].Minima.Pressure,GasGradDataPasser[j].Maxima.Pressure);}
 
 #ifdef TURB_DIFF_DYNAMIC
-                    double dv_bar[3]; /* Need to calculate the filtered velocity gradient for the filtered shear */
-                    for (k = 0; k < 3; k++) {
-                        dv_bar[k] = SphP[j].Velocity_bar[k] - local.GQuant.Velocity_bar[k];
-#ifdef SHEARING_BOX
-                        if (k == SHEARING_BOX_PHI_COORDINATE) {
-                            if (local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dv_bar[k] -= Shearing_Box_Vel_Offset;}
-                            if (local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dv_bar[k] += Shearing_Box_Vel_Offset;}}
-#endif
-                        MINMAX_CHECK(dv_bar[k], out.Minima.Velocity_bar[k], out.Maxima.Velocity_bar[k]);
-                        if (swap_to_j) {MINMAX_CHECK(-dv_bar[k], GasGradDataPasser[j].Minima.Velocity_bar[k], GasGradDataPasser[j].Maxima.Velocity_bar[k]);}
-                    }
+                    double dv_bar[3]; for(k=0;k<3;k++) {dv_bar[k] = SphP[j].Velocity_bar[k] - local.GQuant.Velocity_bar[k];} /* Need to calculate the filtered velocity gradient for the filtered shear */
+                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dv_bar,-1); /* wrap velocities for shearing boxes if needed */
+                    for(k=0;k<3;k++) {MINMAX_CHECK(dv_bar[k], out.Minima.Velocity_bar[k], out.Maxima.Velocity_bar[k]);
+                        if (swap_to_j) {MINMAX_CHECK(-dv_bar[k], GasGradDataPasser[j].Minima.Velocity_bar[k], GasGradDataPasser[j].Maxima.Velocity_bar[k]);}}
 #endif
 
 #if defined(KERNEL_CRK_FACES)
@@ -2080,17 +2080,9 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     }
 #endif
                     
-                    double dv[3];
-                    for(k=0;k<3;k++)
-                    {
-                        dv[k] = SphP[j].VelPred[k] - local.GQuant.Velocity[k];
-#ifdef BOX_SHEARING
-                        if(k==BOX_SHEARING_PHI_COORDINATE)
-                        {
-                            if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[k] -= Shearing_Box_Vel_Offset;}
-                            if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[k] += Shearing_Box_Vel_Offset;}
-                        }
-#endif
+                    double dv[3]; for(k=0;k<3;k++) {dv[k] = SphP[j].VelPred[k] - local.GQuant.Velocity[k];}
+                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dv,-1); /* wrap velocities for shearing boxes if needed */
+                    for(k=0;k<3;k++) {
                         MINMAX_CHECK(dv[k],out.Minima.Velocity[k],out.Maxima.Velocity[k]);
                         if(swap_to_j) {MINMAX_CHECK(-dv[k],GasGradDataPasser[j].Minima.Velocity[k],GasGradDataPasser[j].Maxima.Velocity[k]);}
                     }
@@ -2110,9 +2102,13 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if(swap_to_j) {MINMAX_CHECK(-du,GasGradDataPasser[j].Minima.InternalEnergy,GasGradDataPasser[j].Maxima.InternalEnergy);}
 #endif
 #ifdef COSMIC_RAYS
-                    double dpCR = Get_Particle_CosmicRayPressure(j) - local.GQuant.CosmicRayPressure;
-                    MINMAX_CHECK(dpCR,out.Minima.CosmicRayPressure,out.Maxima.CosmicRayPressure);
-                    if(swap_to_j) {MINMAX_CHECK(-dpCR,GasGradDataPasser[j].Minima.CosmicRayPressure,GasGradDataPasser[j].Maxima.CosmicRayPressure);}
+                    double dpCR[N_CR_PARTICLE_BINS];
+                    for(k=0;k<N_CR_PARTICLE_BINS;k++)
+                    {
+                        dpCR[k] = Get_Particle_CosmicRayPressure(j,k) - local.GQuant.CosmicRayPressure[k];
+                        MINMAX_CHECK(dpCR[k],out.Minima.CosmicRayPressure[k],out.Maxima.CosmicRayPressure[k]);
+                        if(swap_to_j) {MINMAX_CHECK(-dpCR[k],GasGradDataPasser[j].Minima.CosmicRayPressure[k],GasGradDataPasser[j].Maxima.CosmicRayPressure[k]);}
+                    }
 #endif
 #ifdef DOGRAD_SOUNDSPEED
                     double dc = Particle_effective_soundspeed_i(j) - local.GQuant.SoundSpeed;
@@ -2149,10 +2145,10 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     double V_i_inv = 1/V_i, V_j_inv = SphP[j].Density/P[j].Mass;
                     for(k = 0; k < N_RT_FREQ_BINS; k++)
                     {
-                        int k_dE; for(k_dE=0;k_dE<6;k_dE++) {dnET[k][k_dE] = SphP[j].E_gamma_Pred[k]*SphP[j].ET[k][k_dE]*V_j_inv - local.GQuant.E_gamma[k]*local.GQuant.E_gamma_ET[k][k_dE]*V_i_inv;}
-                        dn[k] = SphP[j].E_gamma_Pred[k]*V_j_inv - local.GQuant.E_gamma[k]*V_i_inv;
-                        MINMAX_CHECK(dn[k],out.Minima.E_gamma[k],out.Maxima.E_gamma[k]);
-                        if(swap_to_j) {MINMAX_CHECK(-dn[k],GasGradDataPasser[j].Minima.E_gamma[k],GasGradDataPasser[j].Maxima.E_gamma[k]);}
+                        int k_dE; for(k_dE=0;k_dE<6;k_dE++) {dnET[k][k_dE] = SphP[j].Rad_E_gamma_Pred[k]*SphP[j].ET[k][k_dE]*V_j_inv - local.GQuant.Rad_E_gamma[k]*local.GQuant.Rad_E_gamma_ET[k][k_dE]*V_i_inv;}
+                        dn[k] = SphP[j].Rad_E_gamma_Pred[k]*V_j_inv - local.GQuant.Rad_E_gamma[k]*V_i_inv;
+                        MINMAX_CHECK(dn[k],out.Minima.Rad_E_gamma[k],out.Maxima.Rad_E_gamma[k]);
+                        if(swap_to_j) {MINMAX_CHECK(-dn[k],GasGradDataPasser[j].Minima.Rad_E_gamma[k],GasGradDataPasser[j].Maxima.Rad_E_gamma[k]);}
                     }
 #endif
                     /* end of difference and slope-limiter (min/max) block */
@@ -2207,7 +2203,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             out.Gradients[k].InternalEnergy += wk_xyz_i * du;
 #endif
 #ifdef COSMIC_RAYS
-                            out.Gradients[k].CosmicRayPressure += wk_xyz_i * dpCR;
+                            for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {out.Gradients[k].CosmicRayPressure[k2] += wk_xyz_i * dpCR[k2];}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
                             out.Gradients[k].SoundSpeed += wk_xyz_i * dc;
@@ -2224,8 +2220,8 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
                             for(k2=0;k2<N_RT_FREQ_BINS;k2++) 
                             {
-                            	out.Gradients[k].E_gamma[k2] += wk_xyz_i * dn[k2];
-                            	int k_et; for(k_et=0;k_et<6;k_et++) out.Gradients[k].E_gamma_ET[k2][k_et] += wk_xyz_i * dnET[k2][k_et];
+                            	out.Gradients[k].Rad_E_gamma[k2] += wk_xyz_i * dn[k2];
+                            	int k_et; for(k_et=0;k_et<6;k_et++) out.Gradients[k].Rad_E_gamma_ET[k2][k_et] += wk_xyz_i * dnET[k2][k_et];
                             } 
 #endif
                         }
@@ -2248,7 +2244,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             SphP[j].Gradients.InternalEnergy[k] += wk_xyz_j * du;
 #endif
 #ifdef COSMIC_RAYS
-                            SphP[j].Gradients.CosmicRayPressure[k] += wk_xyz_j * dpCR;
+                            for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {SphP[j].Gradients.CosmicRayPressure[k2][k] += wk_xyz_j * dpCR[k2];}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
                             SphP[j].Gradients.SoundSpeed[k] += wk_xyz_j * dc;
@@ -2269,7 +2265,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
                             for(k2=0;k2<N_RT_FREQ_BINS;k2++) 
                             {
-                            	GasGradDataPasser[j].Gradients_E_gamma[k2][k] += wk_xyz_j * dn[k2];
+                            	GasGradDataPasser[j].Gradients_Rad_E_gamma[k2][k] += wk_xyz_j * dn[k2];
 								/* below we have the gradient dotted into the Eddington tensor (more complicated than a scalar gradient, but should recover full anisotropy */
 								int k_freq=k2,k_xyz,j_xyz,i_xyz=k,k_et_loop[3]; // recall, for ET: 0=xx,1=yy,2=zz,3=xy,4=yz,5=xz
 								for(k_xyz=0;k_xyz<3;k_xyz++)
@@ -2279,7 +2275,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 									if(k_xyz==2) {k_et_loop[0]=5; k_et_loop[1]=4; k_et_loop[2]=2;}
 									for(j_xyz=0;j_xyz<3;j_xyz++)
 									{
-										SphP[j].Gradients.E_gamma_ET[k_freq][k_xyz] += SphP[j].NV_T[j_xyz][i_xyz] * wk_xyz_j * dnET[k_freq][k_et_loop[j_xyz]];
+										SphP[j].Gradients.Rad_E_gamma_ET[k_freq][k_xyz] += SphP[j].NV_T[j_xyz][i_xyz] * wk_xyz_j * dnET[k_freq][k_et_loop[j_xyz]];
 									}
 								}
                             }
@@ -2333,7 +2329,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 
 void *GasGrad_evaluate_primary(void *p, int gradient_iteration)
 {
-#define CONDITION_FOR_EVALUATION if(P[i].Type==0)
+#define CONDITION_FOR_EVALUATION if(GasGrad_isactive(i))
 #define EVALUATION_CALL GasGrad_evaluate(i,0,exportflag,exportnodecount,exportindex,ngblist,gradient_iteration)
 #include "../system/code_block_primary_loop_evaluation.h"
 #undef CONDITION_FOR_EVALUATION

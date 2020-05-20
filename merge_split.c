@@ -14,6 +14,9 @@
 #include "./allvars.h"
 #include "./proto.h"
 #include "./kernel.h"
+#ifdef BH_WIND_SPAWN
+#define MASS_THRESHOLD_FOR_WINDPROMO (DMAX(5.*All.BAL_wind_particle_mass,0.25*All.MaxMassForParticleSplit))
+#endif /* define a mass threshold for this model above which a 'hyper-element' has accreted enough to be treated as 'normal' */
 
 
 /*! This file contains the operations needed for merging/splitting gas particles/cells on-the-fly in the simulations. 
@@ -43,12 +46,13 @@ int does_particle_need_to_be_merged(int i)
         MyFloat vr2 = (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) * All.cf_a2inv; // physical
         if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
 #else
-        if(P[i].Mass < (All.MaxMassForParticleSplit * ref_mass_factor(i))) return 1;
+        if(P[i].Mass < (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
+        if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO*target_mass_renormalization_factor_for_mergesplit(i)) {return 1;}
 #endif
     }
 #endif
-    if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*ref_mass_factor(i))) return 0;
-    if(P[i].Mass <= (All.MinMassForParticleMerger* ref_mass_factor(i))) return 1;
+    if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 0;}
+    if(P[i].Mass <= (All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
     return 0;
 #endif
 }
@@ -58,25 +62,24 @@ int does_particle_need_to_be_merged(int i)
     when particles become too massive, but it could also be done when Hsml gets very large, densities are high, etc */
 int does_particle_need_to_be_split(int i)
 {
-    if(P[i].Type != 0) return 0; // default behavior: only gas particles split //
+    if(P[i].Type != 0) {return 0;} // default behavior: only gas particles split //
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
-    if(P[i].Mass >= (All.MaxMassForParticleSplit * ref_mass_factor(i))) return 1;
+    if(P[i].Mass >= (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
     return 0;
 #endif
 }
 
-/*! A multiplcative factor that determines the target mass of a particle for the (de)refinement routines */
-double ref_mass_factor(int i)
+/*! A multiplicative factor that determines the target mass of a particle for the (de)refinement routines */
+double target_mass_renormalization_factor_for_mergesplit(int i)
 {
     double ref_factor=1.0;
-#if defined(BH_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
-#ifndef SINGLE_STAR_SINK_DYNAMICS
-    ref_factor = sqrt(P[i].min_dist_to_bh + 0.0001);
-    if(ref_factor>1.0) { ref_factor = 1.0; }
-#endif 
+/*!
+ #if defined(BH_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE) && !defined(SINGLE_STAR_SINK_DYNAMICS)
+    ref_factor = DMIN(1.,sqrt(P[i].min_dist_to_bh + 0.0001)); // this is an example of the kind of routine you could use to scale resolution with BH distance //
 #endif
+ */
     return ref_factor;
 }
 
@@ -92,13 +95,11 @@ void merge_and_split_particles(void)
         int target_index; 
     } *Ptmp; 
 
-    int target_for_merger,dummy=0,numngb_inbox,startnode,i,j,n;
-    double threshold_val;
+    int target_for_merger,dummy=0,numngb_inbox,startnode,i,j,n; double threshold_val;
     int n_particles_merged,n_particles_split,n_particles_gas_split,MPI_n_particles_merged,MPI_n_particles_split,MPI_n_particles_gas_split;
     Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
     Gas_split=0; n_particles_merged=0; n_particles_split=0; n_particles_gas_split=0; MPI_n_particles_merged=0; MPI_n_particles_split=0; MPI_n_particles_gas_split=0;
-
-    Ptmp = (struct flags_merg_split *) mymalloc("Ptmp", NumPart * sizeof(struct flags_merg_split));  
+    Ptmp = (struct flags_merg_split *) mymalloc("Ptmp", NumPart * sizeof(struct flags_merg_split));
 
     // TO: need initialization 
     for (i = 0; i < NumPart; i++) {
@@ -106,19 +107,17 @@ void merge_and_split_particles(void)
       Ptmp[i].target_index = -1;  
     }
 
-    for (i = 0; i < NumPart; i++) {
-
+    for (i = 0; i < NumPart; i++)
+    {
         int Pi_BITFLAG = (1 << (int)P[i].Type); // bitflag for particles of type matching "i", used for restricting neighbor search
-        
-        if (P[i].Mass <= 0) 
-            continue; 
+        if (P[i].Mass <= 0) continue;
 
 #ifdef PM_HIRES_REGION_CLIPDM
         /* here we need to check whether a low-res DM particle is surrounded by all high-res particles, 
             in which case we clip its mass down or split it to prevent the most problematic contamination artifacts */
         if(((P[i].Type==2)||(P[i].Type==3)||(P[i].Type==5))&&(TimeBinActive[P[i].TimeBin]))
         {
-#ifdef BLACKHOLES
+#ifdef BLACK_HOLES
             if(P[i].Type==5) continue;
 #endif
             /* do a neighbor loop ON THE SAME DOMAIN to determine the neighbors */
@@ -155,7 +154,7 @@ void merge_and_split_particles(void)
                 {
                     j = Ngblist[n];
                     if(j == i) {if(numngb_inbox > 1) continue;}
-#ifdef BLACKHOLES
+#ifdef BLACK_HOLES
                     if((P[j].Type == 2) || (P[j].Type == 3))
 #else
                     if((P[j].Type == 2) || (P[j].Type == 3) || (P[j].Type == 5))
@@ -192,26 +191,33 @@ void merge_and_split_particles(void)
                 {
                     target_for_merger = -1;
                     threshold_val = MAX_REAL_NUMBER;
-                    /* loop over neighbors */
-                    for(n=0; n<numngb_inbox; n++)
+                    for(n=0; n<numngb_inbox; n++) /* loop over neighbors */
                     {
-                        j = Ngblist[n];
-                        /* make sure we're not taking the same particle (and that its available to be merged into)! */
-                        if((j>=0)&&(j!=i)&&(P[j].Type==P[i].Type)&&(P[j].Mass > P[i].Mass)&&(P[i].Mass+P[j].Mass < All.MaxMassForParticleSplit) && (Ptmp[j].flag == 0)) {
+                        j = Ngblist[n]; double m_eff = P[j].Mass; int do_allow_merger = 0; // boolean flag to check
+                        if((P[j].Mass >= P[i].Mass) && (P[i].Mass+P[j].Mass < All.MaxMassForParticleSplit)) {do_allow_merger = 1;}
 #ifdef BH_WIND_SPAWN
-                            if(P[j].ID != All.AGNWindID) 
-#endif
+                        if(P[i].ID==All.AGNWindID)
+                        {
+                            if(P[i].Mass>=MASS_THRESHOLD_FOR_WINDPROMO)
                             {
-#ifdef BH_WIND_SPAWN
+                                if((P[j].ID!=All.AGNWindID) || (P[j].Mass>=MASS_THRESHOLD_FOR_WINDPROMO)) {do_allow_merger=1;}
+                            } else if(do_allow_merger) {
                                 double v2_tmp=0,vr_tmp=0; int ktmp=0; for(ktmp=0;ktmp<3;ktmp++) {v2_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Vel[ktmp]-P[j].Vel[ktmp]); vr_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Pos[ktmp]-P[j].Pos[ktmp]);}
+                                if(vr_tmp > 0) {do_allow_merger=0;}
                                 if(v2_tmp > 0) {v2_tmp=sqrt(v2_tmp*All.cf_a2inv);} else {v2_tmp=0;}
-                                if(((v2_tmp < 0.2*All.BAL_v_outflow) || (v2_tmp < 0.9*Particle_effective_soundspeed_i(j)*All.cf_afac3)) && (vr_tmp < 0)) /* check if particle has strongly decelerated to be either sub-sonic or well-below launch velocity, and two particles are approaching */
-#endif
-                                {
-                                    if(P[j].Mass<threshold_val) {threshold_val=P[j].Mass; target_for_merger=j;} // mass-based //
-                                }
+#if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS)
+                                if(v2_tmp >  DMIN(Particle_effective_soundspeed_i(i),Particle_effective_soundspeed_i(j))) {do_allow_merger = 0;}
+                                if(P[j].ID == All.AGNWindID) {do_allow_merger = 0;} // wind particles can't intermerge
+#else                                
+                                if((v2_tmp > 0.25*All.BAL_v_outflow) && (v2_tmp > 0.9*Particle_effective_soundspeed_i(j)*All.cf_afac3)) {do_allow_merger=0;}
+#endif                                
                             }
                         }
+                        if(P[j].ID == All.AGNWindID) {m_eff *= 1.0e10;} /* boost this enough to ensure the spawned element will never chosen if 'real' candidate exists */
+#endif
+                        /* make sure we're not taking the same particle (and that its available to be merged into)! and that its the least-massive available candidate for merging onto */
+                        if((j<0)||(j==i)||(P[j].Type!=P[i].Type)||(P[j].Mass<=0)||(Ptmp[j].flag!=0)||(m_eff>=threshold_val)) {do_allow_merger=0;}
+                        if(do_allow_merger) {threshold_val=m_eff; target_for_merger=j;} /* tell the code this can be merged! */
                     }
                     if (target_for_merger >= 0) { /* mark as merging pairs */
                         Ptmp[i].flag = 1; Ptmp[target_for_merger].flag = 3; Ptmp[i].target_index = target_for_merger; 
@@ -360,24 +366,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
       ChimesGasVars[j].abundances[abunIndex] = ChimesGasVars[i].abundances[abunIndex]; 
 #endif 
 
-    // TO: we will reconstruct time bins anyway. We don't have to update the active particle list here 
-#if 0
-    /* the particle needs to be 'born active' and added to the active set */
-    NextActiveParticle[j] = FirstActiveParticle; FirstActiveParticle = j; NumForceUpdate++;
-    /* likewise add it to the counters that register how many particles are in each timebin */
-    TimeBinCount[P[j].TimeBin]++; if(P[i].Type==0) {TimeBinCountSph[P[j].TimeBin]++;}
-    PrevInTimeBin[j] = i; NextInTimeBin[j] = NextInTimeBin[i]; if(NextInTimeBin[i] >= 0) {PrevInTimeBin[NextInTimeBin[i]] = j;}
-    NextInTimeBin[i] = j; if(LastInTimeBin[P[i].TimeBin] == i) {LastInTimeBin[P[i].TimeBin] = j;}
-#endif
     // need to assign new particle a unique ID:
-    /*
-        -- old method -- we gave it a bit-flip from the original particle to signify the split 
-        (problem is, this will eventually roll over into itself and/or overlap, and/or overflow buffers, if we allow multiple splits)
-    unsigned int bits;
-    int SPLIT_GENERATIONS = 4;
-    for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++);
-    P[i].ID += ((MyIDType) 1 << (sizeof(MyIDType) * 8 - bits));
-    */
     // new method: preserve the original "ID" field, but assign a unique -child- ID: this is unique up to ~32 *GENERATIONS* of repeated splitting!
     P[j].ID_child_number = P[i].ID_child_number + (MyIDType)(1 << ((int)P[i].ID_generation)); // particle 'i' retains its child number; this ensures uniqueness
     P[i].ID_generation = P[i].ID_generation + 1;
@@ -439,25 +428,25 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
         for(k=0;k<N_RT_FREQ_BINS;k++)
         {
             int k_dir; k_dir=0;
-            SphP[j].E_gamma[k] = mass_of_new_particle * SphP[i].E_gamma[k]; SphP[i].E_gamma[k] -= SphP[j].E_gamma[k];
+            SphP[j].Rad_E_gamma[k] = mass_of_new_particle * SphP[i].Rad_E_gamma[k]; SphP[i].Rad_E_gamma[k] -= SphP[j].Rad_E_gamma[k];
 #if defined(RT_EVOLVE_ENERGY)
-            SphP[j].E_gamma_Pred[k] = mass_of_new_particle * SphP[i].E_gamma_Pred[k]; SphP[i].E_gamma_Pred[k] -= SphP[j].E_gamma_Pred[k];
-            SphP[j].Dt_E_gamma[k] = mass_of_new_particle * SphP[i].Dt_E_gamma[k]; SphP[i].Dt_E_gamma[k] -= SphP[j].Dt_E_gamma[k];
+            SphP[j].Rad_E_gamma_Pred[k] = mass_of_new_particle * SphP[i].Rad_E_gamma_Pred[k]; SphP[i].Rad_E_gamma_Pred[k] -= SphP[j].Rad_E_gamma_Pred[k];
+            SphP[j].Dt_Rad_E_gamma[k] = mass_of_new_particle * SphP[i].Dt_Rad_E_gamma[k]; SphP[i].Dt_Rad_E_gamma[k] -= SphP[j].Dt_Rad_E_gamma[k];
 #endif
 #if defined(RT_EVOLVE_FLUX)
             for(k_dir=0;k_dir<3;k_dir++)
             {
-                SphP[j].Flux[k][k_dir] = mass_of_new_particle * SphP[i].Flux[k][k_dir]; SphP[i].Flux[k][k_dir] -= SphP[j].Flux[k][k_dir];
-                SphP[j].Flux_Pred[k][k_dir] = mass_of_new_particle * SphP[i].Flux_Pred[k][k_dir]; SphP[i].Flux_Pred[k][k_dir] -= SphP[j].Flux_Pred[k][k_dir];
-                SphP[j].Dt_Flux[k][k_dir] = mass_of_new_particle * SphP[i].Dt_Flux[k][k_dir]; SphP[i].Dt_Flux[k][k_dir] -= SphP[j].Dt_Flux[k][k_dir];
+                SphP[j].Rad_Flux[k][k_dir] = mass_of_new_particle * SphP[i].Rad_Flux[k][k_dir]; SphP[i].Rad_Flux[k][k_dir] -= SphP[j].Rad_Flux[k][k_dir];
+                SphP[j].Rad_Flux_Pred[k][k_dir] = mass_of_new_particle * SphP[i].Rad_Flux_Pred[k][k_dir]; SphP[i].Rad_Flux_Pred[k][k_dir] -= SphP[j].Rad_Flux_Pred[k][k_dir];
+                SphP[j].Dt_Rad_Flux[k][k_dir] = mass_of_new_particle * SphP[i].Dt_Rad_Flux[k][k_dir]; SphP[i].Dt_Rad_Flux[k][k_dir] -= SphP[j].Dt_Rad_Flux[k][k_dir];
             }
 #endif
 #ifdef RT_EVOLVE_INTENSITIES
             for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++)
             {
-                SphP[j].Intensity[k][k_dir] = mass_of_new_particle * SphP[i].Intensity[k][k_dir]; SphP[i].Intensity[k][k_dir] -= SphP[j].Intensity[k][k_dir];
-                SphP[j].Intensity_Pred[k][k_dir] = mass_of_new_particle * SphP[i].Intensity_Pred[k][k_dir]; SphP[i].Intensity_Pred[k][k_dir] -= SphP[j].Intensity_Pred[k][k_dir];
-                SphP[j].Dt_Intensity[k][k_dir] = mass_of_new_particle * SphP[i].Dt_Intensity[k][k_dir]; SphP[i].Dt_Intensity[k][k_dir] -= SphP[j].Dt_Intensity[k][k_dir];
+                SphP[j].Rad_Intensity[k][k_dir] = mass_of_new_particle * SphP[i].Rad_Intensity[k][k_dir]; SphP[i].Rad_Intensity[k][k_dir] -= SphP[j].Rad_Intensity[k][k_dir];
+                SphP[j].Rad_Intensity_Pred[k][k_dir] = mass_of_new_particle * SphP[i].Rad_Intensity_Pred[k][k_dir]; SphP[i].Rad_Intensity_Pred[k][k_dir] -= SphP[j].Rad_Intensity_Pred[k][k_dir];
+                SphP[j].Dt_Rad_Intensity[k][k_dir] = mass_of_new_particle * SphP[i].Dt_Rad_Intensity[k][k_dir]; SphP[i].Dt_Rad_Intensity[k][k_dir] -= SphP[j].Dt_Rad_Intensity[k][k_dir];
             }
 #endif
         }
@@ -478,24 +467,26 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
         SphP[i].MassTrue -= SphP[j].MassTrue;
 #endif
 #ifdef COSMIC_RAYS
-        SphP[j].CosmicRayEnergy = mass_of_new_particle * SphP[i].CosmicRayEnergy; SphP[i].CosmicRayEnergy -= SphP[j].CosmicRayEnergy;
-        SphP[j].CosmicRayEnergyPred = mass_of_new_particle * SphP[i].CosmicRayEnergyPred; SphP[i].CosmicRayEnergyPred -= SphP[j].CosmicRayEnergyPred;
-        SphP[j].DtCosmicRayEnergy = mass_of_new_particle * SphP[i].DtCosmicRayEnergy; SphP[i].DtCosmicRayEnergy -= SphP[j].DtCosmicRayEnergy;
+        int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {
+            SphP[j].CosmicRayEnergy[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRayEnergy[k_CRegy]; SphP[i].CosmicRayEnergy[k_CRegy] -= SphP[j].CosmicRayEnergy[k_CRegy];
+            SphP[j].CosmicRayEnergyPred[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRayEnergyPred[k_CRegy]; SphP[i].CosmicRayEnergyPred[k_CRegy] -= SphP[j].CosmicRayEnergyPred[k_CRegy];
+            SphP[j].DtCosmicRayEnergy[k_CRegy] = mass_of_new_particle * SphP[i].DtCosmicRayEnergy[k_CRegy]; SphP[i].DtCosmicRayEnergy[k_CRegy] -= SphP[j].DtCosmicRayEnergy[k_CRegy];
 #ifdef COSMIC_RAYS_M1
-        for(k=0;k<3;k++)
-        {
-            SphP[j].CosmicRayFlux[k] = mass_of_new_particle * SphP[i].CosmicRayFlux[k]; SphP[i].CosmicRayFlux[k] -= SphP[j].CosmicRayFlux[k];
-            SphP[j].CosmicRayFluxPred[k] = mass_of_new_particle * SphP[i].CosmicRayFluxPred[k]; SphP[i].CosmicRayFluxPred[k] -= SphP[j].CosmicRayFluxPred[k];
-        }
+            for(k=0;k<3;k++)
+            {
+                SphP[j].CosmicRayFlux[k_CRegy][k] = mass_of_new_particle * SphP[i].CosmicRayFlux[k_CRegy][k]; SphP[i].CosmicRayFlux[k_CRegy][k] -= SphP[j].CosmicRayFlux[k_CRegy][k];
+                SphP[j].CosmicRayFluxPred[k_CRegy][k] = mass_of_new_particle * SphP[i].CosmicRayFluxPred[k_CRegy][k]; SphP[i].CosmicRayFluxPred[k_CRegy][k] -= SphP[j].CosmicRayFluxPred[k_CRegy][k];
+            }
 #endif
 #ifdef COSMIC_RAYS_ALFVEN
-        for(k=0;k<2;k++)
-        {
-            SphP[j].CosmicRayAlfvenEnergy[k] = mass_of_new_particle * SphP[i].CosmicRayAlfvenEnergy[k]; SphP[i].CosmicRayAlfvenEnergy[k] -= SphP[j].CosmicRayAlfvenEnergy[k];
-            SphP[j].CosmicRayAlfvenEnergyPred[k] = mass_of_new_particle * SphP[i].CosmicRayAlfvenEnergyPred[k]; SphP[i].CosmicRayAlfvenEnergyPred[k] -= SphP[j].CosmicRayAlfvenEnergyPred[k];
-            SphP[j].DtCosmicRayAlfvenEnergy[k] = mass_of_new_particle * SphP[i].DtCosmicRayAlfvenEnergy[k]; SphP[i].DtCosmicRayAlfvenEnergy[k] -= SphP[j].DtCosmicRayAlfvenEnergy[k];
-        }
+            for(k=0;k<2;k++)
+            {
+                SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k] = mass_of_new_particle * SphP[i].CosmicRayAlfvenEnergy[k_CRegy][k]; SphP[i].CosmicRayAlfvenEnergy[k_CRegy][k] -= SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k];
+                SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k] = mass_of_new_particle * SphP[i].CosmicRayAlfvenEnergyPred[k_CRegy][k]; SphP[i].CosmicRayAlfvenEnergyPred[k_CRegy][k] -= SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k];
+                SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] = mass_of_new_particle * SphP[i].DtCosmicRayAlfvenEnergy[k_CRegy][k]; SphP[i].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k];
+            }
 #endif
+        }
 #endif
         
         /* use a better particle shift based on the moment of inertia tensor to place new particles in the direction which is less well-sampled */
@@ -724,25 +715,25 @@ void merge_particles_ij(int i, int j)
     {
         int k_dir;
         for(k_dir=0;k_dir<6;k_dir++) SphP[j].ET[k][k_dir] = wt_j*SphP[j].ET[k][k_dir] + wt_i*SphP[i].ET[k][k_dir];
-        SphP[j].E_gamma[k] = SphP[j].E_gamma[k] + SphP[i].E_gamma[k]; /* this is a photon number, so its conserved (we simply add) */
+        SphP[j].Rad_E_gamma[k] = SphP[j].Rad_E_gamma[k] + SphP[i].Rad_E_gamma[k]; /* this is a photon number, so its conserved (we simply add) */
 #if defined(RT_EVOLVE_ENERGY)
-        SphP[j].E_gamma_Pred[k] = SphP[j].E_gamma_Pred[k] + SphP[i].E_gamma_Pred[k];
-        SphP[j].Dt_E_gamma[k] = SphP[j].Dt_E_gamma[k] + SphP[i].Dt_E_gamma[k];
+        SphP[j].Rad_E_gamma_Pred[k] = SphP[j].Rad_E_gamma_Pred[k] + SphP[i].Rad_E_gamma_Pred[k];
+        SphP[j].Dt_Rad_E_gamma[k] = SphP[j].Dt_Rad_E_gamma[k] + SphP[i].Dt_Rad_E_gamma[k];
 #endif
 #if defined(RT_EVOLVE_FLUX)
         for(k_dir=0;k_dir<3;k_dir++)
         {
-            SphP[j].Flux[k][k_dir] = SphP[j].Flux[k][k_dir] + SphP[i].Flux[k][k_dir];
-            SphP[j].Flux_Pred[k][k_dir] = SphP[j].Flux_Pred[k][k_dir] + SphP[i].Flux_Pred[k][k_dir];
-            SphP[j].Dt_Flux[k][k_dir] = SphP[j].Dt_Flux[k][k_dir] + SphP[i].Dt_Flux[k][k_dir];
+            SphP[j].Rad_Flux[k][k_dir] = SphP[j].Rad_Flux[k][k_dir] + SphP[i].Rad_Flux[k][k_dir];
+            SphP[j].Rad_Flux_Pred[k][k_dir] = SphP[j].Rad_Flux_Pred[k][k_dir] + SphP[i].Rad_Flux_Pred[k][k_dir];
+            SphP[j].Dt_Rad_Flux[k][k_dir] = SphP[j].Dt_Rad_Flux[k][k_dir] + SphP[i].Dt_Rad_Flux[k][k_dir];
         }
 #endif
 #ifdef RT_EVOLVE_INTENSITIES
         for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++)
         {
-            SphP[j].Intensity[k][k_dir] = SphP[j].Intensity[k][k_dir] + SphP[i].Intensity[k][k_dir];
-            SphP[j].Intensity_Pred[k][k_dir] = SphP[j].Intensity_Pred[k][k_dir] + SphP[i].Intensity_Pred[k][k_dir];
-            SphP[j].Dt_Intensity[k][k_dir] = SphP[j].Dt_Intensity[k][k_dir] + SphP[i].Dt_Intensity[k][k_dir];
+            SphP[j].Rad_Intensity[k][k_dir] = SphP[j].Rad_Intensity[k][k_dir] + SphP[i].Rad_Intensity[k][k_dir];
+            SphP[j].Rad_Intensity_Pred[k][k_dir] = SphP[j].Rad_Intensity_Pred[k][k_dir] + SphP[i].Rad_Intensity_Pred[k][k_dir];
+            SphP[j].Dt_Rad_Intensity[k][k_dir] = SphP[j].Dt_Rad_Intensity[k][k_dir] + SphP[i].Dt_Rad_Intensity[k][k_dir];
         }
 #endif
     }
@@ -764,24 +755,27 @@ void merge_particles_ij(int i, int j)
         P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k]; /* metal-mass conserving */
 #endif
 #ifdef COSMIC_RAYS
-    SphP[j].CosmicRayEnergy += SphP[i].CosmicRayEnergy;
-    SphP[j].CosmicRayEnergyPred += SphP[i].CosmicRayEnergyPred;
-    SphP[j].DtCosmicRayEnergy += SphP[i].DtCosmicRayEnergy;
-#ifdef COSMIC_RAYS_M1
-    for(k=0;k<3;k++)
+    int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
-        SphP[j].CosmicRayFlux[k] += SphP[i].CosmicRayFlux[k];
-        SphP[j].CosmicRayFluxPred[k] += SphP[i].CosmicRayFluxPred[k];
-    }
+        SphP[j].CosmicRayEnergy[k_CRegy] += SphP[i].CosmicRayEnergy[k_CRegy];
+        SphP[j].CosmicRayEnergyPred[k_CRegy] += SphP[i].CosmicRayEnergyPred[k_CRegy];
+        SphP[j].DtCosmicRayEnergy[k_CRegy] += SphP[i].DtCosmicRayEnergy[k_CRegy];
+#ifdef COSMIC_RAYS_M1
+        for(k=0;k<3;k++)
+        {
+            SphP[j].CosmicRayFlux[k_CRegy][k] += SphP[i].CosmicRayFlux[k_CRegy][k];
+            SphP[j].CosmicRayFluxPred[k_CRegy][k] += SphP[i].CosmicRayFluxPred[k_CRegy][k];
+        }
 #endif
 #ifdef COSMIC_RAYS_ALFVEN
-    for(k=0;k<3;k++)
-    {
-        SphP[j].CosmicRayAlfvenEnergy[k] += SphP[i].CosmicRayAlfvenEnergy[k];
-        SphP[j].CosmicRayAlfvenEnergyPred[k] += SphP[i].CosmicRayAlfvenEnergyPred[k];
-        SphP[j].DtCosmicRayAlfvenEnergy[k] += SphP[i].DtCosmicRayAlfvenEnergy[k];
-    }
+        for(k=0;k<3;k++)
+        {
+            SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k] += SphP[i].CosmicRayAlfvenEnergy[k_CRegy][k];
+            SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k] += SphP[i].CosmicRayAlfvenEnergyPred[k_CRegy][k];
+            SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] += SphP[i].DtCosmicRayAlfvenEnergy[k_CRegy][k];
+        }
 #endif
+    }
 #endif
     
     /* finally zero out the particle mass so it will be deleted */
@@ -798,6 +792,78 @@ void merge_particles_ij(int i, int j)
     return;
 }
 
+
+/*!
+  This routine swaps the location of two pointers/indices (either to a node or to a particle) in the treewalk needed for neighbor searches and gravity.
+  This should be run if you are messing around with the indices of things but don't intend to do a whole treebuild after. - MYG
+ */ 
+
+void swap_treewalk_pointers(int i, int j){
+    // walk the tree and any time we see a nextnode or sibling set to i, swap it to j and vice versa
+    int no, next, pre_sibling_i=-1, pre_sibling_j=-1, previous_node_i, previous_node_j;
+    no = All.MaxPart;
+    
+    while(no >= 0){ // walk the whole tree, starting from the root node (=All.MaxPart)
+        if(no < All.MaxPart) { // we got a particle
+            next=Nextnode[no];
+            if(no != i && no != j){ // don't mess with Nextnodes if looking at i or j - handle that separately
+                if(next == i) {Nextnode[no] = j; previous_node_i = no;}
+                else if(next == j) { Nextnode[no] = i; previous_node_j = no;}
+            }
+            no = next;
+        } else if(no < All.MaxPart+MaxNodes)  { // we have a node
+            next = Nodes[no].u.d.nextnode;
+            if(next == i) { previous_node_i = no; Nodes[no].u.d.nextnode = j;}
+            else if(next == j) { previous_node_j = no; Nodes[no].u.d.nextnode = i;}
+            if(Nodes[no].u.d.sibling == i) {Nodes[no].u.d.sibling = j; pre_sibling_i = no;}
+            else if(Nodes[no].u.d.sibling == j) { Nodes[no].u.d.sibling = i; pre_sibling_j = no;}
+            no = next;
+        } else { // pseudoparticle
+            next = Nextnode[no - MaxNodes];
+            if(next==i) {Nextnode[no-MaxNodes] = j;}
+            else if(next == j) {Nextnode[no-MaxNodes] = i;}
+            no = next;
+        }
+    }
+    
+    if(Nextnode[i] == j){ // handle case if i->j
+        Nextnode[i] = Nextnode[j];
+        Nextnode[j] = i;
+    } else if (Nextnode[j] == i) { // if j->i
+        Nextnode[j] = Nextnode[i];
+        Nextnode[i] = j;
+    } else { // neither i->j nor j->i
+        no = Nextnode[i];
+        Nextnode[i] = Nextnode[j];
+        Nextnode[j] = no;
+    }
+    no = Father[i];
+    Father[i] = Father[j];
+    Father[j] = no;
+}
+
+
+/*!
+  This routine deletes a particle from the linked list for the treewalk, preserving the lists's integrity. This must be run if you are deleting particles but don't want to do a while treebuild after. - MYG
+*/
+void remove_particle_from_treewalk(int i){
+    int no, next;
+    no = All.MaxPart;
+    while(no >= 0){ // walk the tree to find anything that might point to i and redirect it to i's nextnode
+        if(no < All.MaxPart){
+            next = Nextnode[no];
+            if(Nextnode[no] == i) {Nextnode[no] = Nextnode[i];}
+        } else if (no < All.MaxPart+MaxNodes){
+            next = Nodes[no].u.d.nextnode;
+            if(next == i) {Nodes[no].u.d.nextnode = Nextnode[i];}
+            if(Nodes[no].u.d.sibling == i) {Nodes[no].u.d.sibling = Nextnode[i];}
+        } else {
+            next = Nextnode[no - MaxNodes];
+            if(next == i) {Nextnode[no - MaxNodes] = Nextnode[i];}
+        }
+        no = next;
+    }
+}
 
 /*! This is an important routine used throughout -- any time particle masses are variable OR particles can
     be created/destroyed: it goes through the particle list, makes sure they are in the appropriate order (gas 
@@ -857,24 +923,16 @@ void rearrange_particle_sequence(void)
                 sphsave = SphP[i];
                 SphP[i] = SphP[j];
                 SphP[j] = sphsave;  /* have the gas particle take its sph pointer with it */
-
-#ifdef CHIMES 
-		// Also swap gasVars. 
-		gasVarsSave = ChimesGasVars[i]; 
-		ChimesGasVars[i] = ChimesGasVars[j]; 
-		ChimesGasVars[j] = gasVarsSave; 
-
-		/* Old particle (now at position j) is no longer 
-		 * a gas particle, so delete its abundance array. */
-		free(ChimesGasVars[j].abundances); 
-		free(ChimesGasVars[j].isotropic_photon_density);
-		free(ChimesGasVars[j].dust_G_parameter); 
-		free(ChimesGasVars[j].H2_dissocJ); 
-		ChimesGasVars[j].abundances = NULL; 
-		ChimesGasVars[j].isotropic_photon_density = NULL; 
-		ChimesGasVars[j].dust_G_parameter = NULL; 
-		ChimesGasVars[j].H2_dissocJ = NULL; 
+#ifdef MAINTAIN_TREE_IN_REARRANGE		
+                swap_treewalk_pointers(i,j);
+#endif                
+#ifdef CHIMES /* swap chimes-specific 'gasvars' structure which is separate from SphP */
+                gasVarsSave = ChimesGasVars[i]; ChimesGasVars[i] = ChimesGasVars[j]; ChimesGasVars[j] = gasVarsSave;
+                /* Old particle (now at position j) is no longer a gas particle, so delete its abundance array. */
+                free(ChimesGasVars[j].abundances); free(ChimesGasVars[j].isotropic_photon_density); free(ChimesGasVars[j].dust_G_parameter); free(ChimesGasVars[j].H2_dissocJ);
+                ChimesGasVars[j].abundances = NULL; ChimesGasVars[j].isotropic_photon_density = NULL; ChimesGasVars[j].dust_G_parameter = NULL; ChimesGasVars[j].H2_dissocJ = NULL;
 #endif /* CHIMES */
+                
                 /* ok we've now swapped the ordering so the gas particle is still inside the block */
                 flag = 1;
             }
@@ -899,20 +957,22 @@ void rearrange_particle_sequence(void)
                 
                 P[i] = P[N_gas - 1];
                 SphP[i] = SphP[N_gas - 1];
+#ifdef MAINTAIN_TREE_IN_REARRANGE		
+                swap_treewalk_pointers(i, N_gas-1);
+#endif		
                 /* swap with properties of last gas particle (i-- below will force a check of this so its ok) */
-#ifdef CHIMES 
-		free(ChimesGasVars[i].abundances); 
-		free(ChimesGasVars[i].isotropic_photon_density);
-		free(ChimesGasVars[i].dust_G_parameter); 
-		free(ChimesGasVars[i].H2_dissocJ); 
-		ChimesGasVars[i] = ChimesGasVars[N_gas - 1]; 
-		ChimesGasVars[N_gas - 1].abundances = NULL; 
-		ChimesGasVars[N_gas - 1].isotropic_photon_density = NULL; 
-		ChimesGasVars[N_gas - 1].dust_G_parameter = NULL; 
-		ChimesGasVars[N_gas - 1].H2_dissocJ = NULL; 
-#endif  /* CHIMES */
+                
+#ifdef CHIMES
+                free(ChimesGasVars[i].abundances); free(ChimesGasVars[i].isotropic_photon_density); free(ChimesGasVars[i].dust_G_parameter); free(ChimesGasVars[i].H2_dissocJ);
+                ChimesGasVars[i] = ChimesGasVars[N_gas - 1];
+                ChimesGasVars[N_gas - 1].abundances = NULL; ChimesGasVars[N_gas - 1].isotropic_photon_density = NULL; ChimesGasVars[N_gas - 1].dust_G_parameter = NULL; ChimesGasVars[N_gas - 1].H2_dissocJ = NULL;
+#endif
                 
                 P[N_gas - 1] = P[NumPart - 1]; /* redirect the final gas pointer to go to the final particle (BH) */
+#ifdef MAINTAIN_TREE_IN_REARRANGE		
+                swap_treewalk_pointers(N_gas - 1, NumPart-1);
+                remove_particle_from_treewalk(NumPart - 1);
+#endif		
                 N_gas--; /* shorten the total N_gas count */
                 count_gaselim++; /* record that a BH was eliminated */
             }
@@ -922,7 +982,12 @@ void rearrange_particle_sequence(void)
                 P[i] = P[NumPart - 1]; /* re-directs pointer for this particle to pointer at final particle -- so we
                                         swap the two; note that ordering -does not- matter among the non-SPH particles
                                         so its fine if this mixes up the list ordering of different particle types */
+#ifdef MAINTAIN_TREE_IN_REARRANGE		
+                swap_treewalk_pointers(i, NumPart - 1);
+                remove_particle_from_treewalk(NumPart - 1);
+#endif		
             }
+            
             NumPart--;
             i--;
             count_elim++;
@@ -932,8 +997,7 @@ void rearrange_particle_sequence(void)
     MPI_Allreduce(&count_gaselim, &tot_gaselim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&count_bhelim, &tot_bhelim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     
-    if(count_elim)
-        flag = 1;
+    if(count_elim) {flag = 1;}
     
     if(ThisTask == 0) {if(tot_elim > 0) {printf("Rearrange: Eliminated %d/%d gas/star particles and merged away %d black holes.\n", tot_gaselim, tot_elim - tot_gaselim - tot_bhelim, tot_bhelim);}}
     
@@ -944,8 +1008,7 @@ void rearrange_particle_sequence(void)
 #endif
     
     MPI_Allreduce(&flag, &flag_sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    if(flag_sum)
-        reconstruct_timebins();
+    if(flag_sum) {reconstruct_timebins();}
 }
 
 

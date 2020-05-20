@@ -22,11 +22,11 @@ void radiation_pressure_winds_consolidated(void)
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     age_thold = 1.0e10;
 #endif
-    if(All.WindMomentumLoading<=0) return;
+    if(All.RP_Local_Momentum_Renormalization<=0) return;
     Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
     PRINT_STATUS("Local Radiation-Pressure acceleration calculation");
 
-    unitmass_in_msun=(All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS; sigma_eff_0 = 0.955 * All.UnitMass_in_g*All.HubbleParam/(All.UnitLength_in_cm*All.UnitLength_in_cm) / (All.cf_atime*All.cf_atime) * KAPPA_IR;
+    unitmass_in_msun=(All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS; sigma_eff_0 = All.UnitMass_in_g*All.HubbleParam/(All.UnitLength_in_cm*All.UnitLength_in_cm) / (All.cf_atime*All.cf_atime) * KAPPA_IR;
     double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
@@ -62,7 +62,7 @@ void radiation_pressure_winds_consolidated(void)
                 dE_over_c *= (dt*All.UnitTime_in_s/All.HubbleParam) / 2.9979e10; // dE/c in CGS
                 dv_units = KAPPA_IR * dE_over_c / (4*M_PI * All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime);
                 dv_units /= All.UnitVelocity_in_cm_per_s; // dv in code units per unit distance
-                dv_units *= All.WindMomentumLoading; // rescale tau_ir component here
+                dv_units *= All.RP_Local_Momentum_Renormalization; // rescale tau_ir component here
                 dE_over_c /= (All.UnitMass_in_g/All.HubbleParam) * All.UnitVelocity_in_cm_per_s; // dv per unit mass
                 total_prob_kick += dE_over_c; dv_imparted = dE_over_c/P[i].Mass; // estimate of summed dv_imparted from neighbors from L/c part
                 dv_imparted += dv_units * (0.1+P[i].Metallicity[0]/All.SolarAbundances[0]) * (4.0*M_PI*rho/P[i].Mass*h); // sum over neighbor IR term
@@ -119,7 +119,7 @@ void radiation_pressure_winds_consolidated(void)
                         dE_over_c *= (dt*All.UnitTime_in_s/All.HubbleParam) / 2.9979e10; // dE/c in CGS
                         dv_units = KAPPA_IR * dE_over_c / (4*M_PI * All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime);
                         dv_units /= All.UnitVelocity_in_cm_per_s; // dv in code units per unit distance
-                        dv_units *= All.WindMomentumLoading; // rescale tau_ir component here
+                        dv_units *= All.RP_Local_Momentum_Renormalization; // rescale tau_ir component here
                         dE_over_c /= (All.UnitMass_in_g/All.HubbleParam) * All.UnitVelocity_in_cm_per_s; // dv per unit mass
                         total_prob_kick += dE_over_c;
 #endif
@@ -144,7 +144,7 @@ void radiation_pressure_winds_consolidated(void)
                                 { /* open subloop with wind kick */
                                     if(v>5.0e8/All.UnitVelocity_in_cm_per_s) v=5.0e8/All.UnitVelocity_in_cm_per_s; /* limiter */
                                     /* collect numbers to output */
-                                    total_n_wind += 1.0; total_mom_wind += P[j].Mass*v; avg_v_kick += v; momwt_avg_v_kick += P[j].Mass*v * sigma_eff_0*P[j].Mass/(h_eff_j*h_eff_j) * (0.01 + P[j].Metallicity[0]/All.SolarAbundances[0]);
+                                    total_n_wind += 1.0; total_mom_wind += P[j].Mass*v; avg_v_kick += v; momwt_avg_v_kick += P[j].Mass*v * sigma_eff_0 * P[j].Mass/(h_eff_j*h_eff_j) * (0.01 + P[j].Metallicity[0]/All.SolarAbundances[0]); 
                                     
                                     /* determine the direction of the kick */
 #ifdef GALSF_FB_FIRE_RT_CONTINUOUSRP
@@ -186,18 +186,16 @@ void radiation_pressure_winds_consolidated(void)
     MPI_Reduce(&total_prob_kick, &totMPI_prob_kick, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if(ThisTask == 0)
     {
-        if(totMPI_prob_kick>0)
+        if(totMPI_prob_kick>0 && totMPI_n_wind>0)
         {
-            if(totMPI_n_wind>0)
-            {
-                if(totMPI_n_wind>0) {totMPI_avg_v /= totMPI_n_wind; totMPI_pwt_avg_v /= totMPI_mom_wind;}
-                fprintf(FdMomWinds, "%lg %g %g %g %g %g \n", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v);
-                PRINT_STATUS("Momentum Wind Feedback: Time=%g Nkicked=%g (L/c)dt=%g Momkicks=%g V_avg=%g tau_j_mean=%g \n", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v);
-            }
+            totMPI_avg_v /= totMPI_n_wind; totMPI_pwt_avg_v /= totMPI_mom_wind;
+            fprintf(FdMomWinds, "%lg %g %g %g %g %g \n", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v);
+            PRINT_STATUS(" ..momentum coupled: Time=%g Nkicked=%g (L/c)dt=%g Momkicks=%g V_avg=%g tau_j_mean=%g ", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v);
         }
-        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {fflush(FdMomWinds);}
     } // if(ThisTask==0)
+    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin && ThisTask == 0) {fflush(FdMomWinds);}
     PRINT_STATUS(" .. completed local Radiation-Pressure acceleration");
+    CPU_Step[CPU_LOCALWIND] += measure_time(); /* collect timings and reset clock for next timing */
 } // end routine :: void radiation_pressure_winds_consolidated(void)
 
 #endif /* closes defined(GALSF_FB_FIRE_RT_LOCALRP)  */
@@ -364,8 +362,11 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
         }
         if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {fflush(FdHIIHeating);}
     } // ThisTask == 0
+    CPU_Step[CPU_HIIHEATING] += measure_time();
 } // void HII_heating_singledomain(void)
 #endif // GALSF_FB_FIRE_RT_HIIHEATING
+
+
 
 #ifdef CHIMES_HII_REGIONS 
 /* This routine is based heavily on the HII_heating_singledomain() routine 
@@ -536,11 +537,7 @@ void chimes_HII_regions_singledomain(void)
 				  {
 				    SphP[j].DelayTimeHII = dt;
 				   
-				    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
-				      {
-					SphP[j].Chimes_fluxPhotIon_HII[k] = 0.0; 
-					SphP[j].Chimes_G0_HII[k] = 0.0; 
-				      }
+				    for(k = 0; k < CHIMES_LOCAL_UV_NBINS; k++)  {SphP[j].Chimes_fluxPhotIon_HII[k] = 0; SphP[j].Chimes_G0_HII[k] = 0;}
 				    
 				    SphP[j].Chimes_fluxPhotIon_HII[age_bin] = (1.0 - All.Chimes_f_esc_ion) * stellum / (pow(r * All.cf_atime * All.UnitLength_in_cm / All.HubbleParam, 2.0) + pow(eps_cgs, 2.0)) ; 
 				    SphP[j].Chimes_G0_HII[age_bin] = (1.0 - All.Chimes_f_esc_G0) * stellum_G0 / (pow(r * All.cf_atime * All.UnitLength_in_cm / All.HubbleParam, 2.0) + pow(eps_cgs, 2.0)); 
@@ -588,5 +585,6 @@ void chimes_HII_regions_singledomain(void)
 	} // if((P[i].Type == 4)||(P[i].Type == 2)||(P[i].Type == 3))
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
   myfree(Ngblist);
-} 
+  CPU_Step[CPU_HIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */
+}
 #endif // CHIMES_HII_REGIONS 

@@ -22,7 +22,7 @@
  *  tree(s). Various variables of the particle data are initialised and An
  *  intial domain decomposition is performed. If SPH particles are present,
  *  the initial gas kernel lengths are determined.
- */
+ */ 
 void init(void)
 {
     int i, j;
@@ -192,7 +192,7 @@ void init(void)
 #endif
     
     All.TimeLastStatistics = All.TimeBegin - All.TimeBetStatistics;
-#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
+#if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
     All.TimeNextOnTheFlyFoF = All.TimeBegin;
 #endif
     
@@ -309,6 +309,15 @@ void init(void)
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
 #endif
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_SNE)
+            P[i].Mass_final = P[i].Mass; //best guess, only matters if we restart in the middle of spawning an SN 
+#endif
+#if defined(SINGLE_STAR_FB_WINDS)
+            P[i].wind_mode = 0; //this will make single_star_wind_mdot reset it
+            double nx[3],ny[3],nz[3]; int kw; get_random_orthonormal_basis(P[i].ID,nx,ny,nz); for(kw=0;kw<3;kw++) {P[i].Wind_direction[kw] = nx[kw]; P[i].Wind_direction[kw+3] = ny[kw];}
+#endif
+#endif
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
             P[i].SNe_ThisTimeStep = 0;
 #endif
@@ -344,17 +353,20 @@ void init(void)
                     pow(P[i].Grain_Size/All.Grain_Size_Min,All.Grain_Size_Spectrum_Powerlaw) * log(All.Grain_Size_Max/All.Grain_Size_Min);}
 #ifdef GRAIN_RDI_TESTPROBLEM /* initialize various quantities for test problems from parameters set in the ICs */
                 P[i].Mass *= All.Dust_to_Gas_Mass_Ratio;
-                double tS0 = 0.626657 * P[i].Grain_Size * sqrt(GAMMA_DEFAULT); /* stopping time [Epstein] for driftvel->0 */
-                double a0 = tS0 * All.Vertical_Grain_Accel / (1.+All.Dust_to_Gas_Mass_Ratio); /* acc * tS0 / (1+mu) */
+                int k, non_gdir=1; double A[3]={0}, B[3]={0}, A_cross_B[3]={0}, amag, rho_gas_expected, acc_ang=All.Vertical_Grain_Accel_Angle * M_PI/180., tS0, a0, ct=1, tau2=0, ct2=0, w0, agamma=9.*M_PI/128.; B[2]=1; if(GRAV_DIRECTION_RDI==1) {non_gdir=2;}
+                rho_gas_expected = 1; /* guess for the gas density here [set custom for e.g. stratified problems */
+                tS0 = 0.626657 * P[i].Grain_Size * sqrt(GAMMA_DEFAULT) / rho_gas_expected; /* stopping time [Epstein] for driftvel->0 */
+                A[GRAV_DIRECTION_RDI]=cos(acc_ang)*All.Vertical_Grain_Accel - All.Vertical_Gravity_Strength; A[0]=sin(acc_ang)*All.Vertical_Grain_Accel; /* define angles/direction of external acceleration */
+                amag=sqrt(A[0]*A[0]+A[1]*A[1]+A[2]*A[2]); A[0]/=amag; A[1]/=amag; A[2]/=amag;
+                a0 = tS0 * amag / (1.+All.Dust_to_Gas_Mass_Ratio); /* acc * tS0 / (1+mu) */
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
                 a0 *= All.Grain_Size_Max / P[i].Grain_Size;
 #endif
-                double ct = cos(All.Vertical_Grain_Accel_Angle * M_PI/180.), st = sin(All.Vertical_Grain_Accel_Angle * M_PI/180.); /* relevant angles */
-                int k; double agamma=0.220893; // 9pi/128 //
-                double tau2=0, ct2=0, w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma)); // exact solution if no Lorentz forces and Epstein drag //
+                w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma)); // exact solution if no Lorentz forces and Epstein drag //
 #ifdef GRAIN_LORENTZFORCE
-                double tL_i = All.Grain_Charge_Parameter/All.Grain_Size_Max * pow(All.Grain_Size_Max/P[i].Grain_Size,2) * All.BiniZ; // 1/Lorentz in code units
-                ct2=ct*ct; double tau2_0=pow(tS0*tL_i,2), f_tau_guess2=0; // variables for below //
+                double Bmag, tL_i=0, tau2_0=0, f_tau_guess2=0; B[0]=All.BiniX; B[1]=All.BiniY; B[2]=All.BiniZ; Bmag=sqrt(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]); B[0]/=Bmag; B[1]/=Bmag; B[2]/=Bmag;
+                tL_i = (All.Grain_Charge_Parameter/All.Grain_Size_Max) * pow(All.Grain_Size_Max/P[i].Grain_Size,2) * Bmag; // 1/Lorentz in code units
+                ct=A[0]*B[0]+A[1]*B[1]+A[2]*B[2]; ct2=ct*ct; tau2_0=pow(tS0*tL_i,2); // variables for below //
                 for(k=0;k<20;k++)
                 {
                    tau2 = tau2_0 / (1. + agamma*w0*w0); // guess tau [including velocity dependence] //
@@ -363,14 +375,11 @@ void init(void)
                 }
 #endif
                 w0 /= sqrt((1.+tau2)*(1.+tau2*ct2)); // ensures normalization to unity with convention below //
-                int non_gdir=1;
-                if(GRAV_DIRECTION_RDI==1) {non_gdir=2;}
-                P[i].Vel[0] = w0*st; P[i].Vel[non_gdir] = w0*sqrt(tau2)*st; P[i].Vel[GRAV_DIRECTION_RDI] = w0*(1.+tau2)*ct;
-                a0 = tS0 * All.Vertical_Gravity_Strength / (1.+All.Dust_to_Gas_Mass_Ratio); w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma));
-                P[i].Vel[GRAV_DIRECTION_RDI] -= w0;
+                A_cross_B[0]=A[1]*B[2]-A[2]*B[1]; A_cross_B[1]=A[2]*B[0]-A[0]*B[2]; A_cross_B[2]=A[0]*B[1]-A[1]*B[0];
+                for(k=0;k<3;k++) {P[i].Vel[0]=w0*(A[k] + sqrt(tau2)*A_cross_B[k] + tau2*ct*B[k]);}
 #endif // closes rdi_testproblem
             }
-            P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
+            P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0; P[i].Grain_AccelTimeMin = MAX_REAL_NUMBER;
 #if defined(GRAIN_BACKREACTION)
             P[i].Grain_DeltaMomentum[0]=P[i].Grain_DeltaMomentum[1]=P[i].Grain_DeltaMomentum[2]=0;
 #endif
@@ -385,21 +394,26 @@ void init(void)
 #ifdef METALS
         All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
                                             //   also Anders+Grevesse 1989 (older, but hugely-cited compilation; their Z=0.0201, proto-solar=0.0213)
-
 #ifdef COOL_METAL_LINES_BY_SPECIES
         if (NUM_METAL_SPECIES>=10) {
-            All.SolarAbundances[1]=0.28;    // He  (10.93 in units where log[H]=12, so photospheric mass fraction -> Y=0.2485 [Hydrogen X=0.7381]; Anders+Grevesse Y=0.2485, X=0.7314)
-            All.SolarAbundances[2]=3.26e-3; // C   (8.43 -> 2.38e-3, AG=3.18e-3)
-            All.SolarAbundances[3]=1.32e-3; // N   (7.83 -> 0.70e-3, AG=1.15e-3)
-            All.SolarAbundances[4]=8.65e-3; // O   (8.69 -> 5.79e-3, AG=9.97e-3)
-            All.SolarAbundances[5]=2.22e-3; // Ne  (7.93 -> 1.26e-3, AG=1.72e-3)
-            All.SolarAbundances[6]=9.31e-4; // Mg  (7.60 -> 7.14e-4, AG=6.75e-4)
-            All.SolarAbundances[7]=1.08e-3; // Si  (7.51 -> 6.71e-4, AG=7.30e-4)
-            All.SolarAbundances[8]=6.44e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4)
-            All.SolarAbundances[9]=1.01e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4)
-            All.SolarAbundances[10]=1.73e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3)
+            All.SolarAbundances[1]=0.28;    // He  (10.93 in units where log[H]=12, so photospheric mass fraction -> Y=0.2485 [Hydrogen X=0.7381]; Anders+Grevesse Y=0.2485, X=0.7314), with proto-solar Y=0.27
+            All.SolarAbundances[2]=3.26e-3; // C   (8.43 -> 2.38e-3, AG=3.18e-3); proto-solar from Asplund=8.47 -> 2.53e-3
+            All.SolarAbundances[3]=1.32e-3; // N   (7.83 -> 0.70e-3, AG=1.15e-3); PS=7.87->7.41e-4
+            All.SolarAbundances[4]=8.65e-3; // O   (8.69 -> 5.79e-3, AG=9.97e-3); PS=8.73->6.13e-3
+            All.SolarAbundances[5]=2.22e-3; // Ne  (7.93 -> 1.26e-3, AG=1.72e-3); PS=7.97->1.34e-3
+            All.SolarAbundances[6]=9.31e-4; // Mg  (7.60 -> 7.14e-4, AG=6.75e-4); PS=7.64->7.57e-4
+            All.SolarAbundances[7]=1.08e-3; // Si  (7.51 -> 6.71e-4, AG=7.30e-4); PS=7.55->7.12e-4
+            All.SolarAbundances[8]=6.44e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4); PS=7.16->3.31e-4
+            All.SolarAbundances[9]=1.01e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4); PS=6.38->6.87e-5
+            All.SolarAbundances[10]=1.73e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3); PS=7.54->1.38e-3
         }
 #endif // COOL_METAL_LINES_BY_SPECIES
+        
+#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // new default abundances; using Asplund et al. 2009 proto-solar abundances ??
+        All.SolarAbundances[0]=0.0142; if(NUM_METAL_SPECIES>=10) {
+            All.SolarAbundances[1]=0.27030; All.SolarAbundances[2]=2.53e-3; All.SolarAbundances[3]=7.41e-4; All.SolarAbundances[4]=6.13e-3; All.SolarAbundances[5]=1.34e-3;
+            All.SolarAbundances[6]=7.57e-4; All.SolarAbundances[7]=7.12e-4; All.SolarAbundances[8]=3.31e-4; All.SolarAbundances[9]=6.87e-5; All.SolarAbundances[10]=1.38e-3;}
+#endif
 #ifdef GALSF_FB_FIRE_RPROCESS
         //All.SolarAbundances[NUM_METAL_SPECIES-1]=0.0; // R-process tracer
         for(j=1;j<=NUM_RPROCESS_SPECIES;j++) All.SolarAbundances[NUM_METAL_SPECIES-j]=0.0; // R-process tracer
@@ -414,7 +428,7 @@ void init(void)
             /* initialize abundance ratios. for now, assume solar */
             for(j=0;j<NUM_METAL_SPECIES;j++) P[i].Metallicity[j]=All.SolarAbundances[j]*P[i].Metallicity[0]/All.SolarAbundances[0];
             /* need to allow for a primordial He abundance */
-            if(NUM_METAL_SPECIES>=10) P[i].Metallicity[1]=0.25+(All.SolarAbundances[1]-0.25)*P[i].Metallicity[0]/All.SolarAbundances[0];
+            if(NUM_METAL_SPECIES>=10) P[i].Metallicity[1]=(1.-HYDROGEN_MASSFRAC)+(All.SolarAbundances[1]-(1.-HYDROGEN_MASSFRAC))*P[i].Metallicity[0]/All.SolarAbundances[0];
         } // if(RestartFlag == 0)
 
 #ifdef CHIMES 
@@ -450,8 +464,7 @@ void init(void)
 	  {
 	    H_mass_fraction = HYDROGEN_MASSFRAC; 
 	    ChimesGasVars[i].element_abundances[0] = (1.0 - H_mass_fraction) / (4.0 * H_mass_fraction);  // He 
-	    for (j = 1; j < 10; j++) 
-	      ChimesGasVars[i].element_abundances[j] = 0.0; 
+	    for (j = 1; j < 10; j++) {ChimesGasVars[i].element_abundances[j] = 0.0;}
 	    ChimesGasVars[i].metallicity = 0.0; 
 	  }
 #endif // CHIMES 
@@ -479,10 +492,19 @@ void init(void)
             {
                 BPP(i).BH_Mass = All.SeedBlackHoleMass;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-		BPP(i).BH_Mass = P[i].Mass;
+                BPP(i).BH_Mass = P[i].Mass;
 #endif
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION // properly initialize luminosity
+                singlestar_subgrid_protostellar_evolution_update_track(i,0,0);             
+#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2)
+                calculate_individual_stellar_luminosity(BPP(i).BH_Mdot, BPP(i).BH_Mass, i);
+#endif        
+#endif
+#ifdef GRAIN_FLUID
+                BPP(i).BH_Dust_Mass = 0;
+#endif                
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-		BPP(i).SinkRadius = All.ForceSoftening[5];
+                BPP(i).SinkRadius = All.ForceSoftening[5];
 #endif			
 #ifdef BH_ALPHADISK_ACCRETION
                 BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
@@ -598,19 +620,14 @@ void init(void)
 #endif 
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
-            SphP[i].RadFluxUV = 0;
-            SphP[i].RadFluxEUV = 0;
+            SphP[i].Rad_Flux_UV = 0;
+            SphP[i].Rad_Flux_EUV = 0;
 #endif 
 #ifdef CHIMES_STELLAR_FLUXES 
-	    int kc; 
-	    for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
-	      { 
-		SphP[i].Chimes_fluxPhotIon[kc] = 0; 
-		SphP[i].Chimes_G0[kc] = 0; 
-	      }
+	    int kc; for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) {SphP[i].Chimes_fluxPhotIon[kc] = 0; SphP[i].Chimes_G0[kc] = 0;}
 #endif
 #ifdef BH_COMPTON_HEATING
-            SphP[i].RadFluxAGN = 0;
+            SphP[i].Rad_Flux_AGN = 0;
 #endif
         }
 #ifdef GALSF_SUBGRID_WINDS
@@ -633,7 +650,7 @@ void init(void)
 #endif
 #endif
 #ifdef COSMIC_RAYS
-        if(RestartFlag == 0) {SphP[i].CosmicRayEnergy = 0;}
+        if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRayEnergy[j] = 0;}}
 #endif
 #ifdef MAGNETIC
 #if defined MHD_B_SET_IN_PARAMS
@@ -655,6 +672,9 @@ void init(void)
 #ifdef DIVBCLEANING_DEDNER
         SphP[i].Phi = SphP[i].PhiPred = SphP[i].DtPhi = 0;
 #endif
+#ifdef BH_RETURN_BFLUX
+        P[i].B[0] = P[i].B[1] = P[i].B[2] = 0;
+#endif        
 #endif
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
         SphP[i].alpha = 0.0;
@@ -719,7 +739,7 @@ void init(void)
     test_id_uniqueness();
 #endif
     
-    Flag_FullStep = 1;		/* to ensure that Peano-Hilber order is done */
+    Flag_FullStep = 1;		/* to ensure that Peano-Hilbert order is done */
     TreeReconstructFlag = 1;
 
 #ifdef BH_WIND_SPAWN
@@ -752,8 +772,7 @@ void init(void)
     
     All.Ti_Current = 0;
     
-    if(RestartFlag != 3 && RestartFlag != 5)
-        setup_smoothinglengths();
+    if(RestartFlag != 3 && RestartFlag != 5) {setup_smoothinglengths();}
     
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     if(RestartFlag != 3 && RestartFlag != 5) {ags_setup_smoothinglengths();}
@@ -789,7 +808,7 @@ void init(void)
         // re-match the predicted and initial velocities and B-field values, just to be sure //
         for(j=0;j<3;j++) SphP[i].VelPred[j]=P[i].Vel[j];
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION==0)
-        for(j=0;j<3;j++) {SphP[i].ParticleVel[k] = 0;} // set these to zero and forget them, for the rest of the run //
+        for(j=0;j<3;j++) {SphP[i].ParticleVel[j] = 0;} // set these to zero and forget them, for the rest of the run //
 #endif
         
 #ifdef MAGNETIC
@@ -797,24 +816,16 @@ void init(void)
         for(j=0;j<3;j++) {SphP[i].BPred[j]=SphP[i].B[j]; SphP[i].DtB[j]=0;}
 #endif
 #ifdef COSMIC_RAYS
-        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
-        SphP[i].CosmicRayDiffusionCoeff = 0;
-        SphP[i].DtCosmicRayEnergy = 0;
-#ifdef COSMIC_RAYS_M1
-        for(j=0;j<3;j++) 
+        for(k=0;k<N_CR_PARTICLE_BINS;k++)
         {
-            SphP[i].CosmicRayFlux[j]=0;
-            SphP[i].CosmicRayFluxPred[j]=0;
-        }
+            SphP[i].CosmicRayEnergyPred[k]=SphP[i].CosmicRayEnergy[k]; SphP[i].CosmicRayDiffusionCoeff[k]=0; SphP[i].DtCosmicRayEnergy[k]=0;
+#ifdef COSMIC_RAYS_M1
+            for(j=0;j<3;j++) {SphP[i].CosmicRayFlux[k][j]=0; SphP[i].CosmicRayFluxPred[k][j]=0;}
 #endif
 #ifdef COSMIC_RAYS_ALFVEN
-        for(j=0;j<2;j++)
-        {
-            SphP[i].CosmicRayAlfvenEnergy[j]=0;
-            SphP[i].CosmicRayAlfvenEnergyPred[j]=0;
-            SphP[i].DtCosmicRayAlfvenEnergy[j]=0;
-        }
+            for(j=0;j<2;j++) {SphP[i].CosmicRayAlfvenEnergy[k][j]=0; SphP[i].CosmicRayAlfvenEnergyPred[k][j]=0; SphP[i].DtCosmicRayAlfvenEnergy[k][j]=0;}
 #endif
+        }
 #endif
 #if defined(EOS_ELASTIC)
         if(RestartFlag != 1)
@@ -845,13 +856,19 @@ void init(void)
         SphP[i].Super_Timestep_j = 0;
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
-        SphP[i].RadFluxUV = 0;
-        SphP[i].RadFluxEUV = 0;
+        SphP[i].Rad_Flux_UV = 0;
+        SphP[i].Rad_Flux_EUV = 0;
 #endif
 #ifdef BH_COMPTON_HEATING
-        SphP[i].RadFluxAGN = 0;
+        SphP[i].Rad_Flux_AGN = 0;
 #endif        
-        
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
+        {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[i].Rad_E_gamma[kf]=0;}}
+#endif
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
+        {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(j=0;j<3;j++) {SphP[i].Rad_Flux[kf][j]=0;}}}
+#endif
+
 #ifdef COOL_GRACKLE
         if(RestartFlag == 0)
         {
@@ -940,15 +957,11 @@ void init(void)
 #ifdef PMGRID
         long_range_init_regionsize();
 #ifdef BOX_PERIODIC
-        int n, n_type[6];
-        long long ntot_type_all[6];
         /* determine global and local particle numbers */
-        for(n = 0; n < 6; n++)
-            n_type[n] = 0;
-        for(n = 0; n < NumPart; n++)
-            n_type[P[n].Type]++;
+        int n, n_type[6]; long long ntot_type_all[6];
+        for(n = 0; n < 6; n++) {n_type[n] = 0;}
+        for(n = 0; n < NumPart; n++) {n_type[P[n].Type]++;}
         sumup_large_ints(6, n_type, ntot_type_all);
-        
         calculate_power_spectra(RestartSnapNum, ntot_type_all);
 #endif
 #endif
@@ -1082,20 +1095,15 @@ void setup_smoothinglengths(void)
 #endif
         {
                 no = Father[i];
-                
-                while(10 * All.DesNumNgb * P[i].Mass > Nodes[no].u.d.mass)
+                while(2 * All.DesNumNgb * P[i].Mass > Nodes[no].u.d.mass)
                 {
                     p = Nodes[no].u.d.father;
-                    
-                    if(p < 0)
-                        break;
-                    
+                    if(p < 0) {break;}
                     no = p;
                 }
                 
                 if((RestartFlag == 0)||(P[i].Type != 0)) // if Restartflag==2, use the saved Hsml of the gas as initial guess //
                 {
-                    
 #ifndef INPUT_READ_HSML
 #if NUMDIMS == 3
                     PPP[i].Hsml = pow(3.0 / (4 * M_PI) * All.DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 0.333333) * Nodes[no].len;
@@ -1107,35 +1115,27 @@ void setup_smoothinglengths(void)
                     PPP[i].Hsml = All.DesNumNgb * (P[i].Mass / Nodes[no].u.d.mass) * Nodes[no].len;
 #endif
 #ifndef SELFGRAVITY_OFF
-                    if(All.SofteningTable[0] != 0)
+                    if(All.SofteningTable[P[i].Type] != 0)
                     {
-                        if((PPP[i].Hsml>100.*All.SofteningTable[0])||(PPP[i].Hsml<=0.01*All.SofteningTable[0])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
-                            PPP[i].Hsml = All.SofteningTable[0];
+                        if((PPP[i].Hsml>100.*All.SofteningTable[P[i].Type])||(PPP[i].Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
+                            {PPP[i].Hsml = All.SofteningTable[P[i].Type];}
                     }
 #else
-                    if((Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) PPP[i].Hsml = 1.0;
+                    if((Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}
 #endif
 #endif // INPUT_READ_HSML
                 } // closes if((RestartFlag == 0)||(P[i].Type != 0))
             }
     }
-    
+    if((RestartFlag==0 || RestartFlag==2) && All.ComovingIntegrationOn) {for(i=0;i<N_gas;i++) {PPP[i].Hsml *= pow(All.Omega0/All.OmegaBaryon,1./NUMDIMS);}} /* correct (crudely) for baryon fraction, used in the estimate above for Hsml */
     
 #ifdef BLACK_HOLES
-    if(RestartFlag == 0 || RestartFlag == 2)
-    {
-        for(i = 0; i < NumPart; i++)
-            if(P[i].Type == 5)
-                PPP[i].Hsml = All.SofteningTable[5];
-    }
+    if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {if(P[i].Type == 5) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}}}
 #endif
     
 #ifdef GRAIN_FLUID
-    if(RestartFlag == 0 || RestartFlag == 2)
-    {
-        for(i = 0; i < NumPart; i++)
-            if(P[i].Type > 0) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}
-    }
+    //if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {if(P[i].Type > 0) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}}}
+    if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {PPP[i].Hsml *= pow(2.,1./NUMDIMS);}} /* very rough correction assuming comparable numbers of dust and gas elements */
 #endif
  
     density();    

@@ -6,13 +6,13 @@
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_const_cgs.h>
 #include <gsl/gsl_const_num.h>
-#include "./nuclear_network.h"
 
 /*
  *  This code is place-holder, inherited from GADGET3
  */
 
 #ifdef NUCLEAR_NETWORK
+#include "./nuclear_network.h"
 
 /* to use this network you need 5 files:
  * one file containing information about which species your network should use [species.txt]
@@ -2395,9 +2395,9 @@ static network_var compute_screening(const struct network_rate *rate, network_va
       network_var zero_var = { 0 };
 #if DEBUG > 3
       if(rate != &Be8_alpha_rate)
-          PRINT_WARNING("warning H is %g for Z_1 = %d, Z_2 = %d\n", H.v, nd->nucdata[rate->input[0]].nz,nd->nucdata[rate->input[1]].nz);
+          PRINT_WARNING("H is %g for Z_1 = %d, Z_2 = %d\n", H.v, nd->nucdata[rate->input[0]].nz,nd->nucdata[rate->input[1]].nz);
       else
-          PRINT_WARNING("warning H is %g for Be-8, He-4\n", H.v);
+          PRINT_WARNING("H is %g for Be-8, He-4\n", H.v);
 #endif /* DEBUG */
       H = zero_var;
     }

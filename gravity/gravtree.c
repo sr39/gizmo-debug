@@ -51,7 +51,7 @@ void sum_top_level_node_costfactors(void);
 void gravity_tree(void)
 {
     /* initialize variables */
-    long long n_exported = 0; int i, j, maxnumnodes, iter; iter = 0;
+    long long n_exported = 0; int i, j, maxnumnodes, iter; j = 0; iter = 0;
     double t0, t1, timeall = 0, timetree1 = 0, timetree2 = 0, timetree, timewait, timecomm;
     double timecommsumm1 = 0, timecommsumm2 = 0, timewait1 = 0, timewait2 = 0, sum_costtotal, ewaldtot;
     double maxt, sumt, maxt1, sumt1, maxt2, sumt2, sumcommall, sumwaitall, plb, plb_max;
@@ -69,6 +69,7 @@ void gravity_tree(void)
         PRINT_STATUS("Tree construction initiated (presently allocated=%g MB)", AllocatedBytes / (1024.0 * 1024.0));
         CPU_Step[CPU_MISC] += measure_time();
         move_particles(All.Ti_Current);
+        rearrange_particle_sequence();
         force_treebuild(NumPart, NULL);
         CPU_Step[CPU_TREEBUILD] += measure_time();
         TreeReconstructFlag = 0;
@@ -265,7 +266,7 @@ void gravity_tree(void)
                     if(flagall) {N_chunks_for_import /= 2;} else {break;}
                 } while(N_chunks_for_import > 0);
                 if(N_chunks_for_import == 0) {printf("Memory is insufficient for even one import-chunk: N_chunks_for_import=%d  ngrp_initial=%d  Nimport=%ld  FreeBytes=%lld , but we need to allocate=%lld \n",N_chunks_for_import, ngrp_initial, Nimport, (long long)FreeBytes,(long long)(Nimport * sizeof(struct gravdata_in) + Nimport * sizeof(struct gravdata_out) + 16384)); endrun(9966);}
-                if(ngrp_initial == 1 && N_chunks_for_import != ((1 << PTask) - ngrp_initial) && ThisTask == 0) PRINT_WARNING("Splitting import operation into sub-chunks as we are hitting memory limits (check this isn't imposing large communication cost)");
+                if(ngrp_initial == 1 && N_chunks_for_import != ((1 << PTask) - ngrp_initial)) PRINT_WARNING("Splitting import operation into sub-chunks as we are hitting memory limits (check this isn't imposing large communication cost)");
 
                 /* now allocated the import and results buffers */
                 GravDataGet = (struct gravdata_in *) mymalloc("GravDataGet", Nimport * sizeof(struct gravdata_in));
@@ -309,8 +310,10 @@ void gravity_tree(void)
                 for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++) {pthread_join(mythreads[j], NULL);}
                 pthread_mutex_destroy(&mutex_partnodedrift); pthread_mutex_destroy(&mutex_nexport); pthread_attr_destroy(&attr);
 #endif
-                tend = my_second(); timetree2 += timediff(tstart, tend);
-            
+                tend = my_second(); timetree2 += timediff(tstart, tend); tstart = my_second();
+                MPI_Barrier(MPI_COMM_WORLD); /* insert MPI Barrier here - will be forced by comms below anyways but this allows for clean timing measurements */
+                tend = my_second(); timewait2 += timediff(tstart, tend);
+
                 tstart = my_second(); Nimport = 0;
                 for(ngrp = ngrp_initial; ngrp < ngrp_initial + N_chunks_for_import; ngrp++) /* send the results for imported elements back to their host tasks */
                 {
@@ -342,7 +345,9 @@ void gravity_tree(void)
 #ifdef EVALPOTENTIAL
                 P[place].Potential += GravDataOut[j].Potential;
 #endif
-               
+#ifdef COUNT_MASS_IN_GRAVTREE
+                P[place].TreeMass += GravDataOut[j].TreeMass;
+#endif                
 #ifdef BH_CALC_DISTANCES /* GravDataOut[j].min_dist_to_bh contains the min dist to particle "P[place]" on another task.  We now check if it is smaller than the current value */
                 if(GravDataOut[j].min_dist_to_bh < P[place].min_dist_to_bh)
                 {
@@ -368,15 +373,17 @@ void gravity_tree(void)
 #endif // BH_CALC_DISTANCES
 
 #ifdef RT_USE_TREECOL_FOR_NH
-                for(int kbin=0; kbin < RT_USE_TREECOL_FOR_NH; kbin++) P[place].ColumnDensityBins[kbin] += GravDataOut[j].ColumnDensityBins[kbin];
+                int kbin=0; for(kbin=0; kbin < RT_USE_TREECOL_FOR_NH; kbin++) {P[place].ColumnDensityBins[kbin] += GravDataOut[j].ColumnDensityBins[kbin];}
 #endif                
-                
+#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+                P[place].MencInRcrit += GravDataOut[j].MencInRcrit;
+#endif
 #ifdef RT_OTVET
                 if(P[place].Type==0) {int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) for(k=0;k<6;k++) SphP[place].ET[k_freq][k] += GravDataOut[j].ET[k_freq][k];}
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
-                if(P[place].Type==0) SphP[place].RadFluxUV += GravDataOut[j].RadFluxUV;
-                if(P[place].Type==0) SphP[place].RadFluxEUV += GravDataOut[j].RadFluxEUV;
+                if(P[place].Type==0) {SphP[place].Rad_Flux_UV += GravDataOut[j].Rad_Flux_UV;}
+                if(P[place].Type==0) {SphP[place].Rad_Flux_EUV += GravDataOut[j].Rad_Flux_EUV;}
 #ifdef CHIMES 			
                 if(P[place].Type == 0)
                 {
@@ -389,9 +396,14 @@ void gravity_tree(void)
 #endif
 #endif
 #ifdef BH_COMPTON_HEATING
-                if(P[place].Type==0) SphP[place].RadFluxAGN += GravDataOut[j].RadFluxAGN;
+                if(P[place].Type==0) SphP[place].Rad_Flux_AGN += GravDataOut[j].Rad_Flux_AGN;
 #endif
-            
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
+                if(P[place].Type==0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[place].Rad_E_gamma[kf] += GravDataOut[j].Rad_E_gamma[kf];}}
+#endif
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
+                if(P[place].Type==0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[place].Rad_Flux[kf][k2] += GravDataOut[j].Rad_Flux[kf][k2];}}}
+#endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 {int i1tt,i2tt; for(i1tt=0;i1tt<3;i1tt++) {for(i2tt=0;i2tt<3;i2tt++) {P[place].tidal_tensorps[i1tt][i2tt] += GravDataOut[j].tidal_tensorps[i1tt][i2tt];}}}
 #ifdef COMPUTE_JERK_IN_GRAVTREE
@@ -451,7 +463,11 @@ void gravity_tree(void)
         P[i].Potential += P[i].PM_Potential; /* add in long-range potential */
 #endif
 #endif
-
+#ifdef COUNT_MASS_IN_GRAVTREE
+        P[i].TreeMass += P[i].Mass;
+        if(P[i].Type == 5) printf("Particle %d sees mass %g in the gravity tree\n", P[i].ID, P[i].TreeMass);
+#endif        
+        
         /* calculate 'old acceleration' for use in the relative tree-opening criterion */
         if(!(header.flag_ic_info == FLAG_SECOND_ORDER_ICS && All.Ti_Current == 0 && RestartFlag == 0)) /* to prevent that we overwrite OldAcc in the first evaluation for 2lpt ICs */
             {
@@ -497,9 +513,16 @@ void gravity_tree(void)
         if(P[i].Type == 0) {
             int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
             {double trace = SphP[i].ET[k_freq][0] + SphP[i].ET[k_freq][1] + SphP[i].ET[k_freq][2];
-                if(!isnan(trace) && (trace>0)) {for(k=0;k<6;k++) {SphP[i].ET[k_freq][k]/=trace;}} else {SphP[i].ET[k_freq][0]=SphP[i].ET[k_freq][1]=SphP[i].ET[k_freq][2]=1./3.; SphP[i].ET[k_freq][4]=SphP[i].ET[k_freq][5]=SphP[i].ET[k_freq][6]=0;}}}
+                if(!isnan(trace) && (trace>0)) {for(k=0;k<6;k++) {SphP[i].ET[k_freq][k]/=trace;}} else {SphP[i].ET[k_freq][0]=SphP[i].ET[k_freq][1]=SphP[i].ET[k_freq][2]=1./3.; SphP[i].ET[k_freq][3]=SphP[i].ET[k_freq][4]=SphP[i].ET[k_freq][5]=0;}}}
+#endif
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) /* normalize to energy density with C, and multiply by volume to use standard 'finite volume-like' quanity as elsewhere in-code */
+        if(P[i].Type==0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[i].Rad_E_gamma[kf] *= P[i].Mass/(SphP[i].Density*All.cf_a3inv * C_LIGHT_CODE);}}
+#endif
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX) /* multiply by volume to use standard 'finite volume-like' quanity as elsewhere in-code */
+        if(P[i].Type==0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[i].Rad_Flux[kf][k2] *= P[i].Mass/(SphP[i].Density*All.cf_a3inv);}}}
 #endif
 
+        
 #ifdef RT_USE_TREECOL_FOR_NH  /* compute the effective column density that gives equivalent attenuation of a uniform background: -log(avg(exp(-sigma))) */
         double sigma_eff=0, sigma_sum=0; int kbin; // first do a sum of the columns and express columns in units of that sum, so that we're plugging O(1) values into exp and avoid overflow when we have unfortunate units. Then we just multiply by the sum at the end.
         for(kbin=0; kbin<RT_USE_TREECOL_FOR_NH; kbin++) {sigma_sum += P[i].ColumnDensityBins[kbin];}
@@ -525,7 +548,7 @@ void gravity_tree(void)
     
 
     /* Now the force computation is finished: gather timing and diagnostic information */
-    t1 = WallclockTime = my_second(); timeall += timediff(t0, t1);
+    t1 = WallclockTime = my_second(); timeall = timediff(t0, t1);
     timetree = timetree1 + timetree2; timewait = timewait1 + timewait2; timecomm = timecommsumm1 + timecommsumm2;
     MPI_Reduce(&timetree, &sumt, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&timetree, &maxt, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -563,7 +586,7 @@ void gravity_tree(void)
     {
         for(i = 0; i < NumPart; i++) {costtotal_new += P[i].GravCost[TakeLevel];}
         MPI_Reduce(&costtotal_new, &sum_costtotal_new, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        PRINT_STATUS(" ..relative error in the total number of tree-gravity interactions = %g", (sum_costtotal - sum_costtotal_new) / sum_costtotal); /* can be non-zero if THREAD_SAFE_COSTS is not used (and due to round-off errors). */
+        if(sum_costtotal>0) {PRINT_STATUS(" ..relative error in the total number of tree-gravity interactions = %g", (sum_costtotal - sum_costtotal_new) / sum_costtotal);} /* can be non-zero if THREAD_SAFE_COSTS is not used (and due to round-off errors). */
     }
 #endif
     CPU_Step[CPU_TREEMISC] += measure_time();
