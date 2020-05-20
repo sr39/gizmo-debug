@@ -16,6 +16,9 @@
 */
 
 
+#ifdef BLACK_HOLES // master flag [needs to be here to prevent compiler breaking when this is not active] //
+
+
 #define MASTER_FUNCTION_NAME blackhole_environment_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define CONDITIONFUNCTION_FOR_EVALUATION if(P[i].Type==5) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
 #include "../../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
@@ -61,7 +64,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 #endif
 #if defined(BH_RETURN_ANGMOM_TO_GAS)
     for(k=0;k<3;k++) {in->BH_Specific_AngMom[k]=P[i].BH_Specific_AngMom[k];}
-#endif
+#endif  
 }
 
 
@@ -82,6 +85,9 @@ MyFloat Jgas_in_Kernel[3], Jstar_in_Kernel[3], Jalt_in_Kernel[3]; // mass/angula
 #if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
     MyFloat BH_SurroundingGasVel[3];
 #endif
+#if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
+    MyFloat BH_SurroundingGasCOM[3];
+#endif    
 #if (BH_GRAVACCRETION == 8)
     MyFloat hubber_mdot_vr_estimator, hubber_mdot_disk_estimator, hubber_mdot_bondi_limiter;
 #endif
@@ -91,6 +97,9 @@ MyFloat Jgas_in_Kernel[3], Jstar_in_Kernel[3], Jalt_in_Kernel[3]; // mass/angula
 #if defined(BH_RETURN_ANGMOM_TO_GAS)
     MyFloat angmom_prepass_sum_for_passback[3];
 #endif
+#if defined(BH_RETURN_BFLUX)
+    MyFloat kernel_norm_topass_in_swallowloop;
+#endif    
 #if defined(BH_ACCRETE_NEARESTFIRST) && defined(BH_GRAVCAPTURE_GAS)
     MyDouble BH_dr_to_NearestGasNeighbor;
 #endif
@@ -123,6 +132,9 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 #if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
     for(k=0;k<3;k++) {ASSIGN_ADD(BlackholeTempInfo[target].BH_SurroundingGasVel[k],out->BH_SurroundingGasVel[k],mode);}
 #endif
+#if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
+    for(k=0;k<3;k++) {ASSIGN_ADD(BlackholeTempInfo[target].BH_SurroundingGasCOM[k],out->BH_SurroundingGasCOM[k],mode);}
+#endif    
 #if (BH_GRAVACCRETION == 8)
     ASSIGN_ADD(BlackholeTempInfo[target].hubber_mdot_bondi_limiter,out->hubber_mdot_bondi_limiter,mode);
     ASSIGN_ADD(BlackholeTempInfo[target].hubber_mdot_vr_estimator,out->hubber_mdot_vr_estimator,mode);
@@ -134,6 +146,9 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 #if defined(BH_RETURN_ANGMOM_TO_GAS)
     for(k=0;k<3;k++) {ASSIGN_ADD(BlackholeTempInfo[target].angmom_prepass_sum_for_passback[k],out->angmom_prepass_sum_for_passback[k],mode);}
 #endif
+#if defined(BH_RETURN_BFLUX)
+    ASSIGN_ADD(BlackholeTempInfo[target].kernel_norm_topass_in_swallowloop,out->kernel_norm_topass_in_swallowloop,mode);
+#endif    
 #if defined(BH_ACCRETE_NEARESTFIRST) && defined(BH_GRAVCAPTURE_GAS)
     if(mode==0) {P[i].BH_dr_to_NearestGasNeighbor=out->BH_dr_to_NearestGasNeighbor;} else {if(P[i].BH_dr_to_NearestGasNeighbor > out->BH_dr_to_NearestGasNeighbor) {P[i].BH_dr_to_NearestGasNeighbor=out->BH_dr_to_NearestGasNeighbor;}}
 #endif
@@ -192,7 +207,7 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
 #ifdef BH_ACCRETE_NEARESTFIRST
     out.BH_dr_to_NearestGasNeighbor = MAX_REAL_NUMBER; // initialize large value
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (BH_GRAVACCRETION == 8)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (BH_GRAVACCRETION == 8) || defined(BH_RETURN_BFLUX) || defined(BH_RETURN_ANGMOM_TO_GAS)
     MyFloat wk, dwk, u; // initialized here to prevent some annoying compiler warnings
 #endif
     /* Now start the actual neighbor computation for this particle */
@@ -205,17 +220,14 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
             {
                 j = ngblist[n];
 #ifdef BH_WAKEUP_GAS
-                if (local.Timebin < P[j].LowestBHTimeBin) {P[j].LowestBHTimeBin = local.Timebin;}
+                if (local.TimeBin < P[j].LowestBHTimeBin) {P[j].LowestBHTimeBin = local.TimeBin;}
 #endif
                 if( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != local.ID) )
                 {
                     double wt = P[j].Mass;
                     double dP[3], dv[3]; for(k=0;k<3;k++) {dP[k]=P[j].Pos[k]-local.Pos[k]; dv[k]=P[j].Vel[k]-local.Vel[k];}
                     NEAREST_XYZ(dP[0],dP[1],dP[2],-1); /*  find the closest image in the given box size  */
-#ifdef BOX_SHEARING
-                    if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                    if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-#endif
+                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dv,-1); /* wrap velocities for shearing boxes if needed */
 
 #ifdef BH_DYNFRICTION
 #if (BH_DYNFRICTION == 1)    // DAA: dark matter + stars
@@ -264,10 +276,20 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
 #if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
                         for(k=0;k<3;k++) {out.BH_SurroundingGasVel[k] += wt*dv[k];}
 #endif
+#ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK
+                        for(k=0;k<3;k++) {out.BH_SurroundingGasCOM[k] += wt*dP[k];}
+#endif                        
+#if defined(BH_RETURN_ANGMOM_TO_GAS) || defined(BH_RETURN_BFLUX)
+                        u=0; for(k=0;k<3;k++) {u+=dP[k]*dP[k];}
+                        u=sqrt(u)/DMAX(h_i, P[j].Hsml); if(u<1) {kernel_main(u,1., 1.,&wk,&dwk,-1);} else {wk=dwk=0;} // spline weighting function for conserved quantity return
+#endif                        
 #if defined(BH_RETURN_ANGMOM_TO_GAS) /* We need a normalization factor for angular momentum feedback so we will go over all the neighbours */
                         double r2j=dP[0]*dP[0]+dP[1]*dP[1]+dP[2]*dP[2], Lrj=local.BH_Specific_AngMom[0]*dP[0]+local.BH_Specific_AngMom[1]*dP[1]+local.BH_Specific_AngMom[2]*dP[2];
-                        for(k=0;k<3;k++) {out.angmom_prepass_sum_for_passback[k] += wt*(local.BH_Specific_AngMom[k]*r2j - dP[k]*Lrj);}
+                        for(k=0;k<3;k++) {out.angmom_prepass_sum_for_passback[k] += wk * wt*(local.BH_Specific_AngMom[k]*r2j - dP[k]*Lrj);} // this is now kernel-weighted so that the kicks fall off smoothly as r approaches H
 #endif
+#if defined(BH_RETURN_BFLUX)                        
+                        out.kernel_norm_topass_in_swallowloop += wk;
+#endif                  
 #if (BH_GRAVACCRETION == 8)
                         u=0; for(k=0;k<3;k++) {u+=dP[k]*dP[k];}
                         u=sqrt(u)/h_i; if(u<1) {kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,-1);} else {wk=dwk=0;}
@@ -317,9 +339,7 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
                             if( bh_check_boundedness(j,vrel,vbound,dr_code,local_sink_radius)==1 )
                             { /* apocenter within 2.8*epsilon (softening length) */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                                double eps = DMAX(P[j].Hsml/2.8, DMAX(dr_code, ags_h_i/2.8));
-                                double tff = eps*eps*eps / (local.Mass + P[j].Mass);
-                                if(tff < P[j].SwallowTime) {P[j].SwallowTime = tff;}
+                                double eps = DMAX(P[j].Hsml/2.8, DMAX(dr_code, ags_h_i/2.8)), tff = eps*eps*eps / (local.Mass + P[j].Mass); if(tff < P[j].SwallowTime) {P[j].SwallowTime = tff;}
 #endif
 #if defined(BH_ACCRETE_NEARESTFIRST)
                                 if((out.BH_dr_to_NearestGasNeighbor > dr_code) && (P[j].SwallowID < local.ID)) {out.BH_dr_to_NearestGasNeighbor = dr_code; out.mass_to_swallow_edd = P[j].Mass;}
@@ -413,10 +433,7 @@ int blackhole_environment_second_evaluate(int target, int mode, int *exportflag,
                 j = ngblist[n]; if((P[j].Mass <= 0)||(P[j].Hsml <= 0)||(P[j].Type==5)) {continue;} /* make sure neighbor is valid */
                 int k; double dP[3], dv[3]; for(k=0;k<3;k++) {dP[k]=P[j].Pos[k]-local.Pos[k]; dv[k]=P[j].Vel[k]-local.Vel[k];} /* position offset */
                 NEAREST_XYZ(dP[0],dP[1],dP[2],-1);
-#ifdef BOX_SHEARING
-                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-#endif
+                NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dv,-1); /* wrap velocities for shearing boxes if needed */
                 double J_tmp[3]; J_tmp[0]=dP[1]*dv[2]-dP[2]*dv[1]; J_tmp[1]=dP[2]*dv[0]-dP[0]*dv[2]; J_tmp[2]=dP[0]*dv[1]-dP[1]*dv[0]; /* just need direction not magnitude */
                 if(P[j].Type==0) {if(J_tmp[0]*local.Jgas_in_Kernel[0] + J_tmp[1]*local.Jgas_in_Kernel[1] + J_tmp[2]*local.Jgas_in_Kernel[2] < 0) {out.MgasBulge_in_Kernel += 2*P[j].Mass;}} /* DAA: assume the bulge component contains as many particles with positive azimuthal velocities as with negative azimuthal velocities relative to the angular momentum vector */
                 if(P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn))) {if(J_tmp[0]*local.Jstar_in_Kernel[0] + J_tmp[1]*local.Jstar_in_Kernel[1] + J_tmp[2]*local.Jstar_in_Kernel[2] < 0) {out.MstarBulge_in_Kernel += 2*P[j].Mass;}}
@@ -438,3 +455,8 @@ CPU_Step[CPU_BLACKHOLES] += measure_time(); /* collect timings and reset clock f
 #include "../../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 
 #endif   //BH_GRAVACCRETION == 0
+
+
+
+
+#endif // master flag

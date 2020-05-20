@@ -77,6 +77,9 @@ void compute_hydro_densities_and_forces(void)
 #ifdef TURB_DIFF_DYNAMIC
         dynamic_diff_vel_calc(); /* This must be called between density and gradient calculations */
 #endif
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
+        interpolate_fluxes_opacities_gasgrains();
+#endif
 
         hydro_gradient_calc(); /* calculates the gradients of hydrodynamical quantities  */
 #if defined(COOLING) && defined(GALSF_FB_FIRE_RT_UVHEATING)

@@ -883,25 +883,11 @@ int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodec
 
                 if (dynamic_iteration == 0) {
                     /* Need to calculate the filtered velocity gradient for the filtered shear */
-                    double dv_hat[3];
-                    
-                    for (k = 0; k < 3; k++) {
-                        dv_hat[k] = SphP[j].Velocity_hat[k] - local.Velocity_hat[k];
-#ifdef SHEARING_BOX
-                        if (k == SHEARING_BOX_PHI_COORDINATE) {
-                            if (local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {
-                                dv_hat[k] -= Shearing_Box_Vel_Offset;
-                            }
-
-                            if (local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {
-                                dv_hat[k] += Shearing_Box_Vel_Offset;
-                            }
-                        }
-#endif
+                    double dv_hat[3]; for (k=0;k<3;k++) {dv_hat[k] = SphP[j].Velocity_hat[k] - local.Velocity_hat[k];}
+                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dv_hat,-1); /* wrap velocities for shearing boxes if needed */
+                    for (k=0;k<3;k++) {
                         MINMAX_CHECK(dv_hat[k], out.Minima.Velocity_hat[k], out.Maxima.Velocity_hat[k]);
-                        if (swap_to_j) {
-                            MINMAX_CHECK(-dv_hat[k], DynamicDiffDataPasser[j].Minima.Velocity_hat[k], DynamicDiffDataPasser[j].Maxima.Velocity_hat[k]);
-                        }
+                        if (swap_to_j) {MINMAX_CHECK(-dv_hat[k], DynamicDiffDataPasser[j].Minima.Velocity_hat[k], DynamicDiffDataPasser[j].Maxima.Velocity_hat[k]);}
                     }
 
                     double hinv_forgrad, hinv3_forgrad, hinv4_forgrad, u_forgrad, wk_i_forgrad, dwk_i_forgrad;

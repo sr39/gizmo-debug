@@ -14,10 +14,13 @@
     if(All.ComovingIntegrationOn) vdotr2_phys -= All.cf_hubble_a2 * r2;
     V_j = P[j].Mass / SphP[j].Density;
 #ifdef COSMIC_RAYS
-    Fluxes.CosmicRayPressure = 0;
+    for(k=0;k<N_CR_PARTICLE_BINS;k++)
+    {
+        Fluxes.CosmicRayPressure[k] = 0;
 #ifdef COSMIC_RAYS_ALFVEN
-    Fluxes.CosmicRayAlfvenEnergy[0] = Fluxes.CosmicRayAlfvenEnergy[1] = 0;
+        Fluxes.CosmicRayAlfvenEnergy[k][0] = Fluxes.CosmicRayAlfvenEnergy[k][1] = 0;
 #endif
+    }
 #endif
     
     /* --------------------------------------------------------------------------------- */
@@ -33,7 +36,7 @@
     /* need to include an effective stress for large negative pressures when elements are too close, to prevent tensile instability */
     if((local.Pressure<0)||(SphP[j].Pressure<0))
     {
-        double h_eff = 0.5*(Particle_Size_i + Get_Particle_Size(j)*All.cf_atime); // effective inter-particle spacing around these elements
+        double h_eff = 0.5*(Particle_Size_i + Particle_Size_j); // effective inter-particle spacing around these elements
         if(kernel.r < 2.*h_eff) // check if close
         {
             double r_over_h_eff = kernel.r / h_eff, wk_0, wk_r, dwk_tmp; // define separation relative to mean

@@ -18,11 +18,13 @@
 * see notes in blackhole.c for details on code history.
 */
 
+#ifdef BLACK_HOLES // master flag [needs to be here to prevent compiler breaking when this is not active] //
+
 /* function for allocating temp BH data struc needed for feedback routines*/
 void blackhole_start(void)
 {
     int i, Nbh;
-    
+
     /* count the num BHs on this task */
     N_active_loc_BHs=0;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
@@ -33,7 +35,7 @@ void blackhole_start(void)
             N_active_loc_BHs++;                     /* N_active_loc_BHs now set for BH routines */
         }
     }
-    
+
     /* allocate the blackhole temp struct */
     if(N_active_loc_BHs>0)
     {
@@ -41,9 +43,9 @@ void blackhole_start(void)
     } else {
         BlackholeTempInfo = (struct blackhole_temp_particle_data *) mymalloc("BlackholeTempInfo", 1 * sizeof(struct blackhole_temp_particle_data));
     }
-    
+
     memset( &BlackholeTempInfo[0], 0, N_active_loc_BHs * sizeof(struct blackhole_temp_particle_data) );
-    
+
     Nbh=0;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
@@ -53,7 +55,7 @@ void blackhole_start(void)
             Nbh++;
         }
     }
-    
+
     /* all future loops can now take the following form:
      for(i=0; i<N_active_loc_BHs; i++)
      {
@@ -61,7 +63,7 @@ void blackhole_start(void)
      ...
      }
      */
-    
+
 }
 
 
@@ -76,7 +78,7 @@ void blackhole_end(void)
         double mdot, mdot_in_msun_per_year;
         double mass_real, total_mass_real, medd, total_mdoteddington;
         double mass_holes, total_mass_holes, total_mdot;
-        
+
         /* sum up numbers to print for summary of the BH step (blackholes.txt) */
         mdot = mass_holes = mass_real = medd = 0;
         for(bin = 0; bin < TIMEBINS; bin++)
@@ -133,7 +135,7 @@ double bh_eddington_mdot(double bh_mass)
 /* return the bh luminosity given some accretion rate and mass (allows for non-standard models: radiatively inefficient flows, stellar sinks, etc) */
 double bh_lum_bol(double mdot, double mass, long id)
 {
-    double lum = All.BlackHoleRadiativeEfficiency * mdot * C_LIGHT_CODE*C_LIGHT_CODE;
+    double lum = All.BlackHoleRadiativeEfficiency * mdot * C_LIGHT_CODE*C_LIGHT_CODE; // this is automatically in -physical code units-
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     lum = calculate_individual_stellar_luminosity(mdot,mass,id);
 #endif
@@ -166,3 +168,6 @@ void blackhole_properties_loop(void) /* Note, normalize_temp_info_struct is now 
     }// for(i=0; i<N_active_loc_BHs; i++)
 }
 
+
+
+#endif // master flag

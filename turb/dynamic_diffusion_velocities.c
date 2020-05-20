@@ -15,7 +15,7 @@
  */
 /*
  * This file was rewritten by Doug Rennehan (douglas.rennehan@gmail.com) for GIZMO, and was
- * copied with modifications from gradients.c, which was written by Phil Hopkins 
+ * copied with modifications from gradients.c, which was written by Phil Hopkins
  * (phopkins@caltech.edu) for GIZMO.
  */
 
@@ -47,7 +47,7 @@ struct INPUT_STRUCT_NAME {
     int NodeList[NODELISTLENGTH];
 #endif
 #ifdef GALSF_SUBGRID_WINDS
-    MyFloat DelayTime; 
+    MyFloat DelayTime;
 #endif
     MyDouble VelPred[3];
 }
@@ -102,8 +102,8 @@ void dynamic_diff_vel_calc_initial_operations_preloop(void)
 
 /**
  *
- *  Computes the smoothed velocity field Velocity_bar according to eq. 2.17 in 
- *  Monaghan 2011 (turbulence for SPH). 
+ *  Computes the smoothed velocity field Velocity_bar according to eq. 2.17 in
+ *  Monaghan 2011 (turbulence for SPH).
  *  - D. Rennehan
  *
  */
@@ -118,19 +118,19 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
     memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME));
 
     memset(&kernel, 0, sizeof(struct kernel_DiffFilter));
-    
+
     if (mode == 0) {
         particle2in_DiffFilter(&local, target, loop_iteration);
     }
     else {
         local = DATAGET_NAME[target];
     }
-  
+
     /* check if we should bother doing a neighbor loop */
     if (local.Hsml <= 0) return 0;
     if (local.Mass == 0) return 0;
     if (local.Density <= 0) return 0;
-    
+
     /* now set particle-i centric quantities so we don't do it inside the loop */
     kernel.h_i = local.Hsml;
     double h2_i = kernel.h_i * kernel.h_i;
@@ -138,8 +138,8 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
     int kernel_mode_j = 0;
 
     kernel_hinv(kernel.h_i, &hinv, &hinv3, &hinv4);
-    
-    /* Now start the actual neighbor computation for this particle */ 
+
+    /* Now start the actual neighbor computation for this particle */
     if (mode == 0) {
         startnode = All.MaxPart;	/* root node */
     }
@@ -147,14 +147,14 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
         startnode = DATAGET_NAME[target].NodeList[0];
         startnode = Nodes[startnode].u.d.nextnode;	/* open it */
     }
-   
+
     while (startnode >= 0) {
         while (startnode >= 0) {
-          
+
             numngb = ngb_treefind_pairs_threads(local.Pos, All.TurbDynamicDiffFac * kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 
             if (numngb < 0) return -1;
-            
+
             for (n = 0; n < numngb; n++) {
                 j = ngblist[n];
                 integertime TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
@@ -162,7 +162,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
                 if (local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
                 /* use relative positions to break degeneracy */
                 if (local.Timestep == TimeStep_J) {
-                    int n0 = 0; 
+                    int n0 = 0;
                     if(local.Pos[n0] == P[j].Pos[n0]) {n0++; if(local.Pos[n0] == P[j].Pos[n0]) n0++;}
                     if(local.Pos[n0] < P[j].Pos[n0]) continue;
                 }
@@ -177,7 +177,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
 #endif
                 if (P[j].Mass <= 0) continue;
                 if (SphP[j].Density <= 0) continue;
-                
+
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
@@ -240,7 +240,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
                 // This is very, very important for supersonic flows,
                 // or any flow with highly varying smoothing lengths.
                 // The FilterWidth_bar (h_bar) *must* extend out to the
-                // maximum interaction distance. 
+                // maximum interaction distance.
                 if (kernel.r > SphP[j].FilterWidth_bar && (swap_to_j)) {
                     SphP[j].FilterWidth_bar = kernel.r;
                 }
@@ -276,7 +276,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
                 }
             } // numngb loop
         } // while(startnode)
-        
+
 #ifndef DONOTUSENODELIST
         if (mode == 1) {
             listindex++;
@@ -287,7 +287,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
         }
 #endif
     }
-    
+
     /* ------------------------------------------------------------------------------------------------ */
     /* Now collect the result at the right place */
     if (mode == 0) {
@@ -297,7 +297,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
         DATARESULT_NAME[target] = out;
     }
     /* ------------------------------------------------------------------------------------------------ */
-    
+
     return 0;
 }
 
@@ -307,12 +307,12 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
  */
 void dynamic_diff_vel_calc(void) {
     CPU_Step[CPU_MISC] += measure_time(); double t00_truestart = my_second();
-    PRINT_STATUS("Start velocity smoothing computation...\n");
+    PRINT_STATUS("Start velocity smoothing computation...");
     dynamic_diff_vel_calc_initial_operations_preloop(); /* any initial operations */
     #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */
-    PRINT_STATUS(" ..velocity smoothing done.\n");
+    PRINT_STATUS(" ..velocity smoothing done.");
     double t1; t1 = WallclockTime = my_second(); timeall = timediff(t00_truestart, t1);
     CPU_Step[CPU_IMPROVDIFFCOMPUTE] += timecomp; CPU_Step[CPU_IMPROVDIFFWAIT] += timewait; CPU_Step[CPU_IMPROVDIFFCOMM] += timecomm;
     CPU_Step[CPU_IMPROVDIFFMISC] += timeall - (timecomp + timewait + timecomm);
@@ -321,4 +321,3 @@ void dynamic_diff_vel_calc(void) {
 
 
 #endif /* End TURB_DIFF_DYNAMIC */
-

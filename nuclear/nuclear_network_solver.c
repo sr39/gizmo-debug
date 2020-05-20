@@ -5,13 +5,13 @@
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_vector.h>
-#include "./nuclear_network.h"
 
 /*
  *  This code is place-holder, inherited from GADGET3
  */
 
 #ifdef NUCLEAR_NETWORK
+#include "./nuclear_network.h"
 
 #ifdef NETWORK_SUPERLU
 #include "slu_ddefs.h"

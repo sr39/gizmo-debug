@@ -31,7 +31,7 @@
 /*
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
- * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO. The modifications 
+ * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO. The modifications
  * mostly center on added functionality for new modules, elimination of unnecessary
  * variables, implementing the DEVELOPER_MODE options, and re-organizing the read order
  * to allow easier manipulation on restarts.
@@ -47,17 +47,13 @@ void begrun(void)
 #endif
   if(ThisTask == 0)
     {
-     printf("\nRunning on %d MPI tasks.\n", NTask);
+     printf("Running on %d MPI tasks.\n", NTask);
 #ifdef _OPENMP
 #pragma omp parallel private(tid)
       {
 #pragma omp master
-	printf("\nUsing %d OpenMP threads\n", omp_get_num_threads());
-
+	printf("Using %d OpenMP threads\n", omp_get_num_threads());
 	tid = omp_get_thread_num();
-	/*
-	   printf("Hello from thread = %d\n", tid);
-	 */
       }
 #endif
 
@@ -113,39 +109,88 @@ void begrun(void)
 #endif
 
 #ifdef BOX_PERIODIC
-  boxSize = All.BoxSize;
-  boxHalf = 0.5 * All.BoxSize;
-  inverse_boxSize = 1. / boxSize;
+    boxSize = All.BoxSize;
+    boxHalf = 0.5 * All.BoxSize;
+#endif
 #ifdef BOX_LONG_X
-  boxHalf_X = boxHalf * BOX_LONG_X;
-  boxSize_X = boxSize * BOX_LONG_X;
-  inverse_boxSize_X = 1. / boxSize_X;
+    boxSize_X = All.BoxSize * BOX_LONG_X;
+    boxHalf_X = 0.5 * boxSize_X;
 #endif
 #ifdef BOX_LONG_Y
-  boxHalf_Y = boxHalf * BOX_LONG_Y;
-  boxSize_Y = boxSize * BOX_LONG_Y;
-  inverse_boxSize_Y = 1. / boxSize_Y;
+    boxSize_Y = All.BoxSize * BOX_LONG_Y;
+    boxHalf_Y = 0.5 * boxSize_Y;
 #endif
 #ifdef BOX_LONG_Z
-  boxHalf_Z = boxHalf * BOX_LONG_Z;
-  boxSize_Z = boxSize * BOX_LONG_Z;
-  inverse_boxSize_Z = 1. / boxSize_Z;
-#endif
+    boxSize_Z = All.BoxSize * BOX_LONG_Z;
+    boxHalf_Z = 0.5 * boxSize_Z;
 #endif
 
 #ifdef BOX_SHEARING
 #ifdef BOX_LONG_X
-    Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * boxSize * BOX_LONG_X;
+    Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * All.BoxSize * BOX_LONG_X;
 #else
-    Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * boxSize;
+    Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * All.BoxSize;
 #endif
     calc_shearing_box_pos_offset();
 #endif
 
+    /* begin pre-definitions for special boundaries */
+#if defined(BOX_REFLECT_X) || defined(BOX_REFLECT_Y) || defined(BOX_REFLECT_Z) || defined(BOX_OUTFLOW_X) || defined(BOX_OUTFLOW_Y) || defined(BOX_OUTFLOW_Z)
+    special_boundary_condition_xyz_def_reflect[0]=special_boundary_condition_xyz_def_reflect[1]=special_boundary_condition_xyz_def_reflect[2]=BOX_VALUE_FOR_NOTHING_SPECIAL_BOUNDARY_; /* sets arbitrary value code for 'nothing special' */
+    special_boundary_condition_xyz_def_outflow[0]=special_boundary_condition_xyz_def_outflow[1]=special_boundary_condition_xyz_def_outflow[2]=BOX_VALUE_FOR_NOTHING_SPECIAL_BOUNDARY_; /* sets arbitrary value code for 'nothing special' */
+
+#if defined(BOX_REFLECT_X)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_REFLECT_X)
+    special_boundary_condition_xyz_def_reflect[0] = BOX_REFLECT_X; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_reflect[0] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+#if defined(BOX_REFLECT_Y)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_REFLECT_Y)
+    special_boundary_condition_xyz_def_reflect[1] = BOX_REFLECT_Y; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_reflect[1] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+#if defined(BOX_REFLECT_Z)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_REFLECT_Z)
+    special_boundary_condition_xyz_def_reflect[2] = BOX_REFLECT_Z; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_reflect[2] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+
+#if defined(BOX_OUTFLOW_X)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_OUTFLOW_X)
+    special_boundary_condition_xyz_def_outflow[0] = BOX_OUTFLOW_X; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_outflow[0] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+#if defined(BOX_OUTFLOW_Y)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_OUTFLOW_Y)
+    special_boundary_condition_xyz_def_outflow[1] = BOX_OUTFLOW_Y; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_outflow[1] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+#if defined(BOX_OUTFLOW_Z)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(BOX_OUTFLOW_Z)
+    special_boundary_condition_xyz_def_outflow[2] = BOX_OUTFLOW_Z; /* set to user definition */
+#else
+    special_boundary_condition_xyz_def_outflow[2] = 0; /* assume special boundary applies to both 'ends' of box, if not specified by user */
+#endif
+#endif
+
+#endif /* end set of clauses to deal with causal flags for special boundary conditions */
+
+
+
 
   random_generator = gsl_rng_alloc(gsl_rng_ranlxd1);
 
-  gsl_rng_set(random_generator, 42);	/* start-up seed */
+  gsl_rng_set(random_generator, 42 + ThisTask);	/* start-up seed */
 
   set_random_numbers();
 
@@ -285,7 +330,7 @@ void begrun(void)
       All.BlackHoleMaxAccretionRadius = all.BlackHoleMaxAccretionRadius;
 #endif
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
-        All.WindMomentumLoading = all.WindMomentumLoading;
+        All.RP_Local_Momentum_Renormalization = all.RP_Local_Momentum_Renormalization;
 #endif
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
         All.HIIRegion_fLum_Coupled = all.HIIRegion_fLum_Coupled;
@@ -298,9 +343,9 @@ void begrun(void)
         All.PhotonMomentum_fOPT = all.PhotonMomentum_fOPT;
 #endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-        All.SNeIIEnergyFrac = all.SNeIIEnergyFrac;
-        All.GasReturnFraction = all.GasReturnFraction;
-        All.AGBGasEnergy = all.AGBGasEnergy;
+        All.SNe_Energy_Renormalization = all.SNe_Energy_Renormalization;
+        All.StellarMassLoss_Rate_Renormalization = all.StellarMassLoss_Rate_Renormalization;
+        All.StellarMassLoss_Energy_Renormalization = all.StellarMassLoss_Energy_Renormalization;
 #ifdef COSMIC_RAYS
         All.CosmicRay_SNeFraction = all.CosmicRay_SNeFraction;
 #endif
@@ -403,7 +448,9 @@ void begrun(void)
 #endif
 #endif
 
-
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+    single_star_SN_init_directions();
+#endif
 #ifdef RADTRANSFER
 #if defined(RT_EVOLVE_INTENSITIES)
     rt_init_intensity_directions();
@@ -480,7 +527,7 @@ void set_units(void)
 
       printf("\n");
     }
-    
+
 #ifdef COOL_LOW_TEMPERATURES
     meanweight = 1. / ( HYDROGEN_MASSFRAC*0.5 + (1-HYDROGEN_MASSFRAC)/4. + 1./(16.+12.)); /* assumes fully-molecular if low-temp cooling enabled */
 #else
@@ -579,7 +626,7 @@ void open_outputfiles(void)
     }
 #endif // output-gas-swallow if
 #ifdef BH_OUTPUT_FORMATION_PROPERTIES
-  sprintf(buf, "%sblackhole_details/bhformation_%d.txt", All.OutputDir, ThisTask); 
+  sprintf(buf, "%sblackhole_details/bhformation_%d.txt", All.OutputDir, ThisTask);
   if(!(FdBhFormationDetails = fopen(buf, mode)))
     {
       printf("error in opening file '%s'\n", buf);
@@ -742,6 +789,15 @@ void open_outputfiles(void)
     }
 #endif
 
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+  sprintf(buf, "%s%s", All.OutputDir, "SN_details.txt");
+  if(!(FdBhSNDetails = fopen(buf, mode)))
+    {
+      printf("error in opening file '%s'\n", buf);
+      endrun(1);
+    }
+#endif
+
 #ifdef BLACK_HOLES
   sprintf(buf, "%s%s", All.OutputDir, "blackholes.txt");
   if(!(FdBlackHoles = fopen(buf, mode)))
@@ -880,7 +936,7 @@ void read_parameter_file(char *fname)
       addr[nt] = All.ResubmitCommand;
       id[nt++] = STRING;
 #endif
-        
+
       strcpy(tag[nt], "OutputListFilename");
       strcpy(alternate_tag[nt], "Snapshot_Times_Table_Filename");
       addr[nt] = All.OutputListFilename;
@@ -936,7 +992,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.TimeBetStatistics;
       id[nt++] = REAL;
 #endif
-        
+
       strcpy(tag[nt], "TimeBegin");
       strcpy(alternate_tag[nt], "Time_at_ICs_Begin");
       addr[nt] = &All.TimeBegin;
@@ -1100,17 +1156,17 @@ void read_parameter_file(char *fname)
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
         strcpy(tag[nt], "SNeIIEnergyFrac");
         strcpy(alternate_tag[nt], "SNe_Energy_Renormalization");
-        addr[nt] = &All.SNeIIEnergyFrac;
+        addr[nt] = &All.SNe_Energy_Renormalization;
         id[nt++] = REAL;
 
         strcpy(tag[nt],"GasReturnFraction");
         strcpy(alternate_tag[nt], "StellarMassLoss_Rate_Renormalization");
-        addr[nt] = &All.GasReturnFraction;
+        addr[nt] = &All.StellarMassLoss_Rate_Renormalization;
         id[nt++] = REAL;
 
         strcpy(tag[nt],"GasReturnEnergy");
         strcpy(alternate_tag[nt], "StellarMassLoss_Energy_Renormalization");
-        addr[nt] = &All.AGBGasEnergy;
+        addr[nt] = &All.StellarMassLoss_Energy_Renormalization;
         id[nt++] = REAL;
 
 #ifdef COSMIC_RAYS
@@ -1121,6 +1177,12 @@ void read_parameter_file(char *fname)
 #endif
 #endif
 
+#ifdef GALSF_FB_FIRE_RT_LOCALRP
+        strcpy(tag[nt], "WindMomentumLoading");
+        strcpy(alternate_tag[nt], "RP_Local_Momentum_Renormalization");
+        addr[nt] = &All.RP_Local_Momentum_Renormalization;
+        id[nt++] = REAL;
+#endif
 
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
         strcpy(tag[nt], "HIIRegion_fLum_Coupled");
@@ -1173,15 +1235,15 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "Grain_InteractionRenormalization");
         addr[nt] = &All.DM_InteractionCrossSection;
         id[nt++] = REAL;
-        
+
         strcpy(tag[nt], "Grain_DissipationFactor");
         addr[nt] = &All.DM_DissipationFactor;
         id[nt++] = REAL;
-        
+
         strcpy(tag[nt], "Grain_KickPerCollision");
         addr[nt] = &All.DM_KickPerCollision;
         id[nt++] = REAL;
-        
+
         strcpy(tag[nt], "Grain_InteractionVelocityScale");
         addr[nt] = &All.DM_InteractionVelocityScale;
         id[nt++] = REAL;
@@ -1203,7 +1265,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 #endif
-        
+
 
         strcpy(tag[nt], "MinGasHsmlFractional");
         strcpy(alternate_tag[nt], "Minimum_Gas_KernelSize_RelativetoSoftening");
@@ -1401,7 +1463,7 @@ void read_parameter_file(char *fname)
 #endif
 
 
-#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
+#if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
       strcpy(tag[nt], "TimeBetOnTheFlyFoF");
       addr[nt] = &All.TimeBetOnTheFlyFoF;
       id[nt++] = REAL;
@@ -1493,7 +1555,8 @@ void read_parameter_file(char *fname)
 
 #ifdef BH_PHOTONMOMENTUM
         strcpy(tag[nt],"BH_FluxMomentumFactor");
-        addr[nt] = &All.BH_FluxMomentumFactor;
+        strcpy(alternate_tag[nt], "BH_Rad_MomentumFactor");
+        addr[nt] = &All.BH_Rad_MomentumFactor;
         id[nt++] = REAL;
 #endif
 
@@ -1537,11 +1600,6 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-#ifdef GALSF_FB_FIRE_RT_LOCALRP
-        strcpy(tag[nt], "WindMomentumLoading");
-        addr[nt] = &All.WindMomentumLoading;
-        id[nt++] = REAL;
-#endif
 
 #ifdef GALSF_SUBGRID_WINDS
       strcpy(tag[nt], "WindEfficiency");
@@ -2053,7 +2111,6 @@ void read_parameter_file(char *fname)
                 printf("\n");
 
                 i = strlen(All.OutputDir);
-
                 if(i > 0) {if(All.OutputDir[i - 1] != '/') {strcat(All.OutputDir, "/");}}
 
                 sprintf(buf1, "%s%s", fname, "-usedvalues");
@@ -2113,6 +2170,65 @@ void read_parameter_file(char *fname)
                 if(strcmp("UnitVelocity_in_cm_per_s",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitVelocity_in_cm_per_s); continue;}
 #ifdef MAGNETIC
                 if(strcmp("UnitMagneticField_in_gauss",tag[i])==0) {*((double *)addr[i])=3.5449077018110318; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitMagneticField_in_gauss); continue;}
+#endif
+#endif
+#ifdef CONDUCTION_SPITZER
+                if(strcmp("ConductionCoeff",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with Spitzer-Braginski conductivity, so will default to calculating the physical coefficient without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.ConductionCoeff); continue;}
+#endif
+#ifdef VISCOSITY_BRAGINSKII
+                if(strcmp("ShearViscosityCoeff",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with Spitzer-Braginski viscosity, so will default to calculating the physical coefficient without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.ShearViscosityCoeff); continue;}
+                if(strcmp("BulkViscosityCoeff",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: code was compiled with Spitzer-Braginski viscosity, so will default to 0 bulk viscosity as defined by those physics (=%g) \n",tag[i],alternate_tag[i],All.BulkViscosityCoeff); continue;}
+#endif
+#ifdef TURB_DIFFUSION
+                if(strcmp("TurbDiffusionCoefficient",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with turbulent diffusion, so will default to calculating the coefficients without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.TurbDiffusion_Coefficient); continue;}
+#endif
+#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
+                if(strcmp("InitMetallicity",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to zero (Z=%g) \n",tag[i],alternate_tag[i],All.InitMetallicityinSolar); continue;}
+                if(strcmp("InitStellarAge",tag[i])==0) {*((double *)addr[i])=10.; printf("Tag %s (%s) not set in parameter file: defaulting to very old pre-existing stars [if any exist, otherwise this is irrelevant] (=%g Gyr) \n",tag[i],alternate_tag[i],All.InitStellarAgeinGyr); continue;}
+#endif
+#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
+                if(strcmp("SNeIIEnergyFrac",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.SNe_Energy_Renormalization); continue;}
+                if(strcmp("GasReturnFraction",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.StellarMassLoss_Rate_Renormalization); continue;}
+                if(strcmp("GasReturnEnergy",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.StellarMassLoss_Energy_Renormalization); continue;}
+#endif
+#ifdef GALSF_FB_FIRE_RT_LOCALRP
+                if(strcmp("WindMomentumLoading",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.RP_Local_Momentum_Renormalization); continue;}
+#endif
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
+                if(strcmp("HIIRegion_fLum_Coupled",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.HIIRegion_fLum_Coupled); continue;}
+#endif
+#ifdef RT_LEBRON
+                if(strcmp("PhotonMomentum_Coupled_Fraction",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_Coupled_Fraction); continue;}
+#endif
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
+                if(strcmp("PhotonMomentum_fUV",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_fUV); continue;}
+                if(strcmp("PhotonMomentum_fOPT",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_fOPT); continue;}
+#endif
+#if defined(FIRE_CRS) // ??
+#if (COSMIC_RAYS_DIFFUSION_MODEL == 0)
+                if(strcmp("CosmicRayDiffusionCoeff",tag[i])==0) {*((double *)addr[i])=690.; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored diffusivity ~3e29, assuming units kpc/h and km/s (=%g) \n",tag[i],alternate_tag[i],All.CosmicRayDiffusionCoeff); continue;}
+#endif
+                if(strcmp("CosmicRay_SNeFraction",tag[i])==0) {*((double *)addr[i])=0.1; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored ~10 percent conversion to CRs (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_SNeFraction); continue;}
+#endif
+#if defined(FIRE_BHS)
+                if(strcmp("BlackHoleAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins+Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleAccretionFactor); continue;}
+                if(strcmp("BlackHoleEddingtonFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Eddington-limited accretion from disk to BH (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleEddingtonFactor); continue;}
+                if(strcmp("SeedBlackHoleMass",tag[i])==0) {*((double *)addr[i])=0.7e-8; printf("Tag %s (%s) not set in parameter file: defaulting to upper-limit of normal stellar BHs, assuming code mass units of 1e10 Msun/h (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMass); continue;}
+                if(strcmp("BlackHoleNgbFactor",tag[i])==0) {*((double *)addr[i])=8.0; printf("Tag %s (%s) not set in parameter file: defaulting to standard augment of BH neighbors vs gas (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleNgbFactor); continue;}
+                if(strcmp("BlackHoleMaxAccretionRadius",tag[i])==0) {*((double *)addr[i])=5.0; printf("Tag %s (%s) not set in parameter file: defaulting to typical galaxy size assuming code units of hpc/h (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleMaxAccretionRadius); continue;}
+                if(strcmp("BlackHoleRadiativeEfficiency",tag[i])==0) {*((double *)addr[i])=0.1; printf("Tag %s (%s) not set in parameter file: defaulting to canonical radiative efficiency (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleRadiativeEfficiency); continue;}
+                if(strcmp("BlackHoleFeedbackFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to follow user-defined coefficients for each mechanism (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleFeedbackFactor); continue;}
+                if(strcmp("SeedBlackHoleMassSigma",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to a uniform blackhole seed mass (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMassSigma); continue;}
+                if(strcmp("SeedBlackHoleMinRedshift",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to allow seed creation at all times (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMinRedshift); continue;}
+                if(strcmp("SeedAlphaDiskMass",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to BHs beginning their existence without an active accretion disk (=%g) \n",tag[i],alternate_tag[i],All.SeedAlphaDiskMass); continue;}
+                if(strcmp("BH_FluxMomentumFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to using actual AGN spectrum for radiative feedback (=%g) \n",tag[i],alternate_tag[i],All.BH_Rad_MomentumFactor); continue;}
+                if(strcmp("BAL_f_accretion",tag[i])==0) {*((double *)addr[i])=0.5; printf("Tag %s (%s) not set in parameter file: defaulting to assume equal BH accretion and outflow rate intrinsically (=%g) \n",tag[i],alternate_tag[i],All.BAL_f_accretion); continue;}
+                if(strcmp("BAL_v_outflow",tag[i])==0) {*((double *)addr[i])=1.e4; printf("Tag %s (%s) not set in parameter file: defaulting to assume mechanical outflow with 1e4 km/s assuming km/s code units (=%g) \n",tag[i],alternate_tag[i],All.BAL_v_outflow); continue;}
+#if defined(BH_WIND_SPAWN)
+                if(strcmp("BAL_internal_temperature",tag[i])==0) {*((double *)addr[i])=1.e4; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.BAL_internal_temperature); continue;}
+#endif
+#if defined(COSMIC_RAYS)
+                if(strcmp("BH_CosmicRay_Injection_Efficiency",tag[i])==0) {*((double *)addr[i])=1.e-2; printf("Tag %s (%s) not set in parameter file: defaulting to assuming CR injection efficiency of ~1 percent (=%g) \n",tag[i],alternate_tag[i],All.BH_CosmicRay_Injection_Efficiency); continue;}
 #endif
 #endif
                 printf("ERROR. I miss a required value for tag '%s' (or alternate name '%s') in parameter file '%s'.\n", tag[i], alternate_tag[i], fname);
@@ -2232,11 +2348,10 @@ void read_parameter_file(char *fname)
 #endif
     if(All.AGS_MaxNumNgbDeviation < 0.05) All.AGS_MaxNumNgbDeviation = 0.05;
 #endif
-#ifdef BH_WIND_SPAWN
-      All.AGNWindID = 1913298393;       // this seems weird, but is the bitshifted version of 1234568912345 for not long IDs.
-#endif
 #endif // closes DEVELOPER_MODE check //
-
+#ifdef BH_WIND_SPAWN
+    All.AGNWindID = 1913298393;       // this seems weird, but is the bitshifted version of 1234568912345 for not long IDs.
+#endif
 
 #ifdef GALSF
     All.CritOverDensity = 1000.0;
@@ -2249,13 +2364,13 @@ void read_parameter_file(char *fname)
 #endif
     All.TypeOfOpeningCriterion = 1;
     /* determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
-     should only be changed if you -really- know what you're doing! */    
-    
+     should only be changed if you -really- know what you're doing! */
+
 #if defined(MAGNETIC) || defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(BH_WIND_SPAWN)
     if(All.CourantFac > 0.2) {All.CourantFac = 0.2;}
     /* (PFH) safety factor needed for MHD calc, because people keep using the same CFac as hydro! */
 #endif
-    
+
 #if defined(PIC_MHD) && !defined(GRAIN_FLUID_AND_PIC_BOTH_DEFINED)
     All.Grain_Internal_Density=1; All.Grain_Size_Min=1; All.Grain_Size_Max=1; All.Grain_Size_Spectrum_Powerlaw=1; /* in this case these are never used, so we treat them as dummy variables */
 #endif

@@ -6,6 +6,9 @@
 #include "../allvars.h"
 #include "../proto.h"
 
+#ifdef NUCLEAR_NETWORK // master flag [needs to be here to prevent compiler breaking when this is not active] //
+
+
 #define safe_fgets( str, num, stream ) util_fgets( str, num, stream, __FILE__, __LINE__ )
 #define safe_fread( ptr, size, count, stream ) util_fread( ptr, size, count, stream, __FILE__, __LINE__ )
 
@@ -393,3 +396,6 @@ int network_getjacob(const double y[], const network_var *rhs, const struct netw
 int network_part(double temp, const struct network_data *nd, struct network_workspace *nw);
 int getrates(double rho, double temp, double ye, double yz, int compute_derivs, const struct network_data *nd, struct network_workspace *nw);
 
+
+
+#endif // master flag
