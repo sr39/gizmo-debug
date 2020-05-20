@@ -895,7 +895,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     double AGN_LambdaPre = 0, AGN_T_Compton; AGN_T_Compton = 2.0e7; /* approximate from Sazonov et al. */
     if(target >= 0)
     {
-        AGN_LambdaPre = SphP[target].Rad_Flux_AGN * (3.9/2.0) * All.UnitMass_in_g/(All.UnitLength_in_cm*All.UnitLength_in_cm)*All.HubbleParam*All.cf_a2inv; /* proper units */
+        AGN_LambdaPre = SphP[target].Rad_Flux_AGN * (All.UnitPressure_in_cgs*All.UnitVelocity_in_cm_per_s*All.HubbleParam*All.HubbleParam); /* convert physical code units to cgs */
 #ifdef SINGLE_STAR_SINK_DYNAMICS /* here we are hijacking this module to approximate dust heating/cooling */
         double Tmin_to_enforce = pow(10.0,Tmin); // use this as a mininum dust temperature, not for any physical reason but to prevent cooling below it
         AGN_T_Compton = DMIN(2000,pow( Tmin_to_enforce*Tmin_to_enforce*Tmin_to_enforce*Tmin_to_enforce + AGN_LambdaPre / 5.67e-5 , 0.25)); // (sigma*T^4 = Flux_incident), assuming heating/cooling balance defines the target temperature, maximum set to 2000K as the dust is destroyed above that
@@ -1713,7 +1713,7 @@ void selfshield_local_incident_uv_flux(void)
 {
     /* include local self-shielding with the following */
     int i; double surfdensity = 0, code_surfacedensity_to_cgs = All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam;
-    double code_flux_to_cgs = (All.UnitPressure_in_cgs*All.UnitVelocity_in_cm_per_s*All.HubbleParam*All.HubbleParam); // convert code flux [units=Lcode/(Rcode*Rcode)] to physical cgs units
+    double code_flux_to_cgs = (All.UnitPressure_in_cgs*All.UnitVelocity_in_cm_per_s*All.HubbleParam*All.HubbleParam); // convert physical code flux [units=Lcode/(Rcode*Rcode)] to physical cgs units
     
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
