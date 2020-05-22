@@ -45,13 +45,12 @@ void set_initial_rate_coefficients(struct gasVariables *myGasVars, struct global
 { 
   int i, j, NHI_index, NH_eff_index, NHeI_index, NHe_eff_index, NCO_index, NH2_index; 
   ChimesFloat dNHI, dNH_eff, dNHeI, dNHe_eff, dNCO, dNH2;
-  ChimesFloat flux, G0, S1, S2, S3, log_NCO, log_NH2; 
+  ChimesFloat flux, G0, log_NCO, log_NH2; 
 
-  // NOTE: the individual E factors can be <1e-38, so they need to 
-  // be in double precision. However, when we take the ratio 
-  // (E1 + E2 + E3) / (E4 + E5 + E6) we can cast back to 
-  // ChimesFloat 
-  double E1, E2, E3, E4, E5, E6; 
+  // NOTE: individual shield factor components can be <1e-38, 
+  // so they need to be in double precision. However, when we 
+  // combine them at the end we can cast back to ChimesFloat. 
+  double S1, S2, S3, E1, E2, E3, E4, E5, E6; 
   update_rate_coefficients(myGasVars, myGlobalVars, data, 1);
   
   const int N_spec = myGlobalVars->N_spectra; 
@@ -82,18 +81,18 @@ void set_initial_rate_coefficients(struct gasVariables *myGasVars, struct global
 	      for (j = 0; j < myGlobalVars->N_spectra; j++) 
 		{
 		  if (chimes_table_photoion_euv.E_thresh[i] < 15.4f) 
-		    S1 = chimes_exp10(chimes_interpol_4d_fix_xyz(chimes_table_photoion_euv.shieldFactor_1D, i, j, 0, NHI_index, dNHI, N_spec, 3, N_ColDens));
+		    S1 = chimes_exp10_dbl((double) chimes_interpol_4d_fix_xyz(chimes_table_photoion_euv.shieldFactor_1D, i, j, 0, NHI_index, dNHI, N_spec, 3, N_ColDens));
 		  else 
 		    S1 = 0.0; 
 
 		  if (chimes_table_photoion_euv.E_thresh[i] < 54.42f) 
-		    S2 = chimes_exp10(chimes_interpol_5d_fix_xyz(chimes_table_photoion_euv.shieldFactor_2D, i, j, 0, NH_eff_index, NHeI_index, dNH_eff, dNHeI, N_spec, 6, N_ColDens, N_ColDens));
+		    S2 = chimes_exp10_dbl((double) chimes_interpol_5d_fix_xyz(chimes_table_photoion_euv.shieldFactor_2D, i, j, 0, NH_eff_index, NHeI_index, dNH_eff, dNHeI, N_spec, 6, N_ColDens, N_ColDens));
 		  else 
 		    S2 = 0.0; 
 
-		  S3 = chimes_exp10(chimes_interpol_5d_fix_xyz(chimes_table_photoion_euv.shieldFactor_2D, i, j, 1, NH_eff_index, NHe_eff_index, dNH_eff, dNHe_eff, N_spec, 6, N_ColDens, N_ColDens));
+		  S3 = chimes_exp10_dbl((double) chimes_interpol_5d_fix_xyz(chimes_table_photoion_euv.shieldFactor_2D, i, j, 1, NH_eff_index, NHe_eff_index, dNH_eff, dNHe_eff, N_spec, 6, N_ColDens, N_ColDens));
 		  
-		  data.chimes_current_rates->photoion_euv_shield_factor[chimes_flatten_index_2d(j, i, chimes_table_photoion_euv.N_reactions[1])] = S1 + S2 + S3; 
+		  data.chimes_current_rates->photoion_euv_shield_factor[chimes_flatten_index_2d(j, i, chimes_table_photoion_euv.N_reactions[1])] = (ChimesFloat) (S1 + S2 + S3); 
 		}
 	    }
 

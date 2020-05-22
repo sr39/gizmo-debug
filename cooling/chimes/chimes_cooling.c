@@ -472,7 +472,7 @@ ChimesFloat calculate_total_cooling_rate(struct gasVariables *myGasVars, struct 
     return total_cooling - total_heating; 
   else if (mode == 1) 
     return total_cooling; 
-  else if (mode == 2) 
+  else  // mode == 2
     return total_heating; 
 }
 
