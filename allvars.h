@@ -487,7 +487,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
 
 #if (SINGLE_STAR_SINK_FORMATION & 1) // figure out flags needed for the chosen sink formation model
-#define GALSF_SFR_VIRIAL_SF_CRITERION 4
+#define GALSF_SFR_VIRIAL_SF_CRITERION 2
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
 #ifndef SINGLE_STAR_TIMESTEPPING
