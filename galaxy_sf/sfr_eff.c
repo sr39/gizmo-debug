@@ -299,6 +299,14 @@ double get_starformation_rate(int i)
 #endif
 
 #if (GALSF_SFR_VIRIAL_SF_CRITERION >= 4) /* check that the velocity gradient is negative-definite, ie. converging along all principal axes, which is much stricter than div v < 0 */
+    for(j=0; j<3; j++){ // symmetrize the velocity gradient
+      for(k=0; k<j; k++){
+	double temp;
+	temp = gradv[3*j + k];
+	gradv[3*j + k] = 0.5*(gradv[3*j + k] + gradv[3*k + j]);
+	gradv[3*k + j] = 0.5*(temp + gradv[3*k + j]);
+      }
+    }
     gsl_matrix_view M = gsl_matrix_view_array(gradv, 3, 3); gsl_vector *eval1 = gsl_vector_alloc(3);
     gsl_eigen_symm_workspace *v = gsl_eigen_symm_alloc(3); gsl_eigen_symm(&M.matrix, eval1,  v);
     if(SphP[i].Density*All.cf_a3inv < 1e4 * All.PhysDensThresh) {for(k=0;k<3;k++) if(gsl_vector_get(eval1,k) >= 0) {rateOfSF=0;}}
