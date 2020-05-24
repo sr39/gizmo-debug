@@ -558,7 +558,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 {
     int j, niter;
     double Tlow, Thi, flow, fhi, t, gJH0ne, gJHe0ne, gJHepne, logT_input, rho_input, ne_input, neold, nenew;
-    double bH0, bHep, bff, aHp, aHep, aHepp, ad, geH0, geHe0, geHep;
+    double bH0, bHep, bff, aHp, aHep, aHepp, ad, geH0, geHe0, geHep, EPSILON_SMALL=1.e-40;
     double n_elec, nH0, nHe0, nHp, nHep, nHepp; /* ionization states */
     logT_input = logT; rho_input = rho; ne_input = *ne_guess; /* save inputs (in case of failed convergence below) */
     if(!isfinite(logT)) logT=Tmin;    /* nan trap (just in case) */
@@ -624,7 +624,8 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         shieldfac = 1; // self-shielding is implicit in the sub-grid model already //
 #endif
     }
-    n_elec = *ne_guess; neold = n_elec; niter = 0;
+    n_elec = *ne_guess; if(!isfinite(n_elec)) {n_elec=1;}
+    neold = n_elec; niter = 0;
     double dt = 0, fac_noneq_cgs = 0, necgs = n_elec * nHcgs; /* more initialized quantities */
     if(target >= 0) {dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;} // dtime [code units]
     fac_noneq_cgs = (dt * All.UnitTime_in_s / All.HubbleParam) * necgs; // factor needed below to asses whether timestep is larger/smaller than recombination time
@@ -654,8 +655,11 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         aHepp = flow * AlphaHepp[j] + fhi * AlphaHepp[j + 1];
         ad = flow * Alphad[j] + fhi * Alphad[j + 1];
         geH0 = flow * GammaeH0[j] + fhi * GammaeH0[j + 1];
+        geH0 = DMAX(geH0, EPSILON_SMALL);
         geHe0 = flow * GammaeHe0[j] + fhi * GammaeHe0[j + 1];
+        geHe0 = DMAX(geHe0, EPSILON_SMALL);
         geHep = flow * GammaeHep[j] + fhi * GammaeHep[j + 1];
+        geHep = DMAX(geHep, EPSILON_SMALL);
         fac_noneq_cgs = (dt * All.UnitTime_in_s / All.HubbleParam) * necgs; // factor needed below to asses whether timestep is larger/smaller than recombination time
         if(necgs <= 1.e-25 || J_UV == 0)
         {
@@ -665,8 +669,11 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         {
             /* account for self-shielding in calculating UV background effects */
             gJH0ne = gJH0 * local_gammamultiplier / necgs * shieldfac; // check units, should be = c_light * n_photons_vol * rt_sigma_HI[0] / necgs;
+            gJH0ne = DMAX(gJH0ne, EPSILON_SMALL); if(!isfinite(gJH0ne)) {gJH0ne=0;} // need traps here b/c very small numbers assigned in some newer TREECOOL versions cause a nan underflow
             gJHe0ne = gJHe0 * local_gammamultiplier / necgs * shieldfac;
+            gJHe0ne = DMAX(gJHe0ne, EPSILON_SMALL); if(!isfinite(gJHe0ne)) {gJHe0ne=0;}
             gJHepne = gJHep * local_gammamultiplier / necgs * shieldfac;
+            gJHepne = DMAX(gJHepne, EPSILON_SMALL); if(!isfinite(gJHepne)) {gJHepne=0;}
         }
 #if defined(RT_DISABLE_UV_BACKGROUND)
         gJH0ne = gJHe0ne = gJHepne = 0;
@@ -678,6 +685,9 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
             int k;
             c_light_ne = C_LIGHT / ((MIN_REAL_NUMBER + necgs) * All.UnitLength_in_cm / All.HubbleParam); // want physical cgs units for quantities below
             double gJH0ne_0=gJH0 * local_gammamultiplier / (MIN_REAL_NUMBER + necgs), gJHe0ne_0=gJHe0 * local_gammamultiplier / (MIN_REAL_NUMBER + necgs), gJHepne_0=gJHep * local_gammamultiplier / (MIN_REAL_NUMBER + necgs); // need a baseline, so we don't over-shoot below
+            gJH0ne = DMAX(gJH0ne, EPSILON_SMALL); if(!isfinite(gJH0ne)) {gJH0ne=0;} // need traps here b/c very small numbers assigned in some newer TREECOOL versions cause a nan underflow
+            gJHe0ne = DMAX(gJHe0ne, EPSILON_SMALL); if(!isfinite(gJHe0ne)) {gJHe0ne=0;}
+            gJHepne = DMAX(gJHepne, EPSILON_SMALL); if(!isfinite(gJHepne)) {gJHepne=0;}
 #if defined(RT_DISABLE_UV_BACKGROUND)
             gJH0ne_0=gJHe0ne_0=gJHepne_0=MAX_REAL_NUMBER;
 #endif
@@ -751,7 +761,8 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
             nHe0 = yHe - (nHep + nHepp); // remainder is neutral
         }
 #endif
-        
+        if(!isfinite(n_elec)) {printf("target=%d niter=%d logT=%g n_elec/old=%g/%g nHp/nHep/nHepp=%g/%g/%g nHcgs=%g yHe=%g dt=%g shieldfac/local_gammamult=%g/%g aHp/aHep/aHepp=%g/%g/%g geH0/geHe0/geHep=%g/%g/%g gJH0ne/gJHe0ne/gJHepne=%g/%g/%g \n",target,niter,logT,n_elec,neold,nHp,nHep,nHepp,nHcgs,yhelium(target),dt,shieldfac,local_gammamultiplier,aHp,aHep,aHepp,geH0,geHe0,geHep,gJH0ne,gJHe0ne,gJHepne);}
+
         neold = n_elec;
         n_elec = nHp + nHep + 2 * nHepp;	/* eqn (38) */
         necgs = n_elec * nHcgs;
@@ -760,6 +771,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         
         nenew = 0.5 * (n_elec + neold);
         n_elec = nenew;
+        if(!isfinite(n_elec)) {n_elec=1;}
         necgs = n_elec * nHcgs;
         
         double dneTHhold = DMAX(n_elec*0.01 , 1.0e-4);
