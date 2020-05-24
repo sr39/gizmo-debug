@@ -354,7 +354,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #ifdef MAGNETIC
                         for(k=0;k<3;k++) {tempB[k]=Get_Particle_BField(j,k);} //use particle magnetic field
 #endif
-                        fprintf(FdBhSwallowDetails,"%g %llu %g %2.7f %2.7f %2.7f %llu %g %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f\n", All.Time, local.ID,local.Mass,local.Pos[0],local.Pos[1],local.Pos[2],  P[j].ID, P[j].Mass, (P[j].Pos[0]-local.Pos[0]),(P[j].Pos[1]-local.Pos[1]),(P[j].Pos[2]-local.Pos[2]), (P[j].Vel[0]-local.Vel[0]),(P[j].Vel[1]-local.Vel[1]),(P[j].Vel[2]-local.Vel[2]), SphP[j].InternalEnergy, tempB[0], tempB[1], tempB[2]);
+                        fprintf(FdBhSwallowDetails,"%g %llu %g %2.7f %2.7f %2.7f %llu %g %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f\n", All.Time, local.ID,local.Mass,local.Pos[0],local.Pos[1],local.Pos[2],  P[j].ID, P[j].Mass, (P[j].Pos[0]-local.Pos[0]),(P[j].Pos[1]-local.Pos[1]),(P[j].Pos[2]-local.Pos[2]), (P[j].Vel[0]-local.Vel[0]),(P[j].Vel[1]-local.Vel[1]),(P[j].Vel[2]-local.Vel[2]), SphP[j].InternalEnergy, tempB[0], tempB[1], tempB[2], SphP[j].Density);
 #endif
                     }  // if(P[j].Type == 0)
 
@@ -504,7 +504,7 @@ void spawn_bh_wind_feedback(void)
     MPI_Allreduce(&n_particles_split, &MPI_n_particles_split, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     if(MPI_n_particles_split>0){
 #ifdef MAINTAIN_TREE_IN_REARRANGE
-        All.NumForcesSinceLastDomainDecomp +=  0.01 * All.TreeDomainUpdateFrequency * All.TotNumPart; // we can insert spawned particles in the tree, but still a good idea to rebuild the tree every now and then, so we make the next domain+treebuild come a bit sooner; additional cost should be small
+        All.NumForcesSinceLastDomainDecomp +=  0.0001 * All.TreeDomainUpdateFrequency * All.TotNumPart; // we can insert spawned particles in the tree, but still a good idea to rebuild the tree every now and then, so we make the next domain+treebuild come a bit sooner; additional cost should be small
 #else        
         TreeReconstructFlag = 1; // otherwise just wipe and rebuild the tree next chance you get - more expensive but more accurate
 #endif        
@@ -663,10 +663,15 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
     mode = 0;
 #if defined(SINGLE_STAR_FB_JETS)
-    if(P[i].ProtoStellarStage < 5) {mode = 1;} // pre-MS stars launch polar jets
+    mode = 1; // launch polar jets
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
-    if(P[i].ProtoStellarStage == 5) {mode = 2;} // winds use 3-axis isotropized directions
+    if(P[i].ProtoStellarStage == 5) {
+        mode = 2; // winds use 3-axis isotropized directions
+#if defined(SINGLE_STAR_FB_JETS)
+        if(P[i].wind_mode == 2) {mode = 1;} // we inject winds with the FIRE module, we only spawn polar jets here
+#endif
+    } 
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
     if(P[i].ProtoStellarStage == 6) {mode = 3;} // SNe use an angular grid
@@ -803,14 +808,11 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 
         double v_magnitude = All.BAL_v_outflow * All.cf_atime; // velocity of the jet: default mode is to set this manually to a specific value
 #ifdef SINGLE_STAR_FB_JETS
-        v_magnitude = sqrt(SINGLE_STAR_FB_JETS * All.G * P[i].BH_Mass / (10. * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum; without a better guess, assume fiducial protostellar radius of 10*Rsun, as in Federrath 2014
+        v_magnitude = single_star_jet_velocity(i);
 #endif
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* use the fancy stellar evolution modules to calculate these for stars or protostars */
-#if defined(SINGLE_STAR_FB_JETS)
-        v_magnitude = sqrt(SINGLE_STAR_FB_JETS * All.G * P[i].BH_Mass / (P[i].ProtoStellarRadius_inSolar * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
-#endif
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
 #if defined(SINGLE_STAR_FB_WINDS)
-        if(P[i].ProtoStellarStage == 5) {v_magnitude = single_star_wind_velocity(i);} //Only MS stars launch winds: get velocity from fancy model
+        if ( (P[i].ProtoStellarStage == 5) && (P[i].wind_mode == 1) ){v_magnitude = single_star_wind_velocity(i);} //Only MS stars launch winds: get velocity from fancy model
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
         if(P[i].ProtoStellarStage == 6) {v_magnitude = single_star_SN_velocity(i);} // This star is about to go SNe: get velocity from fancy model

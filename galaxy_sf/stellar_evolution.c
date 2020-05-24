@@ -266,9 +266,11 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     double D_RETURN_FRAC=1.e-15, p=0;
     
 #if defined(SINGLE_STAR_FB_WINDS) /* SINGLE-STAR VERSION: single-star wind mass-loss rates */
+    double fire_wind_rel_mass_res = 1e-4; //relative mass resolution of winds, essentially the wind will get spawned in packets of fire_wind_rel_mass_res*(gas_mass_resolution) mass
+    D_RETURN_FRAC = fire_wind_rel_mass_res * (2.0*All.MinMassForParticleMerger)/ P[i].Mass;
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION /* for 'fancy' multi-stage modules, have a separate subroutine to compute this */
     if(P[i].wind_mode != 2) {return;} /* only some eligible particles have winds in this module */
-    p = single_star_wind_mdot(i) * dt / P[i].Mass; /* actual mdot from its own subroutine, given in code units */
+    p = single_star_wind_mdot(i,0) * dt / P[i].Mass; /* actual mdot from its own subroutine, given in code units */
 #else /* otherwise use standard scaling from e.g. Castor, Abbot, & Klein */
     double m_sol=P[i].Mass*All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS), l_sol=bh_lum_bol(0,P[i].Mass,i)*All.UnitEnergy_in_cgs/(All.UnitTime_in_s*SOLAR_LUM); /* luminosity in solar */
     double gam=DMIN(0.5,3.2e-5*l_sol/m_sol), alpha=0.5+0.4/(1.+16./m_sol), q0=(1.-alpha)*gam/(1.-gam), k0=1./30.; // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons, approximate scaling for alpha factor with stellar type (weak effect)
@@ -440,7 +442,16 @@ double Z_for_stellar_evol(int i)
     
 
 
-
+#ifdef SINGLE_STAR_FB_JETS
+double single_star_jet_velocity(int n){
+    /*Calculates the launch velocity of jets*/
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* use the fancy stellar evolution modules to calculate these for stars or protostars */
+    return (All.BAL_f_launch_v * sqrt(All.G * P[n].BH_Mass / (P[n].ProtoStellarRadius_inSolar * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime); // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
+#else
+    return (All.BAL_f_launch_v * sqrt(All.G * P[n].BH_Mass / (10. * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime); // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum; without a better guess, assume fiducial protostellar radius of 10*Rsun, as in Federrath 2014
+#endif
+}
+#endif
 
 
 #if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* begins large block of 'fancy' protostar-through-MS stellar evolution models */
@@ -484,7 +495,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
     double fk = 0.5; //fraction of kinetic energy that is radiated away in the inner disk before reaching the surface, using default ORION value here as it is not a GIZMO input parameter
     double f_acc = 0.5; //fraction of accretion power that is radiated away instead of being used to drive winds, using default ORION value here as it is not a GIZMO input parameter
 #ifdef SINGLE_STAR_FB_JETS //We can convert the GIZMO parameters into their ORION versions, FWIND=(1.0-All.BAL_f_accretion) and .
-    f_acc = (1.0-All.BAL_f_accretion)*SINGLE_STAR_FB_JETS/All.BAL_f_accretion; //But we need to be careful because the f_acc here only sees the modified mdot = All.BAL_f_accretion * mdot_now_ind, so we need to divide with All.BAL_f_accretion. For our nominal All.BAL_f_accretion=0.7 and 'muliplier'=1 this yields 0.42, not that far from the ORION value of 0.5
+    f_acc = ( (1.0-All.BAL_f_accretion)*(1.0-All.BAL_f_launch_v*All.BAL_f_launch_v) + All.BAL_f_accretion )/All.BAL_f_accretion; //The energy not used to drive winds must be radiated away (neglecting thermal energy). It is from the leftover from the jet material and the material not launched. But we need to be careful because the f_acc here only sees the modified mdot = All.BAL_f_accretion * mdot_now, so we need to divide with All.BAL_f_accretion. For our nominal All.BAL_f_accretion=0.7 and BAL_f_launch_v=0.3 this yields 1.39 (0.97 for the full mdot)
 #endif
     double max_rel_dr = 0.01; //Maximum relative change in radius per step, if the change over a single timestep is larger than this than we subcycle the evolution of the stellar radius
     double mass = BPP(n).BH_Mass; //mass of star/protostar at the end of the timestep
@@ -659,10 +670,11 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 
 #if defined(SINGLE_STAR_FB_WINDS)
 /* Let's get the wind mass loss rate for MS stars. n is the index of the particle (P[n]). mode is 1 when called by the wind spawning routine (blackhole.c) and 2 if called by the FIRE wind module (in this file, mechanical_fb_calculate_eventrates_Winds). The function decides which type of wind feedback is appropriate for the current star and will only give a nonzero mdot to one of these */
-double single_star_wind_mdot(int n){
+double single_star_wind_mdot(int n, int set_mode){ //if set_mode is zero then the wind mode is not changed by calling this function
     double minimum_stellarmass_for_winds_solar  = 2.0;  // minimum stellar mass allowed to have winds
     int    model_wolf_rayet_phase_explicitly    = 1;    // assumes that O stars turn into WR stars at the end of their lifetime, increasing their mass loss rate
     double n_particles_for_discrete_wind_spawn  = 1e-2; // parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds) -- particle number required to trigger 'explicit' spawn module. Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
+    double spawning_min_wind_jet_mom_ratio = 10.0; //If winds are much more powerful than jets ( (wind momentum injection/jet momentum injection) > this value) then we can safely spawn the winds and neglect the jets if we want to
     
     double wind_mass_loss_rate=0; //mass loss rate in code units
     if (P[n].Type != 5) {return 0;}
@@ -680,7 +692,7 @@ double single_star_wind_mdot(int n){
     
     if(model_wolf_rayet_phase_explicitly) {if(evaluate_stellar_age_Gyr(P[n].StellarAge) > (stellar_lifetime_in_Gyr(n)-singlestar_WR_lifetime_Gyr(n))){wind_mass_loss_rate*=10;}} //Our star is in the WR phase, for now use the simple prescription of having 10x higher wind loss rates based on Smith 2014
     //Let's deal with the case of undefined wind mode (just promoted to MS or restart from snapshot)
-    if (wind_mass_loss_rate>0){
+    if ( set_mode && (wind_mass_loss_rate>0) ){
         //Let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
         double v_wind = single_star_wind_velocity(n);
         double t_wind =sqrt( wind_mass_loss_rate * (3.0/(4.0*M_PI*P[n].DensAroundStar)) / (v_wind*v_wind*v_wind));
@@ -692,6 +704,13 @@ double single_star_wind_mdot(int n){
         } else{
             P[n].wind_mode = 2; //we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
         }
+#ifdef SINGLE_STAR_FB_JETS
+        if ( (P[n].wind_mode == 1) && (P[n].BH_Mdot>0) ){ //we want to spawn winds but we have jets too
+            double jet_mom_inj = single_star_jet_velocity(n) * P[n].BH_Mdot;
+            double wind_mom_inj = v_wind * wind_mass_loss_rate;
+            if (spawning_min_wind_jet_mom_ratio < (spawning_min_wind_jet_mom_ratio * jet_mom_inj) ){ P[n].wind_mode = 2;} //we switch back to the FIRE wind injection so that we can spawn the jet and have winds at the same time
+        }
+#endif
         if (old_wind_mode != P[n].wind_mode){
             printf("Wind mode change for star %llu to %d at %g. Mdot_wind %g\n",P[n].ID,P[n].wind_mode,All.Time, wind_mass_loss_rate);
         }

@@ -531,6 +531,9 @@ double Z_for_stellar_evol(int i);
 #endif
 #endif
 
+#ifdef SINGLE_STAR_FB_JETS
+double single_star_jet_velocity(int n);
+#endif
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
 double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt);
 #if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2)
@@ -549,7 +552,7 @@ double ps_lum_Hayashi_BB(double m, double r);
 #endif
 double stellar_lifetime_in_Gyr(int n);
 #if defined(SINGLE_STAR_FB_WINDS)
-double single_star_wind_mdot(int n);
+double single_star_wind_mdot(int n, int set_mode);
 double single_star_wind_velocity(int n);
 double singlestar_WR_lifetime_Gyr(int n);
 #endif
