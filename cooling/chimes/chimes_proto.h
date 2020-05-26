@@ -631,6 +631,7 @@ int f(realtype t, N_Vector y, N_Vector ydot, void *user_data);
 // update_rates.c 
 void set_initial_rate_coefficients(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars, struct UserData data); 
 void set_species_structures(struct Species_Structure *mySpecies, struct gasVariables *myGasVars, int *total_network, int *nonmolecular_network, struct globalVariables *myGlobalVars);
+void zero_molecular_abundances(struct Species_Structure *mySpecies, struct gasVariables *myGasVars, struct globalVariables *myGlobalVars); 
 void update_rate_coefficients(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars, struct UserData data, int mode); 
 void update_rate_vector(struct Species_Structure *mySpecies, struct gasVariables *myGasVars, struct globalVariables *myGlobalVars, struct UserData data); 
 void update_rates(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars, struct UserData data); 

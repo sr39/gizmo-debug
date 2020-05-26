@@ -177,9 +177,6 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
   struct chimes_current_rates_struct chimes_current_rates; 
   allocate_current_rates_memory(&chimes_current_rates, myGlobalVars); 
 
-  /* Enforce constraint equations. */
-  check_constraint_equations(myGasVars, myGlobalVars);
-
   set_species_structures(species, myGasVars, &total_network_size, &nonmolecular_network_size, myGlobalVars);
 
   /* Set up structure to pass user
@@ -196,19 +193,13 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
     }
   else
     {
-      /* Exclude all molecular species and set their
-       * abundances to zero. */
-      for (i = sp_H2; i <= sp_O2p; i++)
-	{
-	  if (myGlobalVars->speciesIndices[i] > -1)
-	    {
-	      species[myGlobalVars->speciesIndices[i]].include_species = 0;
-	      myGasVars->abundances[myGlobalVars->speciesIndices[i]] = 0.0f;
-	    }
-	}
+      zero_molecular_abundances(species, myGasVars, myGlobalVars); 
       data.mol_flag_index = 0; 
       data.network_size = nonmolecular_network_size;
     }
+
+  /* Enforce constraint equations. */
+  check_constraint_equations(myGasVars, myGlobalVars);
 
   if (myGlobalVars->cellSelfShieldingOn > 0)
     {
