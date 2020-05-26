@@ -367,7 +367,16 @@ double inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity,
         double dEcr = CR_energy_to_inject * CR_energy_spectrum_injection_fraction(k_CRegy,source_PType,injection_velocity);
         SphP[target].CosmicRayEnergy[k_CRegy]+=dEcr; SphP[target].CosmicRayEnergyPred[k_CRegy]+=dEcr;
 #ifdef COSMIC_RAYS_M1
-        for(k=0;k<3;k++) {double dflux=dEcr*dir[k]*COSMIC_RAYS_M1; SphP[target].CosmicRayFlux[k_CRegy][k]+=dflux; SphP[target].CosmicRayFluxPred[k_CRegy][k]+=dflux;}
+        double dir_mag=0, flux_mag=dEcr*COSMIC_RAYS_M1, dir_to_use[3]={0};
+#ifdef MAGNETIC
+        double B_dot_dir=0, Bdir[3]={0}; for(k=0;k<3;k++) {Bdir[k]=SphP[target].BPred[k]; B_dot_dir+=dir[k]*Bdir[k];} // the 'default' direction is projected onto B
+        for(k=0;k<3;k++) {dir_to_use[k]=B_dot_dir*Bdir[k];} // launch -along- B, projected [with sign determined] by the intially-desired direction
+#else
+        for(k=0;k<3;k++) {dir_to_use[k]=dir[k];} // launch in the 'default' direction
+#endif
+        for(k=0;k<3;k++) {dir_mag += dir_to_use[k]*dir_to_use[k];}
+        if(dir_mag <= 0) {dir_to_use[0]=0; dir_to_use[1]=0; dir_to_use[2]=1; dir_mag=1;}
+        for(k=0;k<3;k++) {double dflux=flux_mag*dir_to_use[k]/sqrt(dir_mag); SphP[target].CosmicRayFlux[k_CRegy][k]+=dflux; SphP[target].CosmicRayFluxPred[k_CRegy][k]+=dflux;}
 #endif
     }
 }

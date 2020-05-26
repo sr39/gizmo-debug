@@ -1099,7 +1099,7 @@ double get_min_allowed_dustIRrad_temperature(void)
 }
 
 /* return LambdaDust, the dust heating/cooling rate (>0 is heating, <0 is cooling) */
-double get_rt_ir_lambdadust_effective(double T, double rho, double *ne_guess, int target)
+double get_rt_ir_lambdadust_effective(double T, double rho, double nH0_guess, double *ne_guess, int target)
 {
     double Tdust_0 = SphP[target].Dust_Temperature; // dust temperature estimate from previous loop over radiation operators
     double LambdaDust_initial_guess = 1.116e-32 * (Tdust_0-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * (P[target].Metallicity[0]/All.SolarAbundances[0]); // guess value based on the -current- values of T, Tdust //
@@ -1115,7 +1115,7 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *ne_guess, in
     double volume = (P[target].Mass / (SphP[target].Density*All.cf_a3inv)); // particle volume in code units
     double ratefact = (nHcgs*nHcgs) * volume / (All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam / (All.UnitTime_in_s/All.HubbleParam)); // conversion b/t Lambda and du used by code
     double Erad_to_T4_fac = RT_SPEEDOFLIGHT_REDUCTION * 1.32e14*(All.UnitPressure_in_cgs/All.HubbleParam) / volume; // conversion from absolute rad energy to T^4 units, used multiple places below, coefficient = cL_reduced/(4*sigma_B)
-    double Teff = get_mu(T, rho, ne_guess, target) * (GAMMA(target)-1.) * U_TO_TEMP_UNITS * (egy_tot / P[target].Mass); // convert from internal energy to temperature units for factor below
+    double Teff = get_mu(T, rho, nH0_guess, ne_guess, target) * (GAMMA(target)-1.) * U_TO_TEMP_UNITS * (egy_tot / P[target].Mass); // convert from internal energy to temperature units for factor below
 
     double xf, a = Teff*Teff*Teff*Teff / (Erad_to_T4_fac*egy_tot); // dimensionless factors needed to solve for the equilibrium Tdust-Tgas relation
     if(a<0.2138) {xf=(1+19*a+132*a*a+418*a*a*a+580*a*a*a*a+243*a*a*a*a*a)/(1+20*a+148*a*a+508*a*a*a+796*a*a*a*a+432*a*a*a*a*a);} // eqm solution (power series approx)

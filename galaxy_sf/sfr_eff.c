@@ -257,13 +257,10 @@ double get_starformation_rate(int i)
 #endif
 #endif
     
-#ifdef GALSF_SFR_VIRIAL_SF_CRITERION  /* apply standard virial-parameter criteria here */
-    double k_cs = v_fast / (Get_Particle_Size(i)*All.cf_atime), alpha_crit = 1.0; /* effective wavenumber for thermal+B-field+CR+whatever internal energy support, and threshold virial parameter */
-#ifdef SINGLE_STAR_SINK_FORMATION
-    k_cs *= M_PI; /* use the more conservative version of the wavenumber here, in the highly-resolved limit */
-#endif
-    dv2abs += 2.*k_cs*k_cs; // account for thermal+magnetic pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
-    double alpha_vir = dv2abs / (8. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 -- going more careful here using 1/8 //
+#ifdef GALSF_SFR_VIRIAL_SF_CRITERION  /* apply standard virial-parameter criteria here. note that our definition of virial parameter here is ratio of [Kinetic+Internal Energy]/|Gravitational Energy| -- so <1=bound, >1=unbound, 1/2=bound-and-virialized, etc. */
+    double k_cs = M_PI * v_fast / (Get_Particle_Size(i)*All.cf_atime), alpha_crit = 1.0; /* effective wavenumber for thermal+B-field+CR+whatever internal energy support, and threshold virial parameter */
+    double Mach_eff_2=0, cs2_contrib=2.*k_cs*k_cs; Mach_eff_2=dv2abs/cs2_contrib; dv2abs+=2.*k_cs*k_cs; // account for thermal+magnetic pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
+    double alpha_vir = dv2abs / (22.6 * All.G * SphP[i].Density * All.cf_a3inv); // coefficient of 22.6 here comes from considering a uniform-density cube, with a constant velocity gradient tensor; gives exact result for that case. with coefficients above, also gives exact thermal-sphere coefficient to within ~5% //
 #if (GALSF_SFR_VIRIAL_SF_CRITERION >= 3) /* compute and prepare to use our time-rolling average virial criterion */
     double dtime = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; /* the physical time-step */
     double alpha_0=1./(1.+alpha_vir), dtau=DMIN(1.,DMAX(0.,exp(-(DMIN(DMAX(8.*dtime/tsfr,0.),20.))))); /* dimensionless units for below */
@@ -276,9 +273,12 @@ double get_starformation_rate(int i)
 #if (GALSF_SFR_VIRIAL_SF_CRITERION > 1) && !defined(GALSF_SFR_VIRIAL_CONTINUOUS_THOLD) /* 'normal' mode: zero SF if don't meet virial threshold */
     if(alpha_vir>alpha_crit) {rateOfSF=0;} /* simple 'hard' threshold here */
 #endif
-#if defined(GALSF_SFR_VIRIAL_CONTINUOUS_THOLD) /* Padoan-style semi-continuous SF as a function of alpha_vir */
-    double avir_coeff = DMIN(DMAX(sqrt(DMAX(0.,alpha_vir)),0.),22.); /* limit the values of sqrt(alpha_vir) here since we'll take an exponential so don't want a nan */
-    rateOfSF *= exp(-1.4 * avir_coeff); /* continuous cutoff of rateOfSF with increasing virial parameter as ~exp[-1.4*sqrt(alpha_vir)] */
+#if defined(GALSF_SFR_VIRIAL_CONTINUOUS_THOLD) /* semi-continuous SF as a function of alpha_vir */
+    double avir_coeff = DMIN(DMAX(sqrt(DMAX(MIN_REAL_NUMBER,alpha_vir)), 1.e-4), 1.e10); /* limit the values of sqrt(alpha_vir) here since we'll take an exponential so don't want a nan */
+    //rateOfSF *= exp(-1.4 * DMIN(avir_coeff,22.)); /* continuous cutoff of rateOfSF with increasing virial parameter as ~exp[-1.4*sqrt(alpha_vir)], following fitting function from Padoan 2012 */
+    Mach_eff_2 = DMIN(DMAX(1.e-5, Mach_eff_2/3.), 1.e4); if(!isfinite(Mach_eff_2)) {Mach_eff_2=1.e4;}
+    double S_ln=log(1.+Mach_eff_2/4.), S_crit=log(alpha_vir*(1.+2.*Mach_eff_2*Mach_eff_2/(1.+Mach_eff_2*Mach_eff_2))); // Mach_eff_2 is determined by the ratio of the kinetic to the thermal terms in the virial parameter, corrected to the 1D dispersion here
+    rateOfSF *= 0.5 * exp(3.*S_ln/8.) * (1. + erf((S_ln-S_crit)/sqrt(2.*S_ln))); // multi-free-fall model, as in e.g. Federrath+Klessen 2012/2013 ApJ 761,156; 763,51 (similar to that implemented in e.g. Kretschmer+Teyssier 2020), based on the analytic models in Hopkins MNRAS 2013, 430 1653, with correct virial parameter [K+T used a definition which gives the wrong value for thermally-supported clouds]
 #endif
 #endif
     
@@ -299,14 +299,9 @@ double get_starformation_rate(int i)
 #endif
 
 #if (GALSF_SFR_VIRIAL_SF_CRITERION >= 4) /* check that the velocity gradient is negative-definite, ie. converging along all principal axes, which is much stricter than div v < 0 */
-    for(j=0; j<3; j++){ // symmetrize the velocity gradient
-      for(k=0; k<j; k++){
-	double temp;
-	temp = gradv[3*j + k];
-	gradv[3*j + k] = 0.5*(gradv[3*j + k] + gradv[3*k + j]);
-	gradv[3*k + j] = 0.5*(temp + gradv[3*k + j]);
-      }
-    }
+    for(j=0;j<3;j++){ // symmetrize the velocity gradient
+      for(k=0;k<j;k++){double temp = gradv[3*j + k];
+          gradv[3*j + k] = 0.5*(gradv[3*j + k] + gradv[3*k + j]); gradv[3*k + j] = 0.5*(temp + gradv[3*k + j]);}}
     gsl_matrix_view M = gsl_matrix_view_array(gradv, 3, 3); gsl_vector *eval1 = gsl_vector_alloc(3);
     gsl_eigen_symm_workspace *v = gsl_eigen_symm_alloc(3); gsl_eigen_symm(&M.matrix, eval1,  v);
     if(SphP[i].Density*All.cf_a3inv < 1e4 * All.PhysDensThresh) {for(k=0;k<3;k++) if(gsl_vector_get(eval1,k) >= 0) {rateOfSF=0;}}

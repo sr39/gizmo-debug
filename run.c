@@ -680,20 +680,20 @@ void output_log_messages(void)
         {
             z = 1.0 / (All.Time) - 1;
 #ifndef IO_REDUCED_MODE
-            fprintf(FdInfo, "\nSync-Point %lld, Time: %g, Redshift: %g, Nf = %d%09d, Systemstep: %g, Dloga: %g\n",
+            fprintf(FdInfo, "Sync-Point %lld, Time: %g, Redshift: %g, Nf = %d%09d, Systemstep: %g, Dloga: %g\n",
                     (long long) All.NumCurrentTiStep, All.Time, z, (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000), All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
             fflush(FdInfo);
-            fprintf(FdTimebin, "\nSync-Point %lld, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n", (long long) All.NumCurrentTiStep, All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
+            fprintf(FdTimebin, "Sync-Point %lld, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n", (long long) All.NumCurrentTiStep, All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
 #endif
             printf("\nSync-Point %lld, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n", (long long) All.NumCurrentTiStep, All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
         }
         else
         {
 #ifndef IO_REDUCED_MODE
-            fprintf(FdInfo, "\nSync-Point %lld, Time: %g, Nf = %d%09d, Systemstep: %g\n", (long long) All.NumCurrentTiStep,
+            fprintf(FdInfo, "Sync-Point %lld, Time: %g, Nf = %d%09d, Systemstep: %g\n", (long long) All.NumCurrentTiStep,
                     All.Time, (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000), All.TimeStep);
             fflush(FdInfo);
-            fprintf(FdTimebin, "\nSync-Point %lld, Time: %g, Systemstep: %g\n", (long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
+            fprintf(FdTimebin, "Sync-Point %lld, Time: %g, Systemstep: %g\n", (long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
 #endif
             printf("\nSync-Point %lld, Time: %g, Systemstep: %g\n", (long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
         }
@@ -703,8 +703,7 @@ void output_log_messages(void)
 
       for(i = 0; i < TIMEBINS; i++)
 	{
-	  for(j = 0, sum = 0; j < All.CPU_TimeBinCountMeasurements[i]; j++)
-	    sum += All.CPU_TimeBinMeasurements[i][j];
+	  for(j = 0, sum = 0; j < All.CPU_TimeBinCountMeasurements[i]; j++) {sum += All.CPU_TimeBinMeasurements[i][j];}
 	  if(All.CPU_TimeBinCountMeasurements[i]) {avg_CPU_TimeBin[i] = sum / All.CPU_TimeBinCountMeasurements[i];} else {avg_CPU_TimeBin[i] = 0;}
 	}
 

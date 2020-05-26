@@ -468,7 +468,7 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
 
 
 
-double get_mu(double T_guess, double rho, double *ne_guess, int target)
+double get_mu(double T_guess, double rho, double xH0, double *ne_guess, int target)
 {
  double X=HYDROGEN_MASSFRAC, Y=1.-X, Z=0, fmol;
     
@@ -485,7 +485,7 @@ double get_mu(double T_guess, double rho, double *ne_guess, int target)
     if(rho > 0) {T_mol *= (rho/PROTONMASS) / 100.;}
     if(T_mol>8000.) {T_mol=8000.;}
     T_mol = T_guess / T_mol;
-    fmol = 1. / (1. + T_mol*T_mol);
+    fmol = xH0 / (1. + T_mol*T_mol);
     
     return 1. / ( X*(1-0.5*fmol) + Y/4. + *ne_guess*HYDROGEN_MASSFRAC + Z/(16.+12.*fmol) ); // since our ne is defined in some routines with He, should multiply by universal
 }
@@ -517,7 +517,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
     double temp, temp_old, temp_old_old = 0, temp_new, max = 0, ne_old, mu;
     double u_input = u, rho_input = rho, temp_guess;
     temp_guess = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS;
-    mu = get_mu(temp_guess, rho, ne_guess, target);
+    mu = get_mu(temp_guess, rho, nH0_guess, ne_guess, target);
     temp = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS * mu;
     
     do
@@ -526,7 +526,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
         find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess);
         temp_old = temp;
         
-        mu = get_mu(temp, rho, ne_guess, target);
+        mu = get_mu(temp, rho, nH0_guess, ne_guess, target);
         temp_new = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS * mu;
         
         max = DMAX(max, temp_new * mu * HYDROGEN_MASSFRAC * fabs((*ne_guess - ne_old) / (temp_new - temp_old + 1.0)));
@@ -839,7 +839,7 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
     if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target);}} /* fully ionized */
 #endif
-    *mu_guess = get_mu(temp, rho, ne_guess, target);
+    *mu_guess = get_mu(temp, rho, nH0_guess, ne_guess, target);
     return temp;
 }
 #endif // !(CHIMES) 
@@ -871,11 +871,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     if(target>=0)
     {
         Z = P[target].Metallicity;
-    } else {
-        /* initialize dummy values here so the function doesn't crash, if called when there isn't a target particle */
-        int k;
-        double Zsol[NUM_METAL_SPECIES];
-        for(k=0;k<NUM_METAL_SPECIES;k++) Zsol[k]=All.SolarAbundances[k];
+    } else { /* initialize dummy values here so the function doesn't crash, if called when there isn't a target particle */
+        int k; double Zsol[NUM_METAL_SPECIES]; for(k=0;k<NUM_METAL_SPECIES;k++) {Zsol[k]=All.SolarAbundances[k];}
         Z = Zsol;
     }
 #endif
@@ -889,10 +886,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
     
     /* CAFG: if density exceeds NH_SS, ignore ionizing background. */
-    if(J_UV != 0)
-        NH_SS_z=NH_SS*pow(local_gammamultiplier*gJH0/1.0e-12,0.66)*pow(10.,0.173*(logT-4.));
-    else
-        NH_SS_z=NH_SS*pow(10.,0.173*(logT-4.));
+    if(J_UV != 0) {NH_SS_z=NH_SS*pow(local_gammamultiplier*gJH0/1.0e-12,0.66)*pow(10.,0.173*(logT-4.));} else {NH_SS_z=NH_SS*pow(10.,0.173*(logT-4.));}
     double q_SS = nHcgs/NH_SS_z;
 #ifdef COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
     shieldfac = 0.98 / pow(1 + pow(q_SS,1.64), 2.28) + 0.02 / pow(1 + q_SS, 0.84); // from Rahmati et al. 2012: gives gentler cutoff at high densities
@@ -920,11 +914,11 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     
 #if defined(COOL_METAL_LINES_BY_SPECIES) && defined(COOL_LOW_TEMPERATURES)
     double Tdust = 30., LambdaDust = 0.; /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
-#if defined(SINGLE_STAR_SINK_DYNAMICS)
+#if defined(SINGLE_STAR_SINK_DYNAMICS) || (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
     Tdust = 10.; // runs looking at colder clouds, use a colder default dust temp //
-#if defined(BH_COMPTON_HEATING)
-    if(target >= 0) {Tdust = AGN_T_Compton;} // need to check target otherwise this is totally ill-defined //
 #endif
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(BH_COMPTON_HEATING)
+    if(target >= 0) {Tdust = AGN_T_Compton;} // need to check target otherwise this is totally ill-defined //
 #endif
 #endif
 
@@ -964,18 +958,29 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
         
 #ifdef COOL_LOW_TEMPERATURES
-        if((logT <= 5.2)&&(logT > Tmin+0.5*deltaT))
+        if((logT <= 4.5)&&(logT > Tmin+0.5*deltaT))
         {
             /* approx to cooling function for solar metallicity and nH=1 cm^(-3) -- want to do something
              much better, definitely, but for now use this just to get some idea of system with cooling to very low-temp */
             LambdaMol = 2.8958629e-26/(pow(T/125.21547,-4.9201887)+pow(T/1349.8649,-1.7287826)+pow(T/6450.0636,-0.30749082));//*nHcgs*nHcgs;
             LambdaMol *= (1-shieldfac) / (1. + nHcgs/700.); // above the critical density, cooling rate suppressed by ~1/n; use critical density of CO[J(1-0)] as a proxy for this
 #ifdef COOL_METAL_LINES_BY_SPECIES
-            LambdaMol *= (1+Z[0]/All.SolarAbundances[0])*(0.001 + 0.1*nHcgs/(1.0+nHcgs) + 0.09*nHcgs/(1.0+0.1*nHcgs)
-                            + (Z[0]/All.SolarAbundances[0])*(Z[0]/All.SolarAbundances[0])/(1.0+nHcgs));
-            LambdaDust = 1.116e-32 * (Tdust-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * (Z[0]/All.SolarAbundances[0]);  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
+            double Z_sol = Z[0] / All.SolarAbundances[0];
+            LambdaMol *= (1+Z_sol)*(0.001 + 0.1*nHcgs/(1.+nHcgs) + 0.09*nHcgs/(1.+0.1*nHcgs) + Z_sol*Z_sol/(1.0+nHcgs));
+#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+            double column = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm; // converts to cgs
+            double Z_C = DMAX(1.e-10, Z[2]/All.SolarAbundances[2]), sqrt_T=sqrt(T), ncrit_CO=1.9e4*sqrt_T, Sigma_crit_CO=3.0e-5*T/Z_C, T3=T/1.e3; // carbon abundance (relative to solar), critical density and column
+            double Lambda_Metals = Z_C * T*sqrt_T * 2.73e-31 / (1. + (nHcgs/ncrit_CO)*(1.+DMAX(column,0.017)/Sigma_crit_CO)); // fit from Hollenbach & McKee 1979 for CO (+CH/OH/HCN/OH/HCl/H20/etc., but those don't matter), with slight re-calibration of normalization (factor ~1.4 or so) to better fit the results from the full Glover+Clark network. As Glover+Clark show, if you shift gas out of CO into C+ and O, you have almost no effect on the integrated cooling rate, so this is a surprisingly good approximation without knowing anything about the detailed chemical/molecular state of the gas. uncertainties in e.g. ambient radiation are -much- larger. also note this rate is really carbon-dominated as the limiting abundance, so should probably use that.
+            double Lambda_H2_thin = pow(10., DMAX(-103. + 97.59*logT - 48.05*logT*logT + 10.8*logT*logT*logT - 0.9032*logT*logT*logT*logT , -50.)); // sub-critical H2 cooling rate from H2-H collisions, H2-H2 is similar, but for most conditions, this should give us roughly the correct number here [per H2 molecule]
+            double Lambda_H2_thick = (6.7e-19*exp(-5.86/T3) + 1.6e-18*exp(-11.7/T3) + 3.e-24*exp(-0.51/T3) + 9.5e-22*pow(T3,3.76)*exp(-0.0022/(T3*T3*T3))/(1.+0.12*pow(T3,2.1))) / nHcgs; // super-critical H2-H cooling rate [per H2 molecule]
+            double Lambda_HD_thin = ((9.623e-30 + 7.276e-31*pow(T,0.92))*exp(-DMAX(255./T,110.)) + (6.221e-30 + 5.090e-31*pow(T,0.77))*exp(-DMAX(128./T,110.))) * exp(-T3*T3/25.); // optically-thin HD cooling rate [assuming all D locked into HD at temperatures where this is relevant]
+            double f_H2 = 0.5 * (3.e-3 + 1./(1.+T*T/(nHcgs*nHcgs))); // -very- crude approximation based on Glover+Clark idealized clouds for fH2, which is the major uncertainty here for the primordial cooling rates
+            double nH_over_ncrit = Lambda_H2_thin / Lambda_H2_thick , Lambda_HD = Lambda_HD_thin / (1. + nH_over_ncrit), Lambda_H2 = f_H2 * Lambda_H2_thin / (1. + nH_over_ncrit); // correct cooling rates for densities above critical
+            LambdaMol = DMIN(1-shieldfac, nH0) * (Lambda_Metals + Lambda_H2_HD); // combine to get total cooling rate: scale to estimate of neutral fraction [use min[nH0,1-shieldfac] b/c this should be more sensitive to radiation, so if shieldfac is high, this will be low, even if nH0 big]
+#endif
+            LambdaDust = 1.116e-32 * (Tdust-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol;  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
 #ifdef RT_INFRARED
-            if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, rho, &n_elec, target);} // call our specialized subroutine, because radiation and gas energy fields are co-evolving and tightly-coupled here //
+            if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, rho, nH0, &n_elec, target);} // call our specialized subroutine, because radiation and gas energy fields are co-evolving and tightly-coupled here //
 #endif
             if(LambdaDust<0) {Lambda -= LambdaDust;} /* add the -positive- Lambda-dust associated with cooling */
 #endif
@@ -1061,11 +1066,14 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
          a more approximate expression (assuming the mean background of the Milky Way clouds) */
         if(logT <= 5.2)
         {
-            // multiplied by background of ~5eV/cm^3 (Goldsmith & Langer (1978),  van Dishoeck & Black (1986) //
-            double prefac_CR=1; if(All.ComovingIntegrationOn) {
+            double prefac_CR=1.; if(All.ComovingIntegrationOn) {
                 double rhofac = rho / (1000.*All.OmegaBaryon*(All.HubbleParam*HUBBLE_CGS)*(All.HubbleParam*HUBBLE_CGS)*(3./(8.*M_PI*GRAVITY_G))*All.cf_a3inv);
                 if(rhofac < 0.2) {prefac_CR=0;} else {if(rhofac > 200.) {prefac_CR=1;} else {prefac_CR=exp(-1./(rhofac*rhofac));}}} // in cosmological runs, turn off CR heating for any gas with density unless it's >1000 times the cosmic mean density
-            Heat += prefac_CR * 1.0e-16 * (0.98 + 1.65*n_elec*HYDROGEN_MASSFRAC) / (1.e-2 + nHcgs) * 9.0e-12;
+            double cr_zeta=1.e-16, e_per_cr_ioniz=8.8e-12; // either high background (zeta=1e-16), with softer spectrum (5.5eV per ionization), following e.g. van Dishoeck & Black (1986); or equivalently lower rate with higher ~20eV per ionization per Goldsmith & Langer (1978); this is formally degenerate here. however both produce ~3-10x higher rates than more modern estimates (basically in both cases, assuming a CR energy density of ~2-5 eV/cm^3, instead of more modern ~0.5-2 eV/cm^3
+#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+            cr_zeta=1.e-17; e_per_cr_ioniz=3.0e-11; // follow e.g. Glover+Jappsen 2007, Le Teuff et al. 2000, gives about a 3x lower CR heating rate compared to older numbers above
+#endif
+            Heat += prefac_CR * cr_zeta * (1. + 1.68*n_elec*HYDROGEN_MASSFRAC) / (1.e-2 + nHcgs) * e_per_cr_ioniz; // final result
         }
 #endif
 #endif
