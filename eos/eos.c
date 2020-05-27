@@ -233,14 +233,13 @@ double INLINE_FUNC Particle_thermal_soundspeed_i(int i)
 
 
 /* calculate the Alfven speed in a given element */
-double Particle_Alfven_speed_i(int i);
+double Particle_Alfven_speed_i(int i)
 {
 #if defined(MAGNETIC)
     int k; double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(i,k)*All.cf_a2inv*Get_Particle_BField(i,k)*All.cf_a2inv;}
-    if(bmag > 0) {return sqrt(bmag / (MIN_REAL_NUMBER + SphP[i].Density*All.cf_a3inv));} else {return 0;}
-#else
-    return 0;
+    if(bmag > 0) {return sqrt(bmag / (MIN_REAL_NUMBER + SphP[i].Density*All.cf_a3inv));}
 #endif
+    return 0;
 }
 
 
