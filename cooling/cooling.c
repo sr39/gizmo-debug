@@ -1775,17 +1775,17 @@ void chimes_update_gas_vars(int target)
   
   // If there is an EoS, need to set TempFloor to that instead. 
 #ifndef GALSF_FB_FIRE_RT_HIIHEATING
-  ChimesGasVars[target].TempFloor = (ChimesFloat) All.MinGasTemp; 
+  ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(All.MinGasTemp, 10.1); 
 #else 
   if (SphP[target].DelayTimeHII > 0) 
-    ChimesGasVars[target].TempFloor = (ChimesFloat) HIIRegion_Temp; 
+    ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(HIIRegion_Temp, 10.1); 
   else 
-    ChimesGasVars[target].TempFloor = (ChimesFloat) All.MinGasTemp; 
+    ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(All.MinGasTemp, 10.1); 
 #endif 
 
   // Flag to control how the temperature 
   // floor is implemented in CHIMES. 
-  ChimesGasVars[target].temp_floor_mode = 0; 
+  ChimesGasVars[target].temp_floor_mode = 1; 
   
   // Extragalactic UV background 
   ChimesGasVars[target].isotropic_photon_density[0] = chimes_table_spectra.isotropic_photon_density[0]; 
