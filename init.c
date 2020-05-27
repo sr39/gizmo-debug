@@ -645,7 +645,7 @@ void init(void)
 #endif
 #ifdef GALSF
         SphP[i].Sfr = 0;
-#if (GALSF_SFR_VIRIAL_SF_CRITERION>=3)
+#if defined(GALSF_SFR_VIRIAL_CRITERION_TIMEAVERAGED)
         SphP[i].AlphaVirial_SF_TimeSmoothed = 0;
 #endif
 #endif

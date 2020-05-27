@@ -270,9 +270,9 @@
 #if (FIRE_PHYSICS_DEFAULTS == 3)
 #define COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
 #undef PROTECT_FROZEN_FIRE  /* undefine protections to test new code */
-#undef GALSF_SFR_VIRIAL_SF_CRITERION 
-#define GALSF_SFR_VIRIAL_SF_CRITERION 4 /*! sink-particle like self-gravity requirement for star formation: slightly more sophisticated version per Mike */
-#define GALSF_SFR_VIRIAL_CONTINUOUS_THOLD /*! continuous behavior through virial threshold */
+#undef GALSF_SFR_VIRIAL_SF_CRITERION
+#undef GALSF_SFR_MOLECULAR_CRITERION
+#define GALSF_SFR_CRITERION (0+1+2+64+512) // 0=density threshold, 1=virial criterion (strict+time-smoothed), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial)
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
 
@@ -360,6 +360,10 @@ USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
 
 #if defined(GALSF_FB_FIRE_RT_LONGRANGE) && defined(COSMIC_RAYS) && (N_CR_PARTICLE_BINS > 1)
 #define RT_USE_GRAVTREE_SAVE_RAD_ENERGY
+#endif
+
+#ifdef GALSF_SFR_CRITERION // flag for pure cross-compatibility [identical functionality, just ease-of-use for galaxy simulators here]
+#define SINGLE_STAR_SINK_FORMATION GALSF_SFR_CRITERION
 #endif
 
 #ifdef COSMIC_RAYS
@@ -450,7 +454,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
 #define SINGLE_STAR_TIMESTEPPING 0
 #define SINGLE_STAR_ACCRETION 12
-#define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
+#define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32+64) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial)
 #define DEVELOPER_MODE
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define BH_OUTPUT_GASSWALLOW //save accretion histories
@@ -485,18 +489,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
 #define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
-
-#if (SINGLE_STAR_SINK_FORMATION & 1) // figure out flags needed for the chosen sink formation model
-#define GALSF_SFR_VIRIAL_SF_CRITERION 3
-#endif
-#if (SINGLE_STAR_SINK_FORMATION & 16)
-#ifndef SINGLE_STAR_TIMESTEPPING
-#define SINGLE_STAR_TIMESTEPPING 0
-#endif
-#endif
-#if (SINGLE_STAR_SINK_FORMATION & 32)
-#define GALSF_SFR_TIDAL_HILL_CRITERION
-#endif
 
 #ifdef SINGLE_STAR_ACCRETION // figure out flags needed for the chosen sink accretion model
 #define BH_SWALLOWGAS // need to swallow gas [part of sink model]
@@ -564,6 +556,18 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 #endif // SINGLE_STAR_SINK_DYNAMICS
 
+
+#if (SINGLE_STAR_SINK_FORMATION & 1) // figure out flags needed for the chosen sink formation model [note these CAN be used even if single-star master flag is off, as additional SF/sink formation criteria for e.g. GALSF sims]
+#define GALSF_SFR_VIRIAL_SF_CRITERION 2
+#endif
+#if (SINGLE_STAR_SINK_FORMATION & 16)
+#ifndef SINGLE_STAR_TIMESTEPPING
+#define SINGLE_STAR_TIMESTEPPING 0
+#endif
+#endif
+#if (SINGLE_STAR_SINK_FORMATION & 32)
+#define GALSF_SFR_TIDAL_HILL_CRITERION
+#endif
 
 
 #ifdef GRAVITY_ACCURATE_FEWBODY_INTEGRATION /* utility flag to enable a few different extra-conservative time-integration flags for gravity */
@@ -739,6 +743,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #if defined(GALSF_SFR_VIRIAL_SF_CRITERION)
 #if (GALSF_SFR_VIRIAL_SF_CRITERION >= 5)
 #define GALSF_SFR_TIDAL_HILL_CRITERION
+#endif
+#if (GALSF_SFR_VIRIAL_SF_CRITERION >= 2)
+#define GALSF_SFR_VIRIAL_CRITERION_TIMEAVERAGED
 #endif
 #endif
 
@@ -2889,7 +2896,7 @@ extern struct sph_particle_data
 #endif
 #ifdef GALSF
   MyFloat Sfr;                      /*!< particle star formation rate */
-#if (GALSF_SFR_VIRIAL_SF_CRITERION>=3)
+#if defined(GALSF_SFR_VIRIAL_CRITERION_TIMEAVERAGED)
   MyFloat AlphaVirial_SF_TimeSmoothed;  /*!< dimensionless number > 0.5 if self-gravitating for smoothed virial criterion */
 #endif
 #endif
