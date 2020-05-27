@@ -976,7 +976,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             double Lambda_HD_thin = ((9.623e-30 + 7.276e-31*pow(T,0.92))*exp(-DMAX(255./T,110.)) + (6.221e-30 + 5.090e-31*pow(T,0.77))*exp(-DMAX(128./T,110.))) * exp(-T3*T3/25.); // optically-thin HD cooling rate [assuming all D locked into HD at temperatures where this is relevant]
             double f_H2 = 0.5 * (3.e-3 + 1./(1.+T*T/(nHcgs*nHcgs))); // -very- crude approximation based on Glover+Clark idealized clouds for fH2, which is the major uncertainty here for the primordial cooling rates
             double nH_over_ncrit = Lambda_H2_thin / Lambda_H2_thick , Lambda_HD = Lambda_HD_thin / (1. + nH_over_ncrit), Lambda_H2 = f_H2 * Lambda_H2_thin / (1. + nH_over_ncrit); // correct cooling rates for densities above critical
-            LambdaMol = DMIN(1-shieldfac, nH0) * (Lambda_Metals + Lambda_H2_HD); // combine to get total cooling rate: scale to estimate of neutral fraction [use min[nH0,1-shieldfac] b/c this should be more sensitive to radiation, so if shieldfac is high, this will be low, even if nH0 big]
+            LambdaMol = DMIN(1-shieldfac, nH0) * (Lambda_Metals + Lambda_H2 + Lambda_HD); // combine to get total cooling rate: scale to estimate of neutral fraction [use min[nH0,1-shieldfac] b/c this should be more sensitive to radiation, so if shieldfac is high, this will be low, even if nH0 big]
 #endif
             LambdaDust = 1.116e-32 * (Tdust-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol;  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
 #ifdef RT_INFRARED
