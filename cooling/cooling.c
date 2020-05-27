@@ -468,7 +468,7 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
 
 
 
-double get_mu(double T_guess, double rho, double xH0, double *ne_guess, int target)
+double get_mu(double T_guess, double rho, double *xH0, double *ne_guess, int target)
 {
  double X=HYDROGEN_MASSFRAC, Y=1.-X, Z=0, fmol;
     
@@ -485,7 +485,7 @@ double get_mu(double T_guess, double rho, double xH0, double *ne_guess, int targ
     if(rho > 0) {T_mol *= (rho/PROTONMASS) / 100.;}
     if(T_mol>8000.) {T_mol=8000.;}
     T_mol = T_guess / T_mol;
-    fmol = xH0 / (1. + T_mol*T_mol);
+    fmol = *xH0 / (1. + T_mol*T_mol);
     
     return 1. / ( X*(1-0.5*fmol) + Y/4. + *ne_guess*HYDROGEN_MASSFRAC + Z/(16.+12.*fmol) ); // since our ne is defined in some routines with He, should multiply by universal
 }
@@ -980,7 +980,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
             LambdaDust = 1.116e-32 * (Tdust-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol;  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
 #ifdef RT_INFRARED
-            if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, rho, nH0, &n_elec, target);} // call our specialized subroutine, because radiation and gas energy fields are co-evolving and tightly-coupled here //
+            if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, rho, &nH0, &n_elec, target);} // call our specialized subroutine, because radiation and gas energy fields are co-evolving and tightly-coupled here //
 #endif
             if(LambdaDust<0) {Lambda -= LambdaDust;} /* add the -positive- Lambda-dust associated with cooling */
 #endif

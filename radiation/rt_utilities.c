@@ -1099,7 +1099,7 @@ double get_min_allowed_dustIRrad_temperature(void)
 }
 
 /* return LambdaDust, the dust heating/cooling rate (>0 is heating, <0 is cooling) */
-double get_rt_ir_lambdadust_effective(double T, double rho, double nH0_guess, double *ne_guess, int target)
+double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, double *ne_guess, int target)
 {
     double Tdust_0 = SphP[target].Dust_Temperature; // dust temperature estimate from previous loop over radiation operators
     double LambdaDust_initial_guess = 1.116e-32 * (Tdust_0-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * (P[target].Metallicity[0]/All.SolarAbundances[0]); // guess value based on the -current- values of T, Tdust //
