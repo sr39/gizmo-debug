@@ -238,12 +238,8 @@ double get_starformation_rate(int i)
     
     /* compute various velocity-gradient terms which are potentially used in the various criteria below */
     double dv2abs=0, divv=0, gradv[9]={0}, cs_eff=0, vA=0, v_fast=0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
-    cs_eff = Particle_effective_soundspeed_i(i); /* standard effective soundspeed */
-#ifdef MAGNETIC
-    double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(i,k)*All.cf_a2inv*Get_Particle_BField(i,k)*All.cf_a2inv;}
-    if(bmag > 0) {vA = sqrt(bmag / (MIN_REAL_NUMBER + SphP[i].Density*All.cf_a3inv));} /* calculate Alfven speed for use below */
-#endif
-    v_fast = sqrt(cs_eff*cs_eff + vA*vA); /* calculate fast magnetosonic speed for use below */
+    cs_eff=Particle_thermal_soundspeed_i(i); vA=Particle_Alfven_speed_i(i); /* specifically get the -thermal- soundspeed and Alfven speed [dont include terms like radiation pressure or cosmic ray pressure in the relevant speeds here] */
+    v_fast=sqrt(cs_eff*cs_eff + vA*vA); /* calculate fast magnetosonic speed for use below */
     for(j=0;j<3;j++) {
         for(k=0;k<3;k++) {
             double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
@@ -311,7 +307,7 @@ double get_starformation_rate(int i)
 #endif
 
 #if (SINGLE_STAR_SINK_FORMATION & 64) || (GALSF_SFR_VIRIAL_SF_CRITERION >= 3) /* check if Jeans mass is low enough for conceivable formation of 'stars' */
-    double MJ_crit=1000., cs_touse=cs_eff; /* for galaxy-scale SF, default to large ~1000 Msun threshold */
+    double cs_touse=cs_eff, MJ_crit=DMAX(DMIN(1000., P[i].Mass*All.UnitMass_in_g/(All.HubbleParam*SOLAR_MASS)), 10.); /* for galaxy-scale SF, default to large ~1000 Msun threshold */
 #ifdef SINGLE_STAR_SINK_FORMATION
     cs_touse=v_fast; MJ_crit=DMIN(1.e4, DMAX(1.e-3 , 100.*P[i].Mass*All.UnitMass_in_g/(All.HubbleParam*SOLAR_MASS))); /* for single-star formation use un-resolved Jeans mass criterion, with B+thermal pressure */
 #endif

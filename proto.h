@@ -314,6 +314,8 @@ void elastic_body_update_driftkick(int i, double dt_entr, int mode);
 #endif
 double INLINE_FUNC convert_internalenergy_soundspeed2(int i, double u);
 double INLINE_FUNC Particle_effective_soundspeed_i(int i);
+double INLINE_FUNC Particle_thermal_soundspeed_i(int i);
+double Particle_Alfven_speed_i(int i);
 #ifdef MAGNETIC
 double INLINE_FUNC Get_Particle_BField(int i_particle_id, int k_vector_component);
 double Get_DtB_FaceArea_Limiter(int i);
