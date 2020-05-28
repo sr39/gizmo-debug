@@ -56,20 +56,11 @@ CHIMES_HII_REGIONS
 CHIMES_STELLAR_FLUXES 
   Tracks stellar fluxes in different age bins through the luminosity tree, using the LEBRON method from FIRE, and couples these to the CHIMES chemistry routines. Note that this should be used instead of FIRE's standard GALSF_FB_FIRE_RT_UVHEATING routine. 
 
-CHIMES_SFR_MOLECULAR_CRITERION 
-  As GALSF_SFR_MOLECULAR_CRITERION, but using the H2 fractions from CHIMES. 
-
 CHIMES_REDUCED_OUTPUT 
   By default, the full array of chemical abundances (with 157 species) is written out in every snapshot. When this option is turned on, the full abundance array is only written out in a subset of snapshots, with a frequency given by the ``N_chimes_full_output_freq`` parameter (see the next section). For all other snapshots, it just writes out a smaller array containing the abundances of electrons, HI, H2 and CO. 
 
 CHIMES_NH_OUTPUT 
   Writes out the column densities of gas particles, as used within the chemistry solver, in the snapshots. This is useful if you want to compute equilibrium abundances from the snapshot in post-processing, as it ensures that you use the same column densities that went into the non-equilibrium calculation. 
-
-CHIMES_OUTPUT_DENS_AROUND_STAR 
-  Writes out the gas density computed at the position of each star particle in the snapshot. If both CHIMES_OUTPUT_DENS_AROUND_STAR and CHIMES_NH_OUTPUT are switched on, it will also write out the gas column density around each star particle, which can be used for computing fluxes from each star particle including local shielding around the star in post-processing. 
-
-CHIMES_OUTPUT_DELAY_TIME_HII 
-  Writes out the DelayTimeHII of each gas particle. Requires CHIMES_HII_REGIONS or GALSF_FB_FIRE_RT_HIIHEATING. This is useful for identifying gas particles that were flagged as being within an HII region. 
 
 CHIMES_TURB_DIFF_IONS 
   Switches on the turbulent diffusion of individual ions and molecules. This is treated in the same way as FIRE's standard metal diffusion option. Requires TURB_DIFF_METALS and TURB_DIFF_METALS_LOWORDER. 

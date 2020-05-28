@@ -101,7 +101,7 @@ void find_timesteps(void)
             if(P[i].Type==0)
             {
                 double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i].MaxSignalVel); // in v_phys units //
-                double vsig1 = All.cf_afac3 * sqrt( Particle_effective_soundspeed_i(i)*Particle_effective_soundspeed_i(i) + fac_magnetic_pressure * (Get_Particle_BField(i,0)*Get_Particle_BField(i,0)+Get_Particle_BField(i,1)*Get_Particle_BField(i,1)+Get_Particle_BField(i,2)*Get_Particle_BField(i,2)) / SphP[i].Density );
+                double vsig1 = All.cf_afac3 * sqrt( Get_Gas_effective_soundspeed_i(i)*Get_Gas_effective_soundspeed_i(i) + fac_magnetic_pressure * (Get_Gas_BField(i,0)*Get_Gas_BField(i,0)+Get_Gas_BField(i,1)*Get_Gas_BField(i,1)+Get_Gas_BField(i,2)*Get_Gas_BField(i,2)) / SphP[i].Density );
                 double vsig0 = DMAX(vsig1,vsig2);
 
                 if(vsig0 > fastwavespeed) fastwavespeed = vsig0; // physical unit
@@ -124,20 +124,13 @@ void find_timesteps(void)
     for(i = FirstActiveParticle, ti_min = TIMEBASE; i >= 0; i = NextActiveParticle[i])
     {
         ti_step = get_timestep(i, &aphys, 0);
-        
-        if(ti_step < ti_min)
-            ti_min = ti_step;
+        if(ti_step < ti_min) {ti_min = ti_step;}
     }
-    
-    if(ti_min > (dt_displacement / All.Timebase_interval))
-        ti_min = (dt_displacement / All.Timebase_interval);
+    if(ti_min > (dt_displacement / All.Timebase_interval)) {ti_min = (dt_displacement / All.Timebase_interval);}
     
     ti_step = TIMEBASE;
-    while(ti_step > ti_min)
-        ti_step >>= 1;
-    
+    while(ti_step > ti_min) {ti_step >>= 1;}
     integertime ti_min_glob;
-    
     MPI_Allreduce(&ti_step, &ti_min_glob, 1, MPI_TYPE_TIME, MPI_MIN, MPI_COMM_WORLD);
 #endif
     
@@ -578,7 +571,7 @@ integertime get_timestep(int p,		/*!< particle index */
                         double tmp_grad = SphP[p].Gradients.B[k][k2];
                         b_grad += tmp_grad * tmp_grad;
                     }
-                    double tmp_grad = Get_Particle_BField(p,k);
+                    double tmp_grad = Get_Gas_BField(p,k);
                     b_mag += tmp_grad * tmp_grad;
                 }
                 double L_cond_inv = sqrt(b_grad / (1.e-37 + b_mag));
@@ -600,7 +593,7 @@ integertime get_timestep(int p,		/*!< particle index */
             int k_CRegy;
             for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
             {
-                if(Get_Particle_CosmicRayPressure(p,k_CRegy) > 1.0e-20)
+                if(Get_Gas_CosmicRayPressure(p,k_CRegy) > 1.0e-20)
                 {
                     int explicit_timestep_on, cr_diffusion_opt = 0;
 #if defined(DIFFUSION_OPTIMIZERS) || defined(COSMIC_RAYS_M1)
@@ -813,11 +806,11 @@ integertime get_timestep(int p,		/*!< particle index */
             
 #if defined(DIVBCLEANING_DEDNER) 
             double fac_magnetic_pressure = All.cf_afac1 / All.cf_atime;
-            double phi_b_units = Get_Particle_PhiField(p) / (All.cf_afac3 * All.cf_atime * SphP[p].MaxSignalVel);
-            double vsig1 = All.cf_afac3 * sqrt( Particle_effective_soundspeed_i(p)*Particle_effective_soundspeed_i(p) +
-                    fac_magnetic_pressure * (Get_Particle_BField(p,0)*Get_Particle_BField(p,0) +
-                                             Get_Particle_BField(p,1)*Get_Particle_BField(p,1)+
-                                             Get_Particle_BField(p,2)*Get_Particle_BField(p,2) +
+            double phi_b_units = Get_Gas_PhiField(p) / (All.cf_afac3 * All.cf_atime * SphP[p].MaxSignalVel);
+            double vsig1 = All.cf_afac3 * sqrt( Get_Gas_effective_soundspeed_i(p)*Get_Gas_effective_soundspeed_i(p) +
+                    fac_magnetic_pressure * (Get_Gas_BField(p,0)*Get_Gas_BField(p,0) +
+                                             Get_Gas_BField(p,1)*Get_Gas_BField(p,1)+
+                                             Get_Gas_BField(p,2)*Get_Gas_BField(p,2) +
                                              phi_b_units*phi_b_units) / SphP[p].Density );
 
             dt_courant = 0.8 * All.CourantFac * (All.cf_atime*L_particle) / vsig1; // 2.0 factor may be added (PFH) //

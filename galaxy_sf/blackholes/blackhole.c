@@ -105,14 +105,14 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
 int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double sink_radius) // need to know the sink radius, which can be distinct from both the softening and search radii
 {
     /* if pair is a gas particle make sure to account for its thermal pressure */
-    double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
+    double cs = 0; if(P[j].Type==0) {cs=Get_Gas_effective_soundspeed_i(j);}
     
     if(P[j].Type == 0)
     {
 #ifdef SINGLE_STAR_SINK_DYNAMICS
         if(Get_Particle_Size(j) > sink_radius*1.396263) {return 0;} // particle volume should be less than sink volume, enforcing a minimum spatial resolution around the sink
 #if defined(MAGNETIC)
-        double bmag=0; int k; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(j,k)*Get_Particle_BField(j,k);} cs = sqrt(cs*cs + bmag/SphP[j].Density); // use fast Alfven speed
+        double bmag=0; int k; for(k=0;k<3;k++) {bmag+=Get_Gas_BField(j,k)*Get_Gas_BField(j,k);} cs = sqrt(cs*cs + bmag/SphP[j].Density); // use fast Alfven speed
 #endif
 #if defined(COOLING)  // check if we're probably sitting at the bottom of a quasi-hydrostatic Larson core
         double nHcgs = HYDROGEN_MASSFRAC * (SphP[j].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;

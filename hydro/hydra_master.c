@@ -400,7 +400,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
     in->Density = SphP[i].Density;
     in->Pressure = SphP[i].Pressure;
     in->InternalEnergyPred = SphP[i].InternalEnergyPred;
-    in->SoundSpeed = Particle_effective_soundspeed_i(i);
+    in->SoundSpeed = Get_Gas_effective_soundspeed_i(i);
     in->Timestep = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0);
     in->ConditionNumber = SphP[i].ConditionNumber;
 #ifdef MHD_CONSTRAINED_GRADIENT
@@ -515,19 +515,19 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #endif
     
 #ifdef MAGNETIC
-    for(k = 0; k < 3; k++) {in->BPred[k] = Get_Particle_BField(i,k);}
+    for(k = 0; k < 3; k++) {in->BPred[k] = Get_Gas_BField(i,k);}
 #if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
     in->Balpha = SphP[i].Balpha;
 #endif
 #ifdef DIVBCLEANING_DEDNER
-    in->PhiPred = Get_Particle_PhiField(i);
+    in->PhiPred = Get_Gas_PhiField(i);
 #endif
 #endif // MAGNETIC //
     
 #ifdef COSMIC_RAYS
     for(j=0;j<N_CR_PARTICLE_BINS;j++)
     {
-        in->CosmicRayPressure[j] = Get_Particle_CosmicRayPressure(i,j);
+        in->CosmicRayPressure[j] = Get_Gas_CosmicRayPressure(i,j);
         in->CosmicRayDiffusionCoeff[j] = SphP[i].CosmicRayDiffusionCoeff[j];
 #ifdef COSMIC_RAYS_M1
         for(k=0;k<3;k++) {in->CosmicRayFlux[j][k] = SphP[i].CosmicRayFluxPred[j][k];}
@@ -660,8 +660,8 @@ void hydro_final_operations_and_cleanup(void)
                 /* this part of the induction equation has to do with advection of div-B, it is not present in SPH */
                 SphP[i].DtB[k] -= SphP[i].divB * SphP[i].VelPred[k]/All.cf_atime;
 #endif
-                SphP[i].HydroAccel[k] -= SphP[i].divB * Get_Particle_BField(i,k)*All.cf_a2inv;
-                SphP[i].DtInternalEnergy -= SphP[i].divB * (SphP[i].VelPred[k]/All.cf_atime) * Get_Particle_BField(i,k)*All.cf_a2inv;
+                SphP[i].HydroAccel[k] -= SphP[i].divB * Get_Gas_BField(i,k)*All.cf_a2inv;
+                SphP[i].DtInternalEnergy -= SphP[i].divB * (SphP[i].VelPred[k]/All.cf_atime) * Get_Gas_BField(i,k)*All.cf_a2inv;
             }
 
             double magnorm_closure = Get_DtB_FaceArea_Limiter(i);
@@ -695,7 +695,7 @@ void hydro_final_operations_and_cleanup(void)
                 for(k=0; k<3; k++)
                 {
                     SphP[i].DtB[k] += PhiCorr_Norm * SphP[i].DtB_PhiCorr[k];
-                    SphP[i].DtInternalEnergy += PhiCorr_Norm * SphP[i].DtB_PhiCorr[k] * Get_Particle_BField(i,k)*All.cf_a2inv;
+                    SphP[i].DtInternalEnergy += PhiCorr_Norm * SphP[i].DtB_PhiCorr[k] * Get_Gas_BField(i,k)*All.cf_a2inv;
                 }
             }
             
@@ -709,7 +709,7 @@ void hydro_final_operations_and_cleanup(void)
                 double tmp_ded = 0.5 * SphP[i].MaxSignalVel / (fac_mu*All.cf_atime); // has units of v_physical now
                 /* do a check to make sure divB isn't something wildly divergent (owing to particles being too close) */
                 double b2_max = 0.0;
-                for(k=0;k<3;k++) {b2_max += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+                for(k=0;k<3;k++) {b2_max += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);}
                 b2_max = 100.0 * fabs( sqrt(b2_max) * All.cf_a2inv * P[i].Mass / (SphP[i].Density*All.cf_a3inv) * 1.0 / (PPP[i].Hsml*All.cf_atime) );
                 if(fabs(SphP[i].divB) > b2_max) {SphP[i].divB *= b2_max / fabs(SphP[i].divB);}
                 /* ok now can apply this to get the growth rate of phi */
@@ -739,7 +739,7 @@ void hydro_final_operations_and_cleanup(void)
                 (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
             double vstream_0 = Get_CosmicRayStreamingVelocity(i), vA=10.*vstream_0;
 #ifdef MAGNETIC /* account for the fact that the loss term is always [or below] the Alfven speed, regardless of the bulk streaming speed */
-            vA=0; for(k=0;k<3;k++) {vA += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+            vA=0; for(k=0;k<3;k++) {vA += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);}
             vA = All.cf_afac3 * sqrt(All.cf_afac1 * vA/ (All.cf_atime * SphP[i].Density));
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
             vA /= Get_Gas_Ionized_Fraction(i); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
@@ -762,7 +762,7 @@ void hydro_final_operations_and_cleanup(void)
 #ifndef HYDRO_SPH
             for(k=0;k<3;k++)
             {
-                SphP[i].DtInternalEnergy += -Get_Particle_BField(i,k)*All.cf_a2inv * SphP[i].DtB[k];
+                SphP[i].DtInternalEnergy += -Get_Gas_BField(i,k)*All.cf_a2inv * SphP[i].DtB[k];
             }
 #endif
             for(k=0;k<3;k++) {SphP[i].DtB[k] *= magnorm_closure;}

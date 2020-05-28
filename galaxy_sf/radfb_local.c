@@ -275,7 +275,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                 NEAREST_XYZ(dx,dy,dz,1); /*  now find the closest image in the given box size */
                                 r2 = dx * dx + dy * dy + dz * dz; r=sqrt(r2);
                                 /* check whether the particle is already ionized */
-                                already_ionized = 0; rho_j = Particle_density_for_energy_i(j);
+                                already_ionized = 0; rho_j = Get_Gas_density_for_energy_i(j);
                                 if(SphP[j].InternalEnergy<SphP[j].InternalEnergyPred) {u=SphP[j].InternalEnergy;} else {u=SphP[j].InternalEnergyPred;}
                                 if((SphP[j].DelayTimeHII > 0)||(u>uion)) already_ionized=1;
                                 /* now, if inside RHII and mionized<mionizeable and not already ionized, can be ionized! */

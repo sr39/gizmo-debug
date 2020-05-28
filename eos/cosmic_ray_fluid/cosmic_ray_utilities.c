@@ -199,7 +199,7 @@ double Get_AlfvenMachNumber_Local(int i, double vA_idealMHD_codeunits, int use_s
         v2_t += SphP[i].VelPred[i1]*SphP[i].VelPred[i1];
         for(i2=0;i2<3;i2++) {dv2_t += SphP[i].Gradients.Velocity[i1][i2]*SphP[i].Gradients.Velocity[i1][i2];}
 #ifdef MAGNETIC
-        b2_t += Get_Particle_BField(i,i1) * Get_Particle_BField(i,i1);
+        b2_t += Get_Gas_BField(i,i1) * Get_Gas_BField(i,i1);
         for(i2=0;i2<3;i2++) {db2_t += SphP[i].Gradients.B[i1][i2]*SphP[i].Gradients.B[i1][i2];}
 #endif
     }
@@ -275,7 +275,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     unit_kappa_code=All.UnitVelocity_in_cm_per_s*All.UnitLength_in_cm/All.HubbleParam; gizmo2gauss=sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); f_ion=1; temperature=0; EPSILON_SMALL=1.e-50; codelength_to_kpc=(All.UnitLength_in_cm/All.HubbleParam)/(3.086e21);
     Bmag=2.*SphP[i].Pressure*All.cf_a3inv; cs_thermal=sqrt(convert_internalenergy_soundspeed2(i,SphP[i].InternalEnergyPred)); /* quick thermal pressure properties (we'll assume beta=1 if MHD not enabled) */
 #ifdef MAGNETIC /* get actual B-field */
-    double B[3]={0}; Bmag=0; for(k=0;k<3;k++) {B[k]=Get_Particle_BField(i,k)*All.cf_a2inv; Bmag+=B[k]*B[k];} // B-field in code units (physical)
+    double B[3]={0}; Bmag=0; for(k=0;k<3;k++) {B[k]=Get_Gas_BField(i,k)*All.cf_a2inv; Bmag+=B[k]*B[k];} // B-field in code units (physical)
 #endif
     Bmag=sqrt(DMAX(Bmag,0)); b_muG=Bmag*gizmo2gauss/1.e-6; b_muG=sqrt(b_muG*b_muG + 1.e-6); vA_code=sqrt(Bmag*Bmag/(SphP[i].Density*All.cf_a3inv)); vA_noion=vA_code; E_B=0.5*Bmag*Bmag*(P[i].Mass/(SphP[i].Density*All.cf_a3inv)); Omega_per_GeV=0.00898734*b_muG*(All.UnitTime_in_s/All.HubbleParam); /* B-field in units of physical microGauss; set a floor at nanoGauss level */
 #ifdef COOLING
@@ -347,7 +347,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
         double kappa_diff_vel = DiffusionCoeff * GAMMA_COSMICRAY_MINUS1 / L_eff; DiffusionCoeff *= 1 / (1 + kappa_diff_vel/diffusion_velocity_limit); /* caps maximum here */
 #ifdef GALSF /* for multi-physics problems, we suppress diffusion [in the FLD-like limit] where it is irrelevant for timestepping-sake */
         DiffusionCoeff *= 1 / (1 + kappa_diff_vel/(0.01*diffusion_velocity_limit)); /* caps maximum here */
-        double P_cr_Ratio = Get_Particle_CosmicRayPressure(i,k_CRegy) / (MIN_REAL_NUMBER + SphP[i].Pressure), P_min=1.0e-4; if(P_cr_Ratio < P_min) {DiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
+        double P_cr_Ratio = Get_Gas_CosmicRayPressure(i,k_CRegy) / (MIN_REAL_NUMBER + SphP[i].Pressure), P_min=1.0e-4; if(P_cr_Ratio < P_min) {DiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
         P_min = 1.0e-6; if(P_cr_Ratio < P_min) {DiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
 #endif
         DiffusionCoeff /= GAMMA_COSMICRAY_MINUS1; // ensure correct units for subsequent operations //
@@ -384,7 +384,7 @@ double inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity,
 
 
 /* return CR pressure within a given bin */
-double INLINE_FUNC Get_Particle_CosmicRayPressure(int i, int k_CRegy)
+double INLINE_FUNC Get_Gas_CosmicRayPressure(int i, int k_CRegy)
 {
     if((P[i].Mass > 0) && (SphP[i].Density>0) && (SphP[i].CosmicRayEnergyPred[k_CRegy] > 0))
     {
@@ -402,7 +402,7 @@ double Get_CosmicRayGradientLength(int i, int k_CRegy)
     int k; for(k=0;k<3;k++) {CRPressureGradMag += SphP[i].Gradients.CosmicRayPressure[k_CRegy][k]*SphP[i].Gradients.CosmicRayPressure[k_CRegy][k];}
     CRPressureGradMag = sqrt(1.e-46 + CRPressureGradMag); // sqrt to make absolute value
 #ifdef MAGNETIC /* with anisotropic transport, we really want the -parallel- gradient scale-length, so need another factor here */
-    double B2_tot=0.0, b=0; CRPressureGradMag=0; for(k=0;k<3;k++) {b=Get_Particle_BField(i,k); B2_tot+=b*b; CRPressureGradMag+=b*SphP[i].Gradients.CosmicRayPressure[k_CRegy][k];} // note, this is signed!
+    double B2_tot=0.0, b=0; CRPressureGradMag=0; for(k=0;k<3;k++) {b=Get_Gas_BField(i,k); B2_tot+=b*b; CRPressureGradMag+=b*SphP[i].Gradients.CosmicRayPressure[k_CRegy][k];} // note, this is signed!
     CRPressureGradMag = sqrt((1.e-40 + CRPressureGradMag*CRPressureGradMag) / (1.e-46 + B2_tot)); // divide B-magnitude to get scalar magnitude, and take sqrt[(G.P)^2] to get absolute value
 #endif
     
@@ -416,7 +416,7 @@ double Get_CosmicRayGradientLength(int i, int k_CRegy)
     double L_mean_free_path = (3.e25 / nH_cgs) / (All.UnitLength_in_cm / All.HubbleParam);
     L_gradient_max = DMIN(L_gradient_max, L_mean_free_path);
     
-    double CRPressureGradScaleLength = Get_Particle_CosmicRayPressure(i,k_CRegy) / CRPressureGradMag * All.cf_atime;
+    double CRPressureGradScaleLength = Get_Gas_CosmicRayPressure(i,k_CRegy) / CRPressureGradMag * All.cf_atime;
     if(CRPressureGradScaleLength > 0) {CRPressureGradScaleLength = 1.0/(1.0/CRPressureGradScaleLength + 1.0/L_gradient_max);} else {CRPressureGradScaleLength=0;}
     CRPressureGradScaleLength = sqrt(L_gradient_min*L_gradient_min + CRPressureGradScaleLength*CRPressureGradScaleLength);
     return CRPressureGradScaleLength; /* this is returned in -physical- units */
@@ -432,7 +432,7 @@ double Get_CosmicRayStreamingVelocity(int i)
 #ifdef MAGNETIC
     /* in the strong-field (low-beta) case, it's actually the Alfven velocity: interpolate between these */
     double vA_2 = 0.0; double cs_stream = v_streaming;
-    int k; for(k=0;k<3;k++) {vA_2 += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+    int k; for(k=0;k<3;k++) {vA_2 += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);}
     vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
     vA_2 /= Get_Gas_Ionized_Fraction(i); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
@@ -501,7 +501,7 @@ double get_cell_Bfield_in_microGauss(int i)
 {
     double Bmag=0, gizmo2mugauss_2=4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam*1.e12;
 #ifdef MAGNETIC
-    int k; for(k=0;k<3;k++) {double B=Get_Particle_BField(i,k)*All.cf_a2inv; Bmag+=B*B*gizmo2mugauss_2;} // actual B-field in code units
+    int k; for(k=0;k<3;k++) {double B=Get_Gas_BField(i,k)*All.cf_a2inv; Bmag+=B*B*gizmo2mugauss_2;} // actual B-field in code units
 #else
     Bmag=2.*SphP[i].Pressure*All.cf_a3inv*gizmo2mugauss_2; // assume equipartition
 #endif

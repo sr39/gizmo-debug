@@ -146,7 +146,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     int i1,i2; double v2_t=0,dv2_t=0,b2_t=0,db2_t=0,x_LL,M_A,h0,fturb_multiplier=1; // factor which will represent which cascade model we are going to use
     for(i1=0;i1<3;i1++)
     {
-        v2_t += SphP[i].VelPred[i1]*SphP[i].VelPred[i1]; b2_t += Get_Particle_BField(i,i1) * Get_Particle_BField(i,i1);
+        v2_t += SphP[i].VelPred[i1]*SphP[i].VelPred[i1]; b2_t += Get_Gas_BField(i,i1) * Get_Gas_BField(i,i1);
         for(i2=0;i2<3;i2++) {dv2_t += SphP[i].Gradients.Velocity[i1][i2]*SphP[i].Gradients.Velocity[i1][i2]; db2_t += SphP[i].Gradients.B[i1][i2]*SphP[i].Gradients.B[i1][i2];}
     }
     v2_t=sqrt(v2_t); b2_t=sqrt(b2_t); dv2_t=sqrt(dv2_t); db2_t=sqrt(db2_t); dv2_t/=All.cf_atime; db2_t/=All.cf_atime; b2_t*=All.cf_a2inv; db2_t*=All.cf_a2inv; v2_t/=All.cf_atime; dv2_t/=All.cf_atime; h0=Get_Particle_Size(i)*All.cf_atime; // physical units

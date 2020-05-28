@@ -734,7 +734,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 /* ----- end block of options for RHD modules ------ */
 
 
-#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) 
+#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) || defined(OUTPUT_DENS_AROUND_STAR)
 #define DO_DENSITY_AROUND_STAR_PARTICLES
 #if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
 #define ALLOW_IMBALANCED_GASPARTICLELOAD
@@ -2953,6 +2953,9 @@ extern struct sph_particle_data
     MyFloat Kappa_Conduction;           /*!< conduction coefficient */
 #endif
 
+#ifdef OUTPUT_MOLECULAR_FRACTION
+    MyFloat MolecularMassFraction;      /*!< holder for molecular mass fraction for sims where we evaluate it on-the-fly and wish to save it [different from detailed chemistry modules] */
+#endif
     
 #ifdef MHD_NON_IDEAL
     MyFloat Eta_MHD_OhmicResistivity_Coeff;     /*!< Ohmic resistivity coefficient [physical units of L^2/t] */
@@ -3326,7 +3329,6 @@ enum iofields
   IO_CHILD_ID,
   IO_GENERATION_ID,
   IO_MASS,
-  IO_SECONDORDERMASS,
   IO_U,
   IO_RHO,
   IO_NE,
@@ -3357,27 +3359,14 @@ enum iofields
   IO_HII,
   IO_HeI,
   IO_HeII,
-  IO_HeIII,
-  IO_H2I,
-  IO_H2II,
   IO_CRATE,
   IO_HRATE,
   IO_NHRATE,
   IO_HHRATE,
   IO_MCRATE, 
-  IO_HM,
-  IO_HD,
-  IO_DI,
-  IO_DII,
-  IO_HeHII,
   IO_DTENTR,
-  IO_STRESSDIAG,
-  IO_STRESSOFFDIAG,
-  IO_STRESSBULK,
-  IO_SHEARCOEFF,
   IO_TSTP,
   IO_BFLD,
-  IO_DBDT,
   IO_IMF,
   IO_COSMICRAY_ENERGY,
   IO_COSMICRAY_KAPPA,
@@ -3387,10 +3376,7 @@ enum iofields
   IO_AMDC,
   IO_PHI,
   IO_GRADPHI,
-  IO_ROTB,
   IO_COOLRATE,
-  IO_CONDRATE,
-  IO_DENN,
   IO_TIDALTENSORPS,
   IO_GDE_DISTORTIONTENSOR,
   IO_FLOW_DETERMINANT,
@@ -3413,15 +3399,8 @@ enum iofields
   IO_SHEET_ORIENTATION,
   IO_INIT_DENSITY,
   IO_CAUSTIC_COUNTER,
-  IO_VRMS,
-  IO_VBULK,
-  IO_VRAD,
-  IO_VTAN,
-  IO_TRUENGB,
   IO_VDIV,
-  IO_VROT,
   IO_VORT,
-  IO_CHEM,
   IO_DELAYTIME,
   IO_AGS_SOFT,
   IO_AGS_RHO,
@@ -3429,13 +3408,8 @@ enum iofields
   IO_AGS_PSI_RE,
   IO_AGS_PSI_IM,
   IO_AGS_ZETA,
-  IO_AGS_OMEGA,
-  IO_AGS_CORR,
-  IO_AGS_NGBS,
   IO_VSTURB_DISS,
   IO_VSTURB_DRIVE,
-  IO_MG_PHI,
-  IO_MG_ACCEL,
   IO_grHI,
   IO_grHII,
   IO_grHM,
@@ -3459,8 +3433,9 @@ enum iofields
   IO_CHIMES_STAR_SIGMA, 
   IO_CHIMES_FLUX_G0, 
   IO_CHIMES_FLUX_ION, 
-  IO_CHIMES_STAR_DENS,
-  IO_CHIMES_DELAY_HII, 
+  IO_DENS_AROUND_STAR,
+  IO_DELAY_TIME_HII,
+  IO_MOLECULARFRACTION,
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };
 

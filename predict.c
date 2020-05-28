@@ -290,7 +290,7 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
     double PhiphysVolphys_to_PhicodeVolCode = 1 / All.cf_a3inv; // for mass-based phi fluxes (otherwise coefficient is 1)
     double dtphi_code = (PhiphysVolphys_to_PhicodeVolCode) * SphP[i].DtPhi;
     SphP[i].PhiPred += dtphi_code  * dt_entr;
-    double t_damp = Get_Particle_PhiField_DampingTimeInv(i);
+    double t_damp = Get_Gas_PhiField_DampingTimeInv(i);
     if((t_damp>0) && (!isnan(t_damp)))
     {
         SphP[i].PhiPred *= exp( -dt_entr * t_damp );
@@ -453,11 +453,6 @@ double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, dou
 
 
 #ifdef MAGNETIC
-double INLINE_FUNC Get_Particle_BField(int i_particle_id, int k_vector_component)
-{
-    return SphP[i_particle_id].BPred[k_vector_component] * SphP[i_particle_id].Density / P[i_particle_id].Mass;
-}
-
 /* this function is needed to control volume fluxes of the normal components of B and phi in the 
     -bad- situation where the meshless method 'faces' do not properly close (usually means you are 
     using boundary conditions that you should not) */
@@ -507,13 +502,13 @@ double Get_DtB_FaceArea_Limiter(int i)
 
 
 #ifdef DIVBCLEANING_DEDNER
-double INLINE_FUNC Get_Particle_PhiField(int i_particle_id)
+double INLINE_FUNC Get_Gas_PhiField(int i_particle_id)
 {
     //return SphP[i_particle_id].PhiPred * SphP[i_particle_id].Density / P[i_particle_id].Mass; // volumetric phy-flux (requires extra term compared to mass-based flux)
     return SphP[i_particle_id].PhiPred / P[i_particle_id].Mass; // mass-based phi-flux
 }
 
-double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
+double INLINE_FUNC Get_Gas_PhiField_DampingTimeInv(int i_particle_id)
 {
     /* this timescale should always be returned as a -physical- time */
 #ifdef HYDRO_SPH
@@ -533,16 +528,16 @@ double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
         double h_eff = Get_Particle_Size(i_particle_id);
         double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i_particle_id].MaxSignalVel);
         double phi_B_eff = 0.0;
-        if(vsig2 > 0) {phi_B_eff = Get_Particle_PhiField(i_particle_id) / (All.cf_atime * vsig2);}
+        if(vsig2 > 0) {phi_B_eff = Get_Gas_PhiField(i_particle_id) / (All.cf_atime * vsig2);}
         double vsig1 = 0.0;
         if(SphP[i_particle_id].Density > 0)
         {
             vsig1 = All.cf_afac3 *
-            sqrt( Particle_effective_soundspeed_i(i_particle_id)*Particle_effective_soundspeed_i(i_particle_id) +
+            sqrt( Get_Gas_effective_soundspeed_i(i_particle_id)*Get_Gas_effective_soundspeed_i(i_particle_id) +
                  (All.cf_afac1 / All.cf_atime) *
-                 (Get_Particle_BField(i_particle_id,0)*Get_Particle_BField(i_particle_id,0) +
-                  Get_Particle_BField(i_particle_id,1)*Get_Particle_BField(i_particle_id,1) +
-                  Get_Particle_BField(i_particle_id,2)*Get_Particle_BField(i_particle_id,2) +
+                 (Get_Gas_BField(i_particle_id,0)*Get_Gas_BField(i_particle_id,0) +
+                  Get_Gas_BField(i_particle_id,1)*Get_Gas_BField(i_particle_id,1) +
+                  Get_Gas_BField(i_particle_id,2)*Get_Gas_BField(i_particle_id,2) +
                   phi_B_eff*phi_B_eff) / SphP[i_particle_id].Density );
         }
         vsig1 = DMAX(vsig1, vsig2);

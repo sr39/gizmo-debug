@@ -280,12 +280,12 @@ double bhgrowth(double z1, double z2);
 int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend_local);
 
 double INLINE_FUNC Get_Particle_Size(int i);
-double INLINE_FUNC Particle_density_for_energy_i(int i);
+double INLINE_FUNC Get_Gas_density_for_energy_i(int i);
 double INLINE_FUNC Get_Particle_Expected_Area(double h);
 double Get_Gas_Ionized_Fraction(int i);
 #ifdef COSMIC_RAYS
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i);
-double INLINE_FUNC Get_Particle_CosmicRayPressure(int i, int k_CRegy);
+double INLINE_FUNC Get_Gas_CosmicRayPressure(int i, int k_CRegy);
 double Get_CosmicRayGradientLength(int i, int k_CRegy);
 double Get_CosmicRayStreamingVelocity(int i);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
@@ -313,15 +313,16 @@ double return_CRbin_CR_rigidity_in_GV(int target, int k_CRegy);
 void elastic_body_update_driftkick(int i, double dt_entr, int mode);
 #endif
 double INLINE_FUNC convert_internalenergy_soundspeed2(int i, double u);
-double INLINE_FUNC Particle_effective_soundspeed_i(int i);
-double INLINE_FUNC Particle_thermal_soundspeed_i(int i);
-double Particle_Alfven_speed_i(int i);
+double INLINE_FUNC Get_Gas_effective_soundspeed_i(int i);
+double INLINE_FUNC Get_Gas_thermal_soundspeed_i(int i);
+double Get_Gas_Alfven_speed_i(int i);
+double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral_fraction, double urad_from_uvb_in_G0, double clumping_factor);
+double INLINE_FUNC Get_Gas_BField(int i_particle_id, int k_vector_component);
 #ifdef MAGNETIC
-double INLINE_FUNC Get_Particle_BField(int i_particle_id, int k_vector_component);
 double Get_DtB_FaceArea_Limiter(int i);
 #ifdef DIVBCLEANING_DEDNER
-double INLINE_FUNC Get_Particle_PhiField(int i_particle_id);
-double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id);
+double INLINE_FUNC Get_Gas_PhiField(int i_particle_id);
+double INLINE_FUNC Get_Gas_PhiField_DampingTimeInv(int i_particle_id);
 #endif
 #endif
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE

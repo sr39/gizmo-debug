@@ -352,7 +352,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #ifdef BH_OUTPUT_GASSWALLOW
                         MyDouble tempB[3]={0,0,0};
 #ifdef MAGNETIC
-                        for(k=0;k<3;k++) {tempB[k]=Get_Particle_BField(j,k);} //use particle magnetic field
+                        for(k=0;k<3;k++) {tempB[k]=Get_Gas_BField(j,k);} //use particle magnetic field
 #endif
                         fprintf(FdBhSwallowDetails,"%g %llu %g %2.7f %2.7f %2.7f %llu %g %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f\n", All.Time, local.ID,local.Mass,local.Pos[0],local.Pos[1],local.Pos[2],  P[j].ID, P[j].Mass, (P[j].Pos[0]-local.Pos[0]),(P[j].Pos[1]-local.Pos[1]),(P[j].Pos[2]-local.Pos[2]), (P[j].Vel[0]-local.Vel[0]),(P[j].Vel[1]-local.Vel[1]),(P[j].Vel[2]-local.Vel[2]), SphP[j].InternalEnergy, tempB[0], tempB[1], tempB[2], SphP[j].Density);
 #endif
@@ -854,7 +854,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #ifdef SINGLE_STAR_FB_SPAWN_DEBUG
             double Bmag = 0;
 #ifdef MAGNETIC
-            for(k=0;k<3;k++) {Bmag+=Get_Particle_BField(j,k)*Get_Particle_BField(j,k);}
+            for(k=0;k<3;k++) {Bmag+=Get_Gas_BField(j,k)*Get_Gas_BField(j,k);}
             Bmag = sqrt(Bmag);
             double v_Alfven = 0.282 * Bmag*All.UnitMagneticField_in_gauss / sqrt(P[i].DensAroundStar*All.UnitMass_in_g*pow(All.UnitLength_in_cm,-3.0)) / All.UnitVelocity_in_cm_per_s; //Alfvén velocity vA=B/sqrt(rho mu0)
 #else
