@@ -1440,7 +1440,7 @@ void hydro_gradient_calc(void)
             a_limiter *= 2.0; stol = 0.0;
 #endif
 
-#ifdef SINGLE_STAR_SINK_DYNAMICS
+#if (SINGLE_STAR_SINK_FORMATION & 4)
             SphP[i].Density_Relative_Maximum_in_Kernel = GasGradDataPasser[i].Maxima.Density;
 #endif
             local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,0, 1,d_max,SphP[i].Density);

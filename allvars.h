@@ -2802,7 +2802,7 @@ extern struct sph_particle_data
     int Super_Timestep_j; /*!< records which sub-step if the super-stepping cycle the particle is in [needed for adaptive steps] */
 #endif
     
-#ifdef SINGLE_STAR_SINK_DYNAMICS
+#if (SINGLE_STAR_SINK_FORMATION & 4)
     MyFloat Density_Relative_Maximum_in_Kernel; /*!< hold density_max-density_i, for particle i, so we know if its a local maximum */
 #endif
     
