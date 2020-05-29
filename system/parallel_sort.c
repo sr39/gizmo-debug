@@ -464,8 +464,8 @@ static void msort_serial_with_tmp(char *base, size_t n, size_t s, int (*compar) 
 
 int compare_densities_for_sort(const void *a, const void *b)
 {
-    double *x = SphP[(int *) a].Density;
-    double *y = SphP[(int *) b].Density;
-    if (*x < *y) {return -1;} else if(*x > *y) {return 1;}
+    double x = SphP[ *(int *) a].Density;
+    double y = SphP[ *(int *) b].Density;
+    if (x < y) {return -1;} else if(x > y) {return 1;}
     return 0;
 }
