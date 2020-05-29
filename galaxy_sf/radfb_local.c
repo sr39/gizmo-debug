@@ -211,8 +211,8 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 #ifdef RT_CHEM_PHOTOION
     return; // the work here is done in the actual RT routines if this switch is enabled //
 #endif
-    if(All.HIIRegion_fLum_Coupled<=0) return;
-    if(All.Time<=0) return;
+    if(All.HIIRegion_fLum_Coupled<=0) {return;}
+    if(All.Time<=0) {return;}
     MyDouble *pos; MyFloat h_i, dt, rho;
     int startnode, numngb, j, n, i, NITER_HIIFB, MAX_N_ITERATIONS_HIIFB, jnearest,already_ionized,do_ionize,dummy;
     double totMPI_m_ionizing,totMPI_l_ionizing,totMPI_m_ionized,totMPI_m_ionizable,totMPI_avg_RHII,dx, dy, dz, h_i2, r2, r, u, u_to_temp_fac,mionizable,mionized,RHII,RHIIMAX,R_search,rnearest,stellum,uion,prob,rho_j,prandom,m_available,m_effective,RHII_initial,RHIImultiplier, total_l_ionizing,total_m_ionizing,total_m_ionizable,total_m_ionized,avg_RHII;
@@ -242,13 +242,13 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
             RHII = 4.67e-9*pow(stellum,0.333)*pow(rho*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam,-0.66667);
             RHII /= All.cf_atime*All.UnitLength_in_cm/All.HubbleParam;
             RHIIMAX=240.0*pow(stellum,0.5)/(All.cf_atime*All.UnitLength_in_cm/All.HubbleParam); // crude estimate of where flux falls below cosmic background
-            if(RHIIMAX < h_i) RHIIMAX=h_i;
-            if(RHIIMAX > 5.0*h_i) RHIIMAX=5.*h_i;
+            if(RHIIMAX < h_i) {RHIIMAX=h_i;}
+            if(RHIIMAX > 5.0*h_i) {RHIIMAX=5.*h_i;}
             mionizable=NORM_COEFF*rho*RHII*RHII*RHII;
             double M_ionizing_emitted = (3.05e10 * PROTONMASS) * stellum * (dt * All.UnitTime_in_s / All.HubbleParam) ; // number of ionizing photons times proton mass, gives max mass ionized
             mionizable = DMIN( mionizable , M_ionizing_emitted/(All.UnitMass_in_g/All.HubbleParam) );
-            if(RHII>RHIIMAX) RHII=RHIIMAX;
-            if(RHII<0.5*h_i) RHII=0.5*h_i;
+            if(RHII>RHIIMAX) {RHII=RHIIMAX;}
+            if(RHII<0.5*h_i) {RHII=0.5*h_i;}
             RHII_initial=RHII;
             
             prandom = get_random_number(P[i].ID + 7); // pre-calc the (eventually) needed random number
@@ -258,17 +258,21 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                 mionized=0.0; total_m_ionizable += mionizable; h_i2=h_i*h_i;
                 u_to_temp_fac = 0.59 * (5./3.-1.) * U_TO_TEMP_UNITS; /* assume fully-ionized gas with gamma=5/3 */
                 uion = HIIRegion_Temp / u_to_temp_fac;
-                startnode = All.MaxPart; jnearest=-1; rnearest=1.0e10; dummy=0; NITER_HIIFB=0;
+                startnode = All.MaxPart; jnearest=-1; rnearest=MAX_REAL_NUMBER; dummy=0; NITER_HIIFB=0;
                 
                 do {
-                    jnearest=-1; rnearest=1.0e10;
+                    jnearest=-1; rnearest=MAX_REAL_NUMBER;
                     R_search = RHII; if(h_i>R_search) R_search=h_i;
                     numngb = ngb_treefind_variable_threads(pos, R_search, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist);
                     if(numngb>0)
                     {
+                        int ngb_list_touse[numngb]; for(n=0; n<numngb; n++) {ngb_list_touse[n]=Ngblist[n];}
+#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+                        qsort(ngb_list_touse, numngb, sizeof(int), compare_densities_for_sort); // sort on densities before processing, so ionize least-dense-first
+#endif
                         for(n = 0; n < numngb; n++)
                         {
-                            j = Ngblist[n];
+                            j = ngb_list_touse[n];
                             if(P[j].Type == 0 && P[j].Mass > 0)
                             {
                                 dx = pos[0] - P[j].Pos[0]; dy = pos[1] - P[j].Pos[1]; dz = pos[2] - P[j].Pos[2];
@@ -277,7 +281,10 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                 /* check whether the particle is already ionized */
                                 already_ionized = 0; rho_j = Get_Gas_density_for_energy_i(j);
                                 if(SphP[j].InternalEnergy<SphP[j].InternalEnergyPred) {u=SphP[j].InternalEnergy;} else {u=SphP[j].InternalEnergyPred;}
-                                if((SphP[j].DelayTimeHII > 0)||(u>uion)) already_ionized=1;
+#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+                                if(SphP[i].Ne > 0.85) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
+#endif
+                                if((SphP[j].DelayTimeHII > 0)||(u>uion)) {already_ionized=1;}
                                 /* now, if inside RHII and mionized<mionizeable and not already ionized, can be ionized! */
                                 do_ionize=0; prob=0;
                                 if((r<=RHII)&&(already_ionized==0)&&(mionized<mionizable))
@@ -291,16 +298,16 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                         prob = m_available/m_effective; // determine randomly if ionized
                                         if(prandom < prob) do_ionize=1;
                                     } // if(m_effective<=m_available) {
-                                    if(do_ionize==1)
-                                    {
-                                        SphP[j].InternalEnergy = uion; SphP[j].InternalEnergyPred = SphP[j].InternalEnergy; SphP[j].DelayTimeHII = dt; already_ionized = 1;
-                                        SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* fully ionized */
-                                    } // if(do_ionize==1)
+                                    if(do_ionize==1) {already_ionized=do_the_local_ionization(j,dt);}
                                     mionized += prob*m_effective;
                                 } // if((r<=RHII)&&(already_ionized==0)&&(mionized<mionizable))
                                 
                                 /* if nearest un-ionized particle, mark as such */
+#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+                                if((SphP[j].Density<rnearest)&&(already_ionized==0)) {rnearest = SphP[j].Density; jnearest = j;} // rank by density, not distance
+#else
                                 if((r<rnearest)&&(already_ionized==0)) {rnearest = r; jnearest = j;}
+#endif
                             } // if(P[j].Type == 0 && P[j].Mass > 0)
                         } // for(n = 0; n < numngb; n++)
                     } // if(numngb>0)
@@ -308,12 +315,9 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                     // if still have photons and jnearest is un-ionized
                     if((mionized<mionizable)&&(jnearest>=0))
                     {
-                        j=jnearest; m_effective = P[j].Mass*(SphP[j].Density/rho); m_available = mionizable-mionized; prob=m_available/m_effective; do_ionize=0; if(prandom < prob) do_ionize=1;
-                        if(do_ionize==1)
-                        {
-                            SphP[j].InternalEnergy = uion; SphP[j].InternalEnergyPred = SphP[j].InternalEnergy; SphP[j].DelayTimeHII = dt;
-                            SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* fully ionized */
-                        } // if(do_ionize==1)
+                        j=jnearest; m_effective=P[j].Mass*(SphP[j].Density/rho); m_available=mionizable-mionized; prob=m_available/m_effective; do_ionize=0;
+                        if(prandom < prob) {do_ionize=1;}
+                        if(do_ionize==1) {already_ionized=do_the_local_ionization(j,dt);}
                         mionized += prob*m_effective;
                     } // if((mionized<mionizable)&&(jnearest>=0))
                     
@@ -332,11 +336,11 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                             {
                                 RHIImultiplier = 2.0;
                             } else {
-                                RHIImultiplier=pow(mionized/mionizable,-0.333);
-                                if(RHIImultiplier>5.0) RHIImultiplier=5.0;
-                                if(RHIImultiplier<1.26) RHIImultiplier=1.26;
+                                RHIImultiplier = pow(mionized/mionizable , -0.333);
+                                if(RHIImultiplier>5.0) {RHIImultiplier=5.0;}
+                                if(RHIImultiplier<1.26) {RHIImultiplier=1.26;}
                             } // if(mionized <= 0)
-                            RHII *= RHIImultiplier; if(RHII>1.26*RHIIMAX) RHII=1.26*RHIIMAX;
+                            RHII *= RHIImultiplier; if(RHII>1.26*RHIIMAX) {RHII=1.26*RHIIMAX;}
                             startnode=All.MaxPart; // this will trigger the while loop to continue
                         } // if((RHII >= 5.0*RHII_initial)||(RHII>=RHIIMAX)||(NITER_HIIFB >= MAX_N_ITERATIONS_HIIFB))
                     } // if(mionized < 0.95*mionizable)
@@ -364,6 +368,18 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
     } // ThisTask == 0
     CPU_Step[CPU_HIIHEATING] += measure_time();
 } // void HII_heating_singledomain(void)
+
+
+
+int do_the_local_ionization(int j, double dt)
+{
+    SphP[j].InternalEnergy = HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS); /* assume fully-ionized gas with gamma=5/3 */
+    SphP[j].InternalEnergyPred = SphP[j].InternalEnergy; /* full reset of the internal energy */
+    SphP[j].DelayTimeHII = dt; /* tell the code to flag this in the cooling subroutine */
+    SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* fully ionized */
+    return 1;
+}
+
 #endif // GALSF_FB_FIRE_RT_HIIHEATING
 
 

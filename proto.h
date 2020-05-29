@@ -221,6 +221,7 @@ void parallel_sort(void *base, size_t nmemb, size_t size, int (*compar) (const v
 void parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (const void *, const void *), MPI_Comm comm);
 int compare_IDs(const void *a, const void *b);
 void test_id_uniqueness(void);
+int compare_densities_for_sort(const void *a, const void *b);
 
 
 int io_compare_P_ID(const void *a, const void *b);
@@ -580,6 +581,7 @@ double particle_ionizing_luminosity_in_cgs(long i);
 
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
 void HII_heating_singledomain(void);
+int do_the_local_ionization(int j, double dt);
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING_USEMULTIDOMAINSHARE
 void HII_heating_withMPIcomm(void);
 int HIIheating_RHIIest(int target);

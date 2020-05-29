@@ -175,10 +175,8 @@ void do_the_cooling_for_particle(int i)
     {
         double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
-        double u_to_temp_fac = 0.59 * (5./3.-1.) * U_TO_TEMP_UNITS;
-        double uion = HIIRegion_Temp / u_to_temp_fac;
-        if(SphP[i].DelayTimeHII > 0) if(uold<uion) uold=uion; /* u_old should be >= ionized temp if used here */
-#endif // GALSF_FB_FIRE_RT_HIIHEATING
+        double uion=HIIRegion_Temp/(0.59*(5./3.-1.)*U_TO_TEMP_UNITS); if(SphP[i].DelayTimeHII>0) {if(uold<uion) {uold=uion;}} /* u_old should be >= ionized temp if used here */
+#endif
         
 #ifndef COOLING_OPERATOR_SPLIT
         /* do some prep operations on the hydro-step determined heating/cooling rates before passing to the cooling subroutine */
@@ -216,8 +214,7 @@ void do_the_cooling_for_particle(int i)
 #endif
         
         
-#ifdef GALSF_FB_FIRE_RT_HIIHEATING
-        /* set internal energy to minimum level if marked as ionized by stars */
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING  /* set internal energy to minimum level if marked as ionized by stars */
         if(SphP[i].DelayTimeHII > 0)
         {
             if(unew<uion) {unew=uion; if(SphP[i].DtInternalEnergy<0) SphP[i].DtInternalEnergy=0;}
@@ -266,11 +263,10 @@ void do_the_cooling_for_particle(int i)
         SphP[i].DtInternalEnergy = 0;
 #endif        
        
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) 
-        /* count off time which has passed since ionization 'clock' */
-        if(SphP[i].DelayTimeHII > 0) SphP[i].DelayTimeHII -= dtime;
-        if(SphP[i].DelayTimeHII < 0) SphP[i].DelayTimeHII = 0;
-#endif // GALSF_FB_FIRE_RT_HIIHEATING || CHIMES_HII_REGIONS 
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) /* count off time which has passed since ionization 'clock' */
+        if(SphP[i].DelayTimeHII > 0) {SphP[i].DelayTimeHII -= dtime;}
+        if(SphP[i].DelayTimeHII < 0) {SphP[i].DelayTimeHII = 0;}
+#endif
         
     } // closes if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0)) check
 }
