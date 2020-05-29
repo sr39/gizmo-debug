@@ -486,14 +486,29 @@ int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
   struct UserData *data;
   
   data = (struct UserData *) user_data;
-  int indices[data->network_size];  /* We will use this array to relate the enum types of                                         
-				     * each (non-eq) species to their position in y */  
+  int indices[CHIMES_TOTSIZE];  /* We will use this array to relate the enum types of                                         
+			         * each (non-eq) species to their position in y */  
+
+  /* Check for nan's in the output vector. 
+   * If found, return a recoverable error. */ 
+  int vector_size = data->network_size; 
+  if (data->myGasVars->ThermEvolOn == 1)
+    vector_size += 1; 
+
+  for (i = 0; i < vector_size; i++)
+    {
+#ifdef CHIMES_USE_DOUBLE_PRECISION
+      if (isnan(NV_Ith_S(y, i))) 
+#else 
+      if (isnanf(NV_Ith_S(y, i))) 
+#endif 
+	return 1; 
+    }
 
   /* First, loop through the enum types of all
    * non-eq species. If they are included in 
    * the network then their abundance is in
    * the vector y. */
-
   i = 0;	/* We use this to keep track of where we are in the vector y */
   for (j = 0; j < data->myGlobalVars->totalNumberOfSpecies; j++)
     {
@@ -524,7 +539,6 @@ int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
 
   // Compute creation and destruction rates 
   update_rate_vector(data->species, data->myGasVars, data->myGlobalVars, *data); 
-  
   
   /* Now set the output ydot vector for the chemical abundances */
   for (i = 0; i < data->network_size; i++)
