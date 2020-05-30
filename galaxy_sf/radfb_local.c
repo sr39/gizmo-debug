@@ -373,7 +373,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 
 int do_the_local_ionization(int j, double dt)
 {
-    SphP[j].InternalEnergy = HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS); /* assume fully-ionized gas with gamma=5/3 */
+    SphP[j].InternalEnergy = DMAX(SphP[j].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
     SphP[j].InternalEnergyPred = SphP[j].InternalEnergy; /* full reset of the internal energy */
     SphP[j].DelayTimeHII = dt; /* tell the code to flag this in the cooling subroutine */
     SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* fully ionized */

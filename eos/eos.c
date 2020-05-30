@@ -291,7 +291,10 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     
 #if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) /* ?? if not tracking chemistry explicitly, return a simple estimate of H2 fraction following the KMT [Apj 2009 693, 216] model */
     /* get neutral fraction [given by call to this program] */
-    double f_neutral=1; if(neutral_fraction>=0) {f_neutral=neutral_fraction;}
+    double f_neutral=DMAX(neutral_fraction,0.);
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING  /* force gas in HII regions to have vanishing neutral fraction */
+    if(SphP[i].DelayTimeHII > 0) {f_neutral=0;}
+#endif
     /* get metallicity */
     double Z_Zsol=1, urad_G0=1; // assumes spatially uniform Habing field for incident FUV radiation unless reset below //
 #ifdef METALS
@@ -309,6 +312,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     urad_G0 = SphP[i].Rad_E_gamma[whichbin] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) * All.UnitPressure_in_cgs * All.HubbleParam*All.HubbleParam / 3.9e-14; // convert to Habing field //
 #endif
     urad_G0 += urad_from_uvb_in_G0; // include whatever is contributed from the meta-galactic background, fed into this routine
+    urad_G0 = DMIN(DMAX( urad_G0 , 1.e-3 ) , 1.e10 ); // limit values, because otherwise exponential self-shielding approximation easily artificially gives 0 incident field
     /* get estimate of mass column density integrated away from this location for self-shielding */
     double surface_density_Msun_pc2 = evaluate_NH_from_GradRho(SphP[i].Gradients.Density,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm / 0.000208854; // approximate column density with Sobolev or Treecol methods as appropriate; converts to M_solar/pc^2
     /* get estimate of local density and clumping factor */
@@ -316,7 +320,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     double clumping_factor_for_unresolved_densities = clumping_factor; // Gnedin et al. add a large clumping factor to account for inability to resolve high-densities, here go with what is resolved
     /* now actually do the relevant calculation with the KMT fitting functions */
     double chi = 0.766 * (1. + 3.1*pow(Z_Zsol,0.365)); // KMT estimate of chi, useful if we do -not- know anything about actual radiation field
-    if(urad_G0 > 0) {chi = 71. * urad_G0 / (clumping_factor_for_unresolved_densities * nH_cgs);} // their actual fiducial value including radiation information
+    if(urad_G0 >= 0) {chi = 71. * urad_G0 / (clumping_factor_for_unresolved_densities * nH_cgs);} // their actual fiducial value including radiation information
     double psi = chi * (1.+0.4*chi)/(1.+1.08731*chi); // slightly-transformed chi variable
     double s = Z_Zsol * surface_density_Msun_pc2 / (MIN_REAL_NUMBER + psi); // key variable controlling shielding in the KMT approximaton
     double q = s * (125. + s) / (11. * (96. + s)); // convert to more useful form from their Eq. 37

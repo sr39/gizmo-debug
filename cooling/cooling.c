@@ -1217,7 +1217,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     if(target>=0){SphP[target].NetHeatingRateQ = Q;}
 #endif
 #ifdef OUTPUT_MOLECULAR_FRACTION
-    if(target>0) {SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, T, DMAX(DMIN(1-shieldfac, nH0),0), sqrt(shieldfac)*(gJH0/2.29e-10) , 1.);;}
+    if(target>0) {SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, T, DMAX(nH0,0), sqrt(shieldfac)*(gJH0/2.29e-10) , 1.);;}
 #endif
 
 #ifndef COOLING_OPERATOR_SPLIT
