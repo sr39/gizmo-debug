@@ -475,7 +475,7 @@ double get_mu(double T_guess, double rho, double *xH0, double *ne_guess, double 
         X = 1. - (Y+Z);
     }
 #endif
-    fmol = Get_Gas_Molecular_Mass_Fraction(target, T_guess, *xH0, urad_from_uvb_in_G0, 1.2); /* use our simple subroutine to estimate this, ignoring UVB and with clumping factor=1 */
+    fmol = Get_Gas_Molecular_Mass_Fraction(target, T_guess, *xH0, urad_from_uvb_in_G0, 1); /* use our simple subroutine to estimate this, ignoring UVB and with clumping factor=1 */
 
     return 1. / ( X*(1-0.5*fmol) + Y/4. + *ne_guess*HYDROGEN_MASSFRAC + Z/(16.+12.*fmol) ); // since our ne is defined in some routines with He, should multiply by universal
 }
@@ -783,7 +783,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     {
         SphP[target].Ne = n_elec;
 #ifdef OUTPUT_MOLECULAR_FRACTION
-        SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, pow(10.,logT), DMAX(nH0,0), sqrt(shieldfac)*(gJH0/2.29e-10) , 1.1);
+        SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, pow(10.,logT), DMAX(nH0,0), sqrt(shieldfac)*(gJH0/2.29e-10) , 1);
 #endif
     }
 
@@ -978,7 +978,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             double Lambda_HD_thin = ((1.555e-25 + 1.272e-26*pow(T,0.77))*exp(-DMIN(128./T,EXPmax)) + (2.406e-25 + 1.232e-26*pow(T,0.92))*exp(-DMIN(255./T,EXPmax))) * exp(-DMIN(T3*T3/25.,EXPmax)); // optically-thin HD cooling rate [assuming all D locked into HD at temperatures where this is relevant], per molecule
             //double f_not_strongly_ionized = DMAX(DMIN(1-shieldfac, nH0),0); // fraction not being ionized or otherwise exposed to -very- strong radiation which would suppress cooling even from e.g. C+ [hence 1-shieldfac appearing, not just nH0]
             double f_not_strongly_ionized = DMAX(nH0,0); // fraction not being ionized or otherwise exposed to -very- strong radiation which would suppress cooling even from e.g. C+ [hence 1-shieldfac appearing, not just nH0]
-            double f_molec = 0.5 * Get_Gas_Molecular_Mass_Fraction(target, T, f_not_strongly_ionized, sqrt(shieldfac)*(gJH0/2.29e-10) , 1.0); // [0.5*f_molec for H2/HD cooling b/c cooling rates above are per molecule, not per nucleon]
+            double f_molec = 0.5 * Get_Gas_Molecular_Mass_Fraction(target, T, f_not_strongly_ionized, sqrt(shieldfac)*(gJH0/2.29e-10) , 1); // [0.5*f_molec for H2/HD cooling b/c cooling rates above are per molecule, not per nucleon]
             double f_HD = DMIN(0.00126*f_molec , 4.0e-5); // ratio of HD molecules to H2 molecules: in low limit, HD easier to form so saturates at about 0.13% of H2 molecules, following Galli & Palla 1998, but obviously cannot exceed the cosmic ratio of D/H=4e-5
             double nH_over_ncrit = Lambda_H2_thin / Lambda_H2_thick , Lambda_HD = f_HD * Lambda_HD_thin / (1. + (f_HD/f_molec)*nH_over_ncrit), Lambda_H2 = f_molec * Lambda_H2_thin / (1. + nH_over_ncrit); // correct cooling rates for densities above critical
             LambdaMol = f_not_strongly_ionized * Lambda_Metals + Lambda_H2 + Lambda_HD; // combine to get total cooling rate: scale to estimate of neutral fraction [use min[nH0,1-shieldfac] b/c this should be more sensitive to radiation, so if shieldfac is high, this will be low, even if nH0 big]
@@ -1227,7 +1227,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     if(target>=0){SphP[target].NetHeatingRateQ = Q;}
 #endif
 #ifdef OUTPUT_MOLECULAR_FRACTION
-    if(target>0) {SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, T, DMAX(nH0,0), sqrt(shieldfac)*(gJH0/2.29e-10) , 0.9);;}
+    if(target>0) {SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, T, DMAX(nH0,0), sqrt(shieldfac)*(gJH0/2.29e-10) , 1);;}
 #endif
 
 #ifndef COOLING_OPERATOR_SPLIT

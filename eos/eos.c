@@ -330,8 +330,8 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     fH2 = DMIN(1,DMAX(0, fH2 * f_neutral)); // multiple by neutral fraction, as this is ultimately the fraction of the -neutral- gas in H2
     if(fH2 > 2.*f_neutral || (fH2 > 0.9 && temperature > 1.e5))
     {
-        printf("WARNING: strange behavior in molecular fraction code. target=%d fH2=%g fneutral=%g/%g T=%g Z=%g UV=%g/%g/%g Sigma=%g nH=%g fclump=%g chi=%g psi=%g s=%g q=%g \n",
-               i,fH2,neutral_fraction,f_neutral,temperature,Z_Zsol,urad_G0,SphP[i].Rad_Flux_UV,urad_from_uvb_in_G0,surface_density_Msun_pc2,nH_cgs,
+        printf("WARNING: strange behavior in molecular fraction code. target=%d fH2=%g fneutral=%g/%g T=%g ne=%g Z=%g UV=%g/%g/%g Sigma=%g nH=%g fclump=%g chi=%g psi=%g s=%g q=%g \n",
+               i,fH2,neutral_fraction,f_neutral,temperature,SphP[i].Ne,Z_Zsol,urad_G0,SphP[i].Rad_Flux_UV,urad_from_uvb_in_G0,surface_density_Msun_pc2,nH_cgs,
                clumping_factor,chi,psi,s,q); fflush(stdout);
     }
     return fH2;
