@@ -519,12 +519,12 @@ void density(void)
                     for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {SphP[i].NV_T[k1][k2] /= dimensional_NV_T_normalizer;}} /* now NV_T should be dimensionless */
                     /* Also, we want to be able to calculate the condition number of the matrix to be inverted, since
                         this will tell us how robust our procedure is (and let us know if we need to expand the neighbor number */
-                    ConditionNumber = CNumHolder = 0;
                     double ConditionNumber_threshold = 10. * CONDITION_NUMBER_DANGER; /* set a threshold condition number - above this we will 'pre-condition' the matrix for better behavior */
                     double trace_initial = SphP[i].NV_T[0][0] + SphP[i].NV_T[1][1] + SphP[i].NV_T[2][2]; /* initial trace of this symmetric, positive-definite matrix; used below as a characteristic value for adding the identity */
                     double conditioning_term_to_add = 1.05 * (trace_initial / NUMDIMS) / ConditionNumber_threshold; /* this will be added as a test value if the code does not reach the desired condition number */
                     while(1)
                     {
+                        ConditionNumber = CNumHolder = 0;
                         for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {ConditionNumber += SphP[i].NV_T[k1][k2]*SphP[i].NV_T[k1][k2];}}
                         for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}} /* initialize inverse matrix to null */
 #if (NUMDIMS==1) /* one-dimensional case */
@@ -717,8 +717,8 @@ void density(void)
                 {
                     /* ok we have reached the desired number of neighbors: save the condition number for next timestep */
                     if(ConditionNumber > 1e6 * (double)CONDITION_NUMBER_DANGER) {
-                        PRINT_WARNING("Condition number=%g CNum_prevtimestep=%g iter=%d Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g \n i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)  \n NVT=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g NVT_inv=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g ",
-                               ConditionNumber,SphP[i].ConditionNumber,iter,PPP[i].NumNgb,desnumngb,PPP[i].Hsml,All.MinHsml,All.MaxHsml, i, ThisTask,
+                        PRINT_WARNING("Condition number=%g CNum_prevtimestep=%g CNum_danger=%g iter=%d Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g \n i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)  \n NVT=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g NVT_inv=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g ",
+                               ConditionNumber,SphP[i].ConditionNumber,CONDITION_NUMBER_DANGER,iter,PPP[i].NumNgb,desnumngb,PPP[i].Hsml,All.MinHsml,All.MaxHsml, i, ThisTask,
                                (unsigned long long) P[i].ID, P[i].Type, PPP[i].Hsml, PPP[i].DhsmlNgbFactor, Left[i], Right[i],
                                (float) PPP[i].NumNgb, Right[i] - Left[i], particle_set_to_maxhsml_flag, particle_set_to_minhsml_flag, minsoft,
                                maxsoft, desnumngb, desnumngbdev, redo_particle, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],
