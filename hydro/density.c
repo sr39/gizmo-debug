@@ -513,6 +513,7 @@ void density(void)
                     PPP[i].DhsmlNgbFactor = 1;
                 P[i].Particle_DivVel *= PPP[i].DhsmlNgbFactor;
             
+                double NV_T_prev[6]; NV_T_prev[0]=SphP[i].NV_T[0][0]; NV_T_prev[1]=SphP[i].NV_T[1][1]; NV_T_prev[2]=SphP[i].NV_T[2][2]; NV_T_prev[3]=SphP[i].NV_T[0][1]; NV_T_prev[4]=SphP[i].NV_T[0][2]; NV_T_prev[5]=SphP[i].NV_T[1][2];
                 if(P[i].Type == 0)
                 {
                     /* fill in the missing elements of NV_T (it's symmetric, so we saved time not computing these directly) */
@@ -722,8 +723,13 @@ void density(void)
                 {
                     /* ok we have reached the desired number of neighbors: save the condition number for next timestep */
                     if(ConditionNumber > 1e6 * (double)CONDITION_NUMBER_DANGER) {
-                        PRINT_WARNING("Condition number=%g CNum_prevtimestep=%g Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g",
-                               ConditionNumber,SphP[i].ConditionNumber,PPP[i].NumNgb,desnumngb,PPP[i].Hsml,All.MinHsml,All.MaxHsml);}
+                        PRINT_WARNING("Condition number=%g CNum_prevtimestep=%g Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g \n i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)  \n NVT=%g/%g/%g %g/%g/%g %g/%g/%g NVT_inv=%g/%g/%g %g/%g/%g %g/%g/%g ",
+                               ConditionNumber,SphP[i].ConditionNumber,PPP[i].NumNgb,desnumngb,PPP[i].Hsml,All.MinHsml,All.MaxHsml, i, ThisTask,
+                               (unsigned long long) P[i].ID, P[i].Type, PPP[i].Hsml, PPP[i].DhsmlNgbFactor, Left[i], Right[i],
+                               (float) PPP[i].NumNgb, Right[i] - Left[i], particle_set_to_maxhsml_flag, particle_set_to_minhsml_flag, minsoft,
+                               maxsoft, desnumngb, desnumngbdev, redo_particle, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],
+                               SphP[i].NV_T[0][0],SphP[i].NV_T[0][1],SphP[i].NV_T[0][2],SphP[i].NV_T[1][0],SphP[i].NV_T[1][1],SphP[i].NV_T[1][2],SphP[i].NV_T[2][0],SphP[i].NV_T[2][1],SphP[i].NV_T[2][2],
+                               NV_T_prev[0],NV_T_prev[3],NV_T_prev[4],NV_T_prev[3],NV_T_prev[1],NV_T_prev[5],NV_T_prev[4],NV_T_prev[5],NV_T_prev[2]);}
                     SphP[i].ConditionNumber = ConditionNumber;
                 }
                 
