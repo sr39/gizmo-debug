@@ -475,7 +475,7 @@ double get_mu(double T_guess, double rho, double *xH0, double *ne_guess, double 
         X = 1. - (Y+Z);
     }
 #endif
-    fmol = Get_Gas_Molecular_Mass_Fraction(target, T_guess, *xH0, 0., urad_from_uvb_in_G0, 1.2); /* use our simple subroutine to estimate this, ignoring UVB and with clumping factor=1 */
+    fmol = Get_Gas_Molecular_Mass_Fraction(target, T_guess, *xH0, urad_from_uvb_in_G0, 1.2); /* use our simple subroutine to estimate this, ignoring UVB and with clumping factor=1 */
 
     return 1. / ( X*(1-0.5*fmol) + Y/4. + *ne_guess*HYDROGEN_MASSFRAC + Z/(16.+12.*fmol) ); // since our ne is defined in some routines with He, should multiply by universal
 }
@@ -853,7 +853,7 @@ extern FILE *fd;
  */
 double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 {
-    double n_elec=n_elec_guess, nH0, nHe0, nHp, nHep, nHepp; /* ionization states [computed below] */
+    double n_elec=n_elec_guess, nH0, nHe0, nHp, nHep, nHepp, mu; /* ionization states [computed below] */
     double Lambda, Heat, LambdaFF, LambdaCmptn, LambdaExcH0, LambdaExcHep, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
     double LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, redshift, T, NH_SS_z, shieldfac, LambdaMol, LambdaMetal;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
