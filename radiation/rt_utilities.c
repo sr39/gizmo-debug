@@ -80,7 +80,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
     {
         if(mode<0) {return 1;} active_check = 1;
         double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-        double fac = 3.95e33 * (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs); // converts to [physical] code units
+        double fac = P[i].Mass * UNIT_MASS_TO_SOLAR / UNIT_LUM_TO_SOLAR; // converts to [physical] code units
         double L = evaluate_light_to_mass_ratio(star_age, i) * fac;
         if((L<=0)||(star_age<=0)||(isnan(star_age))||(isnan(L))) {L=0; star_age=0;}
 
@@ -115,7 +115,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
 #ifdef CHIMES_STELLAR_FLUXES  
 	int age_bin, j; 
 	double log_age_Myr = log10(star_age * 1000.0); 
-	double stellar_mass = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS); 
+	double stellar_mass = P[i].Mass * UNIT_MASS_TO_SOLAR;
 	if (log_age_Myr < CHIMES_LOCAL_UV_AGE_LOW) 
 	  age_bin = 0; 
 	else if (log_age_Myr < CHIMES_LOCAL_UV_AGE_MID) 
@@ -160,7 +160,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
             if(star_age <= 0.0025) {f_op=0.09;} else {
                 if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));
                 } else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
-            double fac = 3.95e33 * (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs); // converts to code units
+            double fac = P[i].Mass * UNIT_MASS_TO_SOLAR / UNIT_LUM_TO_SOLAR; // converts to code units
             lum[RT_FREQ_BIN_NUV] = (1-f_op) * fac * evaluate_light_to_mass_ratio(star_age, i);
         }
     }
@@ -178,7 +178,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
             if(star_age <= 0.0025) {f_op=0.09;} else {
                 if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));
                 } else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
-            double fac = 3.95e33 * (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs); // converts to code units
+            double fac = P[i].Mass * UNIT_MASS_TO_SOLAR / UNIT_LUM_TO_SOLAR; // converts to code units
             lum[RT_FREQ_BIN_OPTICAL_NIR] = f_op * fac * evaluate_light_to_mass_ratio(star_age, i);
         }
     }
@@ -191,7 +191,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
         {
             if(mode<0) {return 1;} active_check = 1;
-            double fac = (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs); // converts to code units
+            double fac = (P[i].Mass * UNIT_MASS_TO_SOLAR) / UNIT_LUM_TO_CGS; // converts to code units
             //double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge); 
             //double l_band = 2.14e36 / sqrt(1. + pow(star_age/4.e-3,3.6)) * fac; // solar tracks, no nebular
             double l_band, x_age = evaluate_stellar_age_Gyr(P[i].StellarAge) / 3.4e-3;
@@ -214,7 +214,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
         {
             if(mode<0) {return 1;} active_check = 1;
-            double fac = (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs); // converts to code units
+            double fac = (P[i].Mass * UNIT_MASS_TO_SOLAR) / UNIT_LUM_TO_CGS; // converts to code units
             double l_band, x_age = evaluate_stellar_age_Gyr(P[i].StellarAge) / 3.4e-3;
             if(x_age <= 1) 
             { 
@@ -243,9 +243,9 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
         }
 #else
 #ifdef RT_ILIEV_TEST1
-        if(P[i].Type==4) {if(mode<0) {return 1;} active_check=1; fac += 5.0e48 * (13.6*ELECTRONVOLT_IN_ERGS) * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs);} // 5e48 in ionizing photons per second //
+        if(P[i].Type==4) {if(mode<0) {return 1;} active_check=1; fac += 5.0e48 * (13.6*ELECTRONVOLT_IN_ERGS) / UNIT_LUM_TO_CGS;} // 5e48 in ionizing photons per second //
 #else
-        if(P[i].Type==4) {if(mode<0) {return 1;} active_check=1; fac += (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.IonizingLuminosityPerSolarMass_cgs * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs);} // flux from star particles according to mass
+        if(P[i].Type==4) {if(mode<0) {return 1;} active_check=1; fac += All.IonizingLuminosityPerSolarMass_cgs * (P[i].Mass * UNIT_MASS_TO_SOLAR) / UNIT_LUM_TO_CGS;} // flux from star particles according to mass
 #endif
 #endif // GALSF else
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
@@ -274,7 +274,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
         {
             if(mode<0) {return 1;} active_check=1;
             double lbol = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i); // luminosity in physical code units // 
-            double lbol_lsun = lbol / (SOLAR_LUM * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs));
+            double lbol_lsun = lbol * UNIT_LUM_TO_SOLAR;
             double bol_corr = 0;
 #if defined(RT_HARD_XRAY) 
             bol_corr = 0.43 * (10.83 * pow(lbol_lsun/1.e10,0.28) + 6.08 * pow(lbol_lsun/1.e10,-0.02)); // 0.5 for -ALL- hard-x-ray, 1.0 prefactor for just 2-10 keV
@@ -289,7 +289,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
         if(P[i].Type == 4) 
         {
             if(mode<0) {return 1;} active_check=1;
-            double fac = (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs); // converts to code units
+            double fac = (P[i].Mass * UNIT_MASS_TO_SOLAR) / UNIT_LUM_TO_CGS; // converts to code units
             double L_HMXBs = 0.0; 
 #ifdef GALSF
             double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);

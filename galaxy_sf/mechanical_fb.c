@@ -70,7 +70,7 @@ void determine_where_SNe_occur(void)
         // now use a calculation of mechanical event rates to determine where/when the events actually occur //
         npossible++;
         double RSNe = mechanical_fb_calculate_eventrates(i,dt);
-        rmean += RSNe; ptotal += RSNe * dt * P[i].Mass * (All.UnitTime_in_Megayears/All.HubbleParam) * (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS;
+        rmean += RSNe; ptotal += RSNe * (P[i].Mass*UNIT_MASS_TO_SOLAR) * (dt*UNIT_TIME_TO_MYR);
 #ifdef GALSF_SFR_IMF_SAMPLING
         if(P[i].IMF_NumMassiveStars>0) {P[i].IMF_NumMassiveStars=DMAX(0,P[i].IMF_NumMassiveStars-P[i].SNe_ThisTimeStep);} // lose an O-star for every SNe //
 #endif
@@ -181,7 +181,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
     
     // some units (just used below, but handy to define for clarity) //
-    double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
+    double unitlength_in_kpc=UNIT_LENGTH_TO_KPC * All.cf_atime;
     double density_to_n=All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / PROTONMASS;
     double unit_egy_SNe = 1.0e51/(All.UnitEnergy_in_cgs/All.HubbleParam);
     
@@ -460,7 +460,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double h2 = local.Hsml*local.Hsml;
     kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0; // define the kernel zero-point value, needed to prevent some nasty behavior when no neighbors found
     kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4); // define kernel quantities
-    double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
+    double unitlength_in_kpc= UNIT_LENGTH_TO_KPC * All.cf_atime;
     double density_to_n=All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / PROTONMASS;
     double unit_egy_SNe = 1.0e51/(All.UnitEnergy_in_cgs/All.HubbleParam);
     double v_ejecta_max = 5000.0 * 1.0e5/ All.UnitVelocity_in_cm_per_s; // 'speed limit' to prevent numerically problematic kicks at low resolution //

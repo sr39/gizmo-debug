@@ -1161,6 +1161,31 @@ typedef unsigned long long peanokey;
 #define C_LIGHT_CODE_REDUCED ((RT_SPEEDOFLIGHT_REDUCTION*(C_LIGHT/All.UnitVelocity_in_cm_per_s))) /* reduced speed-of-light in code units, again here as a convenience function */
 #define U_TO_TEMP_UNITS ((PROTONMASS / BOLTZMANN) * (All.UnitEnergy_in_cgs / All.UnitMass_in_g)) /* units to convert specific internal energy to temperature. needs to be multiplied by dimensionless factor=mean_molec_weight_in_amu*(gamma_eos-1) */
 
+/* and a bunch of useful unit-conversion macros pre-bundled here, to help keep the 'h' terms and other correct */
+#define UNIT_MASS_TO_CGS        ((All.UnitMass_in_g/All.HubbleParam))
+#define UNIT_VEL_TO_CGS         ((All.UnitVelocity_in_cm_per_s))
+#define UNIT_TIME_TO_CGS        ((All.UnitTime_in_s/All.HubbleParam))
+#define UNIT_LENGTH_TO_CGS      ((All.UnitLength_in_cm*All.cf_atime/All.HubbleParam))
+#define UNIT_ENERGY_TO_CGS      ((All.UnitEnergy_in_cgs/All.HubbleParam))
+#define UNIT_PRESSURE_TO_CGS    ((All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam))
+#define UNIT_DENSITY_TO_CGS     ((All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam))
+#define UNIT_FLUX_TO_CGS        (((UNIT_PRESSURE_TO_CGS)*(UNIT_VEL_TO_CGS)))
+#define UNIT_LUM_TO_CGS         (((UNIT_ENERGY_TO_CGS)/(UNIT_TIME_TO_CGS)))
+#define UNIT_MASS_TO_SOLAR      (((UNIT_MASS_TO_CGS)/SOLAR_MASS))
+#define UNIT_TIME_TO_YR         (((UNIT_TIME_TO_CGS)/(SEC_PER_YEAR)))
+#define UNIT_TIME_TO_MYR        (((UNIT_TIME_TO_CGS)/(1.e6*SEC_PER_YEAR)))
+#define UNIT_TIME_TO_GYR        (((UNIT_TIME_TO_CGS)/(1.e9*SEC_PER_YEAR)))
+#define UNIT_LENGTH_TO_SOLAR    (((UNIT_LENGTH_TO_CGS)/SOLAR_RADIUS))
+#define UNIT_LENGTH_TO_AU       (((UNIT_LENGTH_TO_CGS)/1.496e13))
+#define UNIT_LENGTH_TO_PC       (((UNIT_LENGTH_TO_CGS)/3.086e18))
+#define UNIT_LENGTH_TO_KPC      (((UNIT_LENGTH_TO_CGS)/3.086e21))
+#define UNIT_PRESSURE_TO_EV     (((UNIT_PRESSURE_TO_CGS)/ELECTRONVOLT_IN_ERGS))
+#define UNIT_VEL_TO_KMS         (((UNIT_VEL_TO_CGS)/1.e5))
+#define UNIT_LUM_TO_SOLAR       (((UNIT_LUM_TO_CGS)/SOLAR_LUM))
+#define UNIT_FLUX_TO_HABING     (((UNIT_FLUX_TO_CGS)/1.6e-3))
+
+
+
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
 #define HIIRegion_Temp (1.0e4) /* temperature (in K) of heated gas */
 #endif
@@ -1933,7 +1958,6 @@ extern struct global_data_all_processes
     UnitPressure_in_cgs,	/*!< factor to convert internal pressure unit to cgs units (little 'h' still around!) */
     UnitDensity_in_cgs,		/*!< factor to convert internal density unit to g/cm^3*h^2 */
     UnitEnergy_in_cgs,		/*!< factor to convert internal energy to cgs units */
-    UnitTime_in_Megayears,	/*!< factor to convert internal time to megayears/h */
     GravityConstantInternal,	/*!< If set to zero in the parameterfile, the internal value of the
 				   gravitational constant is set to the Newtonian value based on the system of
 				   units specified. Otherwise the value provided is taken as internal gravity

@@ -158,7 +158,7 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
 double diffusion_coefficient_extrinsic_turbulence(int mode, int target, int k_CRegy, double M_A, double L_scale, double b_muG,
     double vA_noion, double rho_cgs, double temperature, double cs_thermal, double nh0, double nHe0, double f_ion)
 {
-    double f_cas_ET=MAX_REAL_NUMBER, EPSILON_SMALL=1.e-50, h0_kpc=L_scale*(All.UnitLength_in_cm/All.HubbleParam)/3.086e21;
+    double f_cas_ET=MAX_REAL_NUMBER, EPSILON_SMALL=1.e-50, h0_kpc=L_scale*UNIT_LENGTH_TO_KPC;
     if(mode <= 0) /* Alfvenic turbulence [default here following Chandran 200, including anisotropy effects] */
     {
         f_cas_ET = 0.007 * C_LIGHT_CODE / vA_noion; /* damping in Alfvenic turbulence following an anisotropic Goldreich-Shridar cascade, per Chandran 2000 */
@@ -272,7 +272,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     int k_CRegy; double DiffusionCoeff, CR_kappa_streaming, CRPressureGradScaleLength, v_streaming; v_streaming=Get_CosmicRayStreamingVelocity(i);
 #if (COSMIC_RAYS_DIFFUSION_MODEL > 0)
     double cs_thermal,M_A,L_scale,vA_code,vA_noion,codelength_to_kpc,Z_charge_CR,gizmo2gauss,Omega_per_GeV,Bmag,unit_kappa_code,b_muG,E_B,f_ion,temperature,EPSILON_SMALL; int k;
-    unit_kappa_code=All.UnitVelocity_in_cm_per_s*All.UnitLength_in_cm/All.HubbleParam; gizmo2gauss=sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); f_ion=1; temperature=0; EPSILON_SMALL=1.e-50; codelength_to_kpc=(All.UnitLength_in_cm/All.HubbleParam)/(3.086e21);
+    unit_kappa_code=All.UnitVelocity_in_cm_per_s*All.UnitLength_in_cm/All.HubbleParam; gizmo2gauss=sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); f_ion=1; temperature=0; EPSILON_SMALL=1.e-50; codelength_to_kpc=UNIT_LENGTH_TO_KPC;
     Bmag=2.*SphP[i].Pressure*All.cf_a3inv; cs_thermal=sqrt(convert_internalenergy_soundspeed2(i,SphP[i].InternalEnergyPred)); /* quick thermal pressure properties (we'll assume beta=1 if MHD not enabled) */
 #ifdef MAGNETIC /* get actual B-field */
     double B[3]={0}; Bmag=0; for(k=0;k<3;k++) {B[k]=Get_Gas_BField(i,k)*All.cf_a2inv; Bmag+=B[k]*B[k];} // B-field in code units (physical)
@@ -309,7 +309,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
         DiffusionCoeff = (3.e29/unit_kappa_code) * (1.-f_ion + f_ion/30.); // 30x lower in neutral (note use f_ion directly here, not temperature as they do)
 #endif
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 4) /* Wiener et al. 2017 style pure-streaming but with larger streaming speeds and limited losses, using their scaling for assumption that turbulent+non-linear Landau only dominate damping */
-        double ni_m3=f_ion*(rho_cgs/PROTONMASS)/1.e-3, T6=temperature/1.e6, Lturbkpc=L_scale*codelength_to_kpc, Lgradkpc=CRPressureGradScaleLength*(All.UnitLength_in_cm/All.HubbleParam)/3.086e21, h0_fac=Get_Particle_Size(i)*All.cf_atime*All.cf_a2inv*All.UnitVelocity_in_cm_per_s/1.e6, dv2_10=0; for(k=0;k<3;k++) {int j; for(j=0;j<3;j++) {dv2_10 += SphP[i].Gradients.Velocity[j][k]*SphP[i].Gradients.Velocity[j][k]*h0_fac*h0_fac;}}
+        double ni_m3=f_ion*(rho_cgs/PROTONMASS)/1.e-3, T6=temperature/1.e6, Lturbkpc=L_scale*codelength_to_kpc, Lgradkpc=CRPressureGradScaleLength*UNIT_LENGTH_TO_KPC, h0_fac=Get_Particle_Size(i)*All.cf_atime*All.cf_a2inv*All.UnitVelocity_in_cm_per_s/1.e6, dv2_10=0; for(k=0;k<3;k++) {int j; for(j=0;j<3;j++) {dv2_10 += SphP[i].Gradients.Velocity[j][k]*SphP[i].Gradients.Velocity[j][k]*h0_fac*h0_fac;}}
         double ecr_14 = SphP[i].CosmicRayEnergyPred[k_CRegy] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) * ((All.UnitEnergy_in_cgs/All.HubbleParam)/pow(All.UnitLength_in_cm/All.HubbleParam,3)) / 1.0e-14; // CR energy density in CGS units //
         CR_kappa_streaming = GAMMA_COSMICRAY * CRPressureGradScaleLength * (v_streaming + (1.e5/All.UnitVelocity_in_cm_per_s)*(4.1*pow(MIN_REAL_NUMBER+ni_m3*T6,0.25)/pow(MIN_REAL_NUMBER+ecr_14*Lgradkpc,0.5) + 1.2*pow(MIN_REAL_NUMBER+dv2_10*ni_m3,0.75)/(MIN_REAL_NUMBER+ecr_14*sqrt(Lturbkpc)))); // convert to effective diffusivity
 #endif

@@ -649,7 +649,7 @@ void density(void)
 #ifdef GALSF
                     if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
                     // if we're finding this for feedback routines, there isn't any good reason to search beyond a modest physical radius //
-                    double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
+                    double unitlength_in_kpc=UNIT_LENGTH_TO_KPC*All.cf_atime;
                     maxsoft = 2.0 / unitlength_in_kpc;
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES) && (defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL))
                     if(P[i].SNe_ThisTimeStep>0 || P[i].MassReturn_ThisTimeStep>0 || All.Time==All.TimeBegin) {maxsoft=2.0/unitlength_in_kpc;} else {maxsoft=0.1/unitlength_in_kpc;};

@@ -478,7 +478,6 @@ void set_units(void)
   double meanweight;
 
   All.UnitTime_in_s = All.UnitLength_in_cm / All.UnitVelocity_in_cm_per_s;
-  All.UnitTime_in_Megayears = All.UnitTime_in_s / (1.0e6*SEC_PER_YEAR);
 
   if(All.GravityConstantInternal == 0)
     All.G = GRAVITY_G / pow(All.UnitLength_in_cm, 3) * All.UnitMass_in_g * pow(All.UnitTime_in_s, 2);

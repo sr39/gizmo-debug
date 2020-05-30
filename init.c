@@ -333,7 +333,7 @@ void init(void)
 #if defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         if(RestartFlag == 0)
         {
-	        P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001) * get_random_number(P[i].ID + 3);
+	        P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (UNIT_TIME_TO_GYR) * get_random_number(P[i].ID + 3);
         }
 #endif
         

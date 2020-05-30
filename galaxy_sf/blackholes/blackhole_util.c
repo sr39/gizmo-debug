@@ -98,7 +98,7 @@ void blackhole_end(void)
         if((ThisTask == 0) && (total_mdot > 0) && (total_mass_real > 0))
         {
             /* convert to solar masses per yr */
-            mdot_in_msun_per_year = total_mdot * (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
+            mdot_in_msun_per_year = total_mdot * UNIT_MASS_TO_SOLAR/UNIT_TIME_TO_YR;
             total_mdoteddington *= 1.0 / bh_eddington_mdot(1);
             fprintf(FdBlackHoles, "%g %d %g %g %g %g %g\n", All.Time, All.TotBHs, total_mass_holes, total_mdot, mdot_in_msun_per_year, total_mass_real, total_mdoteddington);
         }

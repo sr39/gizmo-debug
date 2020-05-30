@@ -2668,7 +2668,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 
 #ifdef RT_LEBRON /* now we couple radiation pressure [single-scattering] terms within this module */
 #ifdef GALSF_FB_FIRE_RT_LONGRANGE /* we only allow the momentum to couple over some distance to prevent bad approximations when the distance between points here is enormous */
-                if(r>50. * 3.086e21*All.HubbleParam/(All.UnitLength_in_cm*All.cf_atime)) {fac=0;}
+                if(r*UNIT_LENGTH_TO_KPC*All.cf_atime > 50.) {fac=0;}
 #endif /* simply apply an on-the-spot approximation and do the absorption now. appropriate normalization (and sign) in 'fac_stellum' */
                 double lum_force_fac=0; int kf_rt;
                 for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {lum_force_fac += mass_stellarlum[kf_rt] * fac_stellum[kf_rt];}

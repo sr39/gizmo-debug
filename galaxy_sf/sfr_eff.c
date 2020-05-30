@@ -45,8 +45,7 @@ void assign_imf_properties_from_starforming_gas(int i)
                         (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] +
                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
-    double M_sonic = cs*cs*cs*cs / (All.G * dv2_abs * h);
-    M_sonic *= All.UnitMass_in_g / All.HubbleParam / (1.989e33); // sonic mass in solar units //
+    double M_sonic = cs*cs*cs*cs / (All.G * dv2_abs * h) * UNIT_MASS_TO_SOLAR; // sonic mass in solar units //
     P[i].IMF_Mturnover = DMAX(0.01,DMIN(M_sonic,100.));
     P[i].IMF_Mturnover = 2.0; // 'normal' IMF in our definitions
     
@@ -112,7 +111,7 @@ void assign_imf_properties_from_starforming_gas(int i)
     gsl_rng *random_generator_for_massivestars;
     random_generator_for_massivestars = gsl_rng_alloc(gsl_rng_ranlxd1);
     gsl_rng_set(random_generator_for_massivestars, P[i].ID+121);
-    double mu = 0.01 * P[i].Mass * All.UnitMass_in_g / All.HubbleParam / (1.989e33); // 1 O-star per 100 Msun
+    double mu = 0.01 * P[i].Mass * UNIT_MASS_TO_SOLAR; // 1 O-star per 100 Msun
     unsigned int kk = gsl_ran_poisson(random_generator_for_massivestars, mu);
     P[i].IMF_NumMassiveStars = (double)kk;
 #endif
@@ -148,7 +147,7 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
         /* time variable is simple time, when not in comoving coordinates */
         age=All.Time-stellar_tform;
     }
-    age *= 0.001*All.UnitTime_in_Megayears/All.HubbleParam; // convert to absolute Gyr
+    age *= UNIT_TIME_TO_GYR; // convert to absolute Gyr
     if((age<=1.e-5)||(isnan(age))) {age=1.e-5;}
     return age;
 }
@@ -302,9 +301,9 @@ double get_starformation_rate(int i)
 #endif
 
 #if (SINGLE_STAR_SINK_FORMATION & 64) || (GALSF_SFR_VIRIAL_SF_CRITERION >= 3) /* check if Jeans mass is low enough for conceivable formation of 'stars' */
-    double cs_touse=cs_eff, MJ_crit=DMAX(DMIN(1000., P[i].Mass*All.UnitMass_in_g/(All.HubbleParam*SOLAR_MASS)), 10.); /* for galaxy-scale SF, default to large ~1000 Msun threshold */
+    double cs_touse=cs_eff, MJ_crit=DMAX(DMIN(1000., P[i].Mass*UNIT_MASS_TO_SOLAR), 10.); /* for galaxy-scale SF, default to large ~1000 Msun threshold */
 #ifdef SINGLE_STAR_SINK_FORMATION
-    cs_touse=v_fast; MJ_crit=DMIN(1.e4, DMAX(1.e-3 , 100.*P[i].Mass*All.UnitMass_in_g/(All.HubbleParam*SOLAR_MASS))); /* for single-star formation use un-resolved Jeans mass criterion, with B+thermal pressure */
+    cs_touse=v_fast; MJ_crit=DMIN(1.e4, DMAX(1.e-3 , 100.*P[i].Mass*UNIT_MASS_TO_SOLAR)); /* for single-star formation use un-resolved Jeans mass criterion, with B+thermal pressure */
 #endif
     double MJ_solar = 2.*pow(cs_touse*All.UnitVelocity_in_cm_per_s/(0.2e5),3)/sqrt(SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam / (HYDROGEN_MASSFRAC*1.0e3*PROTONMASS));
     if(MJ_solar > MJ_crit) {rateOfSF=0;} /* if too massive Jeans mass, go no further */
@@ -420,7 +419,7 @@ void star_formation_parent_routine(void)
 	      mass_of_star = P[i].Mass / (GALSF_GENERATIONS - number_of_stars_generated);
           if(number_of_stars_generated >= GALSF_GENERATIONS-1) mass_of_star=P[i].Mass;
 
-          SphP[i].Sfr = sm / dtime * (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
+          SphP[i].Sfr = sm / dtime * UNIT_MASS_TO_SOLAR / UNIT_TIME_TO_YR;
 	      if(dtime>0) TimeBinSfr[P[i].TimeBin] += SphP[i].Sfr;
 
           prob = P[i].Mass / mass_of_star * (1 - exp(-p));
@@ -560,13 +559,11 @@ void star_formation_parent_routine(void)
                 P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age
                 P[i].StellarAge = All.Time; // record the time at which point the sink entered the current stage of stellar evolution (will become actual stellar age when reaching MS)
                 P[i].ProtoStellarStage = 0;
-                //if (P[i].Mass < (0.01* SOLAR_MASS / All.UnitMass_in_g) ){ P[i].ProtoStellarStage = 0;} //starts at "pre-collapse" stage
-                //else{ P[i].ProtoStellarStage = 1;} //start at the "no burn" phase
                 P[i].Mass_D = P[i].Mass; //Initially all the gas has Deuterium
                 P[i].ZAMS_Mass = 0; //init as zero, does not mean anything while we are in the protostellar stage
                 P[i].StarLuminosity_Solar = 0; //Start with zero luminosity
-		        if (P[i].Mass < 0.012 * SOLAR_MASS / All.UnitMass_in_g) {P[i].ProtoStellarRadius_inSolar =  5.24 * pow(P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS, 1./3);} // constant density
-                    else {P[i].ProtoStellarRadius_inSolar = 10. * (P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS);} // M propto R above this mass
+		        if (P[i].Mass*UNIT_MASS_TO_SOLAR < 0.012) {P[i].ProtoStellarRadius_inSolar =  5.24 * pow(P[i].Mass*UNIT_MASS_TO_SOLAR, 1./3);} // constant density
+                    else {P[i].ProtoStellarRadius_inSolar = 10. * (P[i].Mass*UNIT_MASS_TO_SOLAR);} // M propto R above this mass
 #endif
 
 #ifdef BH_OUTPUT_FORMATION_PROPERTIES //save the at-formation properties of sink particles
@@ -691,7 +688,7 @@ void star_formation_parent_routine(void)
         {
             if(All.TimeStep > 0) {rate = total_sm / (All.TimeStep / (All.cf_atime*All.cf_hubble_a));} else {rate = 0;}
             /* convert to solar masses per yr */
-            rate_in_msunperyear = rate * (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
+            rate_in_msunperyear = rate * UNIT_MASS_TO_SOLAR / UNIT_TIME_TO_YR;
             fprintf(FdSfr, "%g %g %g %g %g\n", All.Time, total_sm, totsfrrate, rate_in_msunperyear, total_sum_mass_stars);
             fflush(FdSfr); // can flush it, because only occuring on master steps anyways
         } // thistask==0

@@ -16,7 +16,7 @@
 void radiation_pressure_winds_consolidated(void)
 {
     MyDouble *pos; int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,i,j,k,n;
-    double dx,dy,dz,r2,u,h,hinv,hinv3,wk,rho,wt_sum,p_random,p_cumulative,star_age,lm_ssp,dv_units,dE_over_c,unitmass_in_msun,prob,dt,v,vq=0,dv_imparted,dv_imparted_uv,norm,dir[3], total_n_wind,total_m_wind,total_mom_wind,total_prob_kick,avg_v_kick,momwt_avg_v_kick,avg_taufac;
+    double dx,dy,dz,r2,u,h,hinv,hinv3,wk,rho,wt_sum,p_random,p_cumulative,star_age,lm_ssp,dv_units,dE_over_c,prob,dt,v,vq=0,dv_imparted,dv_imparted_uv,norm,dir[3], total_n_wind,total_m_wind,total_mom_wind,total_prob_kick,avg_v_kick,momwt_avg_v_kick,avg_taufac;
     double totMPI_n_wind,totMPI_m_wind,totMPI_mom_wind,totMPI_prob_kick,totMPI_avg_v,totMPI_pwt_avg_v,totMPI_taufac, sigma_eff_0, RtauMax = 0, age_thold = 0.1;
     total_n_wind=total_m_wind=total_mom_wind=total_prob_kick=avg_v_kick=momwt_avg_v_kick=avg_taufac=0; totMPI_n_wind=totMPI_m_wind=totMPI_mom_wind=totMPI_prob_kick=totMPI_avg_v=totMPI_pwt_avg_v=totMPI_taufac=0; p_random=p_cumulative=0;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
@@ -26,8 +26,8 @@ void radiation_pressure_winds_consolidated(void)
     Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
     PRINT_STATUS("Local Radiation-Pressure acceleration calculation");
 
-    unitmass_in_msun=(All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS; sigma_eff_0 = All.UnitMass_in_g*All.HubbleParam/(All.UnitLength_in_cm*All.UnitLength_in_cm) / (All.cf_atime*All.cf_atime) * KAPPA_IR;
-    double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
+    sigma_eff_0 = All.UnitMass_in_g*All.HubbleParam/(All.UnitLength_in_cm*All.UnitLength_in_cm) / (All.cf_atime*All.cf_atime) * KAPPA_IR;
+    double unitlength_in_kpc = UNIT_LENGTH_TO_KPC * All.cf_atime;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
@@ -282,9 +282,10 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                 already_ionized = 0; rho_j = Get_Gas_density_for_energy_i(j);
                                 if(SphP[j].InternalEnergy<SphP[j].InternalEnergyPred) {u=SphP[j].InternalEnergy;} else {u=SphP[j].InternalEnergyPred;}
 #if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
-                                if(SphP[i].Ne > 0.85) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
-#endif
+                                if((SphP[j].DelayTimeHII>0) || (SphP[i].Ne>0.8) || (u>5.*uion)) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
+#else
                                 if((SphP[j].DelayTimeHII > 0)||(u>uion)) {already_ionized=1;}
+#endif
                                 /* now, if inside RHII and mionized<mionizeable and not already ionized, can be ionized! */
                                 do_ionize=0; prob=0;
                                 if((r<=RHII)&&(already_ionized==0)&&(mionized<mionizable))
@@ -375,7 +376,7 @@ int do_the_local_ionization(int j, double dt)
 {
     SphP[j].InternalEnergy = DMAX(SphP[j].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
     SphP[j].InternalEnergyPred = SphP[j].InternalEnergy; /* full reset of the internal energy */
-    SphP[j].DelayTimeHII = dt; /* tell the code to flag this in the cooling subroutine */
+    SphP[j].DelayTimeHII = dt ??????; /* tell the code to flag this in the cooling subroutine */
     SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* fully ionized */
     return 1;
 }
@@ -423,7 +424,7 @@ void chimes_HII_regions_singledomain(void)
 	    continue; // don't keep going with this loop
 
 	  stellar_age = evaluate_stellar_age_Gyr(P[i].StellarAge); 
-	  stellar_mass = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam  * SOLAR_MASS); 
+	  stellar_mass = P[i].Mass * UNIT_MASS_TO_SOLAR; 
 	  
 	  // stellum is the number of H-ionising photons per second 
 	  // produced by the star particle 

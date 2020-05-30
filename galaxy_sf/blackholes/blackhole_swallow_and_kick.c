@@ -478,7 +478,7 @@ void spawn_bh_wind_feedback(void)
             int sink_eligible_to_spawn = 0; // flag to check eligibility for spawning
             if(BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*All.BAL_wind_particle_mass) {sink_eligible_to_spawn=1;} // have 'enough' mass to spawn
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
-            if((P[i].Mass <= 7.*All.MinMassForParticleMerger) || (P[i].BH_Mass*All.UnitMass_in_g/(All.HubbleParam*SOLAR_MASS) < 0.01)) {sink_eligible_to_spawn=0;}  // spawning causes problems in these modules for low-mass sinks, so arbitrarily restrict to this, since it's roughly a criterion on the minimum particle mass. and for <0.01 Msun, in pre-collapse phase, no jets
+            if((P[i].Mass <= 7.*All.MinMassForParticleMerger) || (P[i].BH_Mass*UNIT_MASS_TO_SOLAR < 0.01)) {sink_eligible_to_spawn=0;}  // spawning causes problems in these modules for low-mass sinks, so arbitrarily restrict to this, since it's roughly a criterion on the minimum particle mass. and for <0.01 Msun, in pre-collapse phase, no jets
 #if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
             if(P[i].ProtoStellarStage==6) {sink_eligible_to_spawn=1;} // spawn the SNe ejecta no matter what the sink or 'unspawned' mass flag actually is
 #endif

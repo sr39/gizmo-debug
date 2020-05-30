@@ -14,7 +14,7 @@
 /* return photon number density in physical code units */
 double rt_return_photon_number_density(int i, int k)
 {
-    return SphP[i].Rad_E_gamma[k] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (rt_nu_eff_eV[k]*ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam);
+    return SphP[i].Rad_E_gamma[k] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (rt_nu_eff_eV[k]*ELECTRONVOLT_IN_ERGS/UNIT_ENERGY_TO_CGS;
 }
 
 double rt_photoion_chem_return_temperature(int i, double internal_energy)
@@ -43,7 +43,7 @@ void rt_get_sigma(void)
     rt_sigma_HI[RT_FREQ_BIN_H0] = 6.3e-18 * fac; // cross-section (blackbody-weighted) for photons
     nu[RT_FREQ_BIN_H0] = 13.6; // minimum frequency [in eV] of photons of interest
     rt_nu_eff_eV[RT_FREQ_BIN_H0] = 27.2; // typical blackbody-weighted frequency [in eV] of photons of interest: to convert energies to numbers
-    G_HI[RT_FREQ_BIN_H0] = (rt_nu_eff_eV[RT_FREQ_BIN_H0]-13.6)*ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam; // absorption cross-section weighted photon energy in code units
+    G_HI[RT_FREQ_BIN_H0] = (rt_nu_eff_eV[RT_FREQ_BIN_H0]-13.6)*ELECTRONVOLT_IN_ERGS/UNIT_ENERGY_TO_CGS; // absorption cross-section weighted photon energy in code units
 #else
     
     /* now we use the multi-bin spectral information */
@@ -58,7 +58,7 @@ void rt_get_sigma(void)
 #else 
     T_eff = All.star_Teff;
 #endif
-    fac_two = ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam;
+    fac_two = ELECTRONVOLT_IN_ERGS/UNIT_ENERGY_TO_CGS;
 #ifdef RT_CHEM_PHOTOION_HE
     double sum_HeI_sigma=0, sum_HeII_sigma=0, sum_HeI_G=0, sum_HeII_G=0;
 #endif    

@@ -169,7 +169,7 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
                 double Esne51 = local.Esne * (All.UnitEnergy_in_cgs/All.HubbleParam) / 1.e51;
                 double density_to_n = All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / PROTONMASS;
                 double pressure_to_p4 = (1/All.cf_afac1)*density_to_n*U_TO_TEMP_UNITS / 1.0e4; 
-                double dt_ram = 7.08 * pow(Esne51*SphP[j].Density*density_to_n,0.34) * pow(SphP[j].Pressure*pressure_to_p4,-0.70) / (All.UnitTime_in_Megayears/All.HubbleParam);
+                double dt_ram = 7.08 * pow(Esne51*SphP[j].Density*density_to_n,0.34) * pow(SphP[j].Pressure*pressure_to_p4,-0.70) / (UNIT_TIME_TO_MYR);
                 if(dt_ram > SphP[j].DelayTimeCoolingSNe) SphP[j].DelayTimeCoolingSNe = dt_ram;
 #endif
             } // for(n = 0; n < numngb; n++)

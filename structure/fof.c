@@ -1841,7 +1841,7 @@ void fof_make_black_holes(void)
             gsl_rng_set(random_generator_forbh,P[import_indices[n]].ID+17);
             random_number_forbh = gsl_ran_gaussian(random_generator_forbh, All.SeedBlackHoleMassSigma);
             BPP(import_indices[n]).BH_Mass = pow( 10., log10(All.SeedBlackHoleMass) + random_number_forbh );
-            unitmass_in_msun = (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS;
+            unitmass_in_msun = UNIT_MASS_TO_SOLAR;
             if( BPP(import_indices[n]).BH_Mass < 100./unitmass_in_msun )
                 BPP(import_indices[n]).BH_Mass = 100./unitmass_in_msun;      // enforce lower limit of Mseed = 100 x Msun
         } else {

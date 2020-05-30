@@ -949,11 +949,10 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_stellar_evol = star_age/10.;
         }
         // PFH: temporarily modifying the terms above while Marcel studies them: turns out not to be necessary to use as strict a mass-dependent timestep, so faster to comment out //
-        //dt_stellar_evol /= ( 1. + 0.1*(P[p].Mass*All.UnitMass_in_g)/(1.0e4*1.989e33) ); // multiply by inverse particle mass, since goal is to prevent too much energy in one time //
-        double mcorr = 0.1 * (P[p].Mass*All.UnitMass_in_g/All.HubbleParam)/(1.0e4*1.989e33);
+        double mcorr = 1.e-5 * (P[p].Mass*UNIT_MASS_TO_SOLAR);
         if(mcorr < 1 && mcorr > 0) {dt_stellar_evol /= mcorr;}
         if(dt_stellar_evol < 1.e-6) {dt_stellar_evol = 1.e-6;}
-        dt_stellar_evol /= (0.001*All.UnitTime_in_Megayears/All.HubbleParam); // convert to code units //
+        dt_stellar_evol /= (UNIT_TIME_TO_GYR); // convert to code units //
         if(dt_stellar_evol>0) {if(dt_stellar_evol<dt) {dt = dt_stellar_evol;}}
     }
 #endif
@@ -972,7 +971,7 @@ integertime get_timestep(int p,		/*!< particle index */
     if(P[p].Type == 5)
     {
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && defined(GALSF)
-      double dt_accr = 1.e-2 * 4.2e7 * SEC_PER_YEAR / All.UnitTime_in_s; // this is the Eddington timescale; not relevant for low radiative efficiency
+      double dt_accr = 4.2e5 / UNIT_TIME_TO_YR; // this is the 1% of Salpeter timescale; not relevant for low radiative efficiency
 #else
       double dt_accr = All.MaxSizeTimestep;
 #endif      
@@ -995,7 +994,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
         } // if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
 #ifdef BH_SEED_GROWTH_TESTS
-            double dt_evol = 1.e4 * SEC_PER_YEAR / All.UnitTime_in_s;
+            double dt_evol = 1.e4 / UNIT_TIME_TO_YR;
 #ifdef TURB_DRIVING
             if(dt_evol > 1.e-3*All.StDecay) {dt_evol=1.e-3*All.StDecay;}
 #endif
