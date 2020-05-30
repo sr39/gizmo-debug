@@ -377,7 +377,7 @@ int do_the_local_ionization(int target, double dt, int source)
     SphP[target].InternalEnergy = DMAX(SphP[target].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
     SphP[target].InternalEnergyPred = SphP[target].InternalEnergy; /* full reset of the internal energy */
     SphP[target].DelayTimeHII = DMIN(dt, 10./UNIT_TIME_TO_MYR); /* tell the code to flag this in the cooling subroutine */
-    SphP[target].Ne = 1.0 + 2.0*yhelium(j); /* fully ionized */
+    SphP[target].Ne = 1.0 + 2.0*yhelium(target); /* fully ionized */
     return 1;
 }
 
