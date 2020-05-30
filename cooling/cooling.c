@@ -464,7 +464,7 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
 
 
 
-double get_mu(double T_guess, double rho, double *xH0, double *ne_guess, int target)
+double get_mu(double T_guess, double rho, double *xH0, double *ne_guess, double urad_from_uvb_in_G0, int target)
 {
  double X=HYDROGEN_MASSFRAC, Y=1.-X, Z=0, fmol;
 #ifdef METALS
@@ -475,7 +475,7 @@ double get_mu(double T_guess, double rho, double *xH0, double *ne_guess, int tar
         X = 1. - (Y+Z);
     }
 #endif
-    fmol = Get_Gas_Molecular_Mass_Fraction(target, T_guess, *xH0, 0., 1.2); /* use our simple subroutine to estimate this, ignoring UVB and with clumping factor=1 */
+    fmol = Get_Gas_Molecular_Mass_Fraction(target, T_guess, *xH0, 0., urad_from_uvb_in_G0, 1.2); /* use our simple subroutine to estimate this, ignoring UVB and with clumping factor=1 */
 
     return 1. / ( X*(1-0.5*fmol) + Y/4. + *ne_guess*HYDROGEN_MASSFRAC + Z/(16.+12.*fmol) ); // since our ne is defined in some routines with He, should multiply by universal
 }
@@ -502,30 +502,28 @@ double chimes_convert_u_to_temp(double u, double rho, int target)
 #else  // CHIMES 
 /* this function determines the electron fraction, and hence the mean molecular weight. With it arrives at a self-consistent temperature.
  * Ionization abundances and the rates for the emission are also computed */
-double convert_u_to_temp(double u, double rho, int target, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess)
+double convert_u_to_temp(double u, double rho, int target, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess, double *mu_guess)
 {
     int iter = 0;
-    double temp, temp_old, temp_old_old = 0, temp_new, max = 0, ne_old, mu;
+    double temp, temp_old, temp_old_old = 0, temp_new, max = 0, ne_old, uvb_contrib = 0;
     double u_input = u, rho_input = rho, temp_guess;
     temp_guess = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS;
-    mu = get_mu(temp_guess, rho, nH0_guess, ne_guess, target);
-    temp = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS * mu;
+    *mu_guess = get_mu(temp_guess, rho, nH0_guess, ne_guess, 0., target);
+    temp = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS * (*mu_guess);
     
     do
     {
         ne_old = *ne_guess;
-        find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess);
+        find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess);
         temp_old = temp;
+        temp_new = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS * (*mu_guess);
         
-        mu = get_mu(temp, rho, nH0_guess, ne_guess, target);
-        temp_new = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS * mu;
-        
-        max = DMAX(max, temp_new * mu * HYDROGEN_MASSFRAC * fabs((*ne_guess - ne_old) / (temp_new - temp_old + 1.0)));
+        max = DMAX(max, temp_new * (*mu_guess) * HYDROGEN_MASSFRAC * fabs((*ne_guess - ne_old) / (temp_new - temp_old + 1.0)));
         temp = temp_old + (temp_new - temp_old) / (1 + max);
         if(fabs(temp-temp_old_old)/(temp+temp_old_old) < 1.e-4) {double wt=get_random_number(12*iter+340*ThisTask+5435*target); temp=(wt*temp_old + (1.-wt)*temp_new);}
         temp_old_old = temp_old;
         iter++;
-        if(iter > (MAXITER - 10)) {printf("-> temp=%g/%g/%g ne=%g/%g mu=%g rho=%g max=%g iter=%d target=%d \n", temp,temp_new,temp_old,*ne_guess,ne_old, mu ,rho,max,iter,target);}
+        if(iter > (MAXITER - 10)) {printf("-> temp=%g/%g/%g ne=%g/%g mu=%g rho=%g max=%g iter=%d target=%d \n", temp,temp_new,temp_old,*ne_guess,ne_old, (*mu_guess) ,rho,max,iter,target);}
     }
     while(
           ((fabs(temp - temp_old) > 0.25 * temp) ||
@@ -545,7 +543,8 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
 #ifndef CHIMES 
 /* this function computes the actual ionization states, relative abundances, and returns the ionization/recombination rates if needed */
 double find_abundances_and_rates(double logT, double rho, int target, double shieldfac, int return_cooling_mode,
-                                 double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess)
+                                 double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess,
+                                 double *mu_guess)
 {
     int j, niter;
     double Tlow, Thi, flow, fhi, t, gJH0ne, gJHe0ne, gJHepne, logT_input, rho_input, ne_input, neold, nenew;
@@ -559,12 +558,14 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     {
         nH0 = 1.0; nHe0 = yhelium(target); nHp = 0; nHep = 0; nHepp = 0; n_elec = 0;
         *nH0_guess=nH0; *nHe0_guess=nHe0; *nHp_guess=nHp; *nHep_guess=nHep; *nHepp_guess=nHepp; *ne_guess=n_elec;
+        *mu_guess=get_mu(pow(10.,logT), rho, nH0_guess, ne_guess, 0, target);
         return 0;
     }
     if(logT >= Tmax)		/* everything is ionized */
     {
         nH0 = 0; nHe0 = 0; nHp = 1.0; nHep = 0; nHepp = yhelium(target); n_elec = nHp + 2.0 * nHepp;
         *nH0_guess=nH0; *nHe0_guess=nHe0; *nHp_guess=nHp; *nHep_guess=nHep; *nHepp_guess=nHepp; *ne_guess=n_elec;
+        *mu_guess=get_mu(pow(10.,logT), rho, nH0_guess, ne_guess, 1.e3, target);
         return 0;
     }
 
@@ -776,6 +777,8 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     bH0 = flow * BetaH0[j] + fhi * BetaH0[j + 1];
     bHep = flow * BetaHep[j] + fhi * BetaHep[j + 1];
     bff = flow * Betaff[j] + fhi * Betaff[j + 1];
+    *nH0_guess=nH0; *nHe0_guess=nHe0; *nHp_guess=nHp; *nHep_guess=nHep; *nHepp_guess=nHepp; *ne_guess=n_elec; /* write to send back */
+    *mu_guess=get_mu(pow(10.,logT), rho, nH0_guess, ne_guess, sqrt(shieldfac)*(gJH0/2.29e-10), target);
     if(target >= 0) /* if this is a cell, update some of its thermodynamic stored quantities */
     {
         SphP[target].Ne = n_elec;
@@ -783,8 +786,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, pow(10.,logT), DMAX(nH0,0), sqrt(shieldfac)*(gJH0/2.29e-10) , 1.1);
 #endif
     }
-    *nH0_guess=nH0; *nHe0_guess=nHe0; *nHp_guess=nHp; *nHep_guess=nHep; *nHepp_guess=nHepp; *ne_guess=n_elec; /* write to send back */
-    
+
     /* now check if we want to return the ionization/recombination heating/cooling rates calculated with all the above quantities */
     if(return_cooling_mode==1)
     {
@@ -818,8 +820,8 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 /*  this function first computes the self-consistent temperature and abundance ratios, and then it calculates (heating rate-cooling rate)/n_h^2 in cgs units */
 double CoolingRateFromU(double u, double rho, double ne_guess, int target)
 {
-    double nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess;
-    double temp = convert_u_to_temp(u, rho, target, &ne_guess, &nH0_guess, &nHp_guess, &nHe0_guess, &nHep_guess, &nHepp_guess);
+    double nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu;
+    double temp = convert_u_to_temp(u, rho, target, &ne_guess, &nH0_guess, &nHp_guess, &nHe0_guess, &nHep_guess, &nHepp_guess, &mu);
     return CoolingRate(log10(temp), rho, ne_guess, target);
 }
 
@@ -831,11 +833,11 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
     double temp;
     rho *= All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;	/* convert to physical cgs units */
     u *= All.UnitPressure_in_cgs / All.UnitDensity_in_cgs;
-    temp = convert_u_to_temp(u, rho, target, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess);
+    temp = convert_u_to_temp(u, rho, target, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess);
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) && !(GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
     if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target);}} /* fully ionized [if using older model] */
+    *mu_guess = get_mu(temp, rho, nH0_guess, ne_guess, 0, target);
 #endif
-    *mu_guess = get_mu(temp, rho, nH0_guess, ne_guess, target);
     return temp;
 }
 #endif // !(CHIMES) 
@@ -937,7 +939,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     if(logT < Tmax)
     {
         /* get ionization states for H and He with associated ionization, collision, recombination, and free-free heating/cooling */
-        Lambda = find_abundances_and_rates(logT, rho, target, shieldfac, 1, &n_elec, &nH0, &nHp, &nHe0, &nHep, &nHepp);
+        Lambda = find_abundances_and_rates(logT, rho, target, shieldfac, 1, &n_elec, &nH0, &nHp, &nHe0, &nHep, &nHepp, &mu);
         
 #ifdef COOL_METAL_LINES_BY_SPECIES
         /* can restrict to low-densities where not self-shielded, but let shieldfac (in ne) take care of this self-consistently */
