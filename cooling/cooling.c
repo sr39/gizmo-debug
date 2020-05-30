@@ -174,8 +174,8 @@ void do_the_cooling_for_particle(int i)
     if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
     {
         double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
-#ifdef GALSF_FB_FIRE_RT_HIIHEATING
-        double uion=HIIRegion_Temp/(0.59*(5./3.-1.)*U_TO_TEMP_UNITS); if(SphP[i].DelayTimeHII>0) {if(uold<uion) {uold=uion;}} /* u_old should be >= ionized temp if used here */
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && !(GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+        double uion=HIIRegion_Temp/(0.59*(5./3.-1.)*U_TO_TEMP_UNITS); if(SphP[i].DelayTimeHII>0) {if(uold<uion) {uold=uion;}} /* u_old should be >= ionized temp if used here [unless using newer model] */
 #endif
         
 #ifndef COOLING_OPERATOR_SPLIT
@@ -214,7 +214,7 @@ void do_the_cooling_for_particle(int i)
 #endif
         
         
-#ifdef GALSF_FB_FIRE_RT_HIIHEATING  /* set internal energy to minimum level if marked as ionized by stars */
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && !(GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ?? /* for older model, set internal energy to minimum level if marked as ionized by stars */
         if(SphP[i].DelayTimeHII > 0)
         {
             if(unew<uion) {unew=uion; if(SphP[i].DtInternalEnergy<0) SphP[i].DtInternalEnergy=0;}
@@ -600,11 +600,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
     if(shieldfac < 0)
     {
-        double NH_SS_z;
-        if(gJH0>0)
-            {NH_SS_z = NH_SS*pow(local_gammamultiplier*gJH0/1.0e-12,0.66)*pow(10.,0.173*(logT-4.));}
-        else
-            {NH_SS_z = NH_SS*pow(10.,0.173*(logT-4.));}
+        double NH_SS_z; if(gJH0>0) {NH_SS_z = NH_SS*pow(local_gammamultiplier*gJH0/1.0e-12,0.66)*pow(10.,0.173*(logT-4.));} else {NH_SS_z = NH_SS*pow(10.,0.173*(logT-4.));}
         double q_SS = nHcgs/NH_SS_z;
 #ifdef COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
         shieldfac = 0.98 / pow(1 + pow(q_SS,1.64), 2.28) + 0.02 / pow(1 + q_SS, 0.84); // from Rahmati et al. 2012: gives gentler cutoff at high densities
@@ -613,6 +609,9 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #endif
 #ifdef GALSF_EFFECTIVE_EQS
         shieldfac = 1; // self-shielding is implicit in the sub-grid model already //
+#endif
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+        if(target>=0) {if(SphP[target].DelayTimeHII > 0) {shieldfac = 1;}} // newer HII region model irradiates and removes shielding for regions, but allows cooling function to evolve //
 #endif
     }
     n_elec = *ne_guess; if(!isfinite(n_elec)) {n_elec=1;}
@@ -827,8 +826,8 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
     rho *= All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;	/* convert to physical cgs units */
     u *= All.UnitPressure_in_cgs / All.UnitDensity_in_cgs;
     temp = convert_u_to_temp(u, rho, target, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess);
-#ifdef GALSF_FB_FIRE_RT_HIIHEATING
-    if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target);}} /* fully ionized */
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && !(GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+    if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target);}} /* fully ionized [if using older model] */
 #endif
     *mu_guess = get_mu(temp, rho, nH0_guess, ne_guess, target);
     return temp;
@@ -887,7 +886,10 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #ifdef GALSF_EFFECTIVE_EQS
     shieldfac = 1; // self-shielding is implicit in the sub-grid model already //
 #endif
-    
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+    if(target>=0) {if(SphP[target].DelayTimeHII > 0) {shieldfac = 1;}} // newer HII region model irradiates and removes shielding for regions, but allows cooling function to evolve //
+#endif
+
 #ifdef BH_COMPTON_HEATING
     double AGN_LambdaPre = 0, AGN_T_Compton; AGN_T_Compton = 2.0e7; /* approximate from Sazonov et al. */
     if(target >= 0)
@@ -1751,7 +1753,16 @@ void selfshield_local_incident_uv_flux(void)
             } else {
                 SphP[i].Rad_Flux_UV = 0;
                 SphP[i].Rad_Flux_EUV = 0;
-            }}}
+            }
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+            if(SphP[i].DelayTimeHII > 0)
+            {
+                SphP[i].Rad_Flux_EUV += 1.474e-12 * pow(P[i].Mass*All.UnitMass_in_g/All.HubbleParam , 1./3.) *
+                    pow(SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam , 5./3.);
+            }
+#endif            
+        }
+    }
 }
 #endif // GALSF_FB_FIRE_RT_UVHEATING
 
@@ -1784,13 +1795,10 @@ void chimes_update_gas_vars(int target)
   ChimesGasVars[target].ThermEvolOn = All.ChimesThermEvolOn; 
   
   // If there is an EoS, need to set TempFloor to that instead. 
-#ifndef GALSF_FB_FIRE_RT_HIIHEATING
-  ChimesGasVars[target].TempFloor = All.MinGasTemp; 
+#if !(defined(GALSF_FB_FIRE_RT_HIIHEATING) && !(GALSF_FB_FIRE_STELLAREVOLUTION == 3)) // ??
+  ChimesGasVars[target].TempFloor = All.MinGasTemp;
 #else 
-  if (SphP[target].DelayTimeHII > 0) 
-    ChimesGasVars[target].TempFloor = HIIRegion_Temp; 
-  else 
-    ChimesGasVars[target].TempFloor = All.MinGasTemp; 
+  if (SphP[target].DelayTimeHII > 0) {ChimesGasVars[target].TempFloor = HIIRegion_Temp;} else {ChimesGasVars[target].TempFloor = All.MinGasTemp;}
 #endif 
   
   // Extragalactic UV background 
@@ -1851,10 +1859,7 @@ void chimes_update_gas_vars(int target)
   ChimesGasVars[target].doppler_broad = 7.1;  // km/s. For now, just set this constant. Thermal broadening is also added within CHIMES. 
   
 #ifdef CHIMES_HII_REGIONS 
-  // Effectively switches off shielding 
-  // in HII regions. 
-  if (SphP[target].DelayTimeHII > 0.0) 
-    ChimesGasVars[target].cell_size = 1.0; 
+  if (SphP[target].DelayTimeHII > 0.0) {ChimesGasVars[target].cell_size = 1.0;} // switch of shielding in HII regions
 #endif 
 
 #ifdef CHIMES_TURB_DIFF_IONS 

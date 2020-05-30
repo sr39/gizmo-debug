@@ -636,7 +636,7 @@ void init(void)
 #if (GALSF_SUBGRID_WIND_SCALING==1)
         SphP[i].HostHaloMass = 0;
 #endif
-#endif // GALSF_SUBGRID_WINDS //
+#endif 
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) 
         SphP[i].DelayTimeHII = 0;
 #endif
