@@ -327,7 +327,14 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     double fH2 = 1. - pow(1.+q*q*q , -1./3.); // full KMT expression [unlike log-approximation, this extrapolates physically at low-q]
     if(q<0.2) {fH2 = q*q*q * (1. - 2.*q*q*q/3.)/3.;} // catch low-q limit more accurately [prevent roundoff error problems]
     if(q>10.) {fH2 = 1. - 1./q;} // catch high-q limit more accurately [prevent roundoff error problems]
-    return DMIN(1,DMAX(0, fH2 * f_neutral)); // multiple by neutral fraction, as this is ultimately the fraction of the -neutral- gas in H2
+    fH2 = DMIN(1,DMAX(0, fH2 * f_neutral)); // multiple by neutral fraction, as this is ultimately the fraction of the -neutral- gas in H2
+    if(fH2 > 2.*f_neutral || (fH2 > 0.9 && temperature > 1.e5))
+    {
+        printf("WARNING: strange behavior in molecular fraction code. target=%d fH2=%g fneutral=%g/%g T=%g Z=%g UV=%g/%g/%g Sigma=%g nH=%g fclump=%g chi=%g psi=%g s=%g q=%g ",
+               i,fH2,neutral_fraction,f_neutral,temperature,Z_Zsol,urad_G0,SphP[i].Rad_Flux_UV,urad_from_uvb_in_G0,surface_density_Msun_pc2,nH_cgs,
+               clumping_factor,chi,psi,s,q); fflush(stdout);
+    }
+    return fH2;
 #endif
     
 #if (SINGLE_STAR_SINK_FORMATION & 256) || defined(GALSF_SFR_MOLECULAR_CRITERION) /* estimate f_H2 with Krumholz & Gnedin 2010 fitting function, assuming simple scalings of radiation field, clumping, and other factors with basic gas properties so function only of surface density and metallicity, truncated at low values (or else it gives non-sensical answers) */

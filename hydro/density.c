@@ -507,72 +507,64 @@ void density(void)
 #endif
                 
                 // inverse of SPH volume element (to satisfy constraint implicit in Lagrange multipliers)
-                if(PPP[i].DhsmlNgbFactor > -0.9)	/* note: this would be -1 if only a single particle at zero lag is found */
-                    PPP[i].DhsmlNgbFactor = 1 / (1 + PPP[i].DhsmlNgbFactor);
-                else
-                    PPP[i].DhsmlNgbFactor = 1;
+                if(PPP[i].DhsmlNgbFactor > -0.9) {PPP[i].DhsmlNgbFactor = 1 / (1 + PPP[i].DhsmlNgbFactor);} else {PPP[i].DhsmlNgbFactor = 1;} /* note: this would be -1 if only a single particle at zero lag is found */
                 P[i].Particle_DivVel *= PPP[i].DhsmlNgbFactor;
             
                 MyLongDouble NV_T_prev[6]; NV_T_prev[0]=SphP[i].NV_T[0][0]; NV_T_prev[1]=SphP[i].NV_T[1][1]; NV_T_prev[2]=SphP[i].NV_T[2][2]; NV_T_prev[3]=SphP[i].NV_T[0][1]; NV_T_prev[4]=SphP[i].NV_T[0][2]; NV_T_prev[5]=SphP[i].NV_T[1][2];
-                if(P[i].Type == 0)
+                if(P[i].Type == 0) /* invert the NV_T matrix we just measured */
                 {
                     /* fill in the missing elements of NV_T (it's symmetric, so we saved time not computing these directly) */
                     SphP[i].NV_T[1][0]=SphP[i].NV_T[0][1]; SphP[i].NV_T[2][0]=SphP[i].NV_T[0][2]; SphP[i].NV_T[2][1]=SphP[i].NV_T[1][2];
-                    /* Now invert the NV_T matrix we just measured */
+                    double dimensional_NV_T_normalizer = pow( PPP[i].Hsml , 2-NUMDIMS ); /* this has the same dimensions as NV_T here */
+                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {SphP[i].NV_T[k1][k2] /= dimensional_NV_T_normalizer;}} /* now NV_T should be dimensionless */
                     /* Also, we want to be able to calculate the condition number of the matrix to be inverted, since
                         this will tell us how robust our procedure is (and let us know if we need to expand the neighbor number */
-                    ConditionNumber=CNumHolder=0;
-                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {ConditionNumber += SphP[i].NV_T[k1][k2]*SphP[i].NV_T[k1][k2];}}
-                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}} /* initialize inverse matrix to null */
-#if (NUMDIMS==1)
-                    /* one-dimensional case */
-                    detT = SphP[i].NV_T[0][0];
-                    if(SphP[i].NV_T[0][0]!=0 && !isnan(SphP[i].NV_T[0][0])) Tinv[0][0] = 1/detT; /* only one non-trivial element in 1D! */
-#endif
-#if (NUMDIMS==2)
-                    /* two-dimensional case */
-                    detT = SphP[i].NV_T[0][0]*SphP[i].NV_T[1][1] - SphP[i].NV_T[0][1]*SphP[i].NV_T[1][0];
-                    if((detT != 0)&&(!isnan(detT)))
+                    ConditionNumber = CNumHolder = 0;
+                    double ConditionNumber_threshold = 10. * CONDITION_NUMBER_DANGER; /* set a threshold condition number - above this we will 'pre-condition' the matrix for better behavior */
+                    double trace_initial = SphP[i].NV_T[0][0] + SphP[i].NV_T[1][1] + SphP[i].NV_T[2][2]; /* initial trace of this symmetric, positive-definite matrix; used below as a characteristic value for adding the identity */
+                    double conditioning_term_to_add = 1.05 * (trace_initial / NUMDIMS) / ConditionNumber_threshold; /* this will be added as a test value if the code does not reach the desired condition number */
+                    while(1)
                     {
-                        Tinv[0][0] = SphP[i].NV_T[1][1] / detT;
-                        Tinv[0][1] = -SphP[i].NV_T[0][1] / detT;
-                        Tinv[1][0] = -SphP[i].NV_T[1][0] / detT;
-                        Tinv[1][1] = SphP[i].NV_T[0][0] / detT;
-                    }
+                        for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {ConditionNumber += SphP[i].NV_T[k1][k2]*SphP[i].NV_T[k1][k2];}}
+                        for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}} /* initialize inverse matrix to null */
+#if (NUMDIMS==1) /* one-dimensional case */
+                        detT = SphP[i].NV_T[0][0]; if((detT != 0) && !isnan(detT)) {Tinv[0][0] = 1./detT;} /* only one non-trivial element in 1D! */
 #endif
-#if (NUMDIMS==3)
-                    /* three-dimensional case */
-                    detT = SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][2]
-                         + SphP[i].NV_T[0][1] * SphP[i].NV_T[1][2] * SphP[i].NV_T[2][0]
-                         + SphP[i].NV_T[0][2] * SphP[i].NV_T[1][0] * SphP[i].NV_T[2][1]
-                         - SphP[i].NV_T[0][2] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][0]
-                         - SphP[i].NV_T[0][1] * SphP[i].NV_T[1][0] * SphP[i].NV_T[2][2]
-                         - SphP[i].NV_T[0][0] * SphP[i].NV_T[1][2] * SphP[i].NV_T[2][1];
-                    detT = SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][2]
-                         + 2. * (SphP[i].NV_T[0][1] * SphP[i].NV_T[1][2] * SphP[i].NV_T[0][2])
-                         - (SphP[i].NV_T[0][0] * SphP[i].NV_T[1][2] * SphP[i].NV_T[1][2] +
-                            SphP[i].NV_T[1][1] * SphP[i].NV_T[0][2] * SphP[i].NV_T[0][2] +
-                            SphP[i].NV_T[2][2] * SphP[i].NV_T[0][1] * SphP[i].NV_T[0][1]);
-                    /* check for zero determinant */
-                    if((detT != 0) && !isnan(detT))
-                    {
-                        Tinv[0][0] = (SphP[i].NV_T[1][1] * SphP[i].NV_T[2][2] - SphP[i].NV_T[1][2] * SphP[i].NV_T[2][1]) / detT;
-                        Tinv[0][1] = (SphP[i].NV_T[0][2] * SphP[i].NV_T[2][1] - SphP[i].NV_T[0][1] * SphP[i].NV_T[2][2]) / detT;
-                        Tinv[0][2] = (SphP[i].NV_T[0][1] * SphP[i].NV_T[1][2] - SphP[i].NV_T[0][2] * SphP[i].NV_T[1][1]) / detT;
-                        Tinv[1][0] = (SphP[i].NV_T[1][2] * SphP[i].NV_T[2][0] - SphP[i].NV_T[1][0] * SphP[i].NV_T[2][2]) / detT;
-                        Tinv[1][1] = (SphP[i].NV_T[0][0] * SphP[i].NV_T[2][2] - SphP[i].NV_T[0][2] * SphP[i].NV_T[2][0]) / detT;
-                        Tinv[1][2] = (SphP[i].NV_T[0][2] * SphP[i].NV_T[1][0] - SphP[i].NV_T[0][0] * SphP[i].NV_T[1][2]) / detT;
-                        Tinv[2][0] = (SphP[i].NV_T[1][0] * SphP[i].NV_T[2][1] - SphP[i].NV_T[1][1] * SphP[i].NV_T[2][0]) / detT;
-                        Tinv[2][1] = (SphP[i].NV_T[0][1] * SphP[i].NV_T[2][0] - SphP[i].NV_T[0][0] * SphP[i].NV_T[2][1]) / detT;
-                        Tinv[2][2] = (SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] - SphP[i].NV_T[0][1] * SphP[i].NV_T[1][0]) / detT;
-                    }
+#if (NUMDIMS==2) /* two-dimensional case */
+                        detT = SphP[i].NV_T[0][0]*SphP[i].NV_T[1][1] - SphP[i].NV_T[0][1]*SphP[i].NV_T[1][0];
+                        if((detT != 0) && !isnan(detT))
+                        {
+                            Tinv[0][0] =  SphP[i].NV_T[1][1] / detT; Tinv[0][1] = -SphP[i].NV_T[0][1] / detT;
+                            Tinv[1][0] = -SphP[i].NV_T[1][0] / detT; Tinv[1][1] =  SphP[i].NV_T[0][0] / detT;
+                        }
 #endif
-                    
-                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {CNumHolder += Tinv[k1][k2]*Tinv[k1][k2];}}
-                    ConditionNumber = sqrt(ConditionNumber*CNumHolder) / NUMDIMS;
-                    if(ConditionNumber<1) ConditionNumber=1;
-                    /* this = sqrt( ||NV_T^-1||*||NV_T|| ) :: should be ~1 for a well-conditioned matrix */
-                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {SphP[i].NV_T[k1][k2]=Tinv[k1][k2];}}
+#if (NUMDIMS==3) /* three-dimensional case */
+                        detT = SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][2]
+                             + SphP[i].NV_T[0][1] * SphP[i].NV_T[1][2] * SphP[i].NV_T[2][0]
+                             + SphP[i].NV_T[0][2] * SphP[i].NV_T[1][0] * SphP[i].NV_T[2][1]
+                             - SphP[i].NV_T[0][2] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][0]
+                             - SphP[i].NV_T[0][1] * SphP[i].NV_T[1][0] * SphP[i].NV_T[2][2]
+                             - SphP[i].NV_T[0][0] * SphP[i].NV_T[1][2] * SphP[i].NV_T[2][1];
+                        if((detT != 0) && !isnan(detT)) /* check for zero determinant */
+                        {
+                            Tinv[0][0] = (SphP[i].NV_T[1][1] * SphP[i].NV_T[2][2] - SphP[i].NV_T[1][2] * SphP[i].NV_T[2][1]) / detT;
+                            Tinv[0][1] = (SphP[i].NV_T[0][2] * SphP[i].NV_T[2][1] - SphP[i].NV_T[0][1] * SphP[i].NV_T[2][2]) / detT;
+                            Tinv[0][2] = (SphP[i].NV_T[0][1] * SphP[i].NV_T[1][2] - SphP[i].NV_T[0][2] * SphP[i].NV_T[1][1]) / detT;
+                            Tinv[1][0] = (SphP[i].NV_T[1][2] * SphP[i].NV_T[2][0] - SphP[i].NV_T[1][0] * SphP[i].NV_T[2][2]) / detT;
+                            Tinv[1][1] = (SphP[i].NV_T[0][0] * SphP[i].NV_T[2][2] - SphP[i].NV_T[0][2] * SphP[i].NV_T[2][0]) / detT;
+                            Tinv[1][2] = (SphP[i].NV_T[0][2] * SphP[i].NV_T[1][0] - SphP[i].NV_T[0][0] * SphP[i].NV_T[1][2]) / detT;
+                            Tinv[2][0] = (SphP[i].NV_T[1][0] * SphP[i].NV_T[2][1] - SphP[i].NV_T[1][1] * SphP[i].NV_T[2][0]) / detT;
+                            Tinv[2][1] = (SphP[i].NV_T[0][1] * SphP[i].NV_T[2][0] - SphP[i].NV_T[0][0] * SphP[i].NV_T[2][1]) / detT;
+                            Tinv[2][2] = (SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] - SphP[i].NV_T[0][1] * SphP[i].NV_T[1][0]) / detT;
+                        }
+#endif
+                        for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {CNumHolder += Tinv[k1][k2]*Tinv[k1][k2];}}
+                        ConditionNumber = DMAX( sqrt(ConditionNumber*CNumHolder) / NUMDIMS , 1 ); /* this = sqrt( ||NV_T^-1||*||NV_T|| ) :: should be ~1 for a well-conditioned matrix */
+                        if(ConditionNumber < ConditionNumber_threshold) {break;}
+                        for(k1=0;k1<NUMDIMS;k1++) {SphP[i].NV_T[k1][k1] += conditioning_term_to_add;} /* add the conditioning term which should make the matrix better-conditioned for subsequent use */
+                        conditioning_term_to_add *= 1.2; /* multiply the conditioning term so it will grow and eventually satisfy our criteria */
+                    }
+                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {SphP[i].NV_T[k1][k2] = Tinv[k1][k2] / dimensional_NV_T_normalizer;}} /* re-insert normalization correctly */
                     /* now NV_T holds the inverted matrix elements, for use in hydro */
                 } // P[i].Type == 0 //
                 
