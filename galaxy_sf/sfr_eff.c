@@ -279,7 +279,7 @@ double get_starformation_rate(int i)
 #if (SINGLE_STAR_SINK_FORMATION & 256) || defined(GALSF_SFR_MOLECULAR_CRITERION) /* scale SFR to fraction of 'molecular' gas in cell */
     double ne=SphP[i].Ne, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, u0=SphP[i].InternalEnergyPred; // pull various known thermal properties, prepare to extract others //
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties, like neutral fraction, temperature, etc, that we will use below //
-    rateOfSF *= Get_Gas_Molecular_Mass_Fraction(i, temperature, nh0, 0., 1.);
+    rateOfSF *= Get_Gas_Molecular_Mass_Fraction(i, temperature, nh0, 0., 0.8);
 #endif
     
 #if (SINGLE_STAR_SINK_FORMATION & 2) || (GALSF_SFR_VIRIAL_SF_CRITERION >= 4) /* restrict to convergent flows */
