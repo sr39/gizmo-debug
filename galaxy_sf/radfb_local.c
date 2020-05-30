@@ -299,7 +299,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                         prob = m_available/m_effective; // determine randomly if ionized
                                         if(prandom < prob) do_ionize=1;
                                     } // if(m_effective<=m_available) {
-                                    if(do_ionize==1) {already_ionized=do_the_local_ionization(j,dt);}
+                                    if(do_ionize==1) {already_ionized=do_the_local_ionization(j,dt,i);}
                                     mionized += prob*m_effective;
                                 } // if((r<=RHII)&&(already_ionized==0)&&(mionized<mionizable))
                                 
@@ -318,7 +318,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                     {
                         j=jnearest; m_effective=P[j].Mass*(SphP[j].Density/rho); m_available=mionizable-mionized; prob=m_available/m_effective; do_ionize=0;
                         if(prandom < prob) {do_ionize=1;}
-                        if(do_ionize==1) {already_ionized=do_the_local_ionization(j,dt);}
+                        if(do_ionize==1) {already_ionized=do_the_local_ionization(j,dt,i);}
                         mionized += prob*m_effective;
                     } // if((mionized<mionizable)&&(jnearest>=0))
                     
@@ -372,12 +372,12 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 
 
 
-int do_the_local_ionization(int j, double dt)
+int do_the_local_ionization(int target, double dt, int source)
 {
-    SphP[j].InternalEnergy = DMAX(SphP[j].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
-    SphP[j].InternalEnergyPred = SphP[j].InternalEnergy; /* full reset of the internal energy */
-    SphP[j].DelayTimeHII = dt ??????; /* tell the code to flag this in the cooling subroutine */
-    SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* fully ionized */
+    SphP[target].InternalEnergy = DMAX(SphP[target].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
+    SphP[target].InternalEnergyPred = SphP[target].InternalEnergy; /* full reset of the internal energy */
+    SphP[target].DelayTimeHII = DMIN(dt, 10./UNIT_TIME_TO_MYR); /* tell the code to flag this in the cooling subroutine */
+    SphP[target].Ne = 1.0 + 2.0*yhelium(j); /* fully ionized */
     return 1;
 }
 

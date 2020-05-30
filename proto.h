@@ -581,7 +581,7 @@ double particle_ionizing_luminosity_in_cgs(long i);
 
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
 void HII_heating_singledomain(void);
-int do_the_local_ionization(int j, double dt);
+int do_the_local_ionization(int target, double dt, int source);
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING_USEMULTIDOMAINSHARE
 void HII_heating_withMPIcomm(void);
 int HIIheating_RHIIest(int target);
