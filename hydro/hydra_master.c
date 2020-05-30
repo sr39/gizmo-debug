@@ -221,7 +221,7 @@ struct INPUT_STRUCT_NAME
         MyDouble Rad_E_gamma_ET[N_RT_FREQ_BINS][3];
 #endif
     } Gradients;
-    MyFloat NV_T[3][3];
+    MyLongDouble NV_T[3][3];
     
 #if defined(KERNEL_CRK_FACES)
     MyFloat Tensor_CRK_Face_Corrections[16];

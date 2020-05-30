@@ -142,7 +142,7 @@ static struct OUTPUT_STRUCT_NAME
     MyLongDouble Rho;
     MyLongDouble DhsmlNgb;
     MyLongDouble Particle_DivVel;
-    MyFloat NV_T[3][3];
+    MyLongDouble NV_T[3][3];
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
     MyDouble ParticleVel[3];
 #endif
@@ -478,7 +478,7 @@ void density(void)
     desnumngb = All.DesNumNgb; desnumngbdev = All.MaxNumNgbDeviation;
     /* in the initial timestep and iteration, use a much more strict tolerance for the neighbor number */
     if(All.Time==All.TimeBegin) {if(All.MaxNumNgbDeviation > 0.05) desnumngbdev=0.05;}
-    double desnumngbdev_0 = desnumngbdev, Tinv[3][3], detT, CNumHolder=0, ConditionNumber=0; int k,k1,k2; k=0;
+    MyLongDouble desnumngbdev_0 = desnumngbdev, Tinv[3][3], detT, CNumHolder=0, ConditionNumber=0; int k,k1,k2; k=0;
 
     /* allocate buffers to arrange communication */
     #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
@@ -513,7 +513,7 @@ void density(void)
                     PPP[i].DhsmlNgbFactor = 1;
                 P[i].Particle_DivVel *= PPP[i].DhsmlNgbFactor;
             
-                double NV_T_prev[6]; NV_T_prev[0]=SphP[i].NV_T[0][0]; NV_T_prev[1]=SphP[i].NV_T[1][1]; NV_T_prev[2]=SphP[i].NV_T[2][2]; NV_T_prev[3]=SphP[i].NV_T[0][1]; NV_T_prev[4]=SphP[i].NV_T[0][2]; NV_T_prev[5]=SphP[i].NV_T[1][2];
+                MyLongDouble NV_T_prev[6]; NV_T_prev[0]=SphP[i].NV_T[0][0]; NV_T_prev[1]=SphP[i].NV_T[1][1]; NV_T_prev[2]=SphP[i].NV_T[2][2]; NV_T_prev[3]=SphP[i].NV_T[0][1]; NV_T_prev[4]=SphP[i].NV_T[0][2]; NV_T_prev[5]=SphP[i].NV_T[1][2];
                 if(P[i].Type == 0)
                 {
                     /* fill in the missing elements of NV_T (it's symmetric, so we saved time not computing these directly) */
@@ -523,15 +523,14 @@ void density(void)
                         this will tell us how robust our procedure is (and let us know if we need to expand the neighbor number */
                     ConditionNumber=CNumHolder=0;
                     for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {ConditionNumber += SphP[i].NV_T[k1][k2]*SphP[i].NV_T[k1][k2];}}
+                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}} /* initialize inverse matrix to null */
 #if (NUMDIMS==1)
                     /* one-dimensional case */
-                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}}
                     detT = SphP[i].NV_T[0][0];
                     if(SphP[i].NV_T[0][0]!=0 && !isnan(SphP[i].NV_T[0][0])) Tinv[0][0] = 1/detT; /* only one non-trivial element in 1D! */
 #endif
 #if (NUMDIMS==2)
                     /* two-dimensional case */
-                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}}
                     detT = SphP[i].NV_T[0][0]*SphP[i].NV_T[1][1] - SphP[i].NV_T[0][1]*SphP[i].NV_T[1][0];
                     if((detT != 0)&&(!isnan(detT)))
                     {
@@ -543,12 +542,17 @@ void density(void)
 #endif
 #if (NUMDIMS==3)
                     /* three-dimensional case */
-                    detT = SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][2] +
-                        SphP[i].NV_T[0][1] * SphP[i].NV_T[1][2] * SphP[i].NV_T[2][0] +
-                        SphP[i].NV_T[0][2] * SphP[i].NV_T[1][0] * SphP[i].NV_T[2][1] -
-                        SphP[i].NV_T[0][2] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][0] -
-                        SphP[i].NV_T[0][1] * SphP[i].NV_T[1][0] * SphP[i].NV_T[2][2] -
-                        SphP[i].NV_T[0][0] * SphP[i].NV_T[1][2] * SphP[i].NV_T[2][1];
+                    detT = SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][2]
+                         + SphP[i].NV_T[0][1] * SphP[i].NV_T[1][2] * SphP[i].NV_T[2][0]
+                         + SphP[i].NV_T[0][2] * SphP[i].NV_T[1][0] * SphP[i].NV_T[2][1]
+                         - SphP[i].NV_T[0][2] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][0]
+                         - SphP[i].NV_T[0][1] * SphP[i].NV_T[1][0] * SphP[i].NV_T[2][2]
+                         - SphP[i].NV_T[0][0] * SphP[i].NV_T[1][2] * SphP[i].NV_T[2][1];
+                    detT = SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][2]
+                         + 2. * (SphP[i].NV_T[0][1] * SphP[i].NV_T[1][2] * SphP[i].NV_T[0][2])
+                         - (SphP[i].NV_T[0][0] * SphP[i].NV_T[1][2] * SphP[i].NV_T[1][2] +
+                            SphP[i].NV_T[1][1] * SphP[i].NV_T[0][2] * SphP[i].NV_T[0][2] +
+                            SphP[i].NV_T[2][2] * SphP[i].NV_T[0][1] * SphP[i].NV_T[0][1]);
                     /* check for zero determinant */
                     if((detT != 0) && !isnan(detT))
                     {
@@ -561,8 +565,6 @@ void density(void)
                         Tinv[2][0] = (SphP[i].NV_T[1][0] * SphP[i].NV_T[2][1] - SphP[i].NV_T[1][1] * SphP[i].NV_T[2][0]) / detT;
                         Tinv[2][1] = (SphP[i].NV_T[0][1] * SphP[i].NV_T[2][0] - SphP[i].NV_T[0][0] * SphP[i].NV_T[2][1]) / detT;
                         Tinv[2][2] = (SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] - SphP[i].NV_T[0][1] * SphP[i].NV_T[1][0]) / detT;
-                    } else {
-                        for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}}
                     }
 #endif
                     
@@ -723,8 +725,8 @@ void density(void)
                 {
                     /* ok we have reached the desired number of neighbors: save the condition number for next timestep */
                     if(ConditionNumber > 1e6 * (double)CONDITION_NUMBER_DANGER) {
-                        PRINT_WARNING("Condition number=%g CNum_prevtimestep=%g Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g \n i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)  \n NVT=%g/%g/%g %g/%g/%g %g/%g/%g NVT_inv=%g/%g/%g %g/%g/%g %g/%g/%g ",
-                               ConditionNumber,SphP[i].ConditionNumber,PPP[i].NumNgb,desnumngb,PPP[i].Hsml,All.MinHsml,All.MaxHsml, i, ThisTask,
+                        PRINT_WARNING("Condition number=%g CNum_prevtimestep=%g iter=%d Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g \n i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)  \n NVT=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g NVT_inv=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g ",
+                               ConditionNumber,SphP[i].ConditionNumber,iter,PPP[i].NumNgb,desnumngb,PPP[i].Hsml,All.MinHsml,All.MaxHsml, i, ThisTask,
                                (unsigned long long) P[i].ID, P[i].Type, PPP[i].Hsml, PPP[i].DhsmlNgbFactor, Left[i], Right[i],
                                (float) PPP[i].NumNgb, Right[i] - Left[i], particle_set_to_maxhsml_flag, particle_set_to_minhsml_flag, minsoft,
                                maxsoft, desnumngb, desnumngbdev, redo_particle, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],
@@ -737,8 +739,8 @@ void density(void)
                 {
                     if(iter >= MAXITER - 10)
                     {
-                        PRINT_WARNING("i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)",
-                               i, ThisTask, (unsigned long long) P[i].ID, P[i].Type, PPP[i].Hsml, PPP[i].DhsmlNgbFactor, Left[i], Right[i],
+                        PRINT_WARNING("i=%d task=%d ID=%llu iter=%d Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)",
+                               i, ThisTask, (unsigned long long) P[i].ID, iter, P[i].Type, PPP[i].Hsml, PPP[i].DhsmlNgbFactor, Left[i], Right[i],
                                (float) PPP[i].NumNgb, Right[i] - Left[i], particle_set_to_maxhsml_flag, particle_set_to_minhsml_flag, minsoft,
                                maxsoft, desnumngb, desnumngbdev, redo_particle, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
                     }

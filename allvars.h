@@ -2730,7 +2730,7 @@ extern ALIGN(32) struct particle_data
 #endif
 #endif
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
-    MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
+    MyLongDouble NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
 #endif
 #ifdef CBE_INTEGRATOR
     double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];         /* moments per basis function */
@@ -2859,8 +2859,8 @@ extern struct sph_particle_data
         MyDouble Rad_E_gamma_ET[N_RT_FREQ_BINS][3];
 #endif
     } Gradients;
-    MyFloat NV_T[3][3];             /*!< holds the tensor used for gradient estimation */
-    MyDouble ConditionNumber;       /*!< condition number of the gradient matrix: needed to ensure stability */
+    MyLongDouble NV_T[3][3];        /*!< holds the tensor used for gradient estimation */
+    MyLongDouble ConditionNumber;   /*!< condition number of the gradient matrix: needed to ensure stability */
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     MyDouble MaxKineticEnergyNgb;   /*!< maximum kinetic energy (with respect to neighbors): use for entropy 'switch' */
 #endif

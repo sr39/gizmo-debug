@@ -120,7 +120,7 @@ struct GasGraddata_in
     MyFloat Hsml;
     integertime Timestep;
 #ifdef MHD_CONSTRAINED_GRADIENT
-    MyFloat NV_T[3][3];
+    MyLongDouble NV_T[3][3];
     MyFloat BGrad[3][3];
 #ifdef MHD_CONSTRAINED_GRADIENT_FAC_MEDDEV
     MyFloat PhiGrad[3];

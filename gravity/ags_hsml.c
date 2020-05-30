@@ -679,7 +679,7 @@ double get_particle_volume_ags(int j)
 /* routine to invert the NV_T matrix after neighbor pass */
 double do_cbe_nvt_inversion_for_faces(int i)
 {
-    MyFloat NV_T[3][3]; int j,k;
+    MyLongDouble NV_T[3][3]; int j,k;
     for(j=0;j<3;j++) {for(k=0;k<3;k++) {NV_T[j][k]=P[i].NV_T[j][k];}} // initialize matrix to be inverted //
     double Tinv[3][3], FrobNorm=0, FrobNorm_inv=0, detT=0;
     for(j=0;j<3;j++) {for(k=0;k<3;k++) {Tinv[j][k]=0;}}
@@ -757,7 +757,7 @@ struct INPUT_STRUCT_NAME
     int Type;
     integertime dt_step;
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
-    double NV_T[3][3];
+    MyLongDouble NV_T[3][3];
     double V_i;
 #endif
 #if defined(DM_FUZZY)
