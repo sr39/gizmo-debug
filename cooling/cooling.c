@@ -1757,9 +1757,9 @@ void selfshield_local_incident_uv_flux(void)
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
             if(SphP[i].DelayTimeHII > 0)
             {
-                SphP[i].Rad_Flux_EUV += 1.474e-12 * pow(P[i].Mass*All.UnitMass_in_g/All.HubbleParam , 1./3.) *
+                SphP[i].Rad_Flux_EUV += 3. * 1.474e-12 * pow(P[i].Mass*All.UnitMass_in_g/All.HubbleParam , 1./3.) *
                     pow(SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam , 5./3.);
-            }
+            } // 3 is a 'safety factor' here, need to check //
 #endif            
         }
     }
