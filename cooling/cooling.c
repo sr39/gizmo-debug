@@ -776,7 +776,13 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     bH0 = flow * BetaH0[j] + fhi * BetaH0[j + 1];
     bHep = flow * BetaHep[j] + fhi * BetaHep[j + 1];
     bff = flow * Betaff[j] + fhi * Betaff[j + 1];
-    if(target >= 0) {SphP[target].Ne = n_elec;}
+    if(target >= 0) /* if this is a cell, update some of its thermodynamic stored quantities */
+    {
+        SphP[target].Ne = n_elec;
+#ifdef OUTPUT_MOLECULAR_FRACTION
+        SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, pow(10.,logT), DMAX(nH0,0), sqrt(shieldfac)*(gJH0/2.29e-10) , 1.);
+#endif
+    }
     *nH0_guess=nH0; *nHe0_guess=nHe0; *nHp_guess=nHp; *nHep_guess=nHep; *nHepp_guess=nHepp; *ne_guess=n_elec; /* write to send back */
     
     /* now check if we want to return the ionization/recombination heating/cooling rates calculated with all the above quantities */
