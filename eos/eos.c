@@ -316,7 +316,8 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     urad_G0 = DMIN(DMAX( urad_G0 , 1.e-3 ) , 1.e10 ); // limit values, because otherwise exponential self-shielding approximation easily artificially gives 0 incident field
     /* get estimate of mass column density integrated away from this location for self-shielding */
     double surface_density_Msun_pc2 = 0.05 * evaluate_NH_from_GradRho(SphP[i].Gradients.Density,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm / 0.000208854; // approximate column density with Sobolev or Treecol methods as appropriate; converts to M_solar/pc^2
-    /* 0.05 above is testing, based on calculations by Laura Keating: represents a plausible re-scaling of the shielding length for sub-grid clumping */
+    //double surface_density_Msun_pc2 = evaluate_NH_from_GradRho(SphP[i].Gradients.Density,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,0,i) * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm / 0.000208854; // approximate column density with Sobolev or Treecol methods as appropriate; converts to M_solar/pc^2
+    /* 0.05 above is in testing, based on calculations by Laura Keating: represents a plausible re-scaling of the shielding length for sub-grid clumping */
     /* get estimate of local density and clumping factor */
     double nH_cgs = SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs / PROTONMASS; // get nH defined as in KMT [number of nucleons per cm^3]
     double clumping_factor_for_unresolved_densities = clumping_factor; // Gnedin et al. add a large clumping factor to account for inability to resolve high-densities, here go with what is resolved
