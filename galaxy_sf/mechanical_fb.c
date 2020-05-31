@@ -384,7 +384,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* inject the post-shock energy and momentum (convert to specific units as needed first) */
                 e_shock *= 1 / P[j].Mass;
                 SphP[j].InternalEnergy += e_shock;
-#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
                 double uion = HIIRegion_Temp / (0.59*(5./3.-1.)*U_TO_TEMP_UNITS);
                 if(SphP[j].InternalEnergy > uion) {SphP[j].Ne = 1.0 + 2.0*yhelium(j);} /* reset ionized fraction and treat as fully-ionized from the shock */
 #endif
@@ -395,7 +395,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double m_cooling = 4.18879*pnorm*SphP[j].Density*RsneKPC*RsneKPC*RsneKPC;
                 /* apply limiter for energy conservation */
                 double mom_boost_fac = 1 + sqrt(DMIN(mj_preshock , m_cooling) / m_ej_input);
-#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
                 if(loop_iteration > 0) {mom_boost_fac=1;} /* no unresolved PdV component for winds+r-process */
 #endif
                 /* save summation values for outputs */
@@ -734,7 +734,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(d_Egy_internal > 0)
                 {
                     SphP[j].InternalEnergy += d_Egy_internal; SphP[j].InternalEnergyPred += d_Egy_internal; E_coupled += d_Egy_internal;
-#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
                     double uion = HIIRegion_Temp / (0.59*(5./3.-1.)*U_TO_TEMP_UNITS);
                     if(SphP[j].InternalEnergy > uion) {SphP[j].Ne = 1.0 + 2.0*yhelium(j);} /* reset ionized fraction and treat as fully-ionized from the shock */
 #endif

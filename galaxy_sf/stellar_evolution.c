@@ -28,7 +28,7 @@ double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i)
     double lum=1; if(stellar_age_in_gyr < 0.01) {lum=1000;} // default to a dumb imf-averaged 'young/high-mass' vs 'old/low-mass' distinction
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION // fit to updated SB99 tracks: including rotation, new mass-loss tracks, etc.
     if(stellar_age_in_gyr < 0.0035) {lum=1136.59;} else {double log_age=log10(stellar_age_in_gyr/0.0035); lum=1500.*pow(10.,-1.8*log_age+0.3*log_age*log_age-0.025*log_age*log_age*log_age);}
-#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
     double t1=0.0012, t2=0.0037, f1=800., f2=1100.*pow(Z_for_stellar_evol(i),-0.1), tx=log10(stellar_age_in_gyr/t2), t_g=log10(stellar_age_in_gyr/1.2)/0.05;
     if(stellar_age_in_gyr<=t1) {lum=f1;} else if(stellar_age_in_gyr<=t2) {lum=f1*pow(stellar_age_in_gyr/t1,log(f2/f1)/log(t2/t1));} else {lum=f2*pow(10.,-1.82*tx+0.42*tx*tx-0.07*tx*tx*tx)*(1.+1.2*exp(-0.5*t_g*t_g));}
 #endif
@@ -105,7 +105,7 @@ double particle_ionizing_luminosity_in_cgs(long i)
     if(P[i].Type != 5)
     {
         double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), t0=0.0035, tmax=0.02;
-#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
         tmax=0.15; lm_ssp=evaluate_light_to_mass_ratio(star_age,i); if(star_age<t0) {lm_ssp*=0.5;} else {lm_ssp*=0.5*pow(star_age/t0,-2.9);} /* slightly revised fit scales simply with Lbol [easier to modify]; see same references for stellar wind mass-loss rates; and extends to later ages (though most comes out at <100 Myr) */
 #else
         if(star_age < t0) {lm_ssp=500.;} else {double log_age=log10(star_age/t0); lm_ssp=470.*pow(10.,-2.24*log_age-4.2*log_age*log_age) + 60.*pow(10.,-3.6*log_age);}
@@ -221,7 +221,7 @@ double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
 #if (GALSF_FB_FIRE_STELLAREVOLUTION == 1) || (GALSF_FB_FIRE_STELLAREVOLUTION == 2)
     if(star_age>agemin) {if(star_age<=agebrk) {RSNe=5.408e-4;} else {if(star_age<=agemax) {RSNe=2.516e-4;}}} // core-collapse rate [super-simple 2-piece constant //
     if(star_age>agemax) {RSNe=5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01));} // Ia (prompt Gaussian+delay, Manucci+06)
-#elif (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+#elif (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
     agemin=0.0037; agebrk=0.7e-2; agemax=0.044; double f1=3.9e-4, f2=5.1e-4, f3=1.8e-4;
     if(star_age<agemin) {RSNe=0;} else if(star_age<=agebrk) {RSNe=f1*pow(star_age/agemin,log(f2/f1)/log(agebrk/agemin));}
         else if(star_age<=agemax) {RSNe=f2*pow(star_age/agebrk,log(f3/f2)/log(agemax/agebrk));} else {RSNe=0;} // core-collapse; updated with same stellar evolution models for wind mass loss [see there for references]. simple 2-part power-law provides extremely-accurate fit. models predict a totally negligible metallicity-dependence.
@@ -287,7 +287,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 #elif (GALSF_FB_FIRE_STELLAREVOLUTION == 2)
     if(star_age<=0.001){p=4.76317*ZZ;} else {if(star_age<=0.0035){p=4.76317*ZZ*pow(10.,1.838*(0.79+log10(ZZ))*(log10(star_age)-(-3.00)));} else {
         if(star_age<=0.1){p=29.4*pow(star_age/0.0035,-3.25)+0.0041987;} else {p=0.41987*pow(star_age,-1.1)/(12.9-log(star_age));}}} // normalized  to give expected return fraction from stellar winds alone (~17%)
-#elif (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+#elif (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
     /* updated fit. separates the more robust line-driven winds [massive-star-dominated] component, and -very- uncertain AGB. extremely good fits to updated STARBURST99 result for a 3-part Kroupa IMF (0.3,1.3,2.3 slope, 0.01-0.08-0.5-100 Msun, 8-120 SNe/BH cutoff, wind model evolution, Geneva v40 [rotating, Geneva 2013 updated tracks, at all metallicities available, ~0.1-1 solar], sampling times 1e4-2e10 yr at high resolution */
     double f1=3.*pow(ZZ,0.87), f2=20.*pow(ZZ,0.45), f3=0.6*ZZ, t1=0.0017, t2=0.004, t3=0.02, t=star_age; /* fit parameters for 'massive star' mass-loss */
     if(t<=t1) {p=f1;} else if(t<=t2) {p=f1*pow(t/t1,log(f2/f1)/log(t2/t1));} else if(t<=t3) {p=f2*pow(t/t2,log(f3/f2)/log(t3/t2));} else {p=f3*pow(t/t3,-3.1);} /* piecewise continuous function linking constant early and rapid late decay */
@@ -332,7 +332,7 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
     int k; if(P[i].SNe_ThisTimeStep<=0) {in->Msne=0; return;} // no event
     int SNeIaFlag=0; if(evaluate_stellar_age_Gyr(P[i].StellarAge) > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
     double Msne=10.5; if(SNeIaFlag) {Msne=1.4;} // average ejecta mass for single event (normalized to give total mass loss correctly)
-#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
     Msne=8.72; if(SNeIaFlag) {Msne=1.4;} // updated table of SNe rates and energetics, this is the updated mean mass per explosion to give the correct total SNe mass
 #endif
     double SNeEgy = All.SNe_Energy_Renormalization*P[i].SNe_ThisTimeStep * 1.0e51/(All.UnitEnergy_in_cgs/All.HubbleParam); // assume each SNe has 1e51 erg
@@ -404,11 +404,11 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
     in->Msne = P[i].Mass * P[i].MassReturn_ThisTimeStep; // mass (in code units) returned
     
     /* STELLAR POPULATION-AVERAGED VERSION: calculate wind kinetic luminosity + internal energy (hot winds from O-stars, slow from AGB winds) */
-#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
     double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), E_wind_tscaling=0.0013;
     if(star_age <= 0.1) {E_wind_tscaling=0.0013 + 16.0/(1+pow(star_age/0.0025,1.4)+pow(star_age/0.01,5.0));} // stellar population age dependence of specific wind energy, in units of an effective internal energy/temperature
     in->SNe_v_ejecta = sqrt(2.0 * (All.StellarMassLoss_Energy_Renormalization * E_wind_tscaling * (3.0e7/((5./3.-1.)*U_TO_TEMP_UNITS)))); // get the actual wind velocity (multiply specific energy by units, user-set normalization, and convert)
-#elif (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+#elif (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
     double t=evaluate_stellar_age_Gyr(P[i].StellarAge), Z=Z_for_stellar_evol(i), f0=1.2e5*pow(Z,0.12); /* setup: updated fit here uses the same stellar evolution models/tracks as used to compute mass-loss rates. see those for references here. */
     in->SNe_v_ejecta = sqrt(All.StellarMassLoss_Energy_Renormalization) * f0 * (2500./(1.+pow(t/0.003,2.5)) + 500./(1.+pow(sqrt(Z)*t/0.05,6.)+pow(Z/0.2,1.5)) + 25.) / All.UnitVelocity_in_cm_per_s; /* interpolates smoothly from OB winds through AGB, also versus Z */
 #endif
@@ -429,7 +429,7 @@ double Z_for_stellar_evol(int i)
 {
     if(i<0) {return 1;}
     double Z_solar = P[i].Metallicity[0]/All.SolarAbundances[0]; // use total metallicity
-#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) && defined(COOL_METAL_LINES_BY_SPECIES) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(COOL_METAL_LINES_BY_SPECIES) // ??
     int i_Fe=10; Z_solar = P[i].Metallicity[i_Fe]/All.SolarAbundances[i_Fe]; // use Fe, specifically, for computing stellar properties, as its most relevant here. MAKE SURE this is set to the correct abundance in the list, to match Fe!!!
 #endif
     return DMIN(DMAX(Z_solar,0.01),3.);

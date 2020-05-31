@@ -409,7 +409,7 @@ void init(void)
         }
 #endif // COOL_METAL_LINES_BY_SPECIES
         
-#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // new default abundances; using Asplund et al. 2009 proto-solar abundances ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // new default abundances; using Asplund et al. 2009 proto-solar abundances ??
         All.SolarAbundances[0]=0.0142; if(NUM_METAL_SPECIES>=10) {
             All.SolarAbundances[1]=0.27030; All.SolarAbundances[2]=2.53e-3; All.SolarAbundances[3]=7.41e-4; All.SolarAbundances[4]=6.13e-3; All.SolarAbundances[5]=1.34e-3;
             All.SolarAbundances[6]=7.57e-4; All.SolarAbundances[7]=7.12e-4; All.SolarAbundances[8]=3.31e-4; All.SolarAbundances[9]=6.87e-5; All.SolarAbundances[10]=1.38e-3;}

@@ -267,7 +267,7 @@ double Get_Gas_Ionized_Fraction(int i)
 #ifdef COOLING
     double ne=SphP[i].Ne, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, u0=SphP[i].InternalEnergyPred;
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && !(GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ??
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
     if(SphP[i].DelayTimeHII>0) {nh0=0;} // account for our effective ionization model here  [unless using newer model]
 #endif
     double f_ion = DMIN(DMAX(DMAX(DMAX(1-nh0, nhp), ne/1.2), 1.e-8), 1.); // account for different measures above (assuming primordial composition)
@@ -289,12 +289,12 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     return DMIN(1,DMAX(0, SphP[i].grH2I + SphP[i].grH2II)); // include both states of H2 tracked
 #endif
     
-#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) /* ?? if not tracking chemistry explicitly, return a simple estimate of H2 fraction following the KMT [Apj 2009 693, 216] model */
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) /* ?? if not tracking chemistry explicitly, return a simple estimate of H2 fraction following the KMT [Apj 2009 693, 216] model */
     if(temperature > 3.e5) {return 0;} // approximations below not designed for high temperatures, should simply give null
     /* get neutral fraction [given by call to this program] */
     double f_neutral=DMAX(neutral_fraction,0.);
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && !(GALSF_FB_FIRE_STELLAREVOLUTION == 3) // ?? force gas in HII regions to have vanishing neutral fraction [unless using newer model]
-    if(SphP[i].DelayTimeHII > 0) {f_neutral=0;}
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING)
+    if(SphP[i].DelayTimeHII > 0) {return 0;} // force gas flagged as in HII regions to have zero molecular fraction
 #endif
     /* get metallicity */
     double Z_Zsol=1, urad_G0=1; // assumes spatially uniform Habing field for incident FUV radiation unless reset below //
