@@ -290,13 +290,23 @@
 #if defined(FIRE_CRS)
 #define COSMIC_RAYS /*! master flag */
 #if (FIRE_CRS <= 0)
-#define COSMIC_RAYS_M1 (500.) /*! maximum CR transport speed: 500 safe for our default diffusivities in constant-kappa model */
-#define COSMIC_RAYS_DIFFUSION_MODEL 0 /*! constant diffusivity (set by params file) */
+#if !defined(COSMIC_RAYS_M1)
+#define COSMIC_RAYS_M1 (500.)           /*! maximum CR transport speed: 500 safe for our default diffusivities in constant-kappa model */
+#endif
+#if !defined(COSMIC_RAYS_DIFFUSION_MODEL)
+#define COSMIC_RAYS_DIFFUSION_MODEL 0   /*! constant diffusivity (set by params file) */
+#endif
 #else
-#define COSMIC_RAYS_M1 (1000.) /*! maximum CR transport speed: 1000 safe for our default diffusivities in variable-kappa model */
-#define COSMIC_RAYS_DIFFUSION_MODEL 7 /*! best-guess for variable-kappa model, combining updated SC+ET */
-#define COSMIC_RAYS_ION_ALFVEN_SPEED /*! use appropriate ion Alfven speed */
-#define COSMIC_RAYS_SET_SC_MODEL 2 /*! set mode for SC model using best-estimate of fQLT and fCAS */
+#if !defined(COSMIC_RAYS_M1)
+#define COSMIC_RAYS_M1 (1000.)          /*! maximum CR transport speed: 1000 safe for our default diffusivities in variable-kappa model */
+#endif
+#if !defined(COSMIC_RAYS_DIFFUSION_MODEL)
+#define COSMIC_RAYS_DIFFUSION_MODEL 7   /*! best-guess for variable-kappa model, combining updated SC+ET */
+#endif
+#define COSMIC_RAYS_ION_ALFVEN_SPEED    /*! use appropriate ion Alfven speed */
+#if !defined(COSMIC_RAYS_SET_SC_MODEL)
+#define COSMIC_RAYS_SET_SC_MODEL 1      /*! set mode for SC model using best-estimate of fQLT and fCAS */
+#endif
 #endif
 #endif // FIRE_CRS
 
@@ -305,15 +315,21 @@
 #define BH_SEED_FROM_LOCALGAS       /* seed BHs locally in SF-ing gas */
 #define BH_REPOSITION_ON_POTMIN 2   /* anchor BHs to centers smoothly */
 #define BH_SWALLOWGAS               /* allow BHs to accrete in principle */
+#if !defined(BH_GRAVACCRETION)
 #define BH_GRAVACCRETION 1          /* accrete following our standard gravitational torques model */
 #define BH_SIGMAMULTIPLIER          /* account for additional acceleration-dependent retention from stellar FB in Mdot */
+#endif
+#if !defined(BH_ALPHADISK_ACCRETION)
 #define BH_ALPHADISK_ACCRETION (10.) /* smooth out accretion + allow super-eddington capture with alpha-disk model */
+#endif
 #define BH_PHOTONMOMENTUM           /* allow AGN radiation pressure */
 #define BH_COMPTON_HEATING          /* allow Compton heating from AGN spectrum */
 #define BH_HII_HEATING              /* allow photo-ionization heating from AGN spectrum */
 #define BH_FB_COLLIMATED            /* BHFB directed along collimated axis following BH ang. mom */
+#if !defined(BH_WIND_CONTINUOUS)
 #define BH_WIND_SPAWN (2)           /* spawn module: N=min num spawned/step */
 //#define BH_WIND_CONTINUOUS        /* continuous 'pushing' module for material in BH kernel [we prefer spawn module, even though it can get expensive sometimes] */
+#endif
 #ifdef COSMIC_RAYS
 #define BH_COSMIC_RAYS              /* allow CR injection from AGN */
 #endif
