@@ -375,7 +375,7 @@ void set_blackhole_mdot(int i, int n, double dt)
            mdot = (2.45/(UNIT_MASS_TO_SOLAR/UNIT_TIME_TO_YR)) * pow( 0.1 , 8./7.) * // normalization, then viscous disk 'alpha'
              pow( BPP(n).BH_Mass*UNIT_MASS_TO_SOLAR/1.e8 , -5./14. ) * pow( BPP(n).BH_Mass_AlphaDisk*UNIT_MASS_TO_SOLAR/1.e8 , 10./7. ) * // mbh , m_disk dependence
              pow( DMIN(0.2,DMIN(PPP[n].Hsml,All.ForceSoftening[5])*All.cf_atime*UNIT_LENGTH_TO_PC) , -25./14. ); // r_disk dependence */
-        double t_acc_disk = (4.2e7*/UNIT_TIME_TO_YR) * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass) / BPP(n).BH_Mass_AlphaDisk, 0.4); /* shakura-sunyaev disk, integrated out to Q~1 radius, approximately */
+        double t_acc_disk = (4.2e7/UNIT_TIME_TO_YR) * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass) / BPP(n).BH_Mass_AlphaDisk, 0.4); /* shakura-sunyaev disk, integrated out to Q~1 radius, approximately */
 #ifdef BH_TIMESCALE_SET
         double f_disk_bh = BPP(n).BH_Mass_AlphaDisk / BPP(n).BH_Mass; t_acc_disk = (BH_TIMESCALE_SET/UNIT_TIME_TO_YR) / sqrt( f_disk_bh * (1 + f_disk_bh) );
 #endif
