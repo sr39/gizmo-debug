@@ -916,7 +916,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #if defined(COOL_METAL_LINES_BY_SPECIES) && defined(COOL_LOW_TEMPERATURES)
     double Tdust = 30., LambdaDust = 0.; /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
 #if defined(SINGLE_STAR_SINK_DYNAMICS) || (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
-    Tdust = 10.; // runs looking at colder clouds, use a colder default dust temp //
+    Tdust = DMIN(DMAX(10., 2.73/All.cf_atime),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
 #endif
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(BH_COMPTON_HEATING)
     if(target >= 0) {Tdust = AGN_T_Compton;} // need to check target otherwise this is totally ill-defined //
@@ -1456,7 +1456,7 @@ void IonizeParamsTable(void)
     double redshift;
     
     if(All.ComovingIntegrationOn)
-        redshift = 1 / All.Time - 1;
+        {redshift = 1 / All.Time - 1;}
     else
     {
         /* in non-cosmological mode, still use, but adopt z=0 background */
@@ -1762,9 +1762,9 @@ void selfshield_local_incident_uv_flux(void)
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
             if(SphP[i].DelayTimeHII > 0)
             {
-                SphP[i].Rad_Flux_EUV += 3. * 1.474e-12 * pow(P[i].Mass*All.UnitMass_in_g/All.HubbleParam , 1./3.) *
+                SphP[i].Rad_Flux_EUV += 5. * 1.474e-12 * pow(P[i].Mass*All.UnitMass_in_g/All.HubbleParam , 1./3.) *
                     pow(SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam , 5./3.);
-            } // 3 is a 'safety factor' here, need to check //
+            } // 5 is a 'safety factor' here, need to check //
 #endif            
         }
     }

@@ -3732,10 +3732,8 @@ void write_file(char *fname, int writeTask, int lastTask)
     
     header.time = All.Time;
     
-    if(All.ComovingIntegrationOn)
-        header.redshift = 1.0 / All.Time - 1;
-    else
-        header.redshift = 0;
+    if(All.ComovingIntegrationOn) {header.redshift = 1.0 / All.Time - 1;}
+        else {header.redshift = 0;}
     
     header.flag_sfr = 0;
     header.flag_feedback = 0;
