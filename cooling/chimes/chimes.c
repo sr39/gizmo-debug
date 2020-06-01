@@ -486,7 +486,7 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
   else
     {
       y = N_VNew_Serial(network_size + 1);
-      internal_energy = myGasVars->temperature * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS;
+      internal_energy = myGasVars->temperature * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN;
       NV_Ith_S(y, network_size) = internal_energy;
       abstol_vector = N_VNew_Serial(network_size + 1);
       NV_Ith_S(abstol_vector, network_size) = myGlobalVars->thermalAbsoluteTolerance;
@@ -581,11 +581,11 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
 
 	  if (myGasVars->ThermEvolOn == 1)
 	    {
-	      myGasVars->temperature = max(NV_Ith_S(y, network_size) / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS), myGasVars->TempFloor);
+	      myGasVars->temperature = max(NV_Ith_S(y, network_size) / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN), myGasVars->TempFloor);
 	      /* If T has reached TempFloor, ensure that the thermal 
 	       * energy is put back onto this floor */
 	      if (myGasVars->temperature == myGasVars->TempFloor) 
-		NV_Ith_S(y, network_size) = myGasVars->temperature * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS;
+		NV_Ith_S(y, network_size) = myGasVars->temperature * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN;
 	    }
 
 	  old_network_size = network_size;    /* This variable is used to see when the size of the network changes. */
@@ -612,7 +612,7 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
 		{
 		  N_VDestroy_Serial(abstol_vector);
 		  y = N_VNew_Serial(network_size + 1);
-		  NV_Ith_S(y, network_size) = myGasVars->temperature * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS; 
+		  NV_Ith_S(y, network_size) = myGasVars->temperature * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN; 
 		  abstol_vector = N_VNew_Serial(network_size + 1);
 		  NV_Ith_S(abstol_vector, network_size) = myGlobalVars->thermalAbsoluteTolerance;
 		}
@@ -697,7 +697,7 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
 
       if (myGasVars->ThermEvolOn == 1)
 	{
-	  myGasVars->temperature = max(NV_Ith_S(y, network_size) / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS), myGasVars->TempFloor);
+	  myGasVars->temperature = max(NV_Ith_S(y, network_size) / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN), myGasVars->TempFloor);
 	}
     }
 

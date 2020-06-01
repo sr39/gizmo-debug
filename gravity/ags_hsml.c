@@ -557,8 +557,8 @@ void ags_density(void)
             if(PPP[i].NumNgb <= 0) {P[i].Mass = 0;}
             if((PPP[i].AGS_Hsml <= 0) || (PPP[i].AGS_Hsml >= PM_HIRES_REGION_CLIPPING)) {P[i].Mass = 0;}
             double vmag=0; for(k=0;k<3;k++) {vmag+=P[i].Vel[k]*P[i].Vel[k];} vmag = sqrt(vmag);
-            if(vmag>5.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) {P[i].Mass=0;}
-            if(vmag>1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) {for(k=0;k<3;k++) {P[i].Vel[k]*=(1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s)/vmag;}}
+            if(vmag>5.e4*All.cf_atime/UNIT_VEL_TO_KMS) {P[i].Mass=0;}
+            if(vmag>1.e4*All.cf_atime/UNIT_VEL_TO_KMS) {for(k=0;k<3;k++) {P[i].Vel[k]*=(1.e4*All.cf_atime/UNIT_VEL_TO_KMS)/vmag;}}
 #endif
         }
     }

@@ -26,8 +26,8 @@ void radiation_pressure_winds_consolidated(void)
     Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
     PRINT_STATUS("Local Radiation-Pressure acceleration calculation");
 
-    sigma_eff_0 = All.UnitMass_in_g*All.HubbleParam/(All.UnitLength_in_cm*All.UnitLength_in_cm) / (All.cf_atime*All.cf_atime) * KAPPA_IR;
-    double unitlength_in_kpc = UNIT_LENGTH_TO_KPC * All.cf_atime;
+    sigma_eff_0 = UNIT_SURFDEN_IN_CGS / (All.cf_atime*All.cf_atime) * KAPPA_IR;
+    double unitlength_in_kpc = UNIT_LENGTH_IN_KPC * All.cf_atime;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
@@ -41,29 +41,29 @@ void radiation_pressure_winds_consolidated(void)
             star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
             if( (star_age < age_thold) && (P[i].Mass > 0) && (P[i].DensAroundStar > 0) )
             {
-                RtauMax = P[i].Hsml*All.cf_atime * (2.0 * KAPPA_UV * P[i].Hsml*P[i].DensAroundStar/(All.cf_atime*All.cf_atime) * All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm);
+                RtauMax = P[i].Hsml*All.cf_atime * (2.0 * KAPPA_UV * P[i].Hsml*P[i].DensAroundStar*All.cf_a2inv * UNIT_SURFDEN_IN_CGS);
                 RtauMax /= All.cf_atime; RtauMax += 5.*P[i].Hsml;
                 double rmax0 = 10.0 / unitlength_in_kpc; if(RtauMax > rmax0) RtauMax = rmax0;
                 rmax0 = 1.0 / unitlength_in_kpc; if(RtauMax < rmax0) RtauMax = rmax0;
 #ifndef GALSF_FB_FIRE_RT_CONTINUOUSRP
                 /* if kicks are stochastic, we don't want to waste time doing a neighbor search every timestep; it can be much faster to pre-estimate the kick probabilities */
-                double v_wind_threshold = 15.e5 / All.UnitVelocity_in_cm_per_s;
+                double v_wind_threshold = 15. / UNIT_VEL_TO_KMS;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                v_wind_threshold = 0.2e5 / All.UnitVelocity_in_cm_per_s;
+                v_wind_threshold = 0.2 / UNIT_VEL_TO_KMS;
 #endif
                 rho=P[i].DensAroundStar; h=P[i].Hsml;
                 v = sqrt( All.G * (P[i].Mass + NORM_COEFF*rho*h*h*h) / (h*All.cf_atime) ); if(vq<v) v=vq;
-                vq = 1.82*(65.748e5/All.UnitVelocity_in_cm_per_s) * pow(1.+rho*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam/(1.67e-24),-0.25);
+                vq = 1.82 * (65.748/UNIT_VEL_TO_KMS) * pow(1.+rho*All.cf_a3inv*UNIT_DENSITY_TO_NH,-0.25);
                 /* this corresponds to =G M_star/R_e for a 10^6 Msun cluster, scaling upwards from there; note that All.WindEnergyFraction will boost appropriately; should be at least sqrt(2), if want full velocities; in fact for Hernquist profile, the mass-weighted V_esc=1.82 times this */
                 if(vq<v) {v=vq;}
                 if(v<=v_wind_threshold) v=v_wind_threshold;
                 lm_ssp = evaluate_light_to_mass_ratio(star_age, i);
-                dE_over_c = lm_ssp * (4.0/2.0) * (P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // L in CGS
-                dE_over_c *= (dt*All.UnitTime_in_s/All.HubbleParam) / 2.9979e10; // dE/c in CGS
-                dv_units = KAPPA_IR * dE_over_c / (4*M_PI * All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime);
-                dv_units /= All.UnitVelocity_in_cm_per_s; // dv in code units per unit distance
+                dE_over_c = lm_ssp * (4.0/2.0) * (P[i].Mass*UNIT_MASS_IN_CGS); // L in CGS
+                dE_over_c *= (dt*UNIT_TIME_IN_CGS) / C_LIGHT; // dE/c in CGS
+                dv_units = KAPPA_IR * dE_over_c / (4*M_PI * UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS*All.cf_atime*All.cf_atime);
+                dv_units /= UNIT_VEL_IN_CGS; // dv in code units per unit distance
                 dv_units *= All.RP_Local_Momentum_Renormalization; // rescale tau_ir component here
-                dE_over_c /= (All.UnitMass_in_g/All.HubbleParam) * All.UnitVelocity_in_cm_per_s; // dv per unit mass
+                dE_over_c /= UNIT_MASS_IN_CGS * UNIT_VEL_IN_CGS; // dv per unit mass
                 total_prob_kick += dE_over_c; dv_imparted = dE_over_c/P[i].Mass; // estimate of summed dv_imparted from neighbors from L/c part
                 dv_imparted += dv_units * (0.1+P[i].Metallicity[0]/All.SolarAbundances[0]) * (4.0*M_PI*rho/P[i].Mass*h); // sum over neighbor IR term
                 prob = dv_imparted / v; prob *= 2000.; // need to include a buffer for errors in the estimates above
@@ -115,12 +115,12 @@ void radiation_pressure_winds_consolidated(void)
                         if(v<=v_wind_threshold) v=v_wind_threshold;
 #else
                         lm_ssp = evaluate_light_to_mass_ratio(star_age, i);
-                        dE_over_c = lm_ssp * (4.0/2.0) * (P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // L in CGS
-                        dE_over_c *= (dt*All.UnitTime_in_s/All.HubbleParam) / 2.9979e10; // dE/c in CGS
-                        dv_units = KAPPA_IR * dE_over_c / (4*M_PI * All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime);
-                        dv_units /= All.UnitVelocity_in_cm_per_s; // dv in code units per unit distance
+                        dE_over_c = lm_ssp * (SOLAR_LUM/SOLAR_MASS) * (P[i].Mass*UNIT_MASS_IN_CGS); // L in CGS
+                        dE_over_c *= (dt*UNIT_TIME_IN_CGS) / C_LIGHT; // dE/c in CGS
+                        dv_units = KAPPA_IR * dE_over_c / (4*M_PI * UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS*All.cf_atime*All.cf_atime);
+                        dv_units /= UNIT_VEL_IN_CGS; // dv in code units per unit distance
                         dv_units *= All.RP_Local_Momentum_Renormalization; // rescale tau_ir component here
-                        dE_over_c /= (All.UnitMass_in_g/All.HubbleParam) * All.UnitVelocity_in_cm_per_s; // dv per unit mass
+                        dE_over_c /= (UNIT_MASS_IN_CGS) * UNIT_VEL_IN_CGS; // dv per unit mass
                         total_prob_kick += dE_over_c;
 #endif
                         for(n=0; n<numngb_inbox; n++)
@@ -142,7 +142,7 @@ void radiation_pressure_winds_consolidated(void)
                                 if(p_random < prob)
 #endif
                                 { /* open subloop with wind kick */
-                                    if(v>5.0e8/All.UnitVelocity_in_cm_per_s) v=5.0e8/All.UnitVelocity_in_cm_per_s; /* limiter */
+                                    if(v>5000./UNIT_VEL_TO_KMS) {v=5000./UNIT_VEL_TO_KMS;} /* limiter */
                                     /* collect numbers to output */
                                     total_n_wind += 1.0; total_mom_wind += P[j].Mass*v; avg_v_kick += v; momwt_avg_v_kick += P[j].Mass*v * sigma_eff_0 * P[j].Mass/(h_eff_j*h_eff_j) * (0.01 + P[j].Metallicity[0]/All.SolarAbundances[0]); 
                                     
@@ -239,14 +239,14 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
             if(stellum <= 0) continue;
             pos = P[i].Pos; rho = P[i].DensAroundStar; h_i = PPP[i].Hsml; total_m_ionizing += 1; total_l_ionizing += stellum;
             
-            RHII = 4.67e-9*pow(stellum,0.333)*pow(rho*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam,-0.66667);
-            RHII /= All.cf_atime*All.UnitLength_in_cm/All.HubbleParam;
-            RHIIMAX=240.0*pow(stellum,0.5)/(All.cf_atime*All.UnitLength_in_cm/All.HubbleParam); // crude estimate of where flux falls below cosmic background
+            RHII = 4.67e-9*pow(stellum,0.333)*pow(rho*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667);
+            RHII /= All.cf_atime*UNIT_LENGTH_IN_CGS;
+            RHIIMAX=240.0*pow(stellum,0.5)/(All.cf_atime*UNIT_LENGTH_IN_CGS); // crude estimate of where flux falls below cosmic background
             if(RHIIMAX < h_i) {RHIIMAX=h_i;}
             if(RHIIMAX > 5.0*h_i) {RHIIMAX=5.*h_i;}
             mionizable=NORM_COEFF*rho*RHII*RHII*RHII;
-            double M_ionizing_emitted = (3.05e10 * PROTONMASS) * stellum * (dt * All.UnitTime_in_s / All.HubbleParam) ; // number of ionizing photons times proton mass, gives max mass ionized
-            mionizable = DMIN( mionizable , M_ionizing_emitted/(All.UnitMass_in_g/All.HubbleParam) );
+            double M_ionizing_emitted = (3.05e10 * PROTONMASS) * stellum * (dt * UNIT_TIME_IN_CGS) ; // number of ionizing photons times proton mass, gives max mass ionized
+            mionizable = DMIN( mionizable , M_ionizing_emitted/UNIT_MASS_IN_CGS ); // in code units
             if(RHII>RHIIMAX) {RHII=RHIIMAX;}
             if(RHII<0.5*h_i) {RHII=0.5*h_i;}
             RHII_initial=RHII;
@@ -378,7 +378,7 @@ int do_the_local_ionization(int target, double dt, int source)
     SphP[target].InternalEnergy = DMAX(SphP[target].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
     SphP[target].InternalEnergyPred = SphP[target].InternalEnergy; /* full reset of the internal energy */
 #endif
-    SphP[target].DelayTimeHII = DMIN(dt, 10./UNIT_TIME_TO_MYR); /* tell the code to flag this in the cooling subroutine */
+    SphP[target].DelayTimeHII = DMIN(dt, 10./UNIT_TIME_IN_MYR); /* tell the code to flag this in the cooling subroutine */
     SphP[target].Ne = 1.0 + 2.0*yhelium(target); /* fully ionized */
     return 1;
 }
@@ -426,7 +426,7 @@ void chimes_HII_regions_singledomain(void)
 	    continue; // don't keep going with this loop
 
 	  stellar_age = evaluate_stellar_age_Gyr(P[i].StellarAge); 
-	  stellar_mass = P[i].Mass * UNIT_MASS_TO_SOLAR; 
+	  stellar_mass = P[i].Mass * UNIT_MASS_IN_SOLAR; 
 	  
 	  // stellum is the number of H-ionising photons per second 
 	  // produced by the star particle 
@@ -438,7 +438,7 @@ void chimes_HII_regions_singledomain(void)
 	  stellum_G0 = chimes_G0_luminosity(stellar_age * 1000.0, stellar_mass); 
 
 	  // Gravitational Softening (cgs units) 
-	  eps_cgs = All.SofteningTable[P[i].Type] * All.cf_atime * All.UnitLength_in_cm / All.HubbleParam; 
+	  eps_cgs = All.SofteningTable[P[i].Type] * All.cf_atime * UNIT_LENGTH_IN_CGS;
 	  
 	  // Determine stellar age bin 
 	  log_age_Myr = log10(stellar_age * 1000.0); 	  
@@ -460,10 +460,10 @@ void chimes_HII_regions_singledomain(void)
 	  // Stromgren radius, RHII, computed using a case B recombination coefficient 
 	  // at 10^4 K of 2.59e-13 cm^3 s^-1, as used in CHIMES, and assuming a 
 	  // Hydrogen mass fraction XH = 0.7. 
-	  RHII = 1.7376e-12 * pow(stellum, 0.33333) * pow(rho * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam, -0.66667);
+	  RHII = 1.7376e-12 * pow(stellum, 0.33333) * pow(rho * All.cf_a3inv * UNIT_DENSITY_IN_CGS, -0.66667);
 	  
 	  // Convert RHII from cm to code units 
-	  RHII /= All.cf_atime*All.UnitLength_in_cm/All.HubbleParam;
+	  RHII /= All.cf_atime*UNIT_LENGTH_IN_CGS;
 	  
 	  /* Impose a maximum RHII, to prevent the code trying to search 
 	   * for neighbours too far away. Unlike the standard FIRE routines, 
@@ -485,8 +485,8 @@ void chimes_HII_regions_singledomain(void)
 	  mionizable = 4.18879 * rho * pow(RHII, 3.0);  
 
 	  // number of ionizing photons times proton mass, gives max mass ionized 
-	  M_ionizing_emitted = PROTONMASS * stellum * (dt * All.UnitTime_in_s / All.HubbleParam);  // g
-	  mionizable = DMIN(mionizable , M_ionizing_emitted/(All.UnitMass_in_g/All.HubbleParam)); 
+	  M_ionizing_emitted = PROTONMASS * stellum * (dt * UNIT_TIME_IN_CGS); // in cgs
+	  mionizable = DMIN(mionizable , M_ionizing_emitted/UNIT_MASS_IN_CGS); // in code units
 	  
 	  // Now limit RHII to be between the min and max defined above. 
 	  if(RHII > RHIImax) 
@@ -558,8 +558,8 @@ void chimes_HII_regions_singledomain(void)
 				   
 				    for(k = 0; k < CHIMES_LOCAL_UV_NBINS; k++)  {SphP[j].Chimes_fluxPhotIon_HII[k] = 0; SphP[j].Chimes_G0_HII[k] = 0;}
 				    
-				    SphP[j].Chimes_fluxPhotIon_HII[age_bin] = (1.0 - All.Chimes_f_esc_ion) * stellum / (pow(r * All.cf_atime * All.UnitLength_in_cm / All.HubbleParam, 2.0) + pow(eps_cgs, 2.0)) ; 
-				    SphP[j].Chimes_G0_HII[age_bin] = (1.0 - All.Chimes_f_esc_G0) * stellum_G0 / (pow(r * All.cf_atime * All.UnitLength_in_cm / All.HubbleParam, 2.0) + pow(eps_cgs, 2.0)); 
+				    SphP[j].Chimes_fluxPhotIon_HII[age_bin] = (1.0 - All.Chimes_f_esc_ion) * stellum / (pow(r * All.cf_atime * UNIT_LENGTH_IN_CGS, 2.0) + pow(eps_cgs, 2.0)) ;
+				    SphP[j].Chimes_G0_HII[age_bin] = (1.0 - All.Chimes_f_esc_G0) * stellum_G0 / (pow(r * All.cf_atime * UNIT_LENGTH_IN_CGS, 2.0) + pow(eps_cgs, 2.0));
 				  }
 			      } // if((r <= RHII) && (SphP[j].DelayTimeHII <= 0) && (mionized<mionizable)) 
 			  } // if(P[j].Type == 0 && P[j].Mass > 0)

@@ -1887,7 +1887,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         double h_eff_phys = soft * pow(NORM_COEFF/All.DesNumNgb,1./NUMDIMS) * All.cf_atime; // convert from softening kernel extent to effective size, assuming 3D here, and convert to physical code units
         double sigma_particle =  pmass / (h_eff_phys*h_eff_phys); // quick estimate of effective surface density of the target, in physical code units
         double fac_stellum_0 = -All.PhotonMomentum_Coupled_Fraction / (4.*M_PI * C_LIGHT_CODE * sigma_particle * All.G); // this will be multiplied by L/r^2 below, giving acceleration, then extra G because code thinks this is gravity, so put extra G here. everything is in -physical- code units here //
-        // double fac_stellum_0 = -All.PhotonMomentum_Coupled_Fraction * (1.626e-11 / sigma_particle) / (All.G * All.UnitVelocity_in_cm_per_s * All.HubbleParam / All.UnitTime_in_s); // this is from older versions of the code, where for historical reasons the units of the 'luminosity' per cell were strange [Lsun/Msun * Mcode]. no longer applicable. //
         int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {fac_stellum[kf] = fac_stellum_0*(1 - exp(-rt_kappa(0,kf)*sigma_particle));} // rt_kappa is in physical code units, so sigma_eff_abs should be also -- approximate surface-density through particle (for checking if we enter optically-thick limit)
     }
 #endif
@@ -2615,7 +2614,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 incident_flux_uv += fac_intensity * mass_stellarlum[RT_FREQ_BIN_FIRE_UV];// * shortrange_table[tabindex];
 #ifdef CHIMES 
                 int chimes_k;
-                double chimes_fac = fac_intensity / pow(All.UnitLength_in_cm / All.HubbleParam, 2.0);  // 1/(4 * pi * r^2), in cm^-2
+                double chimes_fac = fac_intensity / (UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS);  // 1/(4 * pi * r^2), in cm^-2
                 for (chimes_k = 0; chimes_k < CHIMES_LOCAL_UV_NBINS; chimes_k++)
                 {
                     chimes_flux_G0[chimes_k] += chimes_fac * chimes_mass_stellarlum_G0[chimes_k];   // Habing flux units
@@ -2668,7 +2667,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 
 #ifdef RT_LEBRON /* now we couple radiation pressure [single-scattering] terms within this module */
 #ifdef GALSF_FB_FIRE_RT_LONGRANGE /* we only allow the momentum to couple over some distance to prevent bad approximations when the distance between points here is enormous */
-                if(r*UNIT_LENGTH_TO_KPC*All.cf_atime > 50.) {fac=0;}
+                if(r*UNIT_LENGTH_IN_KPC*All.cf_atime > 50.) {fac=0;}
 #endif /* simply apply an on-the-spot approximation and do the absorption now. appropriate normalization (and sign) in 'fac_stellum' */
                 double lum_force_fac=0; int kf_rt;
                 for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {lum_force_fac += mass_stellarlum[kf_rt] * fac_stellum[kf_rt];}

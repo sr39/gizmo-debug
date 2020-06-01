@@ -64,9 +64,9 @@ double H2_collis_deexc_rates(double T, double J, int mode)
   if (mode == 1)	/* H collisions; rot levels */
     {
       if (J == 2.0)
-	x = 7.0438e-14 / (BOLTZMANNCGS * T);
+	x = 7.0438e-14 / (BOLTZMANN * T);
       else 	/* NB: We assume J is either 2 or 3 */
-	x = 1.1669e-13 / (BOLTZMANNCGS * T);
+	x = 1.1669e-13 / (BOLTZMANN * T);
       return 4.6e-12 * (2 * J - 1.0) * pow(T, 0.5) * pow(1.0 + x, 0.5) * exp(- (5.01 * x + 0.1187 * (4.0 * J - 2.0)));
     }
   else if (mode == 2)	/* H2 collisions; rot levels */
@@ -278,12 +278,12 @@ double OH_rotational_cooling(double T, double N, double dv, double xm, double nH
   
   N_tau = 1.485e11 * dv;
   tau_T = 4.0 * N / (10.0 * (T / 27.0) * 6.8e-4 * N_tau);
-  c_tau = tau_T * pow((2 * PI * log(2.13 + pow(tau_T / exp(1.0), 2.0))), 0.5) / ((exp(-tau_d) / (1.0 + pow(tau_d, 2.0))) + 2.0 * tau_d * pow(log(1 + (tau_T / exp(1.0))), 0.5) * pow(log(tau_T / (tau_d * exp(1.0))), 0.5));
+  c_tau = tau_T * pow((2 * M_PI * log(2.13 + pow(tau_T / exp(1.0), 2.0))), 0.5) / ((exp(-tau_d) / (1.0 + pow(tau_d, 2.0))) + 2.0 * tau_d * pow(log(1 + (tau_T / exp(1.0))), 0.5) * pow(log(tau_T / (tau_d * exp(1.0))), 0.5));
   if (isnan(c_tau) != 0)
     c_tau = 0.0;
   n_cr = 1.5e10 * pow(T / 1.0e3, 0.5);
   ym = log(1.0 + (c_tau / (1.0 + 10.0 * (n_cr / n))));
-  return (n / nH) * xm * (2.0 * pow(BOLTZMANNCGS * T, 2.0) * 2.3e-2 / (n * 27.0 * BOLTZMANNCGS)) * ((2.0 + ym + 0.6 * pow(ym, 2.0)) / (1.0 + c_tau + (n_cr / n) + 1.5 * pow(n_cr / n, 0.5)));			/* Lambda / nH^2 (erg cm^3 s^-1) */ 
+  return (n / nH) * xm * (2.0 * pow(BOLTZMANN * T, 2.0) * 2.3e-2 / (n * 27.0 * BOLTZMANN)) * ((2.0 + ym + 0.6 * pow(ym, 2.0)) / (1.0 + c_tau + (n_cr / n) + 1.5 * pow(n_cr / n, 0.5)));			/* Lambda / nH^2 (erg cm^3 s^-1) */ 
 }
 
 double calculate_mean_molecular_weight(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars)
@@ -379,7 +379,7 @@ double calculate_total_cooling_rate(struct gasVariables *myGasVars, struct globa
 			    }
 			  shieldFactor = S1 + S2 + S3;
 			}
-		      photoion_rate = chimesRateTables.NonEqIon->NonEqRates[ns].sigmaphot[l][i][0] * myGasVars->isotropic_photon_density[l] * LIGHTSPEED * shieldFactor;
+		      photoion_rate = chimesRateTables.NonEqIon->NonEqRates[ns].sigmaphot[l][i][0] * myGasVars->isotropic_photon_density[l] * C_LIGHT * shieldFactor;
 		    }
 		  else
 		    {
@@ -387,7 +387,7 @@ double calculate_total_cooling_rate(struct gasVariables *myGasVars, struct globa
 		       * by dust. The gamma_d values are stored
 		       * in the shieldFactor tables. */
 		      shieldFactor = exp(- pow(10.0, ((double) chimesRateTables.NonEqIon->NonEqRates[ns].shieldFactor1D[l][0][i][0])) * extinction);
-		      photoion_rate = chimesRateTables.NonEqIon->NonEqRates[ns].sigmaphot[l][i][0] * myGasVars->isotropic_photon_density[l] * LIGHTSPEED * shieldFactor;
+		      photoion_rate = chimesRateTables.NonEqIon->NonEqRates[ns].sigmaphot[l][i][0] * myGasVars->isotropic_photon_density[l] * C_LIGHT * shieldFactor;
 		    }
 		  
 		  /* Calculate epsilon, the average excess photon energy per ionisation. */
@@ -474,7 +474,7 @@ double calculate_total_cooling_rate(struct gasVariables *myGasVars, struct globa
 			    }
 			  shieldFactor = S1 + S2 + S3;
 			}
-		      photoion_rate = chimesRateTables.NonEqIon->NonEqRates[ns].sigmaphot[l][i][0] * myGasVars->isotropic_photon_density[l] * LIGHTSPEED * shieldFactor;
+		      photoion_rate = chimesRateTables.NonEqIon->NonEqRates[ns].sigmaphot[l][i][0] * myGasVars->isotropic_photon_density[l] * C_LIGHT * shieldFactor;
 		    }
 		  else
 		    {
@@ -482,7 +482,7 @@ double calculate_total_cooling_rate(struct gasVariables *myGasVars, struct globa
 		       * by dust. The gamma_d values are stored
 		       * in the shieldFactor tables. */
 		      shieldFactor = exp(- pow(10.0, ((double) chimesRateTables.NonEqIon->NonEqRates[ns].shieldFactor1D[l][0][i][0])) * extinction);
-		      photoion_rate = chimesRateTables.NonEqIon->NonEqRates[ns].sigmaphot[l][i][0] * myGasVars->isotropic_photon_density[l] * LIGHTSPEED * shieldFactor;
+		      photoion_rate = chimesRateTables.NonEqIon->NonEqRates[ns].sigmaphot[l][i][0] * myGasVars->isotropic_photon_density[l] * C_LIGHT * shieldFactor;
 		    }
 	
 		  /* Calculate epsilon, the average excess photon energy per ionisation. */
@@ -567,7 +567,7 @@ double calculate_total_cooling_rate(struct gasVariables *myGasVars, struct globa
       if (myGlobalVars->element_included[0] == 1 && myGlobalVars->element_included[2] == 1)
 	{
 	  if (myGlobalVars->StaticMolCooling == 1)
-	    N_eff = 1.0e5 * CO_column_density / (sqrt(3.0 * BOLTZMANNCGS * myGasVars->temperature / (PROTON_MASS * calculate_mean_molecular_weight(myGasVars, myGlobalVars))));	/* units: cm^-2 per km s^-1 */
+	    N_eff = 1.0e5 * CO_column_density / (sqrt(3.0 * BOLTZMANN * myGasVars->temperature / (PROTONMASS * calculate_mean_molecular_weight(myGasVars, myGlobalVars))));	/* units: cm^-2 per km s^-1 */
 	  else
 	    N_eff = fabs(1.0e5 * max(myGasVars->abundances[myGlobalVars->speciesIndices[CO]], 0.0) * myGasVars->nH_tot / myGasVars->divVel);  /* units: cm^-2 per km s^-1 */
 	  total_cooling += CO_rotational_cooling(myGasVars->temperature, N_eff, myGasVars->abundances[myGlobalVars->speciesIndices[CO]], myGasVars->abundances[myGlobalVars->speciesIndices[H2]], myGasVars->abundances[myGlobalVars->speciesIndices[HI]], myGasVars->abundances[myGlobalVars->speciesIndices[elec]], myGasVars->nH_tot, myGlobalVars);
@@ -578,20 +578,20 @@ double calculate_total_cooling_rate(struct gasVariables *myGasVars, struct globa
 	{
 	  /* Cooling from H2O */
 	  if (myGlobalVars->StaticMolCooling == 1)
-	    N_eff = 1.0e5 * H2O_column_density / (sqrt(3.0 * BOLTZMANNCGS * myGasVars->temperature / (PROTON_MASS * calculate_mean_molecular_weight(myGasVars, myGlobalVars))));	/* units: cm^-2 per km s^-1 */
+	    N_eff = 1.0e5 * H2O_column_density / (sqrt(3.0 * BOLTZMANN * myGasVars->temperature / (PROTONMASS * calculate_mean_molecular_weight(myGasVars, myGlobalVars))));	/* units: cm^-2 per km s^-1 */
 	  else
 	    N_eff = fabs(1.0e5 * max(myGasVars->abundances[myGlobalVars->speciesIndices[H2O]], 0.0) * myGasVars->nH_tot / myGasVars->divVel);  /* units: cm^-2 per km s^-1 */	  
 	  total_cooling += H2O_rotational_cooling(myGasVars->temperature, N_eff, myGasVars->abundances[myGlobalVars->speciesIndices[H2O]], myGasVars->abundances[myGlobalVars->speciesIndices[H2]], myGasVars->abundances[myGlobalVars->speciesIndices[HI]], myGasVars->abundances[myGlobalVars->speciesIndices[elec]], myGasVars->nH_tot, myGlobalVars);
 	  total_cooling += H2O_vibrational_cooling(myGasVars->temperature, N_eff, myGasVars->abundances[myGlobalVars->speciesIndices[H2O]], myGasVars->abundances[myGlobalVars->speciesIndices[H2]], myGasVars->abundances[myGlobalVars->speciesIndices[HI]], myGasVars->abundances[myGlobalVars->speciesIndices[elec]], myGasVars->nH_tot, myGlobalVars);
 	
 	  /* Cooling from OH */
-	  total_cooling += OH_rotational_cooling(myGasVars->temperature, OH_column_density, sqrt(3.0 * BOLTZMANNCGS * myGasVars->temperature / (PROTON_MASS * calculate_mean_molecular_weight(myGasVars, myGlobalVars))), max(myGasVars->abundances[myGlobalVars->speciesIndices[OH]], 0.0), myGasVars->nH_tot, n, extinction);    
+	  total_cooling += OH_rotational_cooling(myGasVars->temperature, OH_column_density, sqrt(3.0 * BOLTZMANN * myGasVars->temperature / (PROTONMASS * calculate_mean_molecular_weight(myGasVars, myGlobalVars))), max(myGasVars->abundances[myGlobalVars->speciesIndices[OH]], 0.0), myGasVars->nH_tot, n, extinction);    
 	}
 
       /* Dust grains */
       dust_G = 0.0; 
       for (l = 0; l < myGlobalVars->N_spectra; l++)
-	dust_G += myGasVars->isotropic_photon_density[l] * LIGHTSPEED * myGasVars->dust_G_parameter[l]; 
+	dust_G += myGasVars->isotropic_photon_density[l] * C_LIGHT * myGasVars->dust_G_parameter[l]; 
 
       total_cooling += photoelectric_grain_heating(myGasVars->temperature, myGasVars->nH_tot, myGasVars->abundances[myGlobalVars->speciesIndices[elec]] * myGasVars->nH_tot, n, myGasVars->metallicity, dust_G, extinction);
       total_cooling += gas_grain_transfer(myGasVars->temperature, myGlobalVars->grain_temperature, myGasVars->metallicity);
@@ -636,7 +636,7 @@ void do_equilibrium_cooling(void *user_data)
   if (myGasVars->temperature <= myGasVars->TempFloor && LambdaNet <= 0.0)
     return; 
 
-  u = myGasVars->temperature * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS;
+  u = myGasVars->temperature * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN;
   u_old = u;
   u_upper = u;
   u_lower = u;
@@ -645,7 +645,7 @@ void do_equilibrium_cooling(void *user_data)
   if (fabs(LambdaNet * dt) < 0.10 * u_old)
     {
       u = u_old + LambdaNet * dt;
-      myGasVars->temperature = max(u / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS), myGasVars->TempFloor);
+      myGasVars->temperature = max(u / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN), myGasVars->TempFloor);
       if (myGasVars->ForceEqOn == 1)
 	set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
       else
@@ -663,7 +663,7 @@ void do_equilibrium_cooling(void *user_data)
 	   * solution is no longer valid. Reset and 
 	   * continue with implicit solution. */
 	  u = u_old; 
-	  myGasVars->temperature = max(u / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS), myGasVars->TempFloor);
+	  myGasVars->temperature = max(u / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN), myGasVars->TempFloor);
 	  if (myGasVars->ForceEqOn == 1)
 	    set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
 	  else
@@ -680,7 +680,7 @@ void do_equilibrium_cooling(void *user_data)
       u_upper *= sqrt(1.2);
       u_lower /= sqrt(1.2);
 
-      myGasVars->temperature = u_upper / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS);
+      myGasVars->temperature = u_upper / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN);
       if (myGasVars->ForceEqOn == 1)
 	set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
       else
@@ -695,7 +695,7 @@ void do_equilibrium_cooling(void *user_data)
 	  u_upper *= 1.2;
 	  u_lower *= 1.2;
 
-	  myGasVars->temperature = u_upper / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS);
+	  myGasVars->temperature = u_upper / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN);
 	  if (myGasVars->ForceEqOn == 1)
 	    set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
 	  else
@@ -715,11 +715,11 @@ void do_equilibrium_cooling(void *user_data)
       u_upper *= sqrt(1.2);
       u_lower /= sqrt(1.2);
 
-      myGasVars->temperature = u_lower / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS);
+      myGasVars->temperature = u_lower / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN);
       if (myGasVars->temperature <= myGasVars->TempFloor)
 	{
 	  myGasVars->temperature = myGasVars->TempFloor; 
-	  u_lower = myGasVars->TempFloor * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS;
+	  u_lower = myGasVars->TempFloor * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN;
 	  if (myGasVars->ForceEqOn == 1)
 	    set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
 	  else
@@ -745,11 +745,11 @@ void do_equilibrium_cooling(void *user_data)
 	      u_upper /= 1.2;
 	      u_lower /= 1.2;
 
-	      myGasVars->temperature = u_lower / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS);
+	      myGasVars->temperature = u_lower / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN);
 	      if (myGasVars->temperature <= myGasVars->TempFloor)
 		{
 		  myGasVars->temperature = myGasVars->TempFloor;
-		  u_lower = myGasVars->TempFloor * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS;
+		  u_lower = myGasVars->TempFloor * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN;
 		  if (myGasVars->ForceEqOn == 1)
 		    set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
 		  else
@@ -785,7 +785,7 @@ void do_equilibrium_cooling(void *user_data)
     {
       u = 0.5 * (u_lower + u_upper);
 	  
-      myGasVars->temperature = u / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS);
+      myGasVars->temperature = u / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN);
       if (myGasVars->ForceEqOn == 1)
 	set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
       else

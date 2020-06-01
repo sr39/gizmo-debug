@@ -4,12 +4,6 @@
 #include <hdf5.h>
 #include "allvars.h"
 
-#define ELECTRON_MASS 9.1093829e-28
-#define PROTON_MASS 1.6726218e-24
-#define PI            3.1415927
-#define LIGHTSPEED    3.0e10		/* In cm/s */
-#define BOLTZMANNCGS     1.3806e-16	/* In ergs/K */
-#define BOLTZMANN_EVK   8.6173324e-5	/*In eV/K*/
 #define G0_GAMMA 2.77  /* For dust processes involving G0, e.g. photoelectric heating, we attenuate G0 by exp(- G0_gamma * Av) */
 
 #ifndef max

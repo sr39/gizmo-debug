@@ -502,9 +502,9 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef PIC_MHD
         if(P[p].Grain_SubType==3)
         {
-            double lorentz_units = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); // code B to Gauss
-            lorentz_units *= All.UnitVelocity_in_cm_per_s * (ELECTRONCHARGE/(PROTONMASS*C_LIGHT)); // code velocity to CGS, times base units e/(mp*c)
-            lorentz_units /= All.UnitVelocity_in_cm_per_s / (All.UnitTime_in_s / All.HubbleParam); // convert 'back' to code-units acceleration
+            double lorentz_units = UNIT_B_IN_GAUSS; // code B to Gauss
+            lorentz_units *= UNIT_VEL_IN_CGS * (ELECTRONCHARGE/(PROTONMASS*C_LIGHT)); // code velocity to CGS, times base units e/(mp*c)
+            lorentz_units /= UNIT_VEL_IN_CGS / UNIT_TIME_IN_CGS; // convert 'back' to code-units acceleration
             double reduced_C = PIC_SPEEDOFLIGHT_REDUCTION * C_LIGHT_CODE;
             double charge_to_mass_ratio_dimensionless = All.PIC_Charge_to_Mass_Ratio;
             double v2=0, B2=0; for(k=0;k<3;k++) {v2=P[p].Vel[k]*P[p].Vel[k]; B2+=P[p].Gas_B[k]*P[p].Gas_B[k];}
@@ -743,8 +743,8 @@ integertime get_timestep(int p,		/*!< particle index */
                     change, which can happen particularly for ionizing photons */
                 if(kf==RT_FREQ_BIN_H0)
                 {
-                    double ne_cgs = (SphP[p].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
-                    double dt_recombination = All.CourantFac * (3.3e12/ne_cgs) / (All.UnitTime_in_s / All.HubbleParam);
+                    double ne_cgs = (SphP[p].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
+                    double dt_recombination = All.CourantFac * (3.3e12/ne_cgs) / UNIT_TIME_IN_CGS;
                     double dt_change = 1.e10*dt; if((SphP[p].Rad_E_gamma[kf] > 0)&&(fabs(SphP[p].Dt_Rad_E_gamma[kf])>0)) {dt_change = SphP[p].Rad_E_gamma[kf] / fabs(SphP[p].Dt_Rad_E_gamma[kf]);}
                     dt_recombination = DMIN(DMAX(dt_recombination,dt_change), DMAX(dt_courant,dt_rad));
                     if(dt_recombination < dt_rad) {dt_rad = dt_recombination;}
@@ -830,27 +830,24 @@ integertime get_timestep(int p,		/*!< particle index */
             if(SphP[p].Temperature > 1e7)
             {
                 /* check if the new timestep blows up our abundances */
-                dt_network = dt * All.UnitTime_in_s;
+                dt_network = dt * UNIT_TIME_IN_CGS;
                 for(k = 0; k < EOS_NSPECIES; k++)
                 {
                     if(SphP[p].dxnuc[k] > 0)
                     {
                         dt_species = (1.0 - SphP[p].xnuc[k]) / SphP[p].dxnuc[k];
-                        if(dt_species < dt_network)
-                            dt_network = dt_species;
+                        if(dt_species < dt_network) {dt_network = dt_species;}
                     }
                     else if(SphP[p].dxnuc[k] < 0)
                     {
                         dt_species = (0.0 - SphP[p].xnuc[k]) / SphP[p].dxnuc[k];
-                        if(dt_species < dt_network)
-                            dt_network = dt_species;
+                        if(dt_species < dt_network) {dt_network = dt_species;}
                     }
                     
                 }
                 
-                dt_network /= All.UnitTime_in_s;
-                if(dt_network < dt)
-                    dt = dt_network;
+                dt_network /= UNIT_TIME_IN_CGS;
+                if(dt_network < dt) {dt = dt_network;}
             }
 #endif
             
@@ -949,10 +946,10 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_stellar_evol = star_age/10.;
         }
         // PFH: temporarily modifying the terms above while Marcel studies them: turns out not to be necessary to use as strict a mass-dependent timestep, so faster to comment out //
-        double mcorr = 1.e-5 * (P[p].Mass*UNIT_MASS_TO_SOLAR);
+        double mcorr = 1.e-5 * (P[p].Mass*UNIT_MASS_IN_SOLAR);
         if(mcorr < 1 && mcorr > 0) {dt_stellar_evol /= mcorr;}
         if(dt_stellar_evol < 1.e-6) {dt_stellar_evol = 1.e-6;}
-        dt_stellar_evol /= (UNIT_TIME_TO_GYR); // convert to code units //
+        dt_stellar_evol /= (UNIT_TIME_IN_GYR); // convert to code units //
         if(dt_stellar_evol>0) {if(dt_stellar_evol<dt) {dt = dt_stellar_evol;}}
     }
 #endif
@@ -971,7 +968,7 @@ integertime get_timestep(int p,		/*!< particle index */
     if(P[p].Type == 5)
     {
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && defined(GALSF)
-      double dt_accr = 4.2e5 / UNIT_TIME_TO_YR; // this is the 1% of Salpeter timescale; not relevant for low radiative efficiency
+      double dt_accr = 4.2e5 / UNIT_TIME_IN_YR; // this is the 1% of Salpeter timescale; not relevant for low radiative efficiency
 #else
       double dt_accr = All.MaxSizeTimestep;
 #endif      
@@ -994,7 +991,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
         } // if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
 #ifdef BH_SEED_GROWTH_TESTS
-            double dt_evol = 1.e4 / UNIT_TIME_TO_YR;
+            double dt_evol = 1.e4 / UNIT_TIME_IN_YR;
 #ifdef TURB_DRIVING
             if(dt_evol > 1.e-3*All.StDecay) {dt_evol=1.e-3*All.StDecay;}
 #endif

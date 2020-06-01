@@ -506,7 +506,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 #endif
     
 #ifdef NUCLEAR_NETWORK
-    for(j = 0; j < EOS_NSPECIES; j++) {SphP[i].xnuc[j] += SphP[i].dxnuc[j] * dt_entr * All.UnitTime_in_s;}    
+    for(j = 0; j < EOS_NSPECIES; j++) {SphP[i].xnuc[j] += SphP[i].dxnuc[j] * dt_entr * UNIT_TIME_IN_CGS;}    
     network_normalize(SphP[i].xnuc, &SphP[i].InternalEnergy, &All.nd, &All.nw);
 #endif
     

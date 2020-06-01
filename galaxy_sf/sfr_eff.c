@@ -33,7 +33,7 @@ void assign_imf_properties_from_starforming_gas(int i)
 #ifdef GALSF_SFR_IMF_VARIATION
     double h = Get_Particle_Size(i) * All.cf_atime;
     double cs = Get_Gas_effective_soundspeed_i(i) * All.cf_afac3; // actual sound speed in the simulation: might be unphysically high for SF conditions!
-    cs = (1.9e4 / All.UnitVelocity_in_cm_per_s); // set to a minimum cooling temperature, for the actual star-forming conditions. for now, just use a constant //
+    cs = 0.2 / UNIT_VEL_TO_KMS; // set to a minimum cooling temperature, for the actual star-forming conditions. for now, just use a constant //
     double dv2_abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
     // squared norm of the trace-free symmetric [shear] component of the velocity gradient tensor //
     dv2_abs = ((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) +
@@ -45,7 +45,7 @@ void assign_imf_properties_from_starforming_gas(int i)
                         (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] +
                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
-    double M_sonic = cs*cs*cs*cs / (All.G * dv2_abs * h) * UNIT_MASS_TO_SOLAR; // sonic mass in solar units //
+    double M_sonic = cs*cs*cs*cs / (All.G * dv2_abs * h) * UNIT_MASS_IN_SOLAR; // sonic mass in solar units //
     P[i].IMF_Mturnover = DMAX(0.01,DMIN(M_sonic,100.));
     P[i].IMF_Mturnover = 2.0; // 'normal' IMF in our definitions
     
@@ -76,8 +76,8 @@ void assign_imf_properties_from_starforming_gas(int i)
     }
     double b_mag = 0;
 #ifdef MAGNETIC
-    double gizmo2gauss = 4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam;
-    for(k=0;k<3;k++) {b_mag += Get_Gas_BField(i,k)*Get_Gas_BField(i,k) * gizmo2gauss;}
+    double gizmo2gauss_2 = UNIT_B_IN_GAUSS*UNIT_B_IN_GAUSS;
+    for(k=0;k<3;k++) {b_mag += Get_Gas_BField(i,k)*Get_Gas_BField(i,k) * gizmo2gauss_2;}
 #endif
     double rad_flux_uv = 1;
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
@@ -111,7 +111,7 @@ void assign_imf_properties_from_starforming_gas(int i)
     gsl_rng *random_generator_for_massivestars;
     random_generator_for_massivestars = gsl_rng_alloc(gsl_rng_ranlxd1);
     gsl_rng_set(random_generator_for_massivestars, P[i].ID+121);
-    double mu = 0.01 * P[i].Mass * UNIT_MASS_TO_SOLAR; // 1 O-star per 100 Msun
+    double mu = 0.01 * P[i].Mass * UNIT_MASS_IN_SOLAR; // 1 O-star per 100 Msun
     unsigned int kk = gsl_ran_poisson(random_generator_for_massivestars, mu);
     P[i].IMF_NumMassiveStars = (double)kk;
 #endif
@@ -147,7 +147,7 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
         /* time variable is simple time, when not in comoving coordinates */
         age=All.Time-stellar_tform;
     }
-    age *= UNIT_TIME_TO_GYR; // convert to absolute Gyr
+    age *= UNIT_TIME_IN_GYR; // convert to absolute Gyr
     if((age<=1.e-5)||(isnan(age))) {age=1.e-5;}
     return age;
 }
@@ -158,7 +158,7 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
 void set_units_sfr(void)
 {
     All.OverDensThresh = All.CritOverDensity * All.OmegaBaryon * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
-    All.PhysDensThresh = All.CritPhysDensity * PROTONMASS / (HYDROGEN_MASSFRAC * All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam);
+    All.PhysDensThresh = All.CritPhysDensity / (HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_NHCGS);
 #ifdef GALSF_EFFECTIVE_EQS
     double meanweight = 4 / (1 + 3 * HYDROGEN_MASSFRAC);	/* note: assuming NEUTRAL GAS */
     All.EgySpecCold = All.TempClouds / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
@@ -189,13 +189,13 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
 #ifdef BH_CALC_DISTANCES
     if(P[i].min_dist_to_bh < 2.*Rcrit) {return 0;} /* don't allow formation if there is already a sink nearby, akin to SF sink rules */
 #endif
-    surfacedensity = P[i].MencInRcrit / (M_PI*Rcrit*Rcrit)  * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam * All.cf_a2inv; /* this is the -total- mass density inside the critical kernel radius Rcrit, evaluated within the tree walk */
+    surfacedensity = P[i].MencInRcrit / (M_PI*Rcrit*Rcrit) * UNIT_SURFDEN_IN_CGS * All.cf_a2inv; /* this is the -total- mass density inside the critical kernel radius Rcrit, evaluated within the tree walk */
     double Z_u = Z_in_solar/Z_threshold_solar, S_u = surfacedensity / surfacedensity_threshold_cgs;
     if(!isfinite(Z_u) || !isfinite(S_u)) {return 0;}
     if(S_u < 3.5) {p *= 1 - exp(-S_u*S_u);} // quadratic cutoff at low densities: probability drops as S^(2), saturates at 1
     p /= 1 + Z_u + 0.5*Z_u*Z_u; // quadratic expansion of exponential cutoff: probability drops as Z^(-2) rather than exp(-Z), saturates at 1
 #else
-    surfacedensity = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; /* this gives the Sobolev-estimated column density of -gas- alone */
+    surfacedensity = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS; /* this gives the Sobolev-estimated column density of -gas- alone */
     if(surfacedensity>0.1*surfacedensity_threshold_cgs) {p *= (1-exp(-surfacedensity/surfacedensity_threshold_cgs)) * exp(-Z_in_solar/Z_threshold_solar);} else {p=0;} /* apply threshold metallicity and density cutoff */
 #endif
 #endif
@@ -251,8 +251,8 @@ double get_starformation_rate(int i)
             gradv[3*j + k]=vt; dv2abs+=vt*vt; if(j==k) {divv+=vt;} // save for possible use below
         }}
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(SINGLE_STAR_SINK_FORMATION) && ((defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) || defined(EOS_GMC_BAROTROPIC)) // if we have to deal with optically-thick thermo
-    double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam) / PROTONMASS;
-    if(nHcgs > 1e13) {v_fast = DMIN(v_fast, 2e4/All.UnitVelocity_in_cm_per_s);}  //1.62e5/All.UnitVelocity_in_cm_per_s); // limiter to permit sink formation in simulations that really resolve the opacity limit and bog down when an optically-thick core forms. Modify this if you want to follow first collapse more/less - scale as c_s ~ n^(1/5)
+    double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS);
+    if(nHcgs > 1e13) {v_fast = DMIN(v_fast, 0.2/UNIT_VEL_TO_KMS);} // limiter to permit sink formation in simulations that really resolve the opacity limit and bog down when an optically-thick core forms. Modify this if you want to follow first collapse more/less - scale as c_s ~ n^(1/5)
 #endif
     
 #if (SINGLE_STAR_SINK_FORMATION & 1) || defined(GALSF_SFR_VIRIAL_SF_CRITERION) /* apply standard virial-parameter criteria here. note that our definition of virial parameter here is ratio of [Kinetic+Internal Energy]/|Gravitational Energy| -- so <1=bound, >1=unbound, 1/2=bound-and-virialized, etc. */
@@ -305,11 +305,11 @@ double get_starformation_rate(int i)
 #endif
 
 #if (SINGLE_STAR_SINK_FORMATION & 64) || (GALSF_SFR_VIRIAL_SF_CRITERION >= 3) /* check if Jeans mass is low enough for conceivable formation of 'stars' */
-    double cs_touse=cs_eff, MJ_crit=DMAX(DMIN(1.e4, 10.*P[i].Mass*UNIT_MASS_TO_SOLAR), 100.); /* for galaxy-scale SF, default to large ~1000 Msun threshold */
+    double cs_touse=cs_eff, MJ_crit=DMAX(DMIN(1.e4, 10.*P[i].Mass*UNIT_MASS_IN_SOLAR), 100.); /* for galaxy-scale SF, default to large ~1000 Msun threshold */
 #ifdef SINGLE_STAR_SINK_FORMATION
-    cs_touse=v_fast; MJ_crit=DMIN(1.e4, DMAX(1.e-3 , 100.*P[i].Mass*UNIT_MASS_TO_SOLAR)); /* for single-star formation use un-resolved Jeans mass criterion, with B+thermal pressure */
+    cs_touse=v_fast; MJ_crit=DMIN(1.e4, DMAX(1.e-3 , 100.*P[i].Mass*UNIT_MASS_IN_SOLAR)); /* for single-star formation use un-resolved Jeans mass criterion, with B+thermal pressure */
 #endif
-    double MJ_solar = 2.*pow(cs_touse*All.UnitVelocity_in_cm_per_s/(0.2e5),3)/sqrt(SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam / (HYDROGEN_MASSFRAC*1.0e3*PROTONMASS));
+    double MJ_solar = 2.*pow(cs_touse*UNIT_VEL_TO_KMS/0.2,3)/sqrt(SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS / (HYDROGEN_MASSFRAC*1.0e3));
     if(MJ_solar > MJ_crit) {rateOfSF=0;} /* if too massive Jeans mass, go no further */
 #endif
 
@@ -423,7 +423,7 @@ void star_formation_parent_routine(void)
 	      mass_of_star = P[i].Mass / (GALSF_GENERATIONS - number_of_stars_generated);
           if(number_of_stars_generated >= GALSF_GENERATIONS-1) mass_of_star=P[i].Mass;
 
-          SphP[i].Sfr = sm / dtime * UNIT_MASS_TO_SOLAR / UNIT_TIME_TO_YR;
+          SphP[i].Sfr = sm / dtime * UNIT_MASS_IN_SOLAR / UNIT_TIME_IN_YR;
 	      if(dtime>0) TimeBinSfr[P[i].TimeBin] += SphP[i].Sfr;
 
           prob = P[i].Mass / mass_of_star * (1 - exp(-p));
@@ -530,9 +530,9 @@ void star_formation_parent_routine(void)
                 TreeReconstructFlag = 1;
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
                 P[i].SinkRadius = All.ForceSoftening[5];
-                double cs = 2e4 / All.UnitVelocity_in_cm_per_s;
+                double cs = 0.2 / UNIT_VEL_TO_KMS;
 #if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) || defined(EOS_GMC_BAROTROPIC)
-                double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
+                double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
                 if(nHcgs > 1e10) cs *= pow(nHcgs/1e10, 1./5); // if we're getting opacity-limited then we can set a smaller sink radius, since cs ~ n^1/5
 #endif
                 P[i].SinkRadius = DMAX(3 * P[i].Mass * All.G / (M_PI * cs * cs), All.ForceSoftening[5]); // volume-equivalent particle radius R= (3V/(4PI))^(1/3) at the density where M_Jeans = particle mass
@@ -566,8 +566,8 @@ void star_formation_parent_routine(void)
                 P[i].Mass_D = P[i].Mass; //Initially all the gas has Deuterium
                 P[i].ZAMS_Mass = 0; //init as zero, does not mean anything while we are in the protostellar stage
                 P[i].StarLuminosity_Solar = 0; //Start with zero luminosity
-		        if (P[i].Mass*UNIT_MASS_TO_SOLAR < 0.012) {P[i].ProtoStellarRadius_inSolar =  5.24 * pow(P[i].Mass*UNIT_MASS_TO_SOLAR, 1./3);} // constant density
-                    else {P[i].ProtoStellarRadius_inSolar = 10. * (P[i].Mass*UNIT_MASS_TO_SOLAR);} // M propto R above this mass
+		        if (P[i].Mass*UNIT_MASS_IN_SOLAR < 0.012) {P[i].ProtoStellarRadius_inSolar =  5.24 * pow(P[i].Mass*UNIT_MASS_IN_SOLAR, 1./3);} // constant density
+                    else {P[i].ProtoStellarRadius_inSolar = 10. * (P[i].Mass*UNIT_MASS_IN_SOLAR);} // M propto R above this mass
 #endif
 
 #ifdef BH_OUTPUT_FORMATION_PROPERTIES //save the at-formation properties of sink particles
@@ -692,7 +692,7 @@ void star_formation_parent_routine(void)
         {
             if(All.TimeStep > 0) {rate = total_sm / (All.TimeStep / (All.cf_atime*All.cf_hubble_a));} else {rate = 0;}
             /* convert to solar masses per yr */
-            rate_in_msunperyear = rate * UNIT_MASS_TO_SOLAR / UNIT_TIME_TO_YR;
+            rate_in_msunperyear = rate * UNIT_MASS_IN_SOLAR / UNIT_TIME_IN_YR;
             fprintf(FdSfr, "%g %g %g %g %g\n", All.Time, total_sm, totsfrrate, rate_in_msunperyear, total_sum_mass_stars);
             fflush(FdSfr); // can flush it, because only occuring on master steps anyways
         } // thistask==0
@@ -844,8 +844,7 @@ void init_clouds(void)
       if(ThisTask == 0)
 	{
       printf("\n Springel-Hernquist EOS model: A0= %g  \n", A0);
-	  printf(" ..computed: PhysDensThresh= %g  (int units)         %g h^2 cm^-3\n", All.PhysDensThresh,
-		 All.PhysDensThresh / (PROTONMASS / HYDROGEN_MASSFRAC / All.UnitDensity_in_cgs));
+	  printf(" ..computed: PhysDensThresh= %g  (int units)         %g cm^-3\n", All.PhysDensThresh, All.PhysDensThresh * UNIT_DENSITY_TO_NH);
 	  printf(" ..expected fraction of cold gas at threshold = %g\n", x);
 	  printf(" ..tcool=%g dens=%g egyhot=%g\n", tcool, dens, egyhot);
 	}

@@ -477,43 +477,32 @@ void set_units(void)
 {
   double meanweight;
 
-  All.UnitTime_in_s = All.UnitLength_in_cm / All.UnitVelocity_in_cm_per_s;
-
-  if(All.GravityConstantInternal == 0)
-    All.G = GRAVITY_G / pow(All.UnitLength_in_cm, 3) * All.UnitMass_in_g * pow(All.UnitTime_in_s, 2);
-  else
-    All.G = All.GravityConstantInternal;
+  if(All.G <= 0) {All.G = GRAVITY_G * All.UnitMass_in_g / (All.UnitLength_in_cm * All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s);}
+    
 #ifdef GR_TABULATED_COSMOLOGY_G
   All.Gini = All.G;
   All.G = All.Gini * dGfak(All.TimeBegin);
 #endif
-
-  All.UnitDensity_in_cgs = All.UnitMass_in_g / pow(All.UnitLength_in_cm, 3);
-  All.UnitPressure_in_cgs = All.UnitMass_in_g / All.UnitLength_in_cm / pow(All.UnitTime_in_s, 2);
-  All.UnitEnergy_in_cgs = All.UnitMass_in_g * pow(All.UnitLength_in_cm, 2) / pow(All.UnitTime_in_s, 2);
-    
-#ifdef GDE_DISTORTIONTENSOR
-  All.UnitDensity_in_Gev_per_cm3 = 5.609589206e23 / pow(All.UnitLength_in_cm, 3) * All.UnitMass_in_g; /* 5.609589206e23 is the factor to convert from g to GeV/c^2, the rest comes from All.UnitDensity_in_cgs */
-#endif
-    
+        
   /* convert some physical input parameters to internal units */
 
-  All.Hubble_H0_CodeUnits = HUBBLE_CGS * All.UnitTime_in_s;
+  All.Hubble_H0_CodeUnits = HUBBLE_CGS * All.UnitLength_in_cm / All.UnitVelocity_in_cm_per_s;
 
   if(ThisTask == 0)
     {
-      printf("\nHubble (internal units) = %g\n", All.Hubble_H0_CodeUnits);
-      printf("G (internal units) = %g\n", All.G);
-      printf("UnitMass_in_g = %g \n", All.UnitMass_in_g);
-      printf("UnitTime_in_s = %g \n", All.UnitTime_in_s);
-      printf("UnitVelocity_in_cm_per_s = %g \n", All.UnitVelocity_in_cm_per_s);
-      printf("UnitDensity_in_cgs = %g \n", All.UnitDensity_in_cgs);
-      printf("UnitEnergy_in_cgs = %g \n", All.UnitEnergy_in_cgs);
-#ifdef GDE_DISTORTIONTENSOR
-      printf("Annihilation radiation units:\n");
-      printf("UnitDensity_in_Gev_per_cm3 = %g\n", All.UnitDensity_in_Gev_per_cm3);
-#endif
-
+      printf("\nCode units to be used: make sure you check these are correct! \n");
+      printf("  Hubble H0 (internal units) = %g \n", All.Hubble_H0_CodeUnits);
+      printf("  Gravity G (internal units) = %g \n", All.G);
+      printf("  unit Mass in g             = %g \n", UNIT_MASS_IN_CGS);
+      printf("  unit Length in cm          = %g \n", UNIT_LENGTH_IN_CGS);
+      printf("  unit Time in s             = %g \n", UNIT_TIME_IN_CGS);
+      printf("  unit Velocity in cm/s      = %g \n", UNIT_VEL_IN_CGS);
+      printf("  unit Energy in erg         = %g \n", UNIT_ENERGY_IN_CGS);
+      printf("  unit Density in g/cm^3     = %g \n", UNIT_DENSITY_IN_CGS);
+      printf("  unit Pressure in erg/cm^3  = %g \n", UNIT_PRESSURE_IN_CGS);
+      printf("  unit Luminosity in erg/s   = %g \n", UNIT_LUM_IN_CGS);
+      printf("  unit Flux in erg/s/cm^2    = %g \n", UNIT_FLUX_IN_CGS);
+      printf("  unit B[internal] in gauss  = %g \n", UNIT_B_IN_GAUSS);
       printf("\n");
     }
     
@@ -529,7 +518,7 @@ void set_units(void)
   /* for historical reasons, we need to convert to "All.MaxSfrTimescale", defined as the SF timescale in code units at the critical physical
      density given above. use the dimensionless SfEffPerFreeFall (which has been read in) to calculate this. This must be done -BEFORE- calling set_units_sfr) */
 #ifndef GALSF_EFFECTIVE_EQS
-    All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity * meanweight * PROTONMASS / (All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam))));
+    All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity * meanweight / UNIT_DENSITY_IN_NHCGS)));
 #endif
     set_units_sfr();
 #endif
@@ -538,7 +527,7 @@ void set_units(void)
     
 #ifdef DM_FUZZY
     /* For Schroedinger equation: this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass. This is the key variable used throughout */
-    All.ScalarField_hbar_over_mass = 591569.0 / ((double)All.ScalarField_hbar_over_mass * (double)All.UnitVelocity_in_cm_per_s * (double)All.UnitLength_in_cm/(double)All.HubbleParam);
+    All.ScalarField_hbar_over_mass = 591569.0 / ((double)All.ScalarField_hbar_over_mass * UNIT_VEL_IN_CGS * UNIT_LENGTH_IN_CGS);
 #endif
     
 
@@ -549,7 +538,7 @@ void set_units(void)
     double u_to_temp = meanweight_ion * (GAMMA_DEFAULT-1.) * U_TO_TEMP_UNITS; /* for full ionization, assume gas has a monatomic ideal eos gamma=5/3 */
     /* Kappa_Spitzer definition taken from Zakamska & Narayan 2003 ( ApJ 582:162-169, Eq. (5) ) */
     double coulomb_log = 37.8; // Sarazin value (recommendation from PIC calculations) //
-    double coefficient = (1.84e-5/coulomb_log) * pow(u_to_temp,3.5) * ((All.UnitTime_in_s*All.UnitTime_in_s*All.UnitTime_in_s) / (All.UnitLength_in_cm*All.UnitMass_in_g * All.HubbleParam*All.HubbleParam)); // ok, this multiplied by the specific energy (u_code)^(3/2) gives the diffusity of u_code, as needed (density term is included in said diffusivity)
+    double coefficient = (1.84e-5/coulomb_log) * pow(u_to_temp,3.5) * ((UNIT_TIME_IN_CGS*UNIT_TIME_IN_CGS*UNIT_TIME_IN_CGS) / (UNIT_LENGTH_IN_CGS*UNIT_MASS_IN_CGS)); // ok, this multiplied by the specific energy (u_code)^(3/2) gives the diffusity of u_code, as needed (density term is included in said diffusivity)
 #ifdef CONDUCTION_SPITZER
     All.ConductionCoeff *= coefficient;
 #endif
@@ -560,12 +549,12 @@ void set_units(void)
     /* factor used for determining saturation */
     All.ElectronFreePathFactor = 8 * pow(3.0, 1.5) * pow((GAMMA_DEFAULT-1), 2) / pow(3 + 5 * HYDROGEN_MASSFRAC, 2)
         / (1 + HYDROGEN_MASSFRAC) / sqrt(M_PI) / coulomb_log * pow(PROTONMASS, 3) / pow(ELECTRONCHARGE, 4)
-        / (All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) * pow(All.UnitPressure_in_cgs / All.UnitDensity_in_cgs, 2);
+        / (UNIT_DENSITY_IN_CGS) * pow(UNIT_SPECEGY_IN_CGS, 2);
 
   /* If the above value is multiplied with u^2/rho in code units (with rho being the physical density), then
    * one gets the electron mean free path in centimeters. Since we want to compare this with another length
    * scale in code units, we now add an additional factor to convert back to code units. */
-  All.ElectronFreePathFactor *= All.HubbleParam / All.UnitLength_in_cm;
+  All.ElectronFreePathFactor /= UNIT_LENGTH_IN_CGS;
 #endif
 
 
@@ -1385,7 +1374,7 @@ void read_parameter_file(char *fname)
 
       strcpy(tag[nt], "GravityConstantInternal");
       strcpy(alternate_tag[nt], "GravityConstant_SetByHand_inCodeUnits");
-      addr[nt] = &All.GravityConstantInternal;
+      addr[nt] = &All.G;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "InitGasTemp");
@@ -2133,7 +2122,7 @@ void read_parameter_file(char *fname)
                 if(strcmp("MinGasTemp",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasTemp); continue;}
                 if(strcmp("MinGasHsmlFractional",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasHsmlFractional); continue;}
                 if(strcmp("MaxHsml",tag[i])==0) {*((double *)addr[i])=MAX_REAL_NUMBER; printf("Tag %s (%s) not set in parameter file: defaulting to assume no maximum (=%g) \n",tag[i],alternate_tag[i],All.MaxHsml); continue;}
-                if(strcmp("GravityConstantInternal",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to calculating in terms of other specified units if needed (=%g) \n",tag[i],alternate_tag[i],All.GravityConstantInternal); continue;}
+                if(strcmp("GravityConstantInternal",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to calculating in terms of other specified units if needed (=%g) \n",tag[i],alternate_tag[i],All.G); continue;}
                 if(strcmp("MinSizeTimestep",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to minimum allowed by memory table-size (=%g) \n",tag[i],alternate_tag[i],All.MinSizeTimestep); continue;}
                 if(strcmp("NumFilesWrittenInParallel",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to only main-task writes (=%d) \n",tag[i],alternate_tag[i],All.NumFilesWrittenInParallel); continue;}
                 if(strcmp("NumFilesPerSnapshot",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to single-file snapshots (=%d) \n",tag[i],alternate_tag[i],All.NumFilesPerSnapshot); continue;}

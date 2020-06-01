@@ -3170,9 +3170,9 @@ double PowerSpec_Efstathiou(double k)
   double AA, BB, CC, nu, ShapeGamma;
 
   ShapeGamma = 0.21;
-  AA = 6.4 / ShapeGamma * (3.085678e24 / All.UnitLength_in_cm);
-  BB = 3.0 / ShapeGamma * (3.085678e24 / All.UnitLength_in_cm);
-  CC = 1.7 / ShapeGamma * (3.085678e24 / All.UnitLength_in_cm);
+  AA = 6.4 / ShapeGamma * (1000. / UNIT_LENGTH_IN_KPC);
+  BB = 3.0 / ShapeGamma * (1000. / UNIT_LENGTH_IN_KPC);
+  CC = 1.7 / ShapeGamma * (1000. / UNIT_LENGTH_IN_KPC);
   nu = 1.13;
 
 

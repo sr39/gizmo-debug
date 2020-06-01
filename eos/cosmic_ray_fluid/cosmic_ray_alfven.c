@@ -56,7 +56,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     // ok, the updates from [0] advection w gas, [1] fluxes, [2] adiabatic, [-] catastrophic (in cooling.c) are all set, just need exchange terms b/t CR and Alfven //
     double EPSILON_SMALL = 1.e-77; // want a very small number here 
     double bhat[3], Bmag=0, Bmag_Gauss, clight_code=C_LIGHT_CODE, Omega_gyro, eA[2], vA_code, vA2_c2, E_B, fac, flux_G, fac_Omega, flux[3], f_CR, f_CR_dot_B, cs_thermal, r_turb_driving, G_ion_neutral=0, G_turb_plus_linear_landau=0, G_nonlinear_landau_prefix=0;
-    double ne=0, f_ion=1, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, rho_cgs=rho*All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;
+    double ne=0, f_ion=1, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, rho_cgs=rho*UNIT_DENSITY_IN_CGS;
 #ifdef COOLING
     ne=SphP[i].Ne, temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
@@ -78,8 +78,8 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     double Eth_0 = EPSILON_SMALL + 1.e-8 * P[i].Mass*u0; // set minimum magnetic energy relative to thermal (maximum plasma beta ~ 1e8) to prevent nasty divergences
     if(E_B < Eth_0) {Bmag = sqrt(2.*Eth_0/((P[i].Mass/(SphP[i].Density*All.cf_a3inv))));} // enforce this maximum beta for purposes of "B" to insert below 
     E_B = 0.5*Bmag*Bmag * (P[i].Mass/(SphP[i].Density*All.cf_a3inv)); // B-field energy (energy density times volume, for ratios with energies above)
-    Bmag_Gauss = Bmag * sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); // turn it into Gauss
-    Omega_gyro = 8987.34 * Bmag_Gauss * (Z_charge_CR/E_CRs_Gev) * (All.UnitTime_in_s/All.HubbleParam); // gyro frequency of the CR population we're evolving
+    Bmag_Gauss = Bmag * UNIT_B_IN_GAUSS; // turn it into Gauss
+    Omega_gyro = 8987.34 * Bmag_Gauss * (Z_charge_CR/E_CRs_Gev) * UNIT_TIME_IN_CGS; // gyro frequency of the CR population we're evolving
     vA_code = sqrt( Bmag*Bmag / (SphP[i].Density*All.cf_a3inv) ); double vA_noion=vA_code; // Alfven speed^2 in code units [recall B units such that there is no 4pi here]
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
     vA_code /= sqrt(f_ion); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
@@ -123,7 +123,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     double x_e=eCR/eCR_0, x_f=f_CR/f_unit, x_up=eA[0]/eCR_0, x_um=eA[1]/eCR_0, dtau=dt_entr/t0; e_tot/=eCR_0; Min_Egy/=eCR_0; // initial values in relevant units
     Min_Egy=DMAX(DMIN(Min_Egy,DMIN(x_e,DMIN(x_up,x_um))),EPSILON_SMALL); if(!isfinite(Min_Egy)) {Min_Egy=EPSILON_SMALL;} // enforce positive-definite-ness
     // we can more robustly define a minimum and maximum e_A by reference to a minimum and maximum 'effective diffusivity' over which it is physically meaningful, and numerically possible to evolve them
-    double ref_diffusivity = 4.4e26 / (All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm / All.HubbleParam); // define a unit diffusivity in code units for reference below
+    double ref_diffusivity = 4.4e26 / (UNIT_VEL_IN_CGS * UNIT_LENGTH_IN_CGS); // define a unit diffusivity in code units for reference below
     double xkappa_min = DMAX(vA_code*vA_code*t0/(3.e8*ref_diffusivity) , EPSILON_SMALL); // maximum diffusivity ~1e35, but be non-zero
     double xkappa_max = DMAX(DMIN(vA_code*vA_code*t0/(3.e-8*ref_diffusivity) , 0.5*E_B/eCR_0), xkappa_min); // minimum diffusivity at ~1e19, but cannot have more energy in eAp+eAm than total magnetic energy! (equations below assume -small- fraction of E_B in eA!, or growth rates non-linearly modified)
     if(e_tot < Min_Egy || !isfinite(e_tot)) {e_tot = Min_Egy;} // enforce minima/maxima
@@ -140,7 +140,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 
     // calculate the wave-damping rates (again in appropriate dimensionless units)
     /* ion-neutral damping: need thermodynamic information (neutral fractions, etc) to compute self-consistently */
-    G_ion_neutral = 5.77e-11 * (rho_cgs/PROTONMASS) * nh0 * sqrt(temperature) * (All.UnitTime_in_s/All.HubbleParam); // need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
+    G_ion_neutral = 5.77e-11 * (rho_cgs/PROTONMASS) * nh0 * sqrt(temperature) * UNIT_TIME_IN_CGS; // need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
     if(Z_charge_CR > 1) {G_ion_neutral /= sqrt(2.*Z_charge_CR);}
 
     int i1,i2; double v2_t=0,dv2_t=0,b2_t=0,db2_t=0,x_LL,M_A,h0,fturb_multiplier=1; // factor which will represent which cascade model we are going to use

@@ -279,10 +279,10 @@ void InitGrackle(void)
     // First, set up the units system.
     // These are conversions from code units to cgs.
     All.GrackleUnits.comoving_coordinates = 0; //All.ComovingIntegrationOn; // 1 if cosmological sim, 0 if not
-    All.GrackleUnits.density_units        = All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;
-    All.GrackleUnits.length_units         = All.UnitLength_in_cm / All.HubbleParam;
-    All.GrackleUnits.time_units           = All.UnitTime_in_s / All.HubbleParam;
-    All.GrackleUnits.velocity_units       = All.UnitVelocity_in_cm_per_s;
+    All.GrackleUnits.density_units        = UNIT_DENSITY_IN_CGS;
+    All.GrackleUnits.length_units         = UNIT_LENGTH_IN_CGS;
+    All.GrackleUnits.time_units           = UNIT_TIME_IN_CGS;
+    All.GrackleUnits.velocity_units       = UNIT_VEL_IN_CGS;
     All.GrackleUnits.a_units              = 1.0; // units for the expansion factor
     
     // Second, create a chemistry object for parameters and rate data.

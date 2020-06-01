@@ -1297,7 +1297,7 @@ void hydro_gradient_calc(void)
 		        double zeta_cr = 1.0e-17; // cosmic ray ionization rate (fixed as constant for non-CR runs)
 #ifdef COSMIC_RAYS
                 double u_cr=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_CR += SphP[i].CosmicRayEnergyPred[k];}
-		        zeta_cr = u_cr * 2.2e-6 * ((1. / P[i].Mass * SphP[i].Density * All.cf_a3inv) * (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam)); // convert to ionization rate
+		        zeta_cr = u_cr * 2.2e-6 * ((1. / P[i].Mass * SphP[i].Density * All.cf_a3inv) * (UNIT_PRESSURE_IN_CGS)); // convert to ionization rate
 #endif
                 double a_grain_micron = 0.1; // effective size of grains that matter at these densities
                 double m_ion = 24.3; // Mg dominates ions in dense gas [where this is relevant]; this is ion mass in units of proton mass
@@ -1309,7 +1309,7 @@ void hydro_gradient_calc(void)
                 double m_neutral = mean_molecular_weight; // in units of the proton mass
 		        double ag01 = a_grain_micron/0.1;
 		        double m_grain = 7.51e9 * ag01*ag01*ag01; // grain mass [internal density =3 g/cm^3]
-		        double rho = SphP[i].Density*All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; // density in cgs 
+		        double rho = SphP[i].Density*All.cf_a3inv * UNIT_DENSITY_IN_CGS; // density in cgs 
                 double n_eff = rho / PROTONMASS;
 
                 // calculate ionization fraction in dense gas //
@@ -1347,7 +1347,7 @@ void hydro_gradient_calc(void)
                 }
 #endif
                 // now define more variables we will need below //
-                double gizmo2gauss = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); // convert to B-field to gauss (units)
+                double gizmo2gauss = UNIT_B_IN_GAUSS; // convert to B-field to gauss (units)
                 double B_Gauss = 0; for(k=0;k<3;k++) {B_Gauss += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);} // get magnitude of B //
                 if(B_Gauss<=0) {B_Gauss=0;} else {B_Gauss = sqrt(B_Gauss) * All.cf_a2inv * gizmo2gauss;} // B-field magnitude in Gauss
                 double xe = n_elec / n_eff;
@@ -1375,7 +1375,7 @@ void hydro_gradient_calc(void)
                 double eta_A = eta_prefac * (sigma_P/sigma_perp2 - 1/sigma_O);
                 eta_O = DMAX(0,eta_O); eta_H = DMAX(0,eta_H); eta_A = DMAX(0,eta_A); // check against unphysical negative diffusivities
                 // convert units to code units     
-                double units_cgs_to_code = All.UnitTime_in_s / (All.UnitLength_in_cm * All.UnitLength_in_cm) * All.HubbleParam; // convert coefficients (L^2/t) to code units [physical]
+                double units_cgs_to_code = UNIT_TIME_IN_CGS / (UNIT_LENGTH_IN_CGS * UNIT_LENGTH_IN_CGS); // convert coefficients (L^2/t) to code units [physical]
                 double eta_ohmic = eta_O*units_cgs_to_code, eta_hall = eta_H*units_cgs_to_code, eta_ad = eta_A*units_cgs_to_code;
                 
                 SphP[i].Eta_MHD_OhmicResistivity_Coeff = eta_ohmic;     /*!< Ohmic resistivity coefficient [physical units of L^2/t] */

@@ -662,7 +662,7 @@ double R53(double NH2, double temperature, double *photon_density, double extinc
       omega = 0.013 * pow((1.0 + pow(temperature / 2.7e3, 1.3)), 0.76923) * exp(- pow(temperature / 3.9e3, 14.6));
       x = NH2 / Ncrit;
 
-      b_therm = pow((2.0 * BOLTZMANNCGS * temperature) / (2.0 * PROTON_MASS), 0.5) / 1.0e5;  /* in km s^-1 */
+      b_therm = pow((2.0 * BOLTZMANN * temperature) / (2.0 * PROTONMASS), 0.5) / 1.0e5;  /* in km s^-1 */
       b_tot = pow((b_therm * b_therm) + (b_5 * b_5), 0.5);
       S_H2 = (((1.0 - omega) / pow(1.0 + (x / b_tot), alpha)) * exp(-5.0e-7 * (1.0 + x))) + ((omega / pow(1.0 + x, 0.5)) * exp(-8.5e-4 * pow(1.0 + x, 0.5)));
     }
@@ -672,7 +672,7 @@ double R53(double NH2, double temperature, double *photon_density, double extinc
    * the presence of the Black (1987) ISRF. We then assume other spectra scale with n. */
   rate = 0.0; 
   for (l = 0; l < myGlobalVars->N_spectra; l++) 
-    rate += 3.324468e-7 * myGasVars->H2_dissocJ[l] * photon_density[l] * LIGHTSPEED * exp(-3.74 * extinction) * S_H2;	
+    rate += 3.324468e-7 * myGasVars->H2_dissocJ[l] * photon_density[l] * C_LIGHT * exp(-3.74 * extinction) * S_H2;	
   return rate; 
 }
 
@@ -687,7 +687,7 @@ double k60(double T, double Tgr, double xHI, double dust_ratio)
   double xi = 1.0 / (1.0 + ((1.3e13 * exp(-1.5e4 / Tgr) * intermediate) / 2e-10));
   double epsilon = xi / (1.0 + ((0.005 * 1e-10) / (2 * beta)) + beta_over_alpha);
   double SH = 1.0 / (1.0 + 0.04 * pow((T + Tgr), 0.5) + 0.002 * T + 8e-6 * pow(T, 2));
-  double vH = pow(((8.0 * 1.3806488e-16 * T) / (3.141592653589793 * 1.672621777e-24)), 0.5);
+  double vH = pow(((8.0 * 1.3806488e-16 * T) / (M_PI * PROTONMASS)), 0.5);
 
   /* Note that, with the way our reaction structures are set up,
    * k60 will be multiplied by nHI * nHI, when in fact we want it

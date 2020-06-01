@@ -880,9 +880,9 @@ void hydro_final_operations_and_cleanup(void)
             if(SphP[i].Temperature > All.NetworkTempThreshold)
             {
                 nuc_particles++;
-                network_integrate(SphP[i].Temperature, SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnuc,
-                                  SphP[i].dxnuc, dt*All.UnitTime_in_s, &dedt_nuc, NULL, &All.nd, &All.nw);
-                SphP[i].DtInternalEnergy += dedt_nuc * All.UnitEnergy_in_cgs / All.UnitTime_in_s;
+                network_integrate(SphP[i].Temperature, SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS, SphP[i].xnuc,
+                                  SphP[i].dxnuc, dt * UNIT_TIME_IN_CGS, &dedt_nuc, NULL, &All.nd, &All.nw);
+                SphP[i].DtInternalEnergy += dedt_nuc * UNIT_ENERGY_IN_CGS / UNIT_TIME_IN_CGS;
             }
             else
             {

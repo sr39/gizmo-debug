@@ -644,7 +644,7 @@ void density(void)
 #ifdef GALSF
                     if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
                     // if we're finding this for feedback routines, there isn't any good reason to search beyond a modest physical radius //
-                    double unitlength_in_kpc=UNIT_LENGTH_TO_KPC*All.cf_atime;
+                    double unitlength_in_kpc=UNIT_LENGTH_IN_KPC*All.cf_atime;
                     maxsoft = 2.0 / unitlength_in_kpc;
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES) && (defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL))
                     if(P[i].SNe_ThisTimeStep>0 || P[i].MassReturn_ThisTimeStep>0 || All.Time==All.TimeBegin) {maxsoft=2.0/unitlength_in_kpc;} else {maxsoft=0.1/unitlength_in_kpc;};
@@ -1039,7 +1039,7 @@ void density(void)
             if(All.ComovingIntegrationOn)
             {
                 double rho_igm = All.OmegaBaryon*(All.HubbleParam*HUBBLE_CGS)*(All.HubbleParam*HUBBLE_CGS)*(3./(8.*M_PI*GRAVITY_G)) * DMIN(All.cf_a3inv, 1000.);
-                double rho_gas = DMAX( SphP[i].Density , All.DesNumNgb*P[i].Mass/(4.*M_PI/3.*PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml) )* All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;
+                double rho_gas = DMAX( SphP[i].Density , All.DesNumNgb*P[i].Mass/(4.*M_PI/3.*PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml) )* All.cf_a3inv * UNIT_DENSITY_IN_CGS;
                 if(P[i].Type == 0 && rho_gas < 1.e-6*rho_igm) {P[i].Mass = 0;}
                 if(P[i].Type != 0 && SphP[i].Density > 0 & rho_gas < 1.e-9*rho_igm) {P[i].Mass = 0;}
             }
@@ -1051,8 +1051,8 @@ void density(void)
                 if(P[i].Type == 0) if ((SphP[i].Density <= 0) || (PPP[i].NumNgb <= 0)) P[i].Mass = 0;
                 if ((PPP[i].Hsml <= 0) || (PPP[i].Hsml >= PM_HIRES_REGION_CLIPPING)) P[i].Mass = 0;
                 double vmag=0; for(k=0;k<3;k++) vmag+=P[i].Vel[k]*P[i].Vel[k]; vmag = sqrt(vmag);
-                if(vmag>5.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) P[i].Mass=0;
-                if(vmag>1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) for(k=0;k<3;k++) P[i].Vel[k]*=(1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s)/vmag;
+                if(vmag>5.e4*All.cf_atime/UNIT_VEL_TO_KMS) {P[i].Mass=0;}
+                if(vmag>1.e4*All.cf_atime/UNIT_VEL_TO_KMS) {for(k=0;k<3;k++) {P[i].Vel[k]*=(1.e4*All.cf_atime/UNIT_VEL_TO_KMS)/vmag;}}
 #ifdef BLACK_HOLES
             }
 #endif // BLACK_HOLES

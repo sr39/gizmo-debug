@@ -1171,42 +1171,50 @@ typedef unsigned long long peanokey;
 #define  HUBBLE_CGS     (3.2407789e-18)	/* in h/sec */
 #define  ELECTRONVOLT_IN_ERGS (1.60217733e-12)
 
-#define KAPPA_IR    (10.0)   /* in cm^2/g for solar abundances */
-#define KAPPA_OP    (180.0)
-#define KAPPA_UV    (1800.0)
-
-#define C_LIGHT_CODE ((C_LIGHT/All.UnitVelocity_in_cm_per_s)) /* pure convenience function, speed-of-light in code units */
-#define C_LIGHT_CODE_REDUCED ((RT_SPEEDOFLIGHT_REDUCTION*(C_LIGHT/All.UnitVelocity_in_cm_per_s))) /* reduced speed-of-light in code units, again here as a convenience function */
-#define U_TO_TEMP_UNITS ((PROTONMASS / BOLTZMANN) * (All.UnitEnergy_in_cgs / All.UnitMass_in_g)) /* units to convert specific internal energy to temperature. needs to be multiplied by dimensionless factor=mean_molec_weight_in_amu*(gamma_eos-1) */
-
 /* and a bunch of useful unit-conversion macros pre-bundled here, to help keep the 'h' terms and other correct */
-#define UNIT_MASS_TO_CGS        ((All.UnitMass_in_g/All.HubbleParam))
-#define UNIT_VEL_TO_CGS         ((All.UnitVelocity_in_cm_per_s))
-#define UNIT_TIME_TO_CGS        ((All.UnitTime_in_s/All.HubbleParam))
-#define UNIT_LENGTH_TO_CGS      ((All.UnitLength_in_cm*All.cf_atime/All.HubbleParam))
-#define UNIT_ENERGY_TO_CGS      ((All.UnitEnergy_in_cgs/All.HubbleParam))
-#define UNIT_PRESSURE_TO_CGS    ((All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam))
-#define UNIT_DENSITY_TO_CGS     ((All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam))
-#define UNIT_FLUX_TO_CGS        (((UNIT_PRESSURE_TO_CGS)*(UNIT_VEL_TO_CGS)))
-#define UNIT_LUM_TO_CGS         (((UNIT_ENERGY_TO_CGS)/(UNIT_TIME_TO_CGS)))
-#define UNIT_MASS_TO_SOLAR      (((UNIT_MASS_TO_CGS)/SOLAR_MASS))
-#define UNIT_TIME_TO_YR         (((UNIT_TIME_TO_CGS)/(SEC_PER_YEAR)))
-#define UNIT_TIME_TO_MYR        (((UNIT_TIME_TO_CGS)/(1.e6*SEC_PER_YEAR)))
-#define UNIT_TIME_TO_GYR        (((UNIT_TIME_TO_CGS)/(1.e9*SEC_PER_YEAR)))
-#define UNIT_LENGTH_TO_SOLAR    (((UNIT_LENGTH_TO_CGS)/SOLAR_RADIUS))
-#define UNIT_LENGTH_TO_AU       (((UNIT_LENGTH_TO_CGS)/1.496e13))
-#define UNIT_LENGTH_TO_PC       (((UNIT_LENGTH_TO_CGS)/3.086e18))
-#define UNIT_LENGTH_TO_KPC      (((UNIT_LENGTH_TO_CGS)/3.086e21))
-#define UNIT_PRESSURE_TO_EV     (((UNIT_PRESSURE_TO_CGS)/ELECTRONVOLT_IN_ERGS))
-#define UNIT_VEL_TO_KMS         (((UNIT_VEL_TO_CGS)/1.e5))
-#define UNIT_LUM_TO_SOLAR       (((UNIT_LUM_TO_CGS)/SOLAR_LUM))
-#define UNIT_FLUX_TO_HABING     (((UNIT_FLUX_TO_CGS)/1.6e-3))
+#define UNIT_MASS_IN_CGS        ((All.UnitMass_in_g/All.HubbleParam))
+#define UNIT_VEL_IN_CGS         ((All.UnitVelocity_in_cm_per_s))
+#define UNIT_LENGTH_IN_CGS      ((All.UnitLength_in_cm/All.HubbleParam))
+#define UNIT_TIME_IN_CGS        (((UNIT_LENGTH_IN_CGS)/(UNIT_VEL_IN_CGS)))
+#define UNIT_ENERGY_IN_CGS      (((UNIT_MASS_IN_CGS)*(UNIT_VEL_IN_CGS)*(UNIT_VEL_IN_CGS)))
+#define UNIT_PRESSURE_IN_CGS    (((UNIT_ENERGY_IN_CGS)/(UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS)))
+#define UNIT_DENSITY_IN_CGS     (((UNIT_MASS_IN_CGS)/(UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS)))
+#define UNIT_SPECEGY_IN_CGS     (((UNIT_PRESSURE_IN_CGS)/(UNIT_DENSITY_IN_CGS)))
+#define UNIT_SURFDEN_IN_CGS     (((UNIT_DENSITY_IN_CGS)*(UNIT_LENGTH_IN_CGS)))
+#define UNIT_FLUX_IN_CGS        (((UNIT_PRESSURE_IN_CGS)*(UNIT_VEL_IN_CGS)))
+#define UNIT_LUM_IN_CGS         (((UNIT_ENERGY_IN_CGS)/(UNIT_TIME_IN_CGS)))
+#define UNIT_B_IN_GAUSS         ((sqrt(4.*M_PI*UNIT_PRESSURE_IN_CGS)))
+#define UNIT_MASS_IN_SOLAR      (((UNIT_MASS_IN_CGS)/SOLAR_MASS))
+#define UNIT_DENSITY_IN_NHCGS   (((UNIT_DENSITY_IN_CGS)/PROTONMASS))
+#define UNIT_TIME_IN_YR         (((UNIT_TIME_IN_CGS)/(SEC_PER_YEAR)))
+#define UNIT_TIME_IN_MYR        (((UNIT_TIME_IN_CGS)/(1.e6*SEC_PER_YEAR)))
+#define UNIT_TIME_IN_GYR        (((UNIT_TIME_IN_CGS)/(1.e9*SEC_PER_YEAR)))
+#define UNIT_LENGTH_IN_SOLAR    (((UNIT_LENGTH_IN_CGS)/SOLAR_RADIUS))
+#define UNIT_LENGTH_IN_AU       (((UNIT_LENGTH_IN_CGS)/1.496e13))
+#define UNIT_LENGTH_IN_PC       (((UNIT_LENGTH_IN_CGS)/3.085678e18))
+#define UNIT_LENGTH_IN_KPC      (((UNIT_LENGTH_IN_CGS)/3.085678e21))
+#define UNIT_PRESSURE_IN_EV     (((UNIT_PRESSURE_IN_CGS)/ELECTRONVOLT_IN_ERGS))
+#define UNIT_VEL_IN_KMS         (((UNIT_VEL_IN_CGS)/1.e5))
+#define UNIT_LUM_IN_SOLAR       (((UNIT_LUM_IN_CGS)/SOLAR_LUM))
+#define UNIT_FLUX_IN_HABING     (((UNIT_FLUX_IN_CGS)/1.6e-3))
+
+#define U_TO_TEMP_UNITS         ((PROTONMASS/BOLTZMANN)*((UNIT_ENERGY_IN_CGS)/(UNIT_MASS_IN_CGS))) /* units to convert specific internal energy to temperature. needs to be multiplied by dimensionless factor=mean_molec_weight_in_amu*(gamma_eos-1) */
+#define C_LIGHT_CODE ((C_LIGHT/UNIT_VEL_IN_CGS)) /* pure convenience function, speed-of-light in code units */
+#define C_LIGHT_CODE_REDUCED ((RT_SPEEDOFLIGHT_REDUCTION*(C_LIGHT/UNIT_VEL_IN_CGS))) /* reduced speed-of-light in code units, again here as a convenience function */
 
 
 
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
 #define HIIRegion_Temp (1.0e4) /* temperature (in K) of heated gas */
 #endif
+
+/* some convenience FIRE-module variables for the radiation here */
+#if defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_FIRE_RT_LOCALRP)
+#define KAPPA_IR    (10.0)   /* in cm^2/g for solar abundances */
+#define KAPPA_OP    (180.0)
+#define KAPPA_UV    (1800.0)
+#endif
+
 
 #ifdef METALS
 #ifdef GALSF_FB_FIRE_RPROCESS
@@ -1958,38 +1966,23 @@ extern struct global_data_all_processes
     double MaxMassForParticleSplit; /*!< the maximum mass of a gas particle above which it will be split into a pair */
 
   /* some force counters  */
-
   long long TotNumOfForces;	/*!< counts total number of force computations  */
-
   long long NumForcesSinceLastDomainDecomp;	/*!< count particle updates since last domain decomposition */
 
   /* some variable for dynamic work-load adjustment based on CPU measurements */
-
   double cf_atime, cf_a2inv, cf_a3inv, cf_afac1, cf_afac2, cf_afac3, cf_hubble_a, cf_hubble_a2;   /* various cosmological factors that are only a function of the current scale factor, and in Newtonian runs are set to 1 */
 
   /* system of units  */
-
-  double UnitTime_in_s,		/*!< factor to convert internal time unit to seconds/h */
-    UnitMass_in_g,		/*!< factor to convert internal mass unit to grams/h */
-    UnitVelocity_in_cm_per_s,	/*!< factor to convert intqernal velocity unit to cm/sec */
-    UnitLength_in_cm,		/*!< factor to convert internal length unit to cm/h */
-    UnitPressure_in_cgs,	/*!< factor to convert internal pressure unit to cgs units (little 'h' still around!) */
-    UnitDensity_in_cgs,		/*!< factor to convert internal density unit to g/cm^3*h^2 */
-    UnitEnergy_in_cgs,		/*!< factor to convert internal energy to cgs units */
-    GravityConstantInternal,	/*!< If set to zero in the parameterfile, the internal value of the
-				   gravitational constant is set to the Newtonian value based on the system of
-				   units specified. Otherwise the value provided is taken as internal gravity
-				   constant G. */
-    G;				/*!< Gravity-constant in internal units */
-#ifdef GDE_DISTORTIONTENSOR
-  double UnitDensity_in_Gev_per_cm3; /*!< factor to convert internal density unit to GeV/c^2 / cm^3 */
-#endif
-    /* Cosmology */
+  double UnitMass_in_g,		        /*!< factor to convert internal mass unit to grams/h */
+         UnitVelocity_in_cm_per_s,	/*!< factor to convert intqernal velocity unit to cm/sec */
+         UnitLength_in_cm,          /*!< factor to convert internal length unit to cm/h */
+         G;                         /*!< Gravity-constant in internal units */
 
 #ifdef MAGNETIC
   double UnitMagneticField_in_gauss; /*!< factor to convert internal magnetic field (B) unit to gauss (cgs) units */
 #endif
-    
+
+  /* Cosmology */
   double Hubble_H0_CodeUnits;		/*!< Hubble-constant (unit-ed version: 100 km/s/Mpc) in internal units */
   double Omega0,		/*!< matter density in units of the critical density (at z=0) */
     OmegaLambda,		/*!< vaccum energy density relative to crictical density (at z=0) */

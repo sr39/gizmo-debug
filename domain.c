@@ -431,16 +431,10 @@ double domain_particle_cost_multiplier(int i)
 #endif
 
 #ifdef CHIMES 
-    /* With CHIMES, cost is dominated by the chemistry, particularly 
-     * in dense gas. We therefore boost the cost factor of gas 
-     * particles with nH >~ 1 cm^-3. */ 
-    double rho_cgs; 
-    if (P[i].Type == 0) 
-      {
-	rho_cgs = SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; 
-	if (rho_cgs > 1.67e-24) 
-	  multiplier = 10.0; 
-      }
+    /* With CHIMES, cost is dominated by the chemistry, particularly in dense gas.
+       We therefore boost the cost factor of gas particles with nH >~ 1 cm^-3. */
+    if(P[i].Type == 0) {double rho_cgs = SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS;
+          if(rho_cgs > PROTONMASS) {multiplier = 10.0};}
 #endif 
     
     return multiplier;

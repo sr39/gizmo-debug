@@ -192,7 +192,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     MyBigFloat half_kick_add[6][6];
 #endif
 #ifdef MAGNETIC /* NOTE: we always work -internally- in code units where MU_0 = 1; hence the 4pi here; [much simpler, but be sure of your conversions!] */
-    double gizmo2gauss = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam) / All.UnitMagneticField_in_gauss;
+    double gizmo2gauss = UNIT_B_IN_GAUSS / All.UnitMagneticField_in_gauss;
 #endif
 #ifdef GDE_DISTORTIONTENSOR
     MyBigFloat flde, psde;
@@ -461,7 +461,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {   /* units convert to solar masses per yr */
-                    *fp++ = get_starformation_rate(pindex) * UNIT_MASS_TO_SOLAR / UNIT_TIME_TO_YR;
+                    *fp++ = get_starformation_rate(pindex) * UNIT_MASS_IN_SOLAR / UNIT_TIME_IN_YR;
                     n++;
                 }
 #endif
@@ -601,7 +601,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for (n = 0; n < pc; pindex++)
                 if (P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1,pindex) * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * (1.0 - (P[pindex].Metallicity[0] + P[pindex].Metallicity[1])) / PROTONMASS);
+                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1,pindex) * UNIT_SURFDEN_IN_CGS * shielding_length_factor * (1.0 - (P[pindex].Metallicity[0] + P[pindex].Metallicity[1])) / PROTONMASS);
                     n++;
                 }
 #endif
@@ -612,7 +612,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for (n = 0; n < pc; pindex++)
                 if (P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,PPP[pindex].Hsml,P[pindex].DensAroundStar,PPP[pindex].NumNgb,0,pindex) * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm));  // g cm^-2
+                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,PPP[pindex].Hsml,P[pindex].DensAroundStar,PPP[pindex].NumNgb,0,pindex) * UNIT_SURFDEN_IN_CGS);  // g cm^-2
                     n++;
                 }
 #endif 

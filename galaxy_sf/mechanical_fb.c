@@ -70,7 +70,7 @@ void determine_where_SNe_occur(void)
         // now use a calculation of mechanical event rates to determine where/when the events actually occur //
         npossible++;
         double RSNe = mechanical_fb_calculate_eventrates(i,dt);
-        rmean += RSNe; ptotal += RSNe * (P[i].Mass*UNIT_MASS_TO_SOLAR) * (dt*UNIT_TIME_TO_MYR);
+        rmean += RSNe; ptotal += RSNe * (P[i].Mass*UNIT_MASS_IN_SOLAR) * (dt*UNIT_TIME_IN_MYR);
 #ifdef GALSF_SFR_IMF_SAMPLING
         if(P[i].IMF_NumMassiveStars>0) {P[i].IMF_NumMassiveStars=DMAX(0,P[i].IMF_NumMassiveStars-P[i].SNe_ThisTimeStep);} // lose an O-star for every SNe //
 #endif
@@ -165,7 +165,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     struct OUTPUT_STRUCT_NAME out;
     memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME));
     
-    v_ejecta_max = 5000.0 * 1.0e5/ All.UnitVelocity_in_cm_per_s;
+    v_ejecta_max = 5000.0 / UNIT_VEL_TO_KMS;
     // 'speed limit' to prevent numerically problematic kicks at low resolution //
     kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0;
     
@@ -181,14 +181,14 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
     
     // some units (just used below, but handy to define for clarity) //
-    double unitlength_in_kpc=UNIT_LENGTH_TO_KPC * All.cf_atime;
-    double density_to_n=All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / PROTONMASS;
-    double unit_egy_SNe = 1.0e51/(All.UnitEnergy_in_cgs/All.HubbleParam);
+    double unitlength_in_kpc=UNIT_LENGTH_IN_KPC * All.cf_atime;
+    double density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
+    double unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS;
     
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
     // account for energy going into CRs, so we don't 'double count' //
     double CR_energy_to_inject = 0;
-    if((local.SNe_v_ejecta > 2.0e8 / All.UnitVelocity_in_cm_per_s))
+    if((local.SNe_v_ejecta > 2000./UNIT_VEL_TO_KMS))
     {
         local.SNe_v_ejecta *= sqrt(1-All.CosmicRay_SNeFraction);
         CR_energy_to_inject = (All.CosmicRay_SNeFraction/(1.-All.CosmicRay_SNeFraction)) * 0.5 * local.Msne * local.SNe_v_ejecta * local.SNe_v_ejecta;
@@ -414,8 +414,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 
 #ifdef PM_HIRES_REGION_CLIPPING
                 dP=0; for(k=0;k<3;k++) dP+=P[j].Vel[k]*P[j].Vel[k]; dP=sqrt(dP);
-                if(dP>5.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) P[j].Mass=0;
-                if(dP>1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) for(k=0;k<3;k++) P[j].Vel[k]*=(1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s)/dP;
+                if(dP>5.e4*All.cf_atime/UNIT_VEL_TO_KMS) {P[j].Mass=0;}
+                if(dP>1.e4*All.cf_atime/UNIT_VEL_TO_KMS) {for(k=0;k<3;k++) {P[j].Vel[k]*=(1.e4*All.cf_atime/UNIT_VEL_TO_KMS)/dP;}}
 #endif
                 
             } // for(n = 0; n < numngb; n++)
@@ -465,10 +465,10 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double h2 = local.Hsml*local.Hsml;
     kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0; // define the kernel zero-point value, needed to prevent some nasty behavior when no neighbors found
     kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4); // define kernel quantities
-    double unitlength_in_kpc= UNIT_LENGTH_TO_KPC * All.cf_atime;
-    double density_to_n=All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / PROTONMASS;
-    double unit_egy_SNe = 1.0e51/(All.UnitEnergy_in_cgs/All.HubbleParam);
-    double v_ejecta_max = 5000.0 * 1.0e5/ All.UnitVelocity_in_cm_per_s; // 'speed limit' to prevent numerically problematic kicks at low resolution //
+    double unitlength_in_kpc= UNIT_LENGTH_IN_KPC * All.cf_atime;
+    double density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
+    double unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS;
+    double v_ejecta_max = 5000.0 * 1.0e5/UNIT_VEL_IN_CGS; // 'speed limit' to prevent numerically problematic kicks at low resolution //
     
     // now define quantities that will be used below //
     double psi_cool=1, psi_egycon=1, v_ejecta_eff=local.SNe_v_ejecta;
@@ -489,7 +489,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
     // account for energy going into CRs, so we don't 'double count' //
     double CR_energy_to_inject = 0;
-    if((v_ejecta_eff > 2.0e8 / All.UnitVelocity_in_cm_per_s))
+    if((v_ejecta_eff > 2000./UNIT_VEL_TO_KMS))
     {
         v_ejecta_eff *= sqrt(1-All.CosmicRay_SNeFraction);
         CR_energy_to_inject = (All.CosmicRay_SNeFraction/(1.-All.CosmicRay_SNeFraction)) * 0.5 * local.Msne * v_ejecta_eff * v_ejecta_eff;
@@ -498,7 +498,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     
     double Energy_injected_codeunits = 0.5 * local.Msne * v_ejecta_eff * v_ejecta_eff;
     double Esne51 = Energy_injected_codeunits / unit_egy_SNe;
-    double RsneKPC = 0., RsneKPC_3 = 0., m_cooling = 0., v_cooling = 2.1e7 / All.UnitVelocity_in_cm_per_s;
+    double RsneKPC = 0., RsneKPC_3 = 0., m_cooling = 0., v_cooling = 210./UNIT_VEL_TO_KMS;
     double RsneKPC_0 = (0.0284/unitlength_in_kpc);
     int feedback_type_is_SNe = 0;
     if(loop_iteration == 0) {feedback_type_is_SNe = 1;} // assume, for now, that loop 0 represents SNe, for purposes of energy-momentum switch below //
@@ -579,8 +579,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     if(z0 < 0.01) {z0 = 0.01;}
                     if(z0 < 1.) {z0_term = z0*sqrt(z0);} else {z0_term = z0;}
                     double nz_dep  = pow(n0 * z0_term , 0.14);;
-                    v_cooling = 2.10e7 * DMAX(nz_dep,0.5) / All.UnitVelocity_in_cm_per_s;
-                    m_cooling = 4.56e36 * e0 / (nz_dep*nz_dep * All.UnitMass_in_g/All.HubbleParam);
+                    v_cooling = 210. * DMAX(nz_dep,0.5) / UNIT_VEL_TO_KMS;
+                    m_cooling = 4.56e36 * e0 / (nz_dep*nz_dep * UNIT_MASS_IN_CGS);
                     RsneKPC = pow( 0.238732 * m_cooling/SphP[j].Density , 1./3. );
                 }
                 RsneKPC_3 = RsneKPC*RsneKPC*RsneKPC;
@@ -743,8 +743,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 
 #ifdef PM_HIRES_REGION_CLIPPING
                 double dP=0; for(k=0;k<3;k++) dP+=P[j].Vel[k]*P[j].Vel[k]; dP=sqrt(dP);
-                if(dP>5.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) P[j].Mass=0;
-                if(dP>1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) for(k=0;k<3;k++) P[j].Vel[k]*=(1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s)/dP;
+                if(dP>5.e4*All.cf_atime/UNIT_VEL_TO_KMS) {P[j].Mass=0;}
+                if(dP>1.e4*All.cf_atime/UNIT_VEL_TO_KMS) {for(k=0;k<3;k++) {P[j].Vel[k]*=(1.e4*All.cf_atime/UNIT_VEL_TO_KMS)/dP;}}
 #endif
 #ifdef SINGLE_STAR_FB_WINDS
                 SphP[j].wakeup = 1; NeedToWakeupParticles_local = 1;

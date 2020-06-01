@@ -855,7 +855,7 @@ int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
    * to update the temperature, and also the rates that depend on T */
   if (data->myGasVars->ThermEvolOn == 1)
     {
-      data->myGasVars->temperature = max(NV_Ith_S(y, data->network_size) / (1.5 * calculate_total_number_density(data->myGasVars->abundances, data->myGasVars->nH_tot, data->myGlobalVars) * BOLTZMANNCGS), 10.1); /* The rates are not defined below ~10 K */
+      data->myGasVars->temperature = max(NV_Ith_S(y, data->network_size) / (1.5 * calculate_total_number_density(data->myGasVars->abundances, data->myGasVars->nH_tot, data->myGlobalVars) * BOLTZMANN), 10.1); /* The rates are not defined below ~10 K */
       update_T_dependent_rates(data->myGasVars, data->myGlobalVars, data->this_all_rates);
     } 
 

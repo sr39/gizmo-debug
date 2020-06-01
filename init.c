@@ -30,7 +30,7 @@ void init(void)
     
 #ifdef MAGNETIC
     double a2_fac;
-    double gauss2gizmo = All.UnitMagneticField_in_gauss / sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam);
+    double gauss2gizmo = All.UnitMagneticField_in_gauss / UNIT_B_IN_GAUSS;
     /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here;
         [much simpler, but be sure of your conversions!] */
 #endif
@@ -333,7 +333,7 @@ void init(void)
 #if defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         if(RestartFlag == 0)
         {
-	        P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (UNIT_TIME_TO_GYR) * get_random_number(P[i].ID + 3);
+	        P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (UNIT_TIME_IN_GYR) * get_random_number(P[i].ID + 3);
         }
 #endif
         

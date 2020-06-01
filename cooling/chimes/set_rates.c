@@ -141,7 +141,7 @@ void update_rates(struct gasVariables *myGasVars, struct globalVariables *myGlob
 
   dust_G = 0.0; 
   for (l = 0; l < myGlobalVars->N_spectra; l++) 
-    dust_G += myGasVars->isotropic_photon_density[l] * LIGHTSPEED * myGasVars->dust_G_parameter[l]; 
+    dust_G += myGasVars->isotropic_photon_density[l] * C_LIGHT * myGasVars->dust_G_parameter[l]; 
 
   /* T_index for additional rates. */
   get_index_1d_mydbl(chimesRateTables.RatesTables->Temperatures, chimesRateTables.RatesTables->N_Temperatures, log10(T), &T_index, &dT);
@@ -251,7 +251,7 @@ void update_rates(struct gasVariables *myGasVars, struct globalVariables *myGlob
 			}
 		      shieldFactor = S1 + S2 + S3;
 		    }
-		  this_all_rates->BensRates[i].PhotoIon[j][0] += chimesRateTables.NonEqIon->NonEqRates[i].sigmaphot[l][j][0] * myGasVars->isotropic_photon_density[l] * LIGHTSPEED * shieldFactor;
+		  this_all_rates->BensRates[i].PhotoIon[j][0] += chimesRateTables.NonEqIon->NonEqRates[i].sigmaphot[l][j][0] * myGasVars->isotropic_photon_density[l] * C_LIGHT * shieldFactor;
 		}
 	      else
 		{
@@ -259,14 +259,14 @@ void update_rates(struct gasVariables *myGasVars, struct globalVariables *myGlob
 		   * by dust. The gamma_d values are stored
 		   * in the shieldFactor tables. */
 		  shieldFactor = exp(- pow(10.0, ((double) chimesRateTables.NonEqIon->NonEqRates[i].shieldFactor1D[l][0][j][0])) * extinction);
-		  this_all_rates->BensRates[i].PhotoIon[j][0] += chimesRateTables.NonEqIon->NonEqRates[i].sigmaphot[l][j][0] * myGasVars->isotropic_photon_density[l] * LIGHTSPEED * shieldFactor;
+		  this_all_rates->BensRates[i].PhotoIon[j][0] += chimesRateTables.NonEqIon->NonEqRates[i].sigmaphot[l][j][0] * myGasVars->isotropic_photon_density[l] * C_LIGHT * shieldFactor;
 		}
       
 	      /* Auger ionisation */
 	      if (chimesRateTables.NonEqIon->N_Auger[i] > 1)
 		{
 		  for (k = 1; k < chimesRateTables.NonEqIon->N_Auger[i]; k++)
-		    this_all_rates->BensRates[i].PhotoIon[j][k] += chimesRateTables.NonEqIon->NonEqRates[i].sigmaphot[l][j][k] * myGasVars->isotropic_photon_density[l] * LIGHTSPEED * shieldFactor;
+		    this_all_rates->BensRates[i].PhotoIon[j][k] += chimesRateTables.NonEqIon->NonEqRates[i].sigmaphot[l][j][k] * myGasVars->isotropic_photon_density[l] * C_LIGHT * shieldFactor;
 		}
 	    }
 	}

@@ -478,7 +478,7 @@ void spawn_bh_wind_feedback(void)
             int sink_eligible_to_spawn = 0; // flag to check eligibility for spawning
             if(BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*All.BAL_wind_particle_mass) {sink_eligible_to_spawn=1;} // have 'enough' mass to spawn
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
-            if((P[i].Mass <= 7.*All.MinMassForParticleMerger) || (P[i].BH_Mass*UNIT_MASS_TO_SOLAR < 0.01)) {sink_eligible_to_spawn=0;}  // spawning causes problems in these modules for low-mass sinks, so arbitrarily restrict to this, since it's roughly a criterion on the minimum particle mass. and for <0.01 Msun, in pre-collapse phase, no jets
+            if((P[i].Mass <= 7.*All.MinMassForParticleMerger) || (P[i].BH_Mass*UNIT_MASS_IN_SOLAR < 0.01)) {sink_eligible_to_spawn=0;}  // spawning causes problems in these modules for low-mass sinks, so arbitrarily restrict to this, since it's roughly a criterion on the minimum particle mass. and for <0.01 Msun, in pre-collapse phase, no jets
 #if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
             if(P[i].ProtoStellarStage==6) {sink_eligible_to_spawn=1;} // spawn the SNe ejecta no matter what the sink or 'unspawned' mass flag actually is
 #endif
@@ -851,17 +851,6 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
         force_add_star_to_tree(i0, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
-#ifdef SINGLE_STAR_FB_SPAWN_DEBUG
-            double Bmag = 0;
-#ifdef MAGNETIC
-            for(k=0;k<3;k++) {Bmag+=Get_Gas_BField(j,k)*Get_Gas_BField(j,k);}
-            Bmag = sqrt(Bmag);
-            double v_Alfven = 0.282 * Bmag*All.UnitMagneticField_in_gauss / sqrt(P[i].DensAroundStar*All.UnitMass_in_g*pow(All.UnitLength_in_cm,-3.0)) / All.UnitVelocity_in_cm_per_s; //Alfvén velocity vA=B/sqrt(rho mu0)
-#else
-            double v_Alfven = 0;
-#endif
-            printf("Spawned new particle at time %g from BH %llu. Part-ID=%llu Pos %g %g %g hsml %g csnd %g mass %g Vel %g %g %g MaxSignalVel %g v_magnitude %g R_star_solar %g Sink mass %g Sink BH_mass %g Sink ProtoStellarStage %d DensAroundStar %g Bmag %g v_Alfven %g BH_SurroundingGasVel %g\n", All.Time, (MyIDType) P[i].ID, (MyIDType) P[j].ID, P[j].Pos[0], P[j].Pos[1], P[j].Pos[2], PPP[j].Hsml, convert_internalenergy_soundspeed2(j, SphP[j].InternalEnergy), P[j].Mass,P[j].Vel[0], P[j].Vel[1], P[j].Vel[2], SphP[j].MaxSignalVel,v_magnitude,P[i].ProtoStellarRadius_inSolar, P[i].Mass, P[i].BH_Mass, P[i].ProtoStellarStage, P[i].DensAroundStar, Bmag, v_Alfven, P[i].BH_SurroundingGasVel);
-#endif
     }    
     if(BPP(i).unspawned_wind_mass < 0) {BPP(i).unspawned_wind_mass=0;}
     return n_particles_split;
