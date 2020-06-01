@@ -844,7 +844,7 @@ void init_clouds(void)
       if(ThisTask == 0)
 	{
       printf("\n Springel-Hernquist EOS model: A0= %g  \n", A0);
-	  printf(" ..computed: PhysDensThresh= %g  (int units)         %g cm^-3\n", All.PhysDensThresh, All.PhysDensThresh * UNIT_DENSITY_TO_NH);
+	  printf(" ..computed: PhysDensThresh= %g  (int units)         %g cm^-3\n", All.PhysDensThresh, All.PhysDensThresh * UNIT_DENSITY_IN_NHCGS);
 	  printf(" ..expected fraction of cold gas at threshold = %g\n", x);
 	  printf(" ..tcool=%g dens=%g egyhot=%g\n", tcool, dens, egyhot);
 	}

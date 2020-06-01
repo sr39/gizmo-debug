@@ -53,7 +53,7 @@ void radiation_pressure_winds_consolidated(void)
 #endif
                 rho=P[i].DensAroundStar; h=P[i].Hsml;
                 v = sqrt( All.G * (P[i].Mass + NORM_COEFF*rho*h*h*h) / (h*All.cf_atime) ); if(vq<v) v=vq;
-                vq = 1.82 * (65.748/UNIT_VEL_IN_KMS) * pow(1.+rho*All.cf_a3inv*UNIT_DENSITY_TO_NH,-0.25);
+                vq = 1.82 * (65.748/UNIT_VEL_IN_KMS) * pow(1.+rho*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS,-0.25);
                 /* this corresponds to =G M_star/R_e for a 10^6 Msun cluster, scaling upwards from there; note that All.WindEnergyFraction will boost appropriately; should be at least sqrt(2), if want full velocities; in fact for Hernquist profile, the mass-weighted V_esc=1.82 times this */
                 if(vq<v) {v=vq;}
                 if(v<=v_wind_threshold) v=v_wind_threshold;
