@@ -165,7 +165,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     struct OUTPUT_STRUCT_NAME out;
     memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME));
     
-    v_ejecta_max = 5000.0 / UNIT_VEL_TO_KMS;
+    v_ejecta_max = 5000.0 / UNIT_VEL_IN_KMS;
     // 'speed limit' to prevent numerically problematic kicks at low resolution //
     kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0;
     
@@ -188,7 +188,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
     // account for energy going into CRs, so we don't 'double count' //
     double CR_energy_to_inject = 0;
-    if((local.SNe_v_ejecta > 2000./UNIT_VEL_TO_KMS))
+    if((local.SNe_v_ejecta > 2000./UNIT_VEL_IN_KMS))
     {
         local.SNe_v_ejecta *= sqrt(1-All.CosmicRay_SNeFraction);
         CR_energy_to_inject = (All.CosmicRay_SNeFraction/(1.-All.CosmicRay_SNeFraction)) * 0.5 * local.Msne * local.SNe_v_ejecta * local.SNe_v_ejecta;
@@ -414,8 +414,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 
 #ifdef PM_HIRES_REGION_CLIPPING
                 dP=0; for(k=0;k<3;k++) dP+=P[j].Vel[k]*P[j].Vel[k]; dP=sqrt(dP);
-                if(dP>5.e4*All.cf_atime/UNIT_VEL_TO_KMS) {P[j].Mass=0;}
-                if(dP>1.e4*All.cf_atime/UNIT_VEL_TO_KMS) {for(k=0;k<3;k++) {P[j].Vel[k]*=(1.e4*All.cf_atime/UNIT_VEL_TO_KMS)/dP;}}
+                if(dP>5.e4*All.cf_atime/UNIT_VEL_IN_KMS) {P[j].Mass=0;}
+                if(dP>1.e4*All.cf_atime/UNIT_VEL_IN_KMS) {for(k=0;k<3;k++) {P[j].Vel[k]*=(1.e4*All.cf_atime/UNIT_VEL_IN_KMS)/dP;}}
 #endif
                 
             } // for(n = 0; n < numngb; n++)
@@ -489,7 +489,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
     // account for energy going into CRs, so we don't 'double count' //
     double CR_energy_to_inject = 0;
-    if((v_ejecta_eff > 2000./UNIT_VEL_TO_KMS))
+    if((v_ejecta_eff > 2000./UNIT_VEL_IN_KMS))
     {
         v_ejecta_eff *= sqrt(1-All.CosmicRay_SNeFraction);
         CR_energy_to_inject = (All.CosmicRay_SNeFraction/(1.-All.CosmicRay_SNeFraction)) * 0.5 * local.Msne * v_ejecta_eff * v_ejecta_eff;
@@ -498,7 +498,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     
     double Energy_injected_codeunits = 0.5 * local.Msne * v_ejecta_eff * v_ejecta_eff;
     double Esne51 = Energy_injected_codeunits / unit_egy_SNe;
-    double RsneKPC = 0., RsneKPC_3 = 0., m_cooling = 0., v_cooling = 210./UNIT_VEL_TO_KMS;
+    double RsneKPC = 0., RsneKPC_3 = 0., m_cooling = 0., v_cooling = 210./UNIT_VEL_IN_KMS;
     double RsneKPC_0 = (0.0284/unitlength_in_kpc);
     int feedback_type_is_SNe = 0;
     if(loop_iteration == 0) {feedback_type_is_SNe = 1;} // assume, for now, that loop 0 represents SNe, for purposes of energy-momentum switch below //
@@ -579,7 +579,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     if(z0 < 0.01) {z0 = 0.01;}
                     if(z0 < 1.) {z0_term = z0*sqrt(z0);} else {z0_term = z0;}
                     double nz_dep  = pow(n0 * z0_term , 0.14);;
-                    v_cooling = 210. * DMAX(nz_dep,0.5) / UNIT_VEL_TO_KMS;
+                    v_cooling = 210. * DMAX(nz_dep,0.5) / UNIT_VEL_IN_KMS;
                     m_cooling = 4.56e36 * e0 / (nz_dep*nz_dep * UNIT_MASS_IN_CGS);
                     RsneKPC = pow( 0.238732 * m_cooling/SphP[j].Density , 1./3. );
                 }
@@ -743,8 +743,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 
 #ifdef PM_HIRES_REGION_CLIPPING
                 double dP=0; for(k=0;k<3;k++) dP+=P[j].Vel[k]*P[j].Vel[k]; dP=sqrt(dP);
-                if(dP>5.e4*All.cf_atime/UNIT_VEL_TO_KMS) {P[j].Mass=0;}
-                if(dP>1.e4*All.cf_atime/UNIT_VEL_TO_KMS) {for(k=0;k<3;k++) {P[j].Vel[k]*=(1.e4*All.cf_atime/UNIT_VEL_TO_KMS)/dP;}}
+                if(dP>5.e4*All.cf_atime/UNIT_VEL_IN_KMS) {P[j].Mass=0;}
+                if(dP>1.e4*All.cf_atime/UNIT_VEL_IN_KMS) {for(k=0;k<3;k++) {P[j].Vel[k]*=(1.e4*All.cf_atime/UNIT_VEL_IN_KMS)/dP;}}
 #endif
 #ifdef SINGLE_STAR_FB_WINDS
                 SphP[j].wakeup = 1; NeedToWakeupParticles_local = 1;

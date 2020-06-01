@@ -84,7 +84,7 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
 #if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_SEED_GROWTH_TESTS)
     cs_to_add_km_s = 0.0;
 #endif
-    cs_to_add_km_s /= UNIT_VEL_TO_KMS;
+    cs_to_add_km_s /= UNIT_VEL_IN_KMS;
     double m_eff = mass+P[j].Mass;
     if(P[j].Type==0)
     {
@@ -383,7 +383,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #ifdef SINGLE_STAR_SINK_DYNAMICS
         double reff = All.SofteningTable[5], Gm_i = 1./(All.G*P[n].Mass);
 #if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
-        double cs_min = 0.2 / UNIT_VEL_TO_KMS;
+        double cs_min = 0.2 / UNIT_VEL_IN_KMS;
         reff = All.G*2.*All.MinMassForParticleMerger/(cs_min*cs_min), Gm_i = 1./(All.G*2.*All.MinMassForParticleMerger); // effectively setting the value to the freefall time the particle has when it forms, for both 'size' of disk and 'effective mass' (for dynamical time below)
 #endif
         t_acc_disk = sqrt(reff*reff*reff * Gm_i); // dynamical time at radius "reff", essentially fastest-possible accretion time
@@ -665,7 +665,7 @@ void blackhole_final_operations(void)
                     dr_min=sqrt(dr_min)*All.cf_atime; // offset to be covered
                     // in general don't let the shift be more than 0.5 of the distance in a single timestep, but let it move at reasonable ~few km/s speeds minimum, and cap at the free-fall velocity //
                     double dv_shift = sqrt(DMAX(-2.*BPP(n).BH_MinPot/All.cf_atime , 0)); // free-fall velocity, in [physical] code units, capped zero
-                    dv_shift = DMAX(DMIN(dv_shift, dr_min/dt), 10./UNIT_VEL_TO_KMS); // set minimum at ~10 km/s, max at speed which 'jumps' full distance
+                    dv_shift = DMAX(DMIN(dv_shift, dr_min/dt), 10./UNIT_VEL_IN_KMS); // set minimum at ~10 km/s, max at speed which 'jumps' full distance
                     fac_bh_shift = dv_shift * dt / dr_min; // dimensionless shift factor
                     if(fac_bh_shift > 1.e-4) {fac_bh_shift = 1.-exp(-fac_bh_shift);} // make sure we can't overshoot by using this smooth interpolation function
                 }

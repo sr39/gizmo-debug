@@ -1051,8 +1051,8 @@ void density(void)
                 if(P[i].Type == 0) if ((SphP[i].Density <= 0) || (PPP[i].NumNgb <= 0)) P[i].Mass = 0;
                 if ((PPP[i].Hsml <= 0) || (PPP[i].Hsml >= PM_HIRES_REGION_CLIPPING)) P[i].Mass = 0;
                 double vmag=0; for(k=0;k<3;k++) vmag+=P[i].Vel[k]*P[i].Vel[k]; vmag = sqrt(vmag);
-                if(vmag>5.e4*All.cf_atime/UNIT_VEL_TO_KMS) {P[i].Mass=0;}
-                if(vmag>1.e4*All.cf_atime/UNIT_VEL_TO_KMS) {for(k=0;k<3;k++) {P[i].Vel[k]*=(1.e4*All.cf_atime/UNIT_VEL_TO_KMS)/vmag;}}
+                if(vmag>5.e4*All.cf_atime/UNIT_VEL_IN_KMS) {P[i].Mass=0;}
+                if(vmag>1.e4*All.cf_atime/UNIT_VEL_IN_KMS) {for(k=0;k<3;k++) {P[i].Vel[k]*=(1.e4*All.cf_atime/UNIT_VEL_IN_KMS)/vmag;}}
 #ifdef BLACK_HOLES
             }
 #endif // BLACK_HOLES

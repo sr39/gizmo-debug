@@ -47,13 +47,13 @@ void radiation_pressure_winds_consolidated(void)
                 rmax0 = 1.0 / unitlength_in_kpc; if(RtauMax < rmax0) RtauMax = rmax0;
 #ifndef GALSF_FB_FIRE_RT_CONTINUOUSRP
                 /* if kicks are stochastic, we don't want to waste time doing a neighbor search every timestep; it can be much faster to pre-estimate the kick probabilities */
-                double v_wind_threshold = 15. / UNIT_VEL_TO_KMS;
+                double v_wind_threshold = 15. / UNIT_VEL_IN_KMS;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                v_wind_threshold = 0.2 / UNIT_VEL_TO_KMS;
+                v_wind_threshold = 0.2 / UNIT_VEL_IN_KMS;
 #endif
                 rho=P[i].DensAroundStar; h=P[i].Hsml;
                 v = sqrt( All.G * (P[i].Mass + NORM_COEFF*rho*h*h*h) / (h*All.cf_atime) ); if(vq<v) v=vq;
-                vq = 1.82 * (65.748/UNIT_VEL_TO_KMS) * pow(1.+rho*All.cf_a3inv*UNIT_DENSITY_TO_NH,-0.25);
+                vq = 1.82 * (65.748/UNIT_VEL_IN_KMS) * pow(1.+rho*All.cf_a3inv*UNIT_DENSITY_TO_NH,-0.25);
                 /* this corresponds to =G M_star/R_e for a 10^6 Msun cluster, scaling upwards from there; note that All.WindEnergyFraction will boost appropriately; should be at least sqrt(2), if want full velocities; in fact for Hernquist profile, the mass-weighted V_esc=1.82 times this */
                 if(vq<v) {v=vq;}
                 if(v<=v_wind_threshold) v=v_wind_threshold;
@@ -142,7 +142,7 @@ void radiation_pressure_winds_consolidated(void)
                                 if(p_random < prob)
 #endif
                                 { /* open subloop with wind kick */
-                                    if(v>5000./UNIT_VEL_TO_KMS) {v=5000./UNIT_VEL_TO_KMS;} /* limiter */
+                                    if(v>5000./UNIT_VEL_IN_KMS) {v=5000./UNIT_VEL_IN_KMS;} /* limiter */
                                     /* collect numbers to output */
                                     total_n_wind += 1.0; total_mom_wind += P[j].Mass*v; avg_v_kick += v; momwt_avg_v_kick += P[j].Mass*v * sigma_eff_0 * P[j].Mass/(h_eff_j*h_eff_j) * (0.01 + P[j].Metallicity[0]/All.SolarAbundances[0]); 
                                     
