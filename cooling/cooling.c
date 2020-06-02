@@ -968,13 +968,14 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
         
 #ifdef COOL_LOW_TEMPERATURES
-        if((logT <= 6.1) && (logT > Tmin+0.5*deltaT))
+        if((logT <= 5.3) && (logT > Tmin+0.5*deltaT))
         {
             /* approx to cooling function for solar metallicity and nH=1 cm^(-3) -- want to do something
              much better, definitely, but for now use this just to get some idea of system with cooling to very low-temp */
             LambdaMol = 2.8958629e-26/(pow(T/125.21547,-4.9201887)+pow(T/1349.8649,-1.7287826)+pow(T/6450.0636,-0.30749082));
             LambdaMol *= (1-shieldfac) / (1. + nHcgs/700.); // above the critical density, cooling rate suppressed by ~1/n; use critical density of CO[J(1-0)] as a proxy for this
-            double Z_sol = 1; /* if don't have actual metallicities, we'll assume solar */
+            double Z_sol=1, truncation_factor=1; /* if don't have actual metallicities, we'll assume solar */
+            if(logT>4.5) {double dx=(logT-4.5)/0.20; truncation_factor *= exp(-DMIN(dx*dx,40.));} /* continuous cutoff here just to avoid introducing artificial features in temperature-density */
 #ifdef COOL_METAL_LINES_BY_SPECIES
             Z_sol = Z[0] / All.SolarAbundances[0]; /* use actual metallicity for this */
 #endif
@@ -993,7 +994,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             double nH_over_ncrit = Lambda_H2_thin / Lambda_H2_thick , Lambda_HD = f_HD * Lambda_HD_thin / (1. + (f_HD/f_molec)*nH_over_ncrit), Lambda_H2 = f_molec * Lambda_H2_thin / (1. + nH_over_ncrit); // correct cooling rates for densities above critical
             LambdaMol = f_not_strongly_ionized * Lambda_Metals + Lambda_H2 + Lambda_HD; // combine to get total cooling rate: scale to estimate of neutral fraction [use min[nH0,1-shieldfac] b/c this should be more sensitive to radiation, so if shieldfac is high, this will be low, even if nH0 big]
 #endif
-            if(logT>4.5) {double dx=(logT-4.5)/0.3; LambdaMol *= exp(-DMIN(dx*dx,40.));} /* continuous cutoff here just to avoid introducing artificial features in temperature-density */
+            LambdaMol *= truncation_factor;
             Lambda += LambdaMol;
 
             /* now add the dust cooling/heating terms */
@@ -1001,7 +1002,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #ifdef RT_INFRARED
             if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, rho, &nH0, &n_elec, target);} // call our specialized subroutine, because radiation and gas energy fields are co-evolving and tightly-coupled here //
 #endif
-            if(T>3.e5) {double dx=(T-3.e5)/5.e5; LambdaDust *= exp(-DMIN(dx*dx,40.));} /* needs to truncate at high temperatures b/c of dust destruction */
+            if(T>3.e5) {double dx=(T-3.e5)/2.e5; LambdaDust *= exp(-DMIN(dx*dx,40.));} /* needs to truncate at high temperatures b/c of dust destruction */
+            LambdaDust *= truncation_factor;
             if(LambdaDust<0) {Lambda -= LambdaDust;} /* add the -positive- Lambda-dust associated with cooling */
         }
 #endif
