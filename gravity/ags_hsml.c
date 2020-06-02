@@ -614,7 +614,7 @@ int ags_density_isactive(int i)
 double ags_return_maxsoft(int i)
 {
     double maxsoft = All.MaxHsml; // user-specified maximum: nothing is allowed to exceed this
-#ifdef PMGRID /* Maximum allowed gravitational softening when using the TreePM method. The quantity is given in units of the scale used for the force split (ASMTH) */
+#ifdef PMGRID /* Maximum allowed gravitational softening when using the TreePM method. The quantity is given in units of the scale used for the force split (PM_ASMTH) */
     maxsoft = DMIN(maxsoft, 1e3 * 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell, times a 'safety factor' which can be pretty big */
 #endif
 #if (ADAPTIVE_GRAVSOFT_FORALL & 32) && defined(BLACK_HOLES) && !defined(SINGLE_STAR_SINK_DYNAMICS)

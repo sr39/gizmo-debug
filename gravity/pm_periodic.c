@@ -113,8 +113,8 @@ void pm_init_periodic(void)
   double bytes_tot = 0;
   size_t bytes;
 
-  All.Asmth[0] = ASMTH * All.BoxSize / PMGRID; /* note that these routines REQUIRE a uniform (BOX_LONG_X=BOX_LONG_Y=BOX_LONG_Z=1) box, so we can just use 'BoxSize' */
-  All.Rcut[0] = RCUT * All.Asmth[0];
+  All.Asmth[0] = PM_ASMTH * All.BoxSize / PMGRID; /* note that these routines REQUIRE a uniform (BOX_LONG_X=BOX_LONG_Y=BOX_LONG_Z=1) box, so we can just use 'BoxSize' */
+  All.Rcut[0] = PM_RCUT * All.Asmth[0];
 
 #ifndef USE_FFTW3
   /* Set up the FFTW plan files. */

@@ -38,6 +38,7 @@
 
 #include "GIZMO_config.h"
 /*------- Things that are always recommended (this must follow loading GIZMO_config.h!) -------*/
+#define GIZMO_VERSION   "2020"  /*!< code version string */
 #define DOUBLEPRECISION         /* using double (not floating-point) precision */
 #define PEANOHILBERT            /* sort particles on a Peano-Hilbert curve (huge optimization) */
 #define WALLCLOCK               /* track timing of different routines */
@@ -57,6 +58,7 @@
 #if !defined(LONG_INTEGER_TIME)
 #define LONG_INTEGER_TIME   /* always recommended: on modern machines the memory overhead cost of this is negligible */
 #endif
+#define RANDOMIZE_GRAVTREE /* move the top tree node around randomly so that treeforce errors are not correlated between one treebuild and another */
 
 
 #define DO_PREPROCESSOR_EXPAND_(VAL)  VAL ## 1
@@ -590,11 +592,13 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 
 #ifdef GRAVITY_ACCURATE_FEWBODY_INTEGRATION /* utility flag to enable a few different extra-conservative time-integration flags for gravity */
+#if !defined(GRAVITY_HYBRID_OPENING_CRIT)
 #define GRAVITY_HYBRID_OPENING_CRIT // use both Barnes-Hut + relative tree opening criterion
+#endif
+#if !defined(STOP_WHEN_BELOW_MINTIMESTEP)
 #define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
+#endif
 #define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
-#define LONG_INTEGER_TIME // timestep hierarchy can be very deep in these problems; want to be able to follow brief close encounters
-#define RANDOMIZE_GRAVTREE // move the top tree node around randomly so that treeforce errors are not correlated between one treebuild and another
 #endif
 #ifdef HERMITE_INTEGRATION
 #define COMPUTE_JERK_IN_GRAVTREE /* needs to be computed in order to do the Hermite integration */
@@ -945,9 +949,6 @@ int network_integrate( double temp, double rho, const double *x, double *dx, dou
 #define ASSIGN_ADD(x,y,mode) (mode == 0 ? (x=y) : (x+=y))
 
 
-
-#define  GIZMO_VERSION   "2019"	/*!< code version string */
-
 #ifndef  GALSF_GENERATIONS
 #define  GALSF_GENERATIONS     1	/*!< Number of star particles that may be created per gas particle */
 #endif
@@ -1250,32 +1251,19 @@ typedef unsigned long long peanokey;
 #define FLAG_EVOLVED_2LPT      4
 #define FLAG_NORMALICS_2LPT    5
 
-
-#ifndef ASMTH
-/*! ASMTH gives the scale of the short-range/long-range force split in units of FFT-mesh cells */
-#define ASMTH 1.25
+#ifndef PM_ASMTH
+#define PM_ASMTH (1.25) /*! PM_ASMTH gives the scale of the short-range/long-range force split in units of FFT-mesh cells */
 #endif
-#ifndef RCUT
-/*! RCUT gives the maximum distance (in units of the scale used for the force split) out to which short-range
- * forces are evaluated in the short-range tree walk.
- */
-#define RCUT  4.5
+#ifndef PM_RCUT
+#define PM_RCUT (4.5) /*! PM_RCUT gives the maximum distance (in units of the scale used for the force split) out to which short-range forces are evaluated in the short-range tree walk. */
 #endif
-
-#define COND_TIMESTEP_PARAMETER 0.25
-#define VISC_TIMESTEP_PARAMETER 0.25
-
-#define MAXLEN_OUTPUTLIST 1200	/*!< maxmimum number of entries in output list */
-
-#define DRIFT_TABLE_LENGTH  1000	/*!< length of the lookup table used to hold the drift and kick factors */
-
-
+#define MAXLEN_OUTPUTLIST 1201	/*!< maxmimum number of entries in output list */
+#define DRIFT_TABLE_LENGTH 1000	/*!< length of the lookup table used to hold the drift and kick factors */
 #define MAXITER 150
 
 #ifndef LINKLENGTH
-#define LINKLENGTH 0.2
+#define LINKLENGTH (0.2)
 #endif
-
 #ifndef FOF_GROUP_MIN_SIZE
 #ifdef FOF_GROUP_MIN_LEN
 #define FOF_GROUP_MIN_SIZE FOF_GROUP_MIN_LEN
@@ -1287,11 +1275,7 @@ typedef unsigned long long peanokey;
 #define SUBFIND_ADDIO_NUMOVERDEN 1
 #endif
 
-
-#define MINRESTFAC 0.05
-
-
-#ifndef GDE_TYPES 
+#ifndef GDE_TYPES
 #define GDE_TYPES 2
 #endif
 

@@ -1648,7 +1648,7 @@ void force_add_star_to_tree(int igas, int istar)
  */
 /*! In the TreePM algorithm, the tree is walked only locally around the
  *  target coordinate.  Tree nodes that fall outside a box of half
- *  side-length Rcut= RCUT*ASMTH*MeshSize can be discarded. The short-range
+ *  side-length Rcut= PM_RCUT*PM_ASMTH*MeshSize can be discarded. The short-range
  *  potential is modified by a complementary error function, multiplied
  *  with the Newtonian form. The resulting short-range suppression compared
  *  to the Newtonian force is tabulated, because looking up from this table
