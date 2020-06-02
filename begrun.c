@@ -475,19 +475,13 @@ void begrun(void)
  */
 void set_units(void)
 {
-  double meanweight;
-
-  if(All.G <= 0) {All.G = GRAVITY_G * All.UnitMass_in_g / (All.UnitLength_in_cm * All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s);}
-    
+  /* convert some physical input parameters to internal units */
+  if(All.G <= 0) {All.G = GRAVITY_G * UNIT_MASS_IN_CGS / (UNIT_LENGTH_IN_CGS * UNIT_VEL_IN_CGS*UNIT_VEL_IN_CGS);}
 #ifdef GR_TABULATED_COSMOLOGY_G
   All.Gini = All.G;
   All.G = All.Gini * dGfak(All.TimeBegin);
 #endif
-        
-  /* convert some physical input parameters to internal units */
-
-  All.Hubble_H0_CodeUnits = HUBBLE_CGS * All.UnitLength_in_cm / All.UnitVelocity_in_cm_per_s;
-
+  All.Hubble_H0_CodeUnits = H0_CGS * UNIT_TIME_IN_CGS;
   if(ThisTask == 0)
     {
       printf("\nCode units to be used: make sure you check these are correct! \n");
@@ -506,10 +500,9 @@ void set_units(void)
       printf("\n");
     }
     
+    double meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC); /* assumes fully-atomic otherwise */
 #ifdef COOL_LOW_TEMPERATURES
     meanweight = 1. / ( HYDROGEN_MASSFRAC*0.5 + (1-HYDROGEN_MASSFRAC)/4. + 1./(16.+12.)); /* assumes fully-molecular if low-temp cooling enabled */
-#else
-    meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC); /* assumes fully-atomic otherwise */
 #endif
     All.MinEgySpec = All.MinGasTemp / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
 

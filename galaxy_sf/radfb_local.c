@@ -377,9 +377,12 @@ int do_the_local_ionization(int target, double dt, int source)
 #if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
     SphP[target].InternalEnergy = DMAX(SphP[target].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
     SphP[target].InternalEnergyPred = SphP[target].InternalEnergy; /* full reset of the internal energy */
+#else
+    double delta_U_of_ionization = (18.-13.6) * ELECTRONVOLT_IN_ERGS / PROTONMASS / UNIT_SPECEGY_IN_CGS * (1.-DMAX(0.,DMIN(1.,SphP[target].Ne/1.5))); /* energy injected per unit mass, in code units, by ionization, assuming each atom absorbs, and mean energy of absorbed photons is given by x=18 eV here (-13.6 for energy of ionization) */
+    SphP[target].InternalEnergy += delta_U_of_ionization; SphP[target].InternalEnergyPred += delta_U_of_ionization; /* add it */
 #endif
     SphP[target].DelayTimeHII = DMIN(dt, 10./UNIT_TIME_IN_MYR); /* tell the code to flag this in the cooling subroutine */
-    SphP[target].Ne = 1.0 + 2.0*yhelium(target); /* fully ionized */
+    SphP[target].Ne = 1.0 + 2.0*yhelium(target); /* set the cell to fully ionized */
     return 1;
 }
 

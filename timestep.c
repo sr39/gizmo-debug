@@ -301,9 +301,6 @@ integertime get_timestep(int p,		/*!< particle index */
 {
     double ax, ay, az, ac, csnd = 0, dt = All.MaxSizeTimestep, dt_courant = 0, dt_divv = 0;
     integertime ti_step; int k; k=0;
-#ifdef CHEMCOOL
-    double hubble_param; if(All.ComovingIntegrationOn) {hubble_param=All.HubbleParam;} else {hubble_param=1;}
-#endif
 #ifdef NUCLEAR_NETWORK
     double dt_network, dt_species;
 #endif

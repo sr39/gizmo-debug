@@ -1168,7 +1168,7 @@ typedef unsigned long long peanokey;
 #define  THOMPSON       (6.65245e-25)
 #define  ELECTRONCHARGE (4.8032e-10)
 #define  SEC_PER_YEAR   (3.155e7)
-#define  HUBBLE_CGS     (3.2407789e-18)	/* in h/sec */
+#define  HUBBLE_H100_CGS (3.2407789e-18)	/* in h/sec */
 #define  ELECTRONVOLT_IN_ERGS (1.60217733e-12)
 
 /* and a bunch of useful unit-conversion macros pre-bundled here, to help keep the 'h' terms and other correct */
@@ -1199,8 +1199,11 @@ typedef unsigned long long peanokey;
 #define UNIT_FLUX_IN_HABING     (((UNIT_FLUX_IN_CGS)/1.6e-3))
 
 #define U_TO_TEMP_UNITS         ((PROTONMASS/BOLTZMANN)*((UNIT_ENERGY_IN_CGS)/(UNIT_MASS_IN_CGS))) /* units to convert specific internal energy to temperature. needs to be multiplied by dimensionless factor=mean_molec_weight_in_amu*(gamma_eos-1) */
-#define C_LIGHT_CODE ((C_LIGHT/UNIT_VEL_IN_CGS)) /* pure convenience function, speed-of-light in code units */
-#define C_LIGHT_CODE_REDUCED ((RT_SPEEDOFLIGHT_REDUCTION*(C_LIGHT/UNIT_VEL_IN_CGS))) /* reduced speed-of-light in code units, again here as a convenience function */
+#define C_LIGHT_CODE            ((C_LIGHT/UNIT_VEL_IN_CGS)) /* pure convenience function, speed-of-light in code units */
+#define C_LIGHT_CODE_REDUCED    ((RT_SPEEDOFLIGHT_REDUCTION*((C_LIGHT)/(UNIT_VEL_IN_CGS)))) /* reduced speed-of-light in code units, again here as a convenience function */
+#define H0_CGS                  ((All.HubbleParam*HUBBLE_H100_CGS)) /* actual value of H0 in cgs */
+#define COSMIC_BARYON_DENSITY_CGS ((All.OmegaBaryon*(H0_CGS)*(All.H0_CGS)*(3./(8.*M_PI*GRAVITY_G))*All.cf_a3inv)) /* cosmic mean baryon density [scale-factor-dependent] in cgs units */
+
 
 
 
