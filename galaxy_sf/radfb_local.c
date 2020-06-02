@@ -58,7 +58,7 @@ void radiation_pressure_winds_consolidated(void)
                 if(vq<v) {v=vq;}
                 if(v<=v_wind_threshold) v=v_wind_threshold;
                 lm_ssp = evaluate_light_to_mass_ratio(star_age, i);
-                dE_over_c = lm_ssp * (4.0/2.0) * (P[i].Mass*UNIT_MASS_IN_CGS); // L in CGS
+                dE_over_c = lm_ssp * SOLAR_LUM * (P[i].Mass*UNIT_MASS_IN_SOLAR); // L in CGS
                 dE_over_c *= (dt*UNIT_TIME_IN_CGS) / C_LIGHT; // dE/c in CGS
                 dv_units = KAPPA_IR * dE_over_c / (4*M_PI * UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS*All.cf_atime*All.cf_atime);
                 dv_units /= UNIT_VEL_IN_CGS; // dv in code units per unit distance
@@ -115,7 +115,7 @@ void radiation_pressure_winds_consolidated(void)
                         if(v<=v_wind_threshold) v=v_wind_threshold;
 #else
                         lm_ssp = evaluate_light_to_mass_ratio(star_age, i);
-                        dE_over_c = lm_ssp * (SOLAR_LUM/SOLAR_MASS) * (P[i].Mass*UNIT_MASS_IN_CGS); // L in CGS
+                        dE_over_c = lm_ssp * SOLAR_LUM * (P[i].Mass*UNIT_MASS_IN_SOLAR); // L in CGS
                         dE_over_c *= (dt*UNIT_TIME_IN_CGS) / C_LIGHT; // dE/c in CGS
                         dv_units = KAPPA_IR * dE_over_c / (4*M_PI * UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS*All.cf_atime*All.cf_atime);
                         dv_units /= UNIT_VEL_IN_CGS; // dv in code units per unit distance

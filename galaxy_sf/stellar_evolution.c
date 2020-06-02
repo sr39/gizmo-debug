@@ -500,7 +500,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
     double mass_D = BPP(n).Mass_D; //amount of D in the protostar
     double mdot = BPP(n).BH_Mdot; //accretion rate, shorter to write it this way
     double mdot_m_solar_per_year = mdot * UNIT_MASS_IN_SOLAR / UNIT_TIME_IN_YR; // accretion rate in msolar/yr
-    double m_solar = mass * UNIT_MASS_IN_SOLAR); // mass in units of Msun
+    double m_solar = mass * UNIT_MASS_IN_SOLAR; // mass in units of Msun
     double m_initial = DMAX(1.e-37 , (mass - dm)); // mass before accretion
     int stage = BPP(n).ProtoStellarStage; /*what stage of stellar evolution the particle is in 0: pre collapse, 1: no burning, 2: fixed Tc burnig, 3: variable Tc burning, 4: shell burning, 5: main sequence, see Offner 2009 Appendix B*/
     if (stage == 0) {//set the radius for the pre-collapse phase according to Eq B1 in Offner 2009, this overwrites the original prescription from sfr_eff.c

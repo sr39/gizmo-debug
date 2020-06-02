@@ -14,7 +14,7 @@
 /* return photon number density in physical code units */
 double rt_return_photon_number_density(int i, int k)
 {
-    return SphP[i].Rad_E_gamma[k] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (rt_nu_eff_eV[k]*ELECTRONVOLT_IN_ERGS/UNIT_ENERGY_IN_CGS;
+    return SphP[i].Rad_E_gamma[k] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (rt_nu_eff_eV[k]*ELECTRONVOLT_IN_ERGS/UNIT_ENERGY_IN_CGS);
 }
 
 double rt_photoion_chem_return_temperature(int i, double internal_energy)

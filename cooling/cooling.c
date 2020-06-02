@@ -370,7 +370,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     while(((fabs(du/u) > 3.0e-2)||((fabs(du/u) > 3.0e-4)&&(iter < 10))) && (iter < MAXITER)); /* iteration condition */
     /* crash condition */
     if(iter >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g target=%d \n",u_old,rho,dt,ne_guess,target); endrun(10);}
-    double specific_energy_codeunits_toreturn = u / UNIT_PRESSURE_IN_CGS;    /* in internal units */
+    double specific_energy_codeunits_toreturn = u / UNIT_SPECEGY_IN_CGS;    /* in internal units */
 
 #ifdef RT_CHEM_PHOTOION
     /* set variables used by RT routines; this must be set only -outside- of iteration, since this is the key chemistry update */
@@ -401,7 +401,7 @@ double GetCoolingTime(double u_old, double rho, double ne_guess, int target)
     return LambdaNet / UNIT_TIME_IN_CGS;
 #else
     rho *= UNIT_DENSITY_IN_CGS;	/* convert to physical cgs units */
-    u_old *= UNIT_PRESSURE_IN_CGS;
+    u_old *= UNIT_SPECEGY_IN_CGS;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
     double LambdaNet = CoolingRateFromU(u_old, rho, ne_guess, target);
     if(LambdaNet >= 0) {return 0;} /* net heating due to UV background */
@@ -1734,7 +1734,7 @@ double GetLambdaSpecies(long k_index, long index_x0y0, long index_x0y1, long ind
 void selfshield_local_incident_uv_flux(void)
 {
     /* include local self-shielding with the following */
-    int i; double surfdensity = 0, code_surfacedensity_to_cgs = UNIT_DENSITY_IN_CGS*UNIT_LENGTH_IN_CGS;    
+    int i; double surfdensity = 0, code_surfacedensity_to_cgs = UNIT_SURFDEN_IN_CGS;    
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if(P[i].Type==0)
