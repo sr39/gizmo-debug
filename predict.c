@@ -486,8 +486,7 @@ double Get_DtB_FaceArea_Limiter(int i)
         double area_norm_min_threshold = 0.001;
         double area_norm_weight = 200.0;
 #ifdef PM_HIRES_REGION_CLIPPING
-        area_norm_min_threshold *= 0.01;
-        area_norm_weight *= 2.5; // can be as low as 1.0 (PFH) //
+        area_norm_min_threshold *= 0.01; area_norm_weight *= 2.5; // can be as low as 1.0 (PFH) //
 #endif
         if(area_sum/area_norm > area_norm_min_threshold)
         {

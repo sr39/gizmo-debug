@@ -553,13 +553,7 @@ void ags_density(void)
             } else {
                 PPPZ[i].AGS_zeta = 0; PPP[i].NumNgb = 0; PPP[i].AGS_Hsml = All.ForceSoftening[P[i].Type];
             }
-#ifdef PM_HIRES_REGION_CLIPPING
-            if(PPP[i].NumNgb <= 0) {P[i].Mass = 0;}
-            if((PPP[i].AGS_Hsml <= 0) || (PPP[i].AGS_Hsml >= PM_HIRES_REGION_CLIPPING)) {P[i].Mass = 0;}
-            double vmag=0; for(k=0;k<3;k++) {vmag+=P[i].Vel[k]*P[i].Vel[k];} vmag = sqrt(vmag);
-            if(vmag>5.e4*All.cf_atime/UNIT_VEL_IN_KMS) {P[i].Mass=0;}
-            if(vmag>1.e4*All.cf_atime/UNIT_VEL_IN_KMS) {for(k=0;k<3;k++) {P[i].Vel[k]*=(1.e4*All.cf_atime/UNIT_VEL_IN_KMS)/vmag;}}
-#endif
+            apply_pm_hires_region_clipping_selection(i);
         }
     }
     myfree(AGS_Prev);

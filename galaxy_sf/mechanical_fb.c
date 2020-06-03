@@ -411,12 +411,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     P[j].Vel[k] += q;
                     SphP[j].VelPred[k] += q;
                 }
-
-#ifdef PM_HIRES_REGION_CLIPPING
-                dP=0; for(k=0;k<3;k++) dP+=P[j].Vel[k]*P[j].Vel[k]; dP=sqrt(dP);
-                if(dP>5.e4*All.cf_atime/UNIT_VEL_IN_KMS) {P[j].Mass=0;}
-                if(dP>1.e4*All.cf_atime/UNIT_VEL_IN_KMS) {for(k=0;k<3;k++) {P[j].Vel[k]*=(1.e4*All.cf_atime/UNIT_VEL_IN_KMS)/dP;}}
-#endif
+                apply_pm_hires_region_clipping_selection(j);
                 
             } // for(n = 0; n < numngb; n++)
         } // while(startnode >= 0)
@@ -740,12 +735,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                 }
 #endif                 
-                
-#ifdef PM_HIRES_REGION_CLIPPING
-                double dP=0; for(k=0;k<3;k++) dP+=P[j].Vel[k]*P[j].Vel[k]; dP=sqrt(dP);
-                if(dP>5.e4*All.cf_atime/UNIT_VEL_IN_KMS) {P[j].Mass=0;}
-                if(dP>1.e4*All.cf_atime/UNIT_VEL_IN_KMS) {for(k=0;k<3;k++) {P[j].Vel[k]*=(1.e4*All.cf_atime/UNIT_VEL_IN_KMS)/dP;}}
-#endif
+                apply_pm_hires_region_clipping_selection(j);
 #ifdef SINGLE_STAR_FB_WINDS
                 SphP[j].wakeup = 1; NeedToWakeupParticles_local = 1;
 #endif          

@@ -448,7 +448,6 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
 
 
 
-
 /*! This function computes the local neighbor kernel for each active hydro element, the number of neighbours in the current kernel radius, and the divergence
  * and rotation of the velocity field.  This is used then to compute the effective volume of the element in MFM/MFV/SPH-type methods, which is then used to
  * update volumetric quantities like density and pressure. The routine iterates to attempt to find a target kernel size set adaptively -- see code user guide for details
@@ -1032,32 +1031,8 @@ void density(void)
                     PPPZ[i].AGS_zeta = zeta_0;
                 }
             }
-#endif
-            
-#ifdef PM_HIRES_REGION_CLIPPING
-#ifdef GALSF
-            if(All.ComovingIntegrationOn)
-            {
-                double rho_igm = COSMIC_BARYON_DENSITY_CGS * DMIN(1., 1000./All.cf_a3inv); /* density of IGM: cap scaling with z at z=10, so that we don't accidentally rule out very dense real stuff b/c IGM is also very dense */
-                double rho_gas = DMAX( SphP[i].Density , All.DesNumNgb*P[i].Mass/(4.*M_PI/3.*PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml) )* All.cf_a3inv * UNIT_DENSITY_IN_CGS;
-                if(P[i].Type == 0 && rho_gas < 1.e-6*rho_igm) {P[i].Mass = 0;}
-                if(P[i].Type != 0 && SphP[i].Density > 0 & rho_gas < 1.e-9*rho_igm) {P[i].Mass = 0;}
-            }
-#endif
-#ifdef BLACK_HOLES
-            if (P[i].Type != 5)
-            {
-#endif
-                if(P[i].Type == 0) if ((SphP[i].Density <= 0) || (PPP[i].NumNgb <= 0)) P[i].Mass = 0;
-                if ((PPP[i].Hsml <= 0) || (PPP[i].Hsml >= PM_HIRES_REGION_CLIPPING)) P[i].Mass = 0;
-                double vmag=0; for(k=0;k<3;k++) vmag+=P[i].Vel[k]*P[i].Vel[k]; vmag = sqrt(vmag);
-                if(vmag>5.e4*All.cf_atime/UNIT_VEL_IN_KMS) {P[i].Mass=0;}
-                if(vmag>1.e4*All.cf_atime/UNIT_VEL_IN_KMS) {for(k=0;k<3;k++) {P[i].Vel[k]*=(1.e4*All.cf_atime/UNIT_VEL_IN_KMS)/vmag;}}
-#ifdef BLACK_HOLES
-            }
-#endif // BLACK_HOLES
-#endif // ifdef PM_HIRES_REGION_CLIPPING
-            
+#endif            
+            apply_pm_hires_region_clipping_selection(i);
             
          /* finally, convert NGB to the more useful format, NumNgb^(1/NDIMS),
             which we can use to obtain the corrected particle sizes. Because of how this number is used above, we --must-- make 

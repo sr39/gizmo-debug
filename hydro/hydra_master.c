@@ -669,7 +669,6 @@ void hydro_final_operations_and_cleanup(void)
             db_vsig_h_norm = 0.1; // can be as low as 0.03 //
 #ifdef PM_HIRES_REGION_CLIPPING
             tolerance_for_correction = 0.5; // could be as high as 0.75 //
-            //db_vsig_h_norm = 0.03;
 #endif
 
             double DtB_PhiCorr=0,DtB_UnCorr=0,db_vsig_h=0,PhiCorr_Norm=1.0;

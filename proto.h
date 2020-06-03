@@ -694,6 +694,7 @@ void hydro_force(void);
 void init(void);
 void do_the_cooling_for_particle(int i);
 double get_equilibrium_dust_temperature_estimate(int i);
+void apply_pm_hires_region_clipping_selection(int i);
 double get_starformation_rate(int i);
 void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double x, double rateOfSF);
 void init_clouds(void);
