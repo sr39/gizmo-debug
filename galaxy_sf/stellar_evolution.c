@@ -727,7 +727,7 @@ double singlestar_WR_lifetime_Gyr(int n){ //Calculate lifetime for star in Wolf-
 double single_star_wind_velocity(int n){
     /* Let's get the wind velocity for MS stars */
     double T_eff = 5814.33 * pow( P[n].StarLuminosity_Solar/(P[n].ProtoStellarRadius_inSolar*P[n].ProtoStellarRadius_inSolar), 0.25 ); //effective temperature in K
-    double v_esc = (617.7 / UNIT_VEL_IN_KMS) * sqrt(P[n].Mass*UNIT_MASS_TO_SOLAR / P[n].ProtoStellarRadius_inSolar); // surface escape velocity - wind escape velocity should be O(1) factor times this, factor given below
+    double v_esc = (617.7 / UNIT_VEL_IN_KMS) * sqrt(P[n].Mass*UNIT_MASS_IN_SOLAR / P[n].ProtoStellarRadius_inSolar); // surface escape velocity - wind escape velocity should be O(1) factor times this, factor given below
     if(T_eff < 1.25e4){ return 0.7 * v_esc;}  // Lamers 1995
     else if (T_eff < 2.1e4) {return 1.3 * v_esc;}
     else {return 2.6 * v_esc;}        
