@@ -1022,7 +1022,7 @@ void apply_pm_hires_region_clipping_selection(int i)
     if(P[i].Type==0 && density_isactive(i)) {if((SphP[i].Density <= 0) || (PPP[i].NumNgb <= 0)) {clip_flag=1;}} // undefined density behavior
     if(density_isactive(i)) {if(PPP[i].Hsml >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
-    if(ags_density_isactive(i)) {if(PPP[i].AGS_Hsml >= PM_HIRES_REGION_CLIPPING) {clip=1;}} // far too big a kernel, outside valid domain, clip
+    if(ags_density_isactive(i)) {if(PPP[i].AGS_Hsml >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip
 #endif
 #ifdef GALSF
     if((All.ComovingIntegrationOn) && (P[i].Type==0) && (P[i].Mass>0)) // clip material outside of a hires zoom-in region [unphysically well below cosmic mean density]
@@ -1030,7 +1030,7 @@ void apply_pm_hires_region_clipping_selection(int i)
         {
             double rho_igm = COSMIC_BARYON_DENSITY_CGS * DMIN(1., 1000./All.cf_a3inv); /* density of IGM: cap scaling with z at z=10, so that we don't accidentally rule out very dense real stuff b/c IGM is also very dense */
             double rho_gas = DMAX( SphP[i].Density , All.DesNumNgb*P[i].Mass/(4.*M_PI/3.*PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml) )* All.cf_a3inv * UNIT_DENSITY_IN_CGS;
-            if(rho_gas < 1.e-6*rho_igm) {clip=1;} // clip
+            if(rho_gas < 1.e-6*rho_igm) {clip_flag=1;} // clip
         }
 #endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
@@ -1038,11 +1038,11 @@ void apply_pm_hires_region_clipping_selection(int i)
     {
         int k; double v_i=0; for(k=0;k<3;k++) {v_i+=P[i].Vel[k]*P[i].Vel[k];}
         v_i=sqrt(v_i)/All.cf_atime*UNIT_VEL_IN_KMS; // check for unphysical velocities
-        if(v_i>1.e5) {clip=1;} // clip
+        if(v_i>1.e5) {clip_flag=1;} // clip
         if(v_i>3.e4) {for(k=0;k<3;k++) {P[i].Vel[k]*=3.e4/v_i;}} // limit
     }
 #endif
-    if(clip==1) {P[i].Mass=0;} // clip
+    if(clip_flag==1) {P[i].Mass=0;} // clip
 #endif
     return; // done
 }
