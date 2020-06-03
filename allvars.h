@@ -534,7 +534,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. make sure BH_Rad_MomentumFactor=0 to avoid launching winds this way!!!
 #define BH_COMPTON_HEATING // turn on the heating term: this just calculates incident BH-particle flux, to be used in the cooling routine
 #endif
-#endif
 
 #if defined(SINGLE_STAR_FB_JETS) || ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION))
 #define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
