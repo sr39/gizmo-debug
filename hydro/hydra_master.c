@@ -464,11 +464,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #ifdef RT_SOLVER_EXPLICIT
     for(k=0;k<N_RT_FREQ_BINS;k++)
     {
-#ifdef RT_EVOLVE_ENERGY
         in->Rad_E_gamma[k] = SphP[i].Rad_E_gamma_Pred[k];
-#else
-        in->Rad_E_gamma[k] = SphP[i].Rad_E_gamma[k];
-#endif
         in->Rad_Kappa[k] = SphP[i].Rad_Kappa[k];
         in->RT_DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
 #if defined(RT_EVOLVE_FLUX) || defined(HYDRO_SPH)

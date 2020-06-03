@@ -239,9 +239,8 @@ void do_the_cooling_for_particle(int i)
         double de_u = -(unew-SphP[i].InternalEnergy) * P[i].Mass; /* energy gained by gas needs to be subtracted from radiation */
         if(de_u<=-0.99*SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]) {de_u=-0.99*SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]; unew=DMAX(0.01*SphP[i].InternalEnergy , SphP[i].InternalEnergy-de_u/P[i].Mass);}
         SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED] += de_u; /* energy gained by gas is lost here */
-#if defined(RT_EVOLVE_ENERGY)
         SphP[i].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED] = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]; /* updated drifted */
-#elif defined(RT_EVOLVE_INTENSITIES)
+#if defined(RT_EVOLVE_INTENSITIES)
         int k_tmp; for(k_tmp=0;k_tmp<N_RT_INTENSITY_BINS;k_tmp++) {SphP[i].Rad_Intensity[RT_FREQ_BIN_INFRARED][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA; SphP[i].Rad_Intensity_Pred[RT_FREQ_BIN_INFRARED][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA;}
 #endif
         double momfac = de_u / All.cf_atime; int kv; // add leading-order relativistic corrections here, accounting for gas motion in the addition/subtraction to the flux
@@ -900,26 +899,14 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 
 #ifdef BH_COMPTON_HEATING
     double AGN_LambdaPre = 0, AGN_T_Compton; AGN_T_Compton = 2.0e7; /* approximate from Sazonov et al. */
-    if(target >= 0)
-    {
-        AGN_LambdaPre = SphP[target].Rad_Flux_AGN * UNIT_FLUX_IN_CGS; /* convert physical code units to cgs */
-#ifdef SINGLE_STAR_SINK_DYNAMICS /* here we are hijacking this module to approximate dust heating/cooling */
-        double Tmin_to_enforce = pow(10.0,Tmin); // use this as a mininum dust temperature, not for any physical reason but to prevent cooling below it
-        AGN_T_Compton = DMIN(2000,pow( Tmin_to_enforce*Tmin_to_enforce*Tmin_to_enforce*Tmin_to_enforce + AGN_LambdaPre / 5.67e-5 , 0.25)); // (sigma*T^4 = Flux_incident), assuming heating/cooling balance defines the target temperature, maximum set to 2000K as the dust is destroyed above that
-#else /* now have incident flux, need to convert to relevant pre-factor for heating rate */
-        AGN_LambdaPre *= 4.488e-34; // /* sigma_T x 4*k_B/(me*c^2) in CGS, just pre-computed here for convenience */
+    if(target >= 0) {AGN_LambdaPre = 4.488e-34 * SphP[target].Rad_Flux_AGN * UNIT_FLUX_IN_CGS;} /* convert physical code units to cgs; need to convert to relevant pre-factor for heating rate:  sigma_T x 4*k_B/(me*c^2) in CGS, just pre-computed here for convenience */
 #endif
-    }
-#endif
-    
     
 #if defined(COOL_METAL_LINES_BY_SPECIES) && defined(COOL_LOW_TEMPERATURES)
     double Tdust = 30., LambdaDust = 0.; /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
 #if defined(SINGLE_STAR_SINK_DYNAMICS) || (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
     Tdust = DMIN(DMAX(10., 2.73/All.cf_atime),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
-#endif
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(BH_COMPTON_HEATING)
-    if(target >= 0) {Tdust = AGN_T_Compton;} // need to check target otherwise this is totally ill-defined //
+    Tdust = get_equilibrium_dust_temperature_estimate(target);
 #endif
 #endif
 
@@ -1017,7 +1004,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         }
         else {LambdaCmptn = 0;}
 
-#if defined(BH_COMPTON_HEATING) && !defined(SINGLE_STAR_SINK_DYNAMICS)
+#if defined(BH_COMPTON_HEATING)
         if(T > AGN_T_Compton)
         {
             LambdaCmptn = AGN_LambdaPre * (T - AGN_T_Compton) * n_elec/nHcgs;
@@ -1026,7 +1013,6 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
                 double LambdaCmptn_var = (AGN_LambdaPre/1.e-26) * (T/1.e9) / nHcgs;
                 LambdaCmptn_var = 2.55e-19 * pow( (LambdaCmptn_var*LambdaCmptn_var*LambdaCmptn_var) * (1.e9/T) , 0.2 );
                 if(LambdaCmptn > LambdaCmptn_var) {LambdaCmptn = LambdaCmptn_var;}
-                //if(LambdaCmptn > 2.19e-21/sqrt(T/1.0e8)) LambdaCmptn=2.19e-21/sqrt(T/1.0e8);
             }
             Lambda += LambdaCmptn;
         }
@@ -1118,8 +1104,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
 
         
-#if defined(BH_COMPTON_HEATING) && !defined(SINGLE_STAR_SINK_DYNAMICS)
-        /* Compton heating from AGN */
+#if defined(BH_COMPTON_HEATING) /* Compton heating from AGN */
         if(T < AGN_T_Compton) Heat += AGN_LambdaPre * (AGN_T_Compton - T) / nHcgs; /* note this is independent of the free electron fraction */
 #endif
         
@@ -1169,15 +1154,13 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
       }
       else {LambdaCmptn = 0;}
 
-#if defined(BH_COMPTON_HEATING) && !defined(SINGLE_STAR_SINK_DYNAMICS)
-        /* Relativistic compton cooling from an AGN source */
+#if defined(BH_COMPTON_HEATING) /* Relativistic compton cooling from an AGN source */
         LambdaCmptn += AGN_LambdaPre * (T - AGN_T_Compton) * (T/1.5e9)/(1-exp(-T/1.5e9)) * n_elec/nHcgs;
         /* per CAFG's calculations, we should note that at very high temperatures, the rate-limiting step may be
          the Coulomb collisions moving energy from protons to e-; which if slow will prevent efficient e- cooling */
         double LambdaCmptn_var = (AGN_LambdaPre/1.e-26) * (T/1.e9) / nHcgs;
         LambdaCmptn_var = 2.55e-19 * pow( (LambdaCmptn_var*LambdaCmptn_var*LambdaCmptn_var) * (1.e9/T) , 0.2 );
         if(LambdaCmptn > LambdaCmptn_var) {LambdaCmptn = LambdaCmptn_var;}
-        //if(LambdaCmptn > 2.19e-21/sqrt(T/1.0e8)) LambdaCmptn=2.19e-21/sqrt(T/1.0e8);
 #endif
         
       Lambda = LambdaFF + LambdaCmptn;
@@ -1738,31 +1721,20 @@ double GetLambdaSpecies(long k_index, long index_x0y0, long index_x0y1, long ind
 
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
 void selfshield_local_incident_uv_flux(void)
-{
-    /* include local self-shielding with the following */
-    int i; double surfdensity = 0, code_surfacedensity_to_cgs = UNIT_SURFDEN_IN_CGS;    
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+{   /* include local self-shielding with the following */
+    int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if(P[i].Type==0)
         {
             if((SphP[i].Rad_Flux_UV>0) && (PPP[i].Hsml>0) && (SphP[i].Density>0) && (P[i].Mass>0) && (All.Time>0))
             {
-                SphP[i].Rad_Flux_UV *= UNIT_FLUX_IN_CGS; // convert to cgs
-                SphP[i].Rad_Flux_EUV *= UNIT_FLUX_IN_CGS; // convert to cgs
-
-                surfdensity = code_surfacedensity_to_cgs * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); // in CGS
-
+                SphP[i].Rad_Flux_UV *= UNIT_FLUX_IN_CGS * 1276.19; SphP[i].Rad_Flux_EUV *= UNIT_FLUX_IN_CGS * 1276.19; // convert to Habing units (normalize strength to local MW field in this [narrow] band, so not the 'full' Habing flux)
+                double surfdensity = code_surfacedensity_to_cgs * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS; // in CGS
                 double tau_nuv = KAPPA_UV * surfdensity * (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // optical depth: this part is attenuated by dust //
                 double tau_euv = 3.7e6 * surfdensity; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas //
                 SphP[i].Rad_Flux_UV *= exp(-tau_nuv); // attenuate
                 SphP[i].Rad_Flux_EUV *= 0.01 + 0.99/(1.0 + 0.8*tau_euv + 0.85*tau_euv*tau_euv); // attenuate (for clumpy medium with 1% scattering) //
-                
-                SphP[i].Rad_Flux_UV *= 1276.19; // convert to Habing units (normalize strength to local MW field)
-                SphP[i].Rad_Flux_EUV *= 1276.19; // convert to Habing units (normalize strength to local MW field)
-            } else {
-                SphP[i].Rad_Flux_UV = 0;
-                SphP[i].Rad_Flux_EUV = 0;
-            }
+            } else {SphP[i].Rad_Flux_UV = SphP[i].Rad_Flux_EUV = 0;}
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
             if(SphP[i].DelayTimeHII > 0)
             {   /* assign typical strong HII region flux + enough flux to maintain cell fully-ionized, regardless (x'safety-factor') */
@@ -1774,6 +1746,35 @@ void selfshield_local_incident_uv_flux(void)
     }
 }
 #endif // GALSF_FB_FIRE_RT_UVHEATING
+
+
+
+double get_equilibrium_dust_temperature_estimate(int i)
+{   /* simple three-component model [can do fancier] with cmb, dust, high-energy photons */
+    double e_CMB=0.262*All.cf_a3inv/All.cf_atime, T_cmb=2.73/All.cf_atime; // CMB [energy in eV/cm^3, T in K]
+    double e_IR=0.31, Tdust_ext=DMAX(30.,T_cmb); // Milky way ISRF from Draine (2011), assume peak of dust emission at ~100 microns
+    double e_HiEgy=0.66, T_hiegy=5800.; // Milky way ISRF from Draine (2011), assume peak of stellar emission at ~0.6 microns [can still have hot dust, this effect is pretty weak]
+    if(i >= 0)
+    {
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
+        int k; double e_HiEgy=0, e_IR=0;
+        for(k=0;k<N_RT_FREQ_BINS;k++) {e_HiEgy+=SphP[i].Rad_E_gamma_Pred[k];}
+#if defined(GALSF_FB_FIRE_RT_LONGRANGE)
+        e_IR += SphP[i].Rad_E_gamma_Pred[RT_FREQ_BIN_FIRE_IR]; // note IR
+#endif
+#if defined(RT_INFRARED)
+        e_IR += SphP[i].Rad_E_gamma_Pred[RT_INFRARED]; // note IR
+#endif
+        e_HiEgy -= e_IR; // don't double-count the IR component flagged above //
+#endif
+    }
+    double Tdust_eqm = 2.92 * pow(Tdust_ext*e_IR + T_cmb*e_CMB + T_hiegy*e_HiEgy, 1./5.); // approximate equilibrium temp assuming Q~1/lambda
+    return DMAX(DMIN(Tdust_eqm , 2000.) , 1.); // limit at sublimation temperature or some very low temp //
+}
+
+
+
+
 
 #ifdef CHIMES 
 /* This routine updates the ChimesGasVars structure 

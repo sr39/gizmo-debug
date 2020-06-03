@@ -619,8 +619,8 @@ char *GetMultiSpeciesFilename(int i, int hk);
 #endif 
 #endif
 
-double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz);
-double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r, double H_bh);
+double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double dx, double dy, double dz);
+double bh_angleweight_localcoupling(int j, double cos_theta, double r, double H_bh);
 
 #if defined(GALSF_SUBGRID_WINDS)
 void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double* pvtau_return);
@@ -693,6 +693,7 @@ void gravity_tree(void);
 void hydro_force(void);
 void init(void);
 void do_the_cooling_for_particle(int i);
+double get_equilibrium_dust_temperature_estimate(int i);
 double get_starformation_rate(int i);
 void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double x, double rateOfSF);
 void init_clouds(void);

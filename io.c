@@ -1366,13 +1366,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_RADGAMMA:
-#ifdef RADTRANSFER
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < N_RT_FREQ_BINS; k++)
-                        fp[k] = SphP[pindex].Rad_E_gamma[k];
-                    
+                    for(k=0;k<N_RT_FREQ_BINS;k++) {fp[k] = SphP[pindex].Rad_E_gamma[k];}
                     n++;
                     fp += N_RT_FREQ_BINS;
                 }
@@ -1384,7 +1382,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 3; k++) {fp[k] = SphP[pindex].Rad_Accel[k];}                    
+                    for(k=0;k<3;k++) {fp[k] = SphP[pindex].Rad_Accel[k];}
                     n++;
                     fp += 3;
                 }
@@ -1396,12 +1394,9 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 6; k++)
-                    {
-                        int kf;
-                        for(kf = 0; kf < N_RT_FREQ_BINS; kf++)
-                            fp[N_RT_FREQ_BINS*k + kf] = SphP[pindex].ET[kf][k];
-                    }
+                    for(k=0;k<6;k++)
+                        {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {
+                            fp[N_RT_FREQ_BINS*k + kf] = SphP[pindex].ET[kf][k];}}
                     n++;
                     fp += 6*N_RT_FREQ_BINS;
                 }
@@ -1812,7 +1807,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
             
         case IO_RADGAMMA:
-#ifdef RADTRANSFER
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
             if(mode)
                 bytes_per_blockelement = (N_RT_FREQ_BINS) * sizeof(MyInputFloat);
             else
@@ -2088,7 +2083,7 @@ int get_values_per_blockelement(enum iofields blocknr)
             break;
             
         case IO_RADGAMMA:
-#ifdef RADTRANSFER
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
             values = N_RT_FREQ_BINS;
 #else
             values = 0;
@@ -2452,7 +2447,7 @@ int blockpresent(enum iofields blocknr)
             break;
             
         case IO_RADGAMMA:
-#if defined(RADTRANSFER)
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
             return 1;
 #endif
             break;

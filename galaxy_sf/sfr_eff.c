@@ -480,9 +480,6 @@ void star_formation_parent_routine(void)
                 P[i].BH_CountProgs = 1;
 #endif
                 P[i].BH_Mdot = 0;
-#ifdef BH_PHOTONMOMENTUM
-                P[i].BH_disk_hr = 0.333333;
-#endif
                 P[i].DensAroundStar = SphP[i].Density;
             } else {
 #endif /* closes ifdef(BH_SEED_FROM_LOCALGAS) */ 
@@ -555,9 +552,6 @@ void star_formation_parent_routine(void)
                 P[i].BH_CountProgs = 1;
 #endif
                 P[i].BH_Mdot = 0;
-#ifdef BH_PHOTONMOMENTUM
-                P[i].BH_disk_hr = 0.333333;
-#endif
                 P[i].DensAroundStar = SphP[i].Density;
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION 
                 P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age

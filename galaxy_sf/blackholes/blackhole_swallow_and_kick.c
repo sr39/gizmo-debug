@@ -34,14 +34,14 @@ static int N_gas_swallowed, N_star_swallowed, N_dm_swallowed, N_BH_swallowed;
 struct INPUT_STRUCT_NAME
 {
     int NodeList[NODELISTLENGTH]; MyDouble Pos[3]; MyFloat Vel[3], Hsml, Mass, BH_Mass, Dt, Mdot; MyIDType ID;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS) || defined(BH_WIND_KICK)
     MyFloat Jgas_in_Kernel[3];
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-    MyFloat BH_disk_hr, BH_angle_weighted_kernel_sum;
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
+    MyFloat BH_angle_weighted_kernel_sum;
 #endif
 #if defined(BH_RETURN_ANGMOM_TO_GAS)
     MyFloat BH_Specific_AngMom[3], angmom_norm_topass_in_swallowloop;
@@ -59,7 +59,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
     int k, j_tempinfo; j_tempinfo = P[i].IndexMapToTempStruc; /* link to the location in the shared structure where this is stored */
     for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k]; in->Vel[k]=P[i].Vel[k];} /* good example - always needed */
     in->Hsml = PPP[i].Hsml; in->Mass = P[i].Mass; in->BH_Mass = BPP(i).BH_Mass; in->ID = P[i].ID; in->Mdot = BPP(i).BH_Mdot;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS) || defined(BH_WIND_KICK)
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
     for(k=0;k<3;k++) {in->Jgas_in_Kernel[k] = P[i].BH_Specific_AngMom[k];}
 #else
@@ -69,10 +69,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 #ifdef BH_ALPHADISK_ACCRETION
     in->BH_Mass_AlphaDisk = BPP(i).BH_Mass_AlphaDisk;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-    in->BH_disk_hr = P[i].BH_disk_hr;
-#endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
     in->BH_angle_weighted_kernel_sum = BlackholeTempInfo[j_tempinfo].BH_angle_weighted_kernel_sum;
 #endif
 #ifndef WAKEUP
@@ -160,22 +157,20 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
     int startnode, numngb, listindex = 0, j, k, n, bin; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
     double h_i=local.Hsml, hinv=1/h_i, hinv3, f_accreted; hinv3=hinv*hinv*hinv; f_accreted=0;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
     double kernel_zero,dwk; kernel_main(0.0,1.0,1.0,&kernel_zero,&dwk,-1); dwk=0;
+    double mom = bh_lum_bol(local.Mdot, local.BH_Mass, -1) * local.Dt / C_LIGHT_CODE, mom_wt = 0;
+#endif
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS) || defined(BH_WIND_KICK)
+    double J_dir[3]; for(k=0;k<3;k++) {J_dir[k] = local.Jgas_in_Kernel[k];}
+    double norm=0; for(k=0;k<3;k++) {norm+=J_dir[k]*J_dir[k];}
+    if(norm>0) {norm=1/sqrt(norm); for(k=0;k<3;k++) {J_dir[k]*=norm;}} else {J_dir[0]=J_dir[1]=0; J_dir[2]=1;}
 #endif
 #if defined(BH_WIND_KICK)
     double bh_mass_withdisk=local.BH_Mass;
 #ifdef BH_ALPHADISK_ACCRETION
     bh_mass_withdisk += local.BH_Mass_AlphaDisk;
 #endif
-#endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-    double mom = bh_lum_bol(local.Mdot, local.BH_Mass, -1) * local.Dt / C_LIGHT_CODE, mom_wt = 0;
-#endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
-    double J_dir[3]; for(k=0;k<3;k++) {J_dir[k] = local.Jgas_in_Kernel[k];}
-    double norm=0; for(k=0;k<3;k++) {norm+=J_dir[k]*J_dir[k];}
-    if(norm>0) {norm=1/sqrt(norm); for(k=0;k<3;k++) {J_dir[k]*=norm;}} else {J_dir[0]=J_dir[1]=0; J_dir[2]=1;}
 #endif
 #ifdef GALSF
     out.Accreted_Age = MAX_REAL_NUMBER;
@@ -361,7 +356,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     P[j].SwallowID = 0; /* DAA: make sure it is not accreted (or ejected) by the same BH again if inactive in the next timestep */
                 } // if(P[j].SwallowID == id)  -- particles being entirely or partially swallowed!!!
 
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)                
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
                 /* now, do any other feedback "kick" operations (which used the previous loops to calculate weights) */
                 if(mom>0 && local.Mdot>0 && local.Dt>0 && OriginallyMarkedSwallowID==0 && P[j].SwallowID==0 && P[j].Mass>0 && P[j].Type==0) // particles NOT being swallowed!
                 {
@@ -370,7 +365,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     {
                         r=sqrt(r); for(k=0;k<3;k++) {dir[k]/=r;} /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
                         for(norm=0,k=0;k<3;k++) {norm+=dir[k]*J_dir[k];}
-                        mom_wt = bh_angleweight_localcoupling(j,local.BH_disk_hr,norm,r,h_i) / local.BH_angle_weighted_kernel_sum;
+                        mom_wt = bh_angleweight_localcoupling(j,norm,r,h_i) / local.BH_angle_weighted_kernel_sum;
                         if(local.BH_angle_weighted_kernel_sum<=0) mom_wt=0;
                                 
 #ifdef BH_PHOTONMOMENTUM /* inject radiation pressure: add initial L/c optical/UV coupling to the gas at the dust sublimation radius */
@@ -395,7 +390,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                         /* add wind mass to particle, correcting density as needed */
                         if(P[j].Hsml<=0)
                         {
-                            if(SphP[j].Density>0){SphP[j].Density*=(1+m_wind/P[j].Mass);} else {SphP[j].Density=m_wind*hinv3;}
+                            if(SphP[j].Density>0) {SphP[j].Density*=(1+m_wind/P[j].Mass);} else {SphP[j].Density=m_wind*hinv3;}
                         } else {
                             SphP[j].Density += kernel_zero * m_wind/(P[j].Hsml*P[j].Hsml*P[j].Hsml);
                         }
@@ -422,7 +417,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif // if defined(BH_WIND_CONTINUOUS) && !defined(BH_WIND_KICK)
                     } // r > 0
                 } // (check if valid gas neighbor of interest)
-#endif // defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)                
+#endif // defined(BH_CALC_LOCAL_ANGLEWEIGHTS)                
             } // for(n = 0; n < numngb; n++)
         } // while(startnode >= 0)
         if(mode == 1) {listindex++; if(listindex < NODELISTLENGTH) {startnode = DATAGET_NAME[target].NodeList[listindex]; if(startnode >= 0) {startnode = Nodes[startnode].u.d.nextnode; /* open it */}}} /* continue to open leaves if needed */

@@ -147,7 +147,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 
 
 /* weight function for local (short-range) coupling terms from the black hole, including the single-scattering radiation pressure and the bal winds */
-double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r, double H_bh)
+double bh_angleweight_localcoupling(int j, double cos_theta, double r, double H_bh)
 {
     // this follows what we do with SNe, and applies a normalized weight based on the fraction of the solid angle subtended by the particle //
     if(r <= 0 || H_bh <= 0) return 0;
@@ -179,12 +179,12 @@ double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r
 
 /* function below is used for long-range black hole radiation fields -- used only in the forcetree routines (where they
     rely this for things like the long-range radiation pressure and compton heating) */
-double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz)
+double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double dx, double dy, double dz)
 {
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     return bh_lum_input;
 #endif
-    if(bh_lum_input <= 0 || isnan(hR) || hR <= 0) return 0;
+    if(bh_lum_input <= 0) return 0;
     double r2 = dx*dx+dy*dy+dz*dz; if(r2 <= 0) return 0;
     if(r2*UNIT_LENGTH_IN_PC*UNIT_LENGTH_IN_PC*All.cf_atime*All.cf_atime < 1) return 0; /* no force at < 1pc */
 #if defined(BH_FB_COLLIMATED)
@@ -617,28 +617,21 @@ void set_blackhole_drag(int i, int n, double dt)
 
 
 
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
 void set_blackhole_long_range_rp(int i, int n) /* pre-set quantities needed for long-range radiation pressure terms */
 {
-    int k; double fac; P[n].BH_disk_hr=1/3;
-    if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
-    {   /* estimate h/R surrounding the BH from the gas density gradients */
-        fac=0; for(k=0;k<3;k++) {fac += BlackholeTempInfo[i].GradRho_in_Kernel[k]*BlackholeTempInfo[i].GradRho_in_Kernel[k];}
-        P[n].BH_disk_hr = P[n].DensAroundStar / (PPP[n].Hsml * sqrt(fac)) * 1.3; /* 1.3 factor from integrating exponential disk with h/R=const over gaussian kernel, for width=1/3 (quintic kernel); everything here is in code units, comes out dimensionless */
-    }
-#if !defined(BH_FOLLOW_ACCRETED_ANGMOM)
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS) && !defined(BH_FOLLOW_ACCRETED_ANGMOM)
     /* use the gradrho vector as a surrogate to hold the orientation of the angular momentum if we aren't evolving it explicitly
      (this is done because the long-range radiation routines for the BH require the angular momentum vector for non-isotropic emission) */
     P[n].GradRho[0]=P[n].GradRho[1]=0; P[n].GradRho[2]=1;
     if(BlackholeTempInfo[i].Mgas_in_Kernel > 0) {
-        fac=0; for(k=0;k<3;k++) {fac += BlackholeTempInfo[i].Jgas_in_Kernel[k]*BlackholeTempInfo[i].Jgas_in_Kernel[k];}
-        fac=sqrt(fac); if(fac>0) {for(k=0;k<3;k++) {P[n].GradRho[k] = BlackholeTempInfo[i].Jgas_in_Kernel[k]/fac;}}}
+        int k; double fac=0; for(k=0;k<3;k++) {fac += BlackholeTempInfo[i].Jgas_in_Kernel[k]*BlackholeTempInfo[i].Jgas_in_Kernel[k];}
+        if(fac>0) {for(k=0;k<3;k++) {P[n].GradRho[k] = BlackholeTempInfo[i].Jgas_in_Kernel[k]/sqrt(fac);}}}
         /* now, the P[n].GradRho[k] field for the BH holds the orientation of the UNIT angular momentum vector
          NOTE it is important that HARD-WIRED into the code, this blackhole calculation comes after the density calculation
          but before the forcetree update and walk; otherwise, this won't be used correctly there */
 #endif
+    return;
 }
-#endif // if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
 
 
 

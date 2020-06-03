@@ -332,7 +332,6 @@
 #define BH_FB_COLLIMATED            /* BHFB directed along collimated axis following BH ang. mom */
 #if !defined(BH_WIND_CONTINUOUS)
 #define BH_WIND_SPAWN (2)           /* spawn module: N=min num spawned/step */
-//#define BH_WIND_CONTINUOUS        /* continuous 'pushing' module for material in BH kernel [we prefer spawn module, even though it can get expensive sometimes] */
 #endif
 #ifdef COSMIC_RAYS
 #define BH_COSMIC_RAYS              /* allow CR injection from AGN */
@@ -377,10 +376,6 @@ USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
 
 #ifdef PROTECT_FROZEN_FIRE
 #define GALSF_USE_SNE_ONELOOP_SCHEME // set to use the 'base' FIRE-2 SNe coupling. if commented out, will user newer version that more accurately manages the injected energy with neighbors moving to inject a specific target
-#endif
-
-#if defined(GALSF_FB_FIRE_RT_LONGRANGE) && defined(COSMIC_RAYS) && (N_CR_PARTICLE_BINS > 1)
-#define RT_USE_GRAVTREE_SAVE_RAD_ENERGY
 #endif
 
 #ifdef GALSF_SFR_CRITERION // flag for pure cross-compatibility [identical functionality, just ease-of-use for galaxy simulators here]
@@ -653,9 +648,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #if defined(RT_LEBRON)
 #define RT_USE_GRAVTREE // use gravity tree for flux propagation
+#define RT_USE_GRAVTREE_SAVE_RAD_ENERGY
 #if !defined(GALSF_FB_FIRE_RT_LONGRANGE)
 #define RADTRANSFER // for cross-compatibility reasons, if the FIRE version is not on, need RADTRANSFER flag also enabled
-#define RT_USE_GRAVTREE_SAVE_RAD_ENERGY
 #define RT_USE_GRAVTREE_SAVE_RAD_FLUX
 #endif
 #endif
@@ -1635,7 +1630,10 @@ extern double TimeBin_BH_mass[TIMEBINS];
 extern double TimeBin_BH_dynamicalmass[TIMEBINS];
 extern double TimeBin_BH_Mdot[TIMEBINS];
 extern double TimeBin_BH_Medd[TIMEBINS];
-#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NONGAS) || defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_DYNFRICTION)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#define BH_CALC_LOCAL_ANGLEWEIGHTS
+#endif
+#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NONGAS) || defined(BH_CALC_LOCAL_ANGLEWEIGHTS) || defined(BH_DYNFRICTION)
 #define BH_NEIGHBOR_BITFLAG 63 /* allow all particle types in the BH search: 63=2^0+2^1+2^2+2^3+2^4+2^5 */
 #else
 #define BH_NEIGHBOR_BITFLAG 33 /* only search for particles of types 0 and 5 (gas and black holes) around a primary BH particle */
@@ -2610,9 +2608,6 @@ extern ALIGN(32) struct particle_data
 #if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
     MyFloat BH_dr_to_NearestGasNeighbor;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-    MyFloat BH_disk_hr;
-#endif
 #ifdef BH_REPOSITION_ON_POTMIN
     MyFloat BH_MinPotPos[3];
     MyFloat BH_MinPot;
@@ -2884,18 +2879,20 @@ extern struct sph_particle_data
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
     MyFloat Rad_Flux_UV;              /*!< local UV field strength */
     MyFloat Rad_Flux_EUV;             /*!< local (ionizing/hard) UV field strength */
-#endif // GALSF_FB_FIRE_RT_UVHEATING 
+#endif
+    
+    
 #ifdef CHIMES_STELLAR_FLUXES 
     double Chimes_G0[CHIMES_LOCAL_UV_NBINS];            /*!< 6-13.6 eV flux, in Habing units */
     double Chimes_fluxPhotIon[CHIMES_LOCAL_UV_NBINS];   /*!< ionising flux (>13.6 eV), in cm^-2 s^-1 */ 
 #ifdef CHIMES_HII_REGIONS 
     double Chimes_G0_HII[CHIMES_LOCAL_UV_NBINS];
     double Chimes_fluxPhotIon_HII[CHIMES_LOCAL_UV_NBINS];
-#endif // CHIMES_HII_REGIONS 
-#endif // CHIMES_STELLAR_FLUXES 
+#endif
+#endif
 #ifdef CHIMES_TURB_DIFF_IONS 
     double ChimesNIons[TOTSIZE];
-#endif // CHIMES_TURB_DIFF_IONS 
+#endif
 #ifdef BH_COMPTON_HEATING
     MyFloat Rad_Flux_AGN;             /*!< local AGN flux */
 #endif
@@ -3560,8 +3557,7 @@ extern ALIGN(32) struct NODE
 #endif
 
 #ifdef BH_PHOTONMOMENTUM
-    MyFloat bh_lum;		/*!< luminosity of BHs in the node */
-    MyFloat bh_lum_hR;		/*!< local h/R for gas around BH (gives angular dependence) */
+    MyFloat bh_lum;		    /*!< luminosity of BHs in the node */
     MyFloat bh_lum_grad[3];	/*!< gradient vector for gas around BH (for angular dependence) */
 #endif    
 

@@ -509,17 +509,13 @@ double get_cell_Bfield_in_microGauss(int i)
 }
 
 
-/* handy functoin that just returns the radiation energy density in eV/cm^-3, physical units. purely here to save us time re-writing this */
+/* handy function that just returns the radiation energy density in eV/cm^-3, physical units. purely here to save us time re-writing this */
 double get_cell_Urad_in_eVcm3(int i)
 {
     double erad = 0.26*All.cf_a3inv/All.cf_atime; // default with the CMB energy density, which we assume here is a baseline minimum
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
-    int kfreq; double e_units = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_CGS * 6.24151e11;
-#ifdef RT_EVOLVE_ENERGY
+    int kfreq; double e_units = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_EV;
     for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad+=SphP[i].Rad_E_gamma_Pred[kfreq]*e_units;}
-#else
-    for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad+=SphP[i].Rad_E_gamma[kfreq]*e_units;}
-#endif
 #else
     double uRad_MW = 0.31 + 0.66; /* dust (0.31) and stars (0.66) for Milky way ISRF from Draine (2011); want this to decay as we approach the IGM (where CMB totally dominates) */
     double prefac_rad=1, rho_cgs=SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS; if(All.ComovingIntegrationOn) {double rhofac = rho_cgs / (1000.*COSMIC_BARYON_DENSITY_CGS);

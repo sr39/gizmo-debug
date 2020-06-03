@@ -518,7 +518,6 @@ double rt_absorb_frac_albedo(int i, int k_freq)
 
 
 
-
 #endif // #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
 
 
@@ -978,8 +977,7 @@ void rt_set_simple_inits(int RestartFlag)
                 if(k==RT_FREQ_BIN_INFRARED) {SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED] = 5.67e-5 * 4 / (C_LIGHT * RT_SPEEDOFLIGHT_REDUCTION) * pow(All.InitGasTemp,4.) / UNIT_PRESSURE_IN_CGS * P[i].Mass / (SphP[i].Density*All.cf_a3inv);}
 #endif
 #ifdef RT_EVOLVE_ENERGY
-                SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k];
-                SphP[i].Dt_Rad_E_gamma[k] = 0;
+                SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k]; SphP[i].Dt_Rad_E_gamma[k] = 0;
 #endif
 #ifdef RT_EVOLVE_FLUX
                 int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Rad_Flux_Pred[k][k_dir] = SphP[i].Rad_Flux[k][k_dir] = SphP[i].Dt_Rad_Flux[k][k_dir] = 0;}
@@ -1104,11 +1102,7 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, d
     double LambdaDust_initial_guess = 1.116e-32 * (Tdust_0-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * (P[target].Metallicity[0]/All.SolarAbundances[0]); // guess value based on the -current- values of T, Tdust //
         
     double egy_therm = SphP[target].InternalEnergyPred*P[target].Mass; // true internal energy (before this cooling loop)
-#ifdef RT_EVOLVE_ENERGY
     double egy_rad = SphP[target].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED]; // true radiation field energy (before this cooling loop)
-#else
-    double egy_rad = SphP[target].Rad_E_gamma[RT_FREQ_BIN_INFRARED]; // true radiation field energy (before this cooling loop) [prev-kicked is drifted by intensities]
-#endif
     double egy_tot = egy_rad + egy_therm; // true total energy [in code units]
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;    // effective hydrogen number dens in cgs units (just for normalization convention)
     double volume = (P[target].Mass / (SphP[target].Density*All.cf_a3inv)); // particle volume in code units

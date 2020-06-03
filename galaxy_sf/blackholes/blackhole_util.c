@@ -156,9 +156,7 @@ void blackhole_properties_loop(void) /* Note, normalize_temp_info_struct is now 
         dt = P[n].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
         BPP(n).BH_Mdot=0;  /* always initialize/default to zero accretion rate */
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-        set_blackhole_long_range_rp( i,  n);
-#endif
+        set_blackhole_long_range_rp(i, n);
         set_blackhole_mdot(i, n, dt);
 #if defined(BH_DRAG) || defined(BH_DYNFRICTION)
         set_blackhole_drag(i, n, dt);

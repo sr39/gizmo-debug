@@ -1856,9 +1856,6 @@ void fof_make_black_holes(void)
             P[import_indices[n]].DensAroundStar = SphP[import_indices[n]].Density;
         }
         /* set some specific BH variables that are needed below */
-#ifdef BH_PHOTONMOMENTUM
-        P[import_indices[n]].BH_disk_hr = 0.333333;
-#endif
 #ifdef BH_INCREASE_DYNAMIC_MASS
         P[import_indices[n]].Mass *= BH_INCREASE_DYNAMIC_MASS;
 #endif
