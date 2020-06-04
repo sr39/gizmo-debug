@@ -147,7 +147,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
     if((1 << P[i].Type) & (RT_SOURCES))
     {
         lum[RT_FREQ_BIN_INFRARED] = 0.0; //default to no direct IR (just re-emitted light)
-#if defined(TEST_RT_M1)
+#if defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
         if(P[i].Type == 5) {lum[RT_FREQ_BIN_INFRARED] = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i);} // for tests, entire sink bolometric luminosity
 #endif
     }
@@ -643,7 +643,7 @@ void eddington_tensor_dot_vector(double ET[6], double vec_in[3], double vec_out[
 double return_flux_limiter(int target, int k_freq)
 {
 #ifdef RT_FLUXLIMITER
-    return SphP[i].Rad_Flux_Limiter[k_freq]; // apply flux-limiter
+    return SphP[target].Rad_Flux_Limiter[k_freq]; // apply flux-limiter
 #endif
     return 1;
 }
