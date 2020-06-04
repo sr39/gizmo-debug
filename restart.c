@@ -18,7 +18,7 @@
 static FILE *fd;
 
 #ifdef CHIMES 
-static double *sphAbundancesBuf;
+static ChimesFloat *sphAbundancesBuf;
 #endif 
 
 static void in(int *x, int modus);
@@ -224,7 +224,7 @@ void restart(int modus)
 	      byten(&SphP[0], N_gas * sizeof(struct sph_particle_data), modus);
 
 #ifdef CHIMES 
-	      sphAbundancesBuf = (double *) malloc(N_gas * ChimesGlobalVars.totalNumberOfSpecies * sizeof(double));
+	      sphAbundancesBuf = (ChimesFloat *) malloc(N_gas * ChimesGlobalVars.totalNumberOfSpecies * sizeof(ChimesFloat));
 
 	      if (!modus) /* write */
 		{
@@ -237,7 +237,7 @@ void restart(int modus)
 		}
 
 	      /* Abundance buffer */
-	      byten(&sphAbundancesBuf[0], N_gas * ChimesGlobalVars.totalNumberOfSpecies * sizeof(double), modus);
+	      byten(&sphAbundancesBuf[0], N_gas * ChimesGlobalVars.totalNumberOfSpecies * sizeof(ChimesFloat), modus);
 	      /* GasVars */
 	      byten(&ChimesGasVars[0], N_gas * sizeof(struct gasVariables), modus);
 			  

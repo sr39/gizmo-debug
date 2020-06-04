@@ -47,20 +47,16 @@ int ForceEqOn, N_chimes_full_output_freq, Chimes_incl_full_output = 1;
 double isotropic_photon_density, shielding_length_factor, cr_rate, *dustG_arr, *H2_dissocJ_arr;
 struct gasVariables *ChimesGasVars;
 struct globalVariables ChimesGlobalVars; 
-struct All_rate_variables_structure *AllRates;
-struct Reactions_Structure *all_reactions_root;
-struct Reactions_Structure *nonmolecular_reactions_root;
-#ifdef _OPENMP
-struct All_rate_variables_structure **AllRates_omp; 
-struct Reactions_Structure **all_reactions_root_omp; 
-struct Reactions_Structure **nonmolecular_reactions_root_omp; 
-#endif 
+char ChimesDataPath[256]; 
+char ChimesEqAbundanceTable[196]; 
+char ChimesPhotoIonTable[196]; 
+double chimes_rad_field_norm_factor;  
+double shielding_length_factor; 
+double cr_rate; 
+int ChimesEqmMode, ChimesUVBMode, ChimesInitIonState, N_chimes_full_output_freq; 
+int Chimes_incl_full_output = 1; 
 #ifdef CHIMES_METAL_DEPLETION 
-#ifdef _OPENMP
-struct Chimes_depletion_data_structure ChimesDepletionData[OPENMP]; 
-#else 
-struct Chimes_depletion_data_structure ChimesDepletionData[1]; 
-#endif 
+struct Chimes_depletion_data_structure *ChimesDepletionData; 
 #endif 
 #endif 
 
@@ -211,7 +207,7 @@ void do_the_cooling_for_particle(int i)
         unew = uold + dt * (rt_DoHeating(i, dt) + rt_DoCooling(i, dt));
 #endif
         
-        
+       
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ?? /* for older model, set internal energy to minimum level if marked as ionized by stars */
         if(SphP[i].DelayTimeHII > 0)
         {
@@ -259,7 +255,7 @@ void do_the_cooling_for_particle(int i)
 #ifndef COOLING_OPERATOR_SPLIT
         SphP[i].DtInternalEnergy = 0;
 #endif        
-       
+   
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) /* count off time which has passed since ionization 'clock' */
         if(SphP[i].DelayTimeHII > 0) {SphP[i].DelayTimeHII -= dtime;}
         if(SphP[i].DelayTimeHII < 0) {SphP[i].DelayTimeHII = 0;}
@@ -306,15 +302,10 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     
     /* Call CHIMES to evolve the chemistry and temperature over 
      * the hydro timestep. */ 
-#ifdef _OPENMP
-    int ThisThread = omp_get_thread_num(); 
-    chimes_network(&(ChimesGasVars[target]), &ChimesGlobalVars, AllRates_omp[ThisThread], all_reactions_root_omp[ThisThread], nonmolecular_reactions_root_omp[ThisThread]); 
-#else 
-    chimes_network(&(ChimesGasVars[target]), &ChimesGlobalVars, AllRates, all_reactions_root, nonmolecular_reactions_root); 
-#endif
+    chimes_network(&(ChimesGasVars[target]), &ChimesGlobalVars); 
     
     // Compute updated internal energy 
-    u = ChimesGasVars[target].temperature * BOLTZMANN / ((GAMMA(target)-1) * PROTONMASS * calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars));
+    u = (double) ChimesGasVars[target].temperature * BOLTZMANN / ((GAMMA(target)-1) * PROTONMASS * calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars));
     u /= UNIT_SPECEGY_IN_CGS;  // code units
 
 #ifdef CHIMES_TURB_DIFF_IONS 
@@ -494,7 +485,7 @@ double yhelium(int target)
  * from the non-equilibrium CHIMES abundances. */ 
 double chimes_convert_u_to_temp(double u, double rho, int target)
 {
-    return u * (GAMMA(target)-1) * PROTONMASS * calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars) / BOLTZMANN;
+  return u * (GAMMA(target)-1) * PROTONMASS * ((double) calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars)) / BOLTZMANN;
 }
 
 #else  // CHIMES 
@@ -1498,7 +1489,7 @@ void IonizeParamsFunction(void)
     if(All.ComovingIntegrationOn)	/* analytically compute params from power law J_nu */
     {
         redshift = 1 / All.Time - 1;
-        
+   
         if(redshift >= 6) {J_UV = 0.;}
         else
         {
@@ -1577,45 +1568,48 @@ void InitCool(void)
 #endif
     
 #ifdef CHIMES
-    ChimesGlobalVars.updatePhotonFluxOn = 0; 
-    ChimesGlobalVars.InitIonState = 0; 
-    ChimesGlobalVars.print_debug_statements = 0; 
-    sprintf(ChimesGlobalVars.BenTablesPath, "%s/bens_tables/", ChimesDataPath); 
-    sprintf(ChimesGlobalVars.AdditionalRatesTablesPath, "%s/additional_rates.hdf5", ChimesDataPath); 
-    sprintf(ChimesGlobalVars.EqAbundanceTablePath, "%s/DummyTable.hdf5", ChimesDataPath); 
-    sprintf(ChimesGlobalVars.MolecularTablePath, "%s/molecular_cooling_table.hdf5", ChimesDataPath); 
+    sprintf(ChimesGlobalVars.MainDataTablePath, "%s/chimes_main_data.hdf5", ChimesDataPath); 
+    sprintf(ChimesGlobalVars.EqAbundanceTablePath, "%s/EqAbundancesTables/%s", ChimesDataPath, ChimesEqAbundanceTable); 
+    sprintf(ChimesGlobalVars.PhotoIonTablePath[0], "%s/%s", ChimesDataPath, ChimesPhotoIonTable); 
     
-    // Currently, we only support a single UV spectrum. 
-    // We will add further options later. 
+    // By default, use 1 spectrum, unless
+    // stellar fluxes are enabled. 
     ChimesGlobalVars.N_spectra = 1; 
 
 #ifdef CHIMES_STELLAR_FLUXES  
     ChimesGlobalVars.N_spectra += CHIMES_LOCAL_UV_NBINS; 
+
+    int spectrum_idx; 
+    for (spectrum_idx = 1; spectrum_idx < ChimesGlobalVars.N_spectra; spectrum_idx++) 
+      sprintf(ChimesGlobalVars.PhotoIonTablePath[spectrum_idx], "%s/starburstCrossSections/cross_sections_SB%d.hdf5", ChimesDataPath, spectrum_idx); 
 #endif 
 
-    // The following arrays will store the dust_G and H2_dissocJ 
-    // parameters from the spectrum data files. 
-    dustG_arr = (double *) malloc(ChimesGlobalVars.N_spectra * sizeof(double)); 
-    H2_dissocJ_arr = (double *) malloc(ChimesGlobalVars.N_spectra * sizeof(double)); 
-
-    if (NTask < 11) 
-      init_chimes(&ChimesGlobalVars, &AllRates, &all_reactions_root, &nonmolecular_reactions_root, dustG_arr, H2_dissocJ_arr); 
+    if (ChimesUVBMode > 0) 
+      {
+	ChimesGlobalVars.redshift_dependent_UVB_index = 0; 
+	if (ChimesUVBMode == 1) 
+	  ChimesGlobalVars.use_redshift_dependent_eqm_tables = 0; 
+	else 
+	  ChimesGlobalVars.use_redshift_dependent_eqm_tables = 1; 
+      }
     else 
-      init_chimes_parallel(&ChimesGlobalVars, &AllRates, &all_reactions_root, &nonmolecular_reactions_root, dustG_arr, H2_dissocJ_arr); 
+      {
+	ChimesGlobalVars.redshift_dependent_UVB_index = -1; 
+	ChimesGlobalVars.use_redshift_dependent_eqm_tables = 0; 
+      }
 
-#ifdef _OPENMP
-    int i; 
-    free_all_rates_structure(AllRates, &ChimesGlobalVars); 
-    free_reactions_list(all_reactions_root); 
-    free_reactions_list(nonmolecular_reactions_root); 
+    // Hybrid cooling has not yet been 
+    // implemented in Gizmo. Switch 
+    // it off for now. 
+    ChimesGlobalVars.hybrid_cooling_mode = 0; 
     
-    AllRates_omp = (struct All_rate_variables_structure **) malloc(maxThreads * sizeof(struct All_rate_variables_structure *)); 
-    all_reactions_root_omp = (struct Reactions_Structure **) malloc(maxThreads * sizeof(struct Reactions_Structure *)); 
-    nonmolecular_reactions_root_omp = (struct Reactions_Structure **) malloc(maxThreads * sizeof(struct Reactions_Structure *)); 
-    
-    for (i = 0; i < maxThreads; i++) 
-      init_chimes_omp(&ChimesGlobalVars, &AllRates_omp[i], &all_reactions_root_omp[i], &nonmolecular_reactions_root_omp[i]); 
-#endif 
+    // Set the chimes_exit() function 
+    // to use the Gizmo-specific 
+    // chimes_gizmo_exit(). 
+    chimes_exit = &chimes_gizmo_exit; 
+
+    // Initialise the CHIMES module. 
+    init_chimes(&ChimesGlobalVars); 
 
 #ifdef CHIMES_METAL_DEPLETION 
     chimes_init_depletion_data(); 
@@ -1792,16 +1786,7 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
 void chimes_update_gas_vars(int target) 
 {
   double dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; 
-  
-  /* Check that the gasVars structure matches the corresponding 
-   * particle structure. */ 
-  if ((ChimesGasVars[target].ID != P[target].ID) || (ChimesGasVars[target].ID_child_number != P[target].ID_child_number)) 
-    {
-      printf("ERROR: ChimesGasVars[%d].ID = %u, ChimesGasVars[%d].ID_child_number = %u, P[%d].ID = %u, P[%d].ID_child_number = %u. \n", target, ChimesGasVars[target].ID, target, ChimesGasVars[target].ID_child_number, target, P[target].ID, target, P[target].ID_child_number); 
-      endrun(201); 
-    } 
-  
-  double u_old_cgs = DMAX(All.MinEgySpec, SphP[target].InternalEnergy) * UNIT_SPECEGY_IN_CGS;
+  double u_old_cgs = DMAX(All.MinEgySpec, SphP[target].InternalEnergy) * UNIT_SPECEGY_IN_CGS; 
   double rho_cgs = SphP[target].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS; 
   
 #ifdef COOL_METAL_LINES_BY_SPECIES 
@@ -1810,59 +1795,68 @@ void chimes_update_gas_vars(int target)
   double H_mass_fraction = XH; 
 #endif 
   
-  ChimesGasVars[target].temperature = chimes_convert_u_to_temp(u_old_cgs, rho_cgs, target); 
-  ChimesGasVars[target].nH_tot = H_mass_fraction * rho_cgs / PROTONMASS; 
+  ChimesGasVars[target].temperature = (ChimesFloat) chimes_convert_u_to_temp(u_old_cgs, rho_cgs, target); 
+  ChimesGasVars[target].nH_tot = (ChimesFloat) (H_mass_fraction * rho_cgs / PROTONMASS); 
   ChimesGasVars[target].ThermEvolOn = All.ChimesThermEvolOn; 
   
   // If there is an EoS, need to set TempFloor to that instead. 
-#if !(defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)) // ??
-  ChimesGasVars[target].TempFloor = All.MinGasTemp;
+#ifndef GALSF_FB_FIRE_RT_HIIHEATING
+  ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(All.MinGasTemp, 10.1); 
 #else 
-  if (SphP[target].DelayTimeHII > 0) {ChimesGasVars[target].TempFloor = HIIRegion_Temp;} else {ChimesGasVars[target].TempFloor = All.MinGasTemp;}
+  if (SphP[target].DelayTimeHII > 0) 
+    ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(HIIRegion_Temp, 10.1); 
+  else 
+    ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(All.MinGasTemp, 10.1); 
 #endif 
+
+  // Flag to control how the temperature 
+  // floor is implemented in CHIMES. 
+  ChimesGasVars[target].temp_floor_mode = 1; 
   
   // Extragalactic UV background 
-  ChimesGasVars[target].isotropic_photon_density[0] = isotropic_photon_density; 
-  ChimesGasVars[target].dust_G_parameter[0] = dustG_arr[0]; 
-  ChimesGasVars[target].H2_dissocJ[0] = H2_dissocJ_arr[0]; 
+  ChimesGasVars[target].isotropic_photon_density[0] = chimes_table_spectra.isotropic_photon_density[0]; 
+  ChimesGasVars[target].isotropic_photon_density[0] *= chimes_rad_field_norm_factor; 
+
+  ChimesGasVars[target].G0_parameter[0] = chimes_table_spectra.G0_parameter[0]; 
+  ChimesGasVars[target].H2_dissocJ[0] =  chimes_table_spectra.H2_dissocJ[0]; 
   
 #ifdef CHIMES_STELLAR_FLUXES 
   int kc; 
   for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
     { 
-      ChimesGasVars[target].isotropic_photon_density[kc + 1] = SphP[target].Chimes_fluxPhotIon[kc] / C_LIGHT;
+      ChimesGasVars[target].isotropic_photon_density[kc + 1] = (ChimesFloat) (SphP[target].Chimes_fluxPhotIon[kc] / C_LIGHT); 
       
 #ifdef CHIMES_HII_REGIONS 
       if (SphP[target].DelayTimeHII > 0) 
 	{
-	  ChimesGasVars[target].isotropic_photon_density[kc + 1] += SphP[target].Chimes_fluxPhotIon_HII[kc] / C_LIGHT; 
-	  ChimesGasVars[target].dust_G_parameter[kc + 1] = (SphP[target].Chimes_G0[kc] + SphP[target].Chimes_G0_HII[kc]) / DMAX((SphP[target].Chimes_fluxPhotIon[kc] + SphP[target].Chimes_fluxPhotIon_HII[kc]), 1.0e-300); 
+	  ChimesGasVars[target].isotropic_photon_density[kc + 1] += (ChimesFloat) (SphP[target].Chimes_fluxPhotIon_HII[kc] / C_LIGHT); 
+	  ChimesGasVars[target].G0_parameter[kc + 1] = (ChimesFloat) ((SphP[target].Chimes_G0[kc] + SphP[target].Chimes_G0_HII[kc]) / DMAX((SphP[target].Chimes_fluxPhotIon[kc] + SphP[target].Chimes_fluxPhotIon_HII[kc]), 1.0e-300)); 
 	}
       else 
-	ChimesGasVars[target].dust_G_parameter[kc + 1] = SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300); 
+	ChimesGasVars[target].G0_parameter[kc + 1] = (ChimesFloat) (SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300)); 
       
-      ChimesGasVars[target].H2_dissocJ[kc + 1] = ChimesGasVars[target].dust_G_parameter[kc + 1] * (H2_dissocJ_arr[kc + 1] / dustG_arr[kc + 1]); 
+      ChimesGasVars[target].H2_dissocJ[kc + 1] = (ChimesFloat) (ChimesGasVars[target].G0_parameter[kc + 1] * (chimes_table_spectra.H2_dissocJ[kc + 1] / chimes_table_spectra.G0_parameter[kc + 1])); 
 #else 
-      ChimesGasVars[target].dust_G_parameter[kc + 1] = SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300); 
-      ChimesGasVars[target].H2_dissocJ[kc + 1] = ChimesGasVars[target].dust_G_parameter[kc + 1] * (H2_dissocJ_arr[kc + 1] / dustG_arr[kc + 1]); 
+      ChimesGasVars[target].G0_parameter[kc + 1] = (ChimesFloat) (SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300)); 
+      ChimesGasVars[target].H2_dissocJ[kc + 1] = (ChimesFloat) (ChimesGasVars[target].G0_parameter[kc + 1] * (chimes_table_spectra.H2_dissocJ[kc + 1] / chimes_table_spectra.G0_parameter[kc + 1])); 
 #endif 
     }
 #endif 
   
-  ChimesGasVars[target].cr_rate = cr_rate;  // For now, assume a constant cr_rate. 
-  ChimesGasVars[target].hydro_timestep = dt * UNIT_TIME_IN_CGS;
+  ChimesGasVars[target].cr_rate = (ChimesFloat) cr_rate;  // For now, assume a constant cr_rate. 
+  ChimesGasVars[target].hydro_timestep = (ChimesFloat) (dt * UNIT_TIME_IN_CGS); 
   
-  ChimesGasVars[target].ForceEqOn = ForceEqOn; 
-  ChimesGasVars[target].divVel = P[target].Particle_DivVel / UNIT_TIME_IN_CGS;
+  ChimesGasVars[target].ForceEqOn = ChimesEqmMode; 
+  ChimesGasVars[target].divVel = (ChimesFloat) P[target].Particle_DivVel / UNIT_TIME_IN_CGS;
   if (All.ComovingIntegrationOn)
     {
-      ChimesGasVars[target].divVel *= All.cf_a2inv;
-      ChimesGasVars[target].divVel += 3. * All.cf_hubble_a / UNIT_TIME_IN_CGS;  /* Term due to Hubble expansion */
+      ChimesGasVars[target].divVel *= (ChimesFloat) All.cf_a2inv;
+      ChimesGasVars[target].divVel += (ChimesFloat) (3 * All.cf_hubble_a / UNIT_TIME_IN_CGS);  /* Term due to Hubble expansion */
     }
-  ChimesGasVars[target].divVel = fabs(ChimesGasVars[target].divVel); 
+  ChimesGasVars[target].divVel = (ChimesFloat) fabs(ChimesGasVars[target].divVel); 
   
 #ifndef COOLING_OPERATOR_SPLIT 
-  ChimesGasVars[target].constant_heating_rate = ChimesGasVars[target].nH_tot * SphP[target].DtInternalEnergy; 
+  ChimesGasVars[target].constant_heating_rate = ChimesGasVars[target].nH_tot * ((ChimesFloat) SphP[target].DtInternalEnergy); 
 #else 
   ChimesGasVars[target].constant_heating_rate = 0.0; 
 #endif 
@@ -1870,12 +1864,14 @@ void chimes_update_gas_vars(int target)
 #ifdef CHIMES_SOBOLEV_SHIELDING 
   double surface_density;
   surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs
-  ChimesGasVars[target].cell_size = shielding_length_factor * surface_density / rho_cgs; 
+  ChimesGasVars[target].cell_size = (ChimesFloat) (shielding_length_factor * surface_density / rho_cgs); 
 #else 
   ChimesGasVars[target].cell_size = 1.0; 
 #endif
 
   ChimesGasVars[target].doppler_broad = 7.1;  // km/s. For now, just set this constant. Thermal broadening is also added within CHIMES. 
+
+  ChimesGasVars[target].InitIonState = ChimesInitIonState; 
   
 #ifdef CHIMES_HII_REGIONS 
   if (SphP[target].DelayTimeHII > 0.0) {ChimesGasVars[target].cell_size = 1.0;} // switch of shielding in HII regions
@@ -1901,18 +1897,19 @@ void chimes_update_element_abundances(int i)
   double H_mass_fraction = 1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1]); 
 
   /* Update the element abundances in ChimesGasVars. */ 
-  ChimesGasVars[i].element_abundances[0] = P[i].Metallicity[1] / (4.0 * H_mass_fraction);   // He 
-  ChimesGasVars[i].element_abundances[1] = P[i].Metallicity[2] / (12.0 * H_mass_fraction);  // C 
-  ChimesGasVars[i].element_abundances[2] = P[i].Metallicity[3] / (14.0 * H_mass_fraction);  // N 
-  ChimesGasVars[i].element_abundances[3] = P[i].Metallicity[4] / (16.0 * H_mass_fraction);  // O 
-  ChimesGasVars[i].element_abundances[4] = P[i].Metallicity[5] / (20.0 * H_mass_fraction);  // Ne 
-  ChimesGasVars[i].element_abundances[5] = P[i].Metallicity[6] / (24.0 * H_mass_fraction);  // Mg 
-  ChimesGasVars[i].element_abundances[6] = P[i].Metallicity[7] / (28.0 * H_mass_fraction);  // Si 
-  ChimesGasVars[i].element_abundances[7] = P[i].Metallicity[8] / (32.0 * H_mass_fraction);  // S 
-  ChimesGasVars[i].element_abundances[8] = P[i].Metallicity[9] / (40.0 * H_mass_fraction);  // Ca 
-  ChimesGasVars[i].element_abundances[9] = P[i].Metallicity[10] / (56.0 * H_mass_fraction); // Fe 
+  ChimesGasVars[i].element_abundances[0] = (ChimesFloat) (P[i].Metallicity[1] / (4.0 * H_mass_fraction));   // He 
+  ChimesGasVars[i].element_abundances[1] = (ChimesFloat) (P[i].Metallicity[2] / (12.0 * H_mass_fraction));  // C 
+  ChimesGasVars[i].element_abundances[2] = (ChimesFloat) (P[i].Metallicity[3] / (14.0 * H_mass_fraction));  // N 
+  ChimesGasVars[i].element_abundances[3] = (ChimesFloat) (P[i].Metallicity[4] / (16.0 * H_mass_fraction));  // O 
+  ChimesGasVars[i].element_abundances[4] = (ChimesFloat) (P[i].Metallicity[5] / (20.0 * H_mass_fraction));  // Ne 
+  ChimesGasVars[i].element_abundances[5] = (ChimesFloat) (P[i].Metallicity[6] / (24.0 * H_mass_fraction));  // Mg 
+  ChimesGasVars[i].element_abundances[6] = (ChimesFloat) (P[i].Metallicity[7] / (28.0 * H_mass_fraction));  // Si 
+  ChimesGasVars[i].element_abundances[7] = (ChimesFloat) (P[i].Metallicity[8] / (32.0 * H_mass_fraction));  // S 
+  ChimesGasVars[i].element_abundances[8] = (ChimesFloat) (P[i].Metallicity[9] / (40.0 * H_mass_fraction));  // Ca 
+  ChimesGasVars[i].element_abundances[9] = (ChimesFloat) (P[i].Metallicity[10] / (56.0 * H_mass_fraction)); // Fe 
 
-  ChimesGasVars[i].metallicity = P[i].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129. 
+  ChimesGasVars[i].metallicity = (ChimesFloat) (P[i].Metallicity[0] / 0.0129);  // In Zsol. CHIMES uses Zsol = 0.0129. 
+  ChimesGasVars[i].dust_ratio = ChimesGasVars[i].metallicity; 
 
 #ifdef CHIMES_METAL_DEPLETION 
 #ifdef _OPENMP
@@ -1922,15 +1919,15 @@ void chimes_update_element_abundances(int i)
 #endif 
   chimes_compute_depletions(ChimesGasVars[i].nH_tot, ChimesGasVars[i].temperature, ThisThread); 
 
-  ChimesGasVars[i].element_abundances[1] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[0]; // C 
-  ChimesGasVars[i].element_abundances[2] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[1]; // N 
-  ChimesGasVars[i].element_abundances[3] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[2]; // O 
-  ChimesGasVars[i].element_abundances[5] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[3]; // Mg 
-  ChimesGasVars[i].element_abundances[6] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[4]; // Si 
-  ChimesGasVars[i].element_abundances[7] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[5]; // S 
-  ChimesGasVars[i].element_abundances[9] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[6]; // Fe 
+  ChimesGasVars[i].element_abundances[1] *= (ChimesFloat) ChimesDepletionData[ThisThread].ChimesDepletionFactors[0]; // C 
+  ChimesGasVars[i].element_abundances[2] *= (ChimesFloat) ChimesDepletionData[ThisThread].ChimesDepletionFactors[1]; // N 
+  ChimesGasVars[i].element_abundances[3] *= (ChimesFloat) ChimesDepletionData[ThisThread].ChimesDepletionFactors[2]; // O 
+  ChimesGasVars[i].element_abundances[5] *= (ChimesFloat) ChimesDepletionData[ThisThread].ChimesDepletionFactors[3]; // Mg 
+  ChimesGasVars[i].element_abundances[6] *= (ChimesFloat) ChimesDepletionData[ThisThread].ChimesDepletionFactors[4]; // Si 
+  ChimesGasVars[i].element_abundances[7] *= (ChimesFloat) ChimesDepletionData[ThisThread].ChimesDepletionFactors[5]; // S 
+  ChimesGasVars[i].element_abundances[9] *= (ChimesFloat) ChimesDepletionData[ThisThread].ChimesDepletionFactors[6]; // Fe 
 
-  ChimesGasVars[i].metallicity *= ChimesDepletionData[ThisThread].ChimesDustRatio; 
+  ChimesGasVars[i].dust_ratio *= (ChimesFloat) ChimesDepletionData[ThisThread].ChimesDustRatio; 
 #endif // CHIMES_METAL_DEPLETION 
 
   /* The element abundances may have changed, so use the check_constraint_equations() 
@@ -1955,12 +1952,12 @@ void chimes_update_turbulent_abundances(int i, int mode)
   if (mode == 0) 
     { 
       for (k_species = 0; k_species < ChimesGlobalVars.totalNumberOfSpecies; k_species++) 
-	ChimesGasVars[i].abundances[k_species] = SphP[i].ChimesNIons[k_species] / NHtot; 
+	ChimesGasVars[i].abundances[k_species] = (ChimesFloat) (SphP[i].ChimesNIons[k_species] / NHtot); 
     }
   else 
     { 
       for (k_species = 0; k_species < ChimesGlobalVars.totalNumberOfSpecies; k_species++) 
-	SphP[i].ChimesNIons[k_species] = ChimesGasVars[i].abundances[k_species] * NHtot; 
+	SphP[i].ChimesNIons[k_species] = ((double) ChimesGasVars[i].abundances[k_species]) * NHtot; 
     }
 }
 #endif // CHIMES_TURB_DIFF_IONS 
@@ -1969,6 +1966,12 @@ void chimes_update_turbulent_abundances(int i, int mode)
 void chimes_init_depletion_data(void) 
 {
   int i; 
+
+#ifdef _OPENMP 
+  ChimesDepletionData = (struct Chimes_depletion_data_structure *) malloc(maxThreads * sizeof(struct Chimes_depletion_data_structure)); 
+#else 
+  ChimesDepletionData = (struct Chimes_depletion_data_structure *) malloc(sizeof(struct Chimes_depletion_data_structure)); 
+#endif 
   
   // Elements in Jenkins (2009) in the order 
   // C, N, O, Mg, Si, P, S, Cl, Ti, Cr, Mn, Fe, 
@@ -2002,17 +2005,20 @@ void chimes_init_depletion_data(void)
 				     {-0.615, -0.725, 0.69},  // Ge 
 				     {-0.166, -0.332, 0.684}}; // Kr 
   
-        i = 0;
+  int n_thread; 
 #ifdef _OPENMP
-        int n_openmp_threads = omp_get_num_threads();
-        for (i = 0; i < n_openmp_threads; i++)
-#endif
-        {
-            memcpy(ChimesDepletionData[i].SolarAbund, SolarAbund, DEPL_N_ELEM * sizeof(double));
-            memcpy(ChimesDepletionData[i].DeplPars, DeplPars, DEPL_N_ELEM * 3 * sizeof(double));
-            // DustToGasSaturated is the dust to gas ratio when F_star = 1.0, i.e. at maximum depletion onto grains.
-            ChimesDepletionData[i].DustToGasSaturated = 5.9688e-03;
-        }
+  n_thread = maxThreads; 
+#else 
+  n_thread = 1; 
+#endif 
+
+  for (i = 0; i < n_thread; i++)
+    {
+      memcpy(ChimesDepletionData[i].SolarAbund, SolarAbund, DEPL_N_ELEM * sizeof(double));
+      memcpy(ChimesDepletionData[i].DeplPars, DeplPars, DEPL_N_ELEM * 3 * sizeof(double));
+      // DustToGasSaturated is the dust to gas ratio when F_star = 1.0, i.e. at maximum depletion onto grains.
+      ChimesDepletionData[i].DustToGasSaturated = 5.9688e-03;
+    }
 }
 
 /* Computes the linear fits as in Jenkins (2009) 
@@ -2072,5 +2078,11 @@ void chimes_compute_depletions(double nH, double T, int thread_id)
   ChimesDepletionData[thread_id].ChimesDustRatio /= ChimesDepletionData[thread_id].DustToGasSaturated; 
 } 
 #endif // CHIMES_METAL_DEPLETION 
+
+
+void chimes_gizmo_exit(void) 
+{
+  endrun(56275362); 
+}
 #endif // CHIMES 
 #endif

@@ -69,6 +69,7 @@ HG_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null)
 BUILDINFO = "Build on $(HOSTNAME) by $(USER) from $(HG_BRANCH):$(HG_COMMIT) at $(HG_REPO)"
 OPT += -DBUILDINFO='$(BUILDINFO)'
 
+
 # initialize some default flags -- these will all get re-written below
 CC	= mpicc		# sets the C-compiler (default, will be set for machine below)
 CXX	= mpiCC		# sets the C++-compiler (default, will be set for machine below)
@@ -656,7 +657,7 @@ OPTIMIZE += -parallel -openmp # openmp required compiler flags
 endif
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
 CHIMESINCL = -I/home/ajr882/sundials/include  
-CHIMESLIBS = -L/home/ajr882/sundials/lib -lsundials_cvode -lsundials_kinsol -lsundials_nvecserial 
+CHIMESLIBS = -L/home/ajr882/sundials/lib -lsundials_cvode -lsundials_nvecserial 
 endif 
 GMP_INCL = #
 GMP_LIBS = #
@@ -687,8 +688,8 @@ ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -parallel -openmp -mt_mpi 
 endif
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
-CHIMESINCL = -I/home/ajr882/sundials/include  
-CHIMESLIBS = -L/home/ajr882/sundials/lib -lsundials_cvode -lsundials_kinsol -lsundials_nvecserial 
+CHIMESINCL = -I/home/sundials/include  
+CHIMESLIBS = -L/home/sundials/lib -lsundials_cvode -lsundials_nvecserial 
 endif 
 GMP_INCL = #
 GMP_LIBS = #
@@ -696,8 +697,8 @@ MKL_INCL = -I$(MKLROOT)/include
 MKL_LIBS = -L$(MKLROOT)/lib/intel64 -lm -lmkl_core -lmkl_sequential -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_blacs_intelmpi_lp64
 GSL_INCL = 
 GSL_LIBS = 
-FFTW_INCL= -I/home/ajr882/libraries/fftw-2.1.5_install/include 
-FFTW_LIBS= -L/home/ajr882/libraries/fftw-2.1.5_install/lib 
+FFTW_INCL= -I/home/libraries/fftw-2.1.5_install/include 
+FFTW_LIBS= -L/home/libraries/fftw-2.1.5_install/lib 
 HDF5INCL = -DH5_USE_16_API 
 HDF5LIB  = -lhdf5 -lz
 MPICHLIB = 
@@ -1072,6 +1073,7 @@ endif
 #----------------------------------------------------------------------------------------------
 #----------------------------------------------------------------------------------------------
 
+
 #
 # different code groups that need to be compiled. the groupings below are
 # arbitrary (they will all be added to OBJS and compiled, and if they are
@@ -1168,7 +1170,7 @@ OPTIONS = $(OPTIMIZE) $(OPT)
 OBJS  = $(CORE_OBJS) $(SYSTEM_OBJS) $(GRAVITY_OBJS) $(HYDRO_OBJS) \
 		$(EOSCOOL_OBJS) $(STARFORM_OBJS) $(SINK_OBJS) $(RHD_OBJS) \
 		$(FOF_OBJS) $(MISC_OBJS)
-		
+
 ## fortran recompiler block
 FOPTIONS = $(OPTIMIZE) $(FOPT)
 FOBJS =
@@ -1214,7 +1216,8 @@ endif
 # chimes files are treated as special for now because they are not in the public
 #  code and have not had their macro logic cleaned up to allow appropriate compilation without chimes flags enabled
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
-OBJS    += cooling/chimes/chimes.o cooling/chimes/cooling.o cooling/chimes/init_chimes.o cooling/chimes/init_chimes_parallel.o cooling/chimes/interpol.o cooling/chimes/optimise.o cooling/chimes/rate_coefficients.o cooling/chimes/rate_equations.o cooling/chimes/set_rates.o
+OBJS    += cooling/chimes/chimes.o cooling/chimes/chimes_cooling.o cooling/chimes/init_chimes.o cooling/chimes/rate_equations.o cooling/chimes/update_rates.o 
+INCL    += cooling/chimes/chimes_interpol.h cooling/chimes/chimes_proto.h cooling/chimes/chimes_vars.h 
 endif
 
 # if HDF5 explicitly disabled, remove the linked libraries

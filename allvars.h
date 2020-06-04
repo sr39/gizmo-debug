@@ -409,21 +409,20 @@ USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
 #endif
 
 #ifdef CHIMES 
-#include "./cooling/chimes/allvars.h" 
+#include "./cooling/chimes/chimes_proto.h" 
 extern struct gasVariables *ChimesGasVars; 
 extern struct globalVariables ChimesGlobalVars; 
-extern char ChimesDataPath[500]; 
-extern double isotropic_photon_density;  
+extern char ChimesDataPath[256]; 
+extern char ChimesEqAbundanceTable[196]; 
+extern char ChimesPhotoIonTable[196]; 
+extern double chimes_rad_field_norm_factor; 
 extern double shielding_length_factor; 
 extern double cr_rate; 
-extern int ForceEqOn; 
+extern int ChimesEqmMode; 
+extern int ChimesUVBMode; 
+extern int ChimesInitIonState; 
 extern int Chimes_incl_full_output; 
 extern int N_chimes_full_output_freq; 
-extern struct All_rate_variables_structure *AllRates;
-extern struct Reactions_Structure *all_reactions_root;
-extern struct Reactions_Structure *nonmolecular_reactions_root;
-extern double *dustG_arr; 
-extern double *H2_dissocJ_arr; 
 #ifdef CHIMES_STELLAR_FLUXES 
 // The following defines the stellar age bins 
 // that we will use to define the UV spectra 
@@ -434,11 +433,6 @@ extern double *H2_dissocJ_arr;
 #define CHIMES_LOCAL_UV_AGE_MID 1.0 
 #define CHIMES_LOCAL_UV_DELTA_AGE_HI 1.0 
 #endif 
-#ifdef _OPENMP
-extern struct All_rate_variables_structure **AllRates_omp;
-extern struct Reactions_Structure **all_reactions_root_omp;
-extern struct Reactions_Structure **nonmolecular_reactions_root_omp;
-#endif
 #ifdef CHIMES_METAL_DEPLETION 
 #define DEPL_N_ELEM 17 
 struct Chimes_depletion_data_structure 
@@ -449,11 +443,7 @@ struct Chimes_depletion_data_structure
   double ChimesDepletionFactors[7]; 
   double ChimesDustRatio; 
 }; 
-#ifdef _OPENMP 
-extern struct Chimes_depletion_data_structure ChimesDepletionData[OPENMP]; 
-#else 
-extern struct Chimes_depletion_data_structure ChimesDepletionData[1]; 
-#endif // OPENMP 
+extern struct Chimes_depletion_data_structure *ChimesDepletionData; 
 #endif // CHIMES_METAL_DEPLETION 
 #endif // CHIMES 
 
@@ -505,6 +495,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
 #define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
+
 
 #ifdef SINGLE_STAR_ACCRETION // figure out flags needed for the chosen sink accretion model
 #define BH_SWALLOWGAS // need to swallow gas [part of sink model]
@@ -1235,6 +1226,7 @@ typedef unsigned long long peanokey;
 #define FLAG_EVOLVED_ZELDOVICH 3
 #define FLAG_EVOLVED_2LPT      4
 #define FLAG_NORMALICS_2LPT    5
+
 
 #ifndef PM_ASMTH
 #define PM_ASMTH (1.25) /*! PM_ASMTH gives the scale of the short-range/long-range force split in units of FFT-mesh cells */
@@ -2886,7 +2878,7 @@ extern struct sph_particle_data
 #endif
 #endif
 #ifdef CHIMES_TURB_DIFF_IONS 
-    double ChimesNIons[TOTSIZE];
+    double ChimesNIons[CHIMES_TOTSIZE];
 #endif
 #ifdef BH_COMPTON_HEATING
     MyFloat Rad_Flux_AGN;             /*!< local AGN flux */

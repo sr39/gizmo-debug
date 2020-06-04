@@ -1685,6 +1685,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) {mass_stellarlum[k_freq]=0;}
 #ifdef CHIMES_STELLAR_FLUXES 
     double chimes_mass_stellarlum_G0[CHIMES_LOCAL_UV_NBINS]={0}, chimes_mass_stellarlum_ion[CHIMES_LOCAL_UV_NBINS]={0};
+    double chimes_flux_G0[CHIMES_LOCAL_UV_NBINS]={0}, chimes_flux_ion[CHIMES_LOCAL_UV_NBINS]={0};
 #endif
     double dx_stellarlum=0, dy_stellarlum=0, dz_stellarlum=0;
     int valid_gas_particle_for_rt = 0;
@@ -1698,9 +1699,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
     double incident_flux_uv=0, incident_flux_euv=0;
-#ifdef CHIMES 
-    double chimes_flux_G0[CHIMES_LOCAL_UV_NBINS]={0}, chimes_flux_ion[CHIMES_LOCAL_UV_NBINS]={0};
-#endif
 #endif
 #ifdef BH_COMPTON_HEATING
     double incident_flux_agn=0;
@@ -2596,9 +2594,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
                 {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {Rad_E_gamma[kf] += fac_intensity * mass_stellarlum[kf];}}
 #endif
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
-                incident_flux_uv += fac_intensity * mass_stellarlum[RT_FREQ_BIN_FIRE_UV];// * shortrange_table[tabindex];
-#ifdef CHIMES 
+#ifdef CHIMES_STELLAR_FLUXES  
                 int chimes_k;
                 double chimes_fac = fac_intensity / (UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS);  // 1/(4 * pi * r^2), in cm^-2
                 for (chimes_k = 0; chimes_k < CHIMES_LOCAL_UV_NBINS; chimes_k++)
@@ -2606,7 +2602,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     chimes_flux_G0[chimes_k] += chimes_fac * chimes_mass_stellarlum_G0[chimes_k];   // Habing flux units
                     chimes_flux_ion[chimes_k] += chimes_fac * chimes_mass_stellarlum_ion[chimes_k]; // cm^-2 s^-1
                 }
-#else 
+#endif 
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
+                incident_flux_uv += fac_intensity * mass_stellarlum[RT_FREQ_BIN_FIRE_UV];// * shortrange_table[tabindex];
                 if((mass_stellarlum[RT_FREQ_BIN_FIRE_IR]<mass_stellarlum[RT_FREQ_BIN_FIRE_UV])&&(mass_stellarlum[RT_FREQ_BIN_FIRE_IR]>0)) // if this -isn't- satisfied, no chance you are optically thin to EUV //
                 {
                     // here, use ratio and linear scaling of escape with tau to correct to the escape fraction for the correspondingly higher EUV kappa: factor ~2000 is KAPPA_EUV/KAPPA_UV
@@ -2617,7 +2615,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double m_lum_total = 0; int ks_q; for(ks_q=0;ks_q<N_RT_FREQ_BINS;ks_q++) {m_lum_total += mass_stellarlum[ks_q];}
                     incident_flux_euv += All.PhotonMomentum_fUV * fac_intensity * m_lum_total;
                 }
-#endif
                 // don't multiply by shortrange_table since that is to prevent 2x-counting by PMgrid (which never happens here) //
 #endif
 #ifdef BH_PHOTONMOMENTUM
@@ -2743,14 +2740,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
         if(valid_gas_particle_for_rt) {SphP[target].Rad_Flux_UV = incident_flux_uv;}
-        if(valid_gas_particle_for_rt) {SphP[target].Rad_Flux_EUV = incident_flux_euv;}
-#ifdef CHIMES 
+        if(valid_gas_particle_for_rt) {SphP[target].Rad_Flux_EUV = incident_flux_euv;} 
+#endif
+#ifdef CHIMES_STELLAR_FLUXES 
         if(valid_gas_particle_for_rt)
         {
             int kc; for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) {
                 SphP[target].Chimes_G0[kc] = chimes_flux_G0[kc]; SphP[target].Chimes_fluxPhotIon[kc] = chimes_flux_ion[kc];}
         }
-#endif 
 #endif
 #ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
         P[target].MencInRcrit = m_enc_in_rcrit;
@@ -2809,10 +2806,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
         GravDataResult[target].Rad_Flux_UV = incident_flux_uv;
-        GravDataResult[target].Rad_Flux_EUV = incident_flux_euv;
-#ifdef CHIMES 
+        GravDataResult[target].Rad_Flux_EUV = incident_flux_euv; 
+#endif
+#ifdef CHIMES_STELLAR_FLUXES 
         int kc; for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) {GravDataResult[target].Chimes_G0[kc] = chimes_flux_G0[kc]; GravDataResult[target].Chimes_fluxPhotIon[kc] = chimes_flux_ion[kc];}
-#endif 
 #endif
 #ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
         GravDataResult[target].MencInRcrit = m_enc_in_rcrit;

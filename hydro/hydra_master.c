@@ -235,7 +235,7 @@ struct INPUT_STRUCT_NAME
 #endif
 
 #ifdef CHIMES_TURB_DIFF_IONS 
-    MyDouble ChimesNIons[TOTSIZE]; 
+    MyDouble ChimesNIons[CHIMES_TOTSIZE]; 
 #endif 
     
 #ifdef RT_SOLVER_EXPLICIT
@@ -337,7 +337,7 @@ struct OUTPUT_STRUCT_NAME
 #endif
 
 #ifdef CHIMES_TURB_DIFF_IONS 
-    MyDouble ChimesIonsYield[TOTSIZE]; 
+    MyDouble ChimesIonsYield[CHIMES_TOTSIZE]; 
 #endif 
     
 #if defined(RT_SOLVER_EXPLICIT)
