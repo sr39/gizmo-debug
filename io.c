@@ -40,10 +40,7 @@ void savepositions(int num)
     CPU_Step[CPU_MISC] += measure_time();
 
 #ifdef CHIMES_REDUCED_OUTPUT 
-    if (num % N_chimes_full_output_freq == 0)
-      Chimes_incl_full_output = 1; 
-    else 
-      Chimes_incl_full_output = 0; 
+    if (num % N_chimes_full_output_freq == 0) {Chimes_incl_full_output = 1;} else {Chimes_incl_full_output = 0;}
 #endif 
     
     rearrange_particle_sequence();
@@ -2417,7 +2414,7 @@ int blockpresent(enum iofields blocknr)
 
         case IO_CHIMES_ABUNDANCES:
 #if defined(CHIMES_REDUCED_OUTPUT)
-            if (Chimes_incl_full_output == 1) {return 1;} else {return 0;}
+            if(Chimes_incl_full_output == 1) {return 1;} else {return 0;}
 #elif defined(CHIMES)
             return 1;
 #endif
@@ -2431,7 +2428,7 @@ int blockpresent(enum iofields blocknr)
 
         case IO_CHIMES_REDUCED: 
 #if defined(CHIMES) && defined(CHIMES_REDUCED_OUTPUT)
-            if (Chimes_incl_full_output == 0) {return 1;} else {return 0;}
+            if(Chimes_incl_full_output == 0) {return 1;} else {return 0;}
 #endif
             break;
 

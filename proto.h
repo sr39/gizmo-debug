@@ -195,6 +195,7 @@ void mpi_distribute_items_to_tasks(void *data, int task_offset, int *n_items, in
 void parallel_sort_special_P_GrNr_ID(void);
 void calculate_power_spectra(int num, long long *ntot_type_all);
 
+
 int pmforce_is_particle_high_res(int type, MyDouble *pos);
 
 void compare_partitions(void);
@@ -317,6 +318,8 @@ double INLINE_FUNC convert_internalenergy_soundspeed2(int i, double u);
 double INLINE_FUNC Get_Gas_effective_soundspeed_i(int i);
 double INLINE_FUNC Get_Gas_thermal_soundspeed_i(int i);
 double Get_Gas_Alfven_speed_i(int i);
+double Get_Gas_Mean_Molecular_Weight_mu(double T_guess, double rho, double *xH0, double *ne_guess, double urad_from_uvb_in_G0, int target);
+double yhelium(int target);
 double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral_fraction, double urad_from_uvb_in_G0, double clumping_factor);
 double INLINE_FUNC Get_Gas_BField(int i_particle_id, int k_vector_component);
 #ifdef MAGNETIC

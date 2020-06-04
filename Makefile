@@ -318,9 +318,13 @@ endif
 ifeq ($(SYSTYPE),"MacBookPro")
 CC       =  mpicc
 CXX      =  mpiccxx
-FC       =  $(CC) #mpifort
+FC       =  $(CC) #mpifort  ## change this to "mpifort" for packages requiring linking secondary fortran code, currently -only- the helmholtz eos modules do this, so I leave it un-linked for now to save people the compiler headaches
 OPTIMIZE = -O1 -funroll-loops
 OPTIMIZE += -g -Wall # compiler warnings
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
+CHIMESINCL = -I/usr/local/include/sundials
+CHIMESLIBS = -L/usr/local/lib -lsundials_cvode -lsundials_nvecserial
+endif
 GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = #
@@ -332,7 +336,19 @@ FFTW_LIBS= -L/usr/local/lib
 HDF5INCL = -I/usr/local/include -DH5_USE_16_API #-I$(PORTINCLUDE) -DH5_USE_16_API
 HDF5LIB  = -L/usr/local/lib -lhdf5 -lz #-L$(PORTLIB)
 MPICHLIB = #
-OPT     += -DDISABLE_ALIGNED_ALLOC #
+OPT     += -DDISABLE_ALIGNED_ALLOC -DCHIMES_USE_DOUBLE_PRECISION #
+##
+## update 2020: on more recent macs, MacPorts is not as useful a library installer.
+##  I [PFH] switched over to homebrew. First you still need to install the extended XCode developer
+##  tools and make sure all the appropriate extended tools, permissions, etc, are installed on your mac.
+##  You can find tutorials online with simple searches like "how to install gcc and mpicc on osx"
+##  rather than looking for something GIZMO-specific. Then look for how to install homebrew or
+##  another package manager.
+## Most of the compilation tools will then be available. You may need to install your own HDF5 libraries,
+##  but this can be done with homebrew. Similarly some special code sub-modules require their own
+##  packages. For example, chimes modules require sundials, which can be easily installed with
+##  "brew install sundials". In the above, /usr/local/lib etc reflect the default homebrew install locations.
+## FFTW is trickier, see the instructions below [special treatment is still needed]
 ##
 ## PFH: this is my own laptop installation (2013 MacBook Pro running Yosemite)
 ## --

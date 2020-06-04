@@ -22,7 +22,6 @@
 #ifdef COOLING
 
 #define NH_SS 0.0123 /* CAFG: H number density above which we assume no ionizing bkg (proper cm^-3) */
-#define YHELIUM_0 ((1-HYDROGEN_MASSFRAC)/(4*HYDROGEN_MASSFRAC)) /* helium number fraction to use by default for primordial gas assumptions */
 
 /* these are variables of the cooling tables. they are static but this shouldnt be a problem for shared-memory structure because
     they are only defined once in a global operation, then locked for particle-by-particle operations */
@@ -42,20 +41,12 @@ static double J_UV = 0, gJH0 = 0, gJHep = 0, gJHe0 = 0, epsH0 = 0, epsHep = 0, e
 #endif
 
 #ifdef CHIMES 
-char ChimesDataPath[500];
-int ForceEqOn, N_chimes_full_output_freq, Chimes_incl_full_output = 1;
-double isotropic_photon_density, shielding_length_factor, cr_rate, *dustG_arr, *H2_dissocJ_arr;
+int ForceEqOn, N_chimes_full_output_freq, ChimesEqmMode, ChimesUVBMode, ChimesInitIonState, N_chimes_full_output_freq, Chimes_incl_full_output = 1;
+double isotropic_photon_density, shielding_length_factor, cr_rate, *dustG_arr, *H2_dissocJ_arr, chimes_rad_field_norm_factor, shielding_length_factor, cr_rate;
+char ChimesDataPath[256], ChimesEqAbundanceTable[196], ChimesPhotoIonTable[196];
 struct gasVariables *ChimesGasVars;
 struct globalVariables ChimesGlobalVars; 
-char ChimesDataPath[256]; 
-char ChimesEqAbundanceTable[196]; 
-char ChimesPhotoIonTable[196]; 
-double chimes_rad_field_norm_factor;  
-double shielding_length_factor; 
-double cr_rate; 
-int ChimesEqmMode, ChimesUVBMode, ChimesInitIonState, N_chimes_full_output_freq; 
-int Chimes_incl_full_output = 1; 
-#ifdef CHIMES_METAL_DEPLETION 
+#ifdef CHIMES_METAL_DEPLETION
 struct Chimes_depletion_data_structure *ChimesDepletionData; 
 #endif 
 #endif 
@@ -449,36 +440,12 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
     return m;
 }
 
+#endif // !(CHIMES)
 
 
 
 
-double get_mu(double T_guess, double rho, double *xH0, double *ne_guess, double urad_from_uvb_in_G0, int target)
-{
- double X=HYDROGEN_MASSFRAC, Y=1.-X, Z=0, fmol;
-#ifdef METALS
-    if(target >= 0)
-    {
-        Z = DMIN(0.25,P[target].Metallicity[0]);
-        if(NUM_METAL_SPECIES>=10) {Y = DMIN(0.35,P[target].Metallicity[1]);}
-        X = 1. - (Y+Z);
-    }
-#endif
-    fmol = Get_Gas_Molecular_Mass_Fraction(target, T_guess, *xH0, urad_from_uvb_in_G0, 1); /* use our simple subroutine to estimate this, ignoring UVB and with clumping factor=1 */
 
-    return 1. / ( X*(1-0.5*fmol) + Y/4. + *ne_guess*HYDROGEN_MASSFRAC + Z/(16.+12.*fmol) ); // since our ne is defined in some routines with He, should multiply by universal
-}
-#endif // !(CHIMES) 
-
-
-double yhelium(int target)
-{
-#ifdef COOL_METAL_LINES_BY_SPECIES
-    if(target >= 0) {double ytmp=DMIN(0.5,P[target].Metallicity[1]); return 0.25*ytmp/(1.-ytmp);} else {return YHELIUM_0;}
-#else
-    return YHELIUM_0;
-#endif
-}
 
 #ifdef CHIMES 
 /* This function converts thermal energy to temperature, using the mean molecular weight computed 
@@ -497,7 +464,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
     double temp, temp_old, temp_old_old = 0, temp_new, max = 0, ne_old;
     double u_input = u, rho_input = rho, temp_guess;
     temp_guess = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS;
-    *mu_guess = get_mu(temp_guess, rho, nH0_guess, ne_guess, 0., target);
+    *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp_guess, rho, nH0_guess, ne_guess, 0., target);
     temp = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS * (*mu_guess);
     
     do
@@ -547,14 +514,14 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     {
         nH0 = 1.0; nHe0 = yhelium(target); nHp = 0; nHep = 0; nHepp = 0; n_elec = 0;
         *nH0_guess=nH0; *nHe0_guess=nHe0; *nHp_guess=nHp; *nHep_guess=nHep; *nHepp_guess=nHepp; *ne_guess=n_elec;
-        *mu_guess=get_mu(pow(10.,logT), rho, nH0_guess, ne_guess, 0, target);
+        *mu_guess=Get_Gas_Mean_Molecular_Weight_mu(pow(10.,logT), rho, nH0_guess, ne_guess, 0, target);
         return 0;
     }
     if(logT >= Tmax)		/* everything is ionized */
     {
         nH0 = 0; nHe0 = 0; nHp = 1.0; nHep = 0; nHepp = yhelium(target); n_elec = nHp + 2.0 * nHepp;
         *nH0_guess=nH0; *nHe0_guess=nHe0; *nHp_guess=nHp; *nHep_guess=nHep; *nHepp_guess=nHepp; *ne_guess=n_elec;
-        *mu_guess=get_mu(pow(10.,logT), rho, nH0_guess, ne_guess, 1.e3, target);
+        *mu_guess=Get_Gas_Mean_Molecular_Weight_mu(pow(10.,logT), rho, nH0_guess, ne_guess, 1.e3, target);
         return 0;
     }
 
@@ -767,7 +734,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     bHep = flow * BetaHep[j] + fhi * BetaHep[j + 1];
     bff = flow * Betaff[j] + fhi * Betaff[j + 1];
     *nH0_guess=nH0; *nHe0_guess=nHe0; *nHp_guess=nHp; *nHep_guess=nHep; *nHepp_guess=nHepp; *ne_guess=n_elec; /* write to send back */
-    *mu_guess=get_mu(pow(10.,logT), rho, nH0_guess, ne_guess, sqrt(shieldfac)*(gJH0/2.29e-10), target);
+    *mu_guess=Get_Gas_Mean_Molecular_Weight_mu(pow(10.,logT), rho, nH0_guess, ne_guess, sqrt(shieldfac)*(gJH0/2.29e-10), target);
     if(target >= 0) /* if this is a cell, update some of its thermodynamic stored quantities */
     {
         SphP[target].Ne = n_elec;
@@ -1758,11 +1725,11 @@ double get_equilibrium_dust_temperature_estimate(int i)
 double ThermalProperties(double u, double rho, int target, double *mu_guess, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess)
 {
 #if defined(CHIMES)
-    int i = target; *ne_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[elec]]; *nH0_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HI]];
-    *nHp_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HII]]; *nHe0_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HeI]];
-    *nHep_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HeII]]; *nHepp_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HeIII]];
+    int i = target; *ne_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_elec]]; *nH0_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_HI]];
+    *nHp_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_HII]]; *nHe0_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_HeI]];
+    *nHep_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_HeII]]; *nHepp_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_HeIII]];
     double temp = ChimesGasVars[target].temperature;
-    *mu_guess = get_mu(temp, rho, nH0_guess, ne_guess, 0, target);
+    *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp, rho, nH0_guess, ne_guess, 0, target);
     return temp;
 #else
     
@@ -1770,7 +1737,7 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
     double temp = convert_u_to_temp(u, rho, target, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess);
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
     if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target);}} /* fully ionized [if using older model] */
-    *mu_guess = get_mu(temp, rho, nH0_guess, ne_guess, 0, target);
+    *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp, rho, nH0_guess, ne_guess, 0, target);
 #endif
     return temp;
     

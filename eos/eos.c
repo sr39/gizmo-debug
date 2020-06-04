@@ -282,12 +282,12 @@ double Get_Gas_Ionized_Fraction(int i)
 }
 
 
-
+/* return an estimate of the Hydrogen molecular fraction of gas, intended for simulations of e.g. molecular clouds, galaxies, and star formation */
 double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral_fraction, double urad_from_uvb_in_G0, double clumping_factor)
 {
     /* if tracking chemistry explicitly, return the explicitly-evolved H2 fraction */
 #ifdef CHIMES // use the CHIMES molecular network for H2
-    return DMIN(1,DMAX(0, ChimesGasVars[i].abundances[sp_H2] * 2.0)); // factor 2 converts to mass fraction in molecular gas, as desired
+    return DMIN(1,DMAX(0, ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_H2]] * 2.0)); // factor 2 converts to mass fraction in molecular gas, as desired
 #endif
     
 #if (COOL_GRACKLE_CHEMISTRY >= 2) // Use GRACKLE explicitly-tracked H2 [using the molecular network if this is valid]
@@ -351,6 +351,39 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 #endif
     
     return 0; // catch //
+}
+
+
+/* return helium -number- fraction, not mass fraction */
+double yhelium(int target)
+{
+#ifdef COOL_METAL_LINES_BY_SPECIES
+    if(target >= 0) {double ytmp=DMIN(0.5,P[target].Metallicity[1]); return 0.25*ytmp/(1.-ytmp);} else {return ((1-HYDROGEN_MASSFRAC)/(4*HYDROGEN_MASSFRAC));}
+#else
+    return ((1-HYDROGEN_MASSFRAC)/(4*HYDROGEN_MASSFRAC)); // assume uniform H-He gas
+#endif
+}
+
+
+/* return mean molecular weight, appropriate for the approximations of the user-selected chemical network[s] */
+double Get_Gas_Mean_Molecular_Weight_mu(double T_guess, double rho, double *xH0, double *ne_guess, double urad_from_uvb_in_G0, int target)
+{
+#if defined(CHIMES)
+    return calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars);
+#elif defined(COOLING)
+    double X=HYDROGEN_MASSFRAC, Y=1.-X, Z=0, fmol;
+#ifdef METALS
+    if(target >= 0)
+    {
+        Z = DMIN(0.25,P[target].Metallicity[0]); if(NUM_METAL_SPECIES>=10) {Y = DMIN(0.35,P[target].Metallicity[1]);}
+        X = 1. - (Y+Z);
+    }
+#endif
+    fmol = Get_Gas_Molecular_Mass_Fraction(target, T_guess, *xH0, urad_from_uvb_in_G0, 1); /* use our simple subroutine to estimate this, ignoring UVB and with clumping factor=1 */
+    return 1. / ( X*(1-0.5*fmol) + Y/4. + *ne_guess*HYDROGEN_MASSFRAC + Z/(16.+12.*fmol) ); // since our ne is defined in some routines with He, should multiply by universal
+#else
+    return 4./(3.+5.*HYDROGEN_MASSFRAC); // fully-ionized H-He plasma
+#endif
 }
 
 

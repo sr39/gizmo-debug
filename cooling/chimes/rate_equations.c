@@ -498,9 +498,9 @@ int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
   for (i = 0; i < vector_size; i++)
     {
 #ifdef CHIMES_USE_DOUBLE_PRECISION
-      if (isnan(NV_Ith_S(y, i))) 
+      if(isnan(NV_Ith_S(y, i)))
 #else 
-      if (isnanf(NV_Ith_S(y, i))) 
+      if(isnanf(NV_Ith_S(y, i))) 
 #endif 
 	return 1; 
     }
