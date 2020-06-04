@@ -558,43 +558,42 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 
         case IO_CHIMES_ABUNDANCES:
 #ifdef CHIMES
-	  for (n = 0; n < pc; pindex++)
-	    if (P[pindex].Type == type) 
-	      {
-		for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) 
-		  fp[k] = (MyOutputFloat) ChimesGasVars[pindex].abundances[k]; 
-		fp += ChimesGlobalVars.totalNumberOfSpecies; 
-		n++; 
-	      }
+            for (n = 0; n < pc; pindex++)
+                if (P[pindex].Type == type)
+                {
+                    for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) {fp[k] = (MyOutputFloat) ChimesGasVars[pindex].abundances[k];}
+                    fp += ChimesGlobalVars.totalNumberOfSpecies;
+                    n++;
+                }
 #endif
-	  break;
+            break;
 
 
         case IO_CHIMES_MU: 
 #ifdef CHIMES
-	  for (n = 0; n < pc; pindex++)
-	    if (P[pindex].Type == type) 
-	      {
-		*fp++ = (MyOutputFloat) calculate_mean_molecular_weight(&(ChimesGasVars[pindex]), &ChimesGlobalVars); 
-		n++; 
-	      }
+            for (n = 0; n < pc; pindex++)
+                if (P[pindex].Type == type)
+                {
+                    *fp++ = (MyOutputFloat) calculate_mean_molecular_weight(&(ChimesGasVars[pindex]), &ChimesGlobalVars);
+                    n++;
+                }
 #endif
-	  break; 
+            break;
 
         case IO_CHIMES_REDUCED: 
 #ifdef CHIMES_REDUCED_OUTPUT 
-	  for (n = 0; n < pc; pindex++) 
-	    if (P[pindex].Type == type) 
-	      {
-		fp[0] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[sp_elec]]; 
-		fp[1] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[sp_HI]]; 
-		fp[2] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[sp_H2]]; 
-		fp[3] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[sp_CO]]; 
-		fp += 4; 
-		n++; 
-	      }
+            for (n = 0; n < pc; pindex++)
+                if (P[pindex].Type == type)
+                {
+                    fp[0] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[sp_elec]];
+                    fp[1] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[sp_HI]];
+                    fp[2] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[sp_H2]];
+                    fp[3] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[sp_CO]];
+                    fp += 4;
+                    n++;
+                }
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_NH:
 #if defined(CHIMES_NH_OUTPUT)
@@ -620,36 +619,37 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 
         case IO_CHIMES_FLUX_G0: 
 #ifdef CHIMES_STELLAR_FLUXES  
-	  for (n = 0; n < pc; pindex++) 
-	    if (P[pindex].Type == type) {
+            for (n = 0; n < pc; pindex++)
+                if (P[pindex].Type == type)
+                {
 #ifdef CHIMES_HII_REGIONS 
-		if(SphP[pindex].DelayTimeHII > 0) {for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) {fp[k] = (MyOutputFloat) (SphP[pindex].Chimes_G0[k] + SphP[pindex].Chimes_G0_HII[k]);}}
-            else {for(k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) {fp[k] = (MyOutputFloat) SphP[pindex].Chimes_G0[k];}}
+                    if(SphP[pindex].DelayTimeHII > 0) {for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) {fp[k] = (MyOutputFloat) (SphP[pindex].Chimes_G0[k] + SphP[pindex].Chimes_G0_HII[k]);}}
+                        else {for(k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) {fp[k] = (MyOutputFloat) SphP[pindex].Chimes_G0[k];}}
 #else 
-		for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) {fp[k] = (MyOutputFloat) SphP[pindex].Chimes_G0[k]; }
+                    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) {fp[k] = (MyOutputFloat) SphP[pindex].Chimes_G0[k]; }
 #endif 
-		fp += CHIMES_LOCAL_UV_NBINS; 
-		n++; 
-        }
+                    fp += CHIMES_LOCAL_UV_NBINS;
+                    n++;
+                }
 #endif 
-	  break; 
+            break;
 
         case IO_CHIMES_FLUX_ION: 
 #ifdef CHIMES_STELLAR_FLUXES  
-	  for (n = 0; n < pc; pindex++) 
-	    if (P[pindex].Type == type) 
-	      {
+            for (n = 0; n < pc; pindex++)
+                if (P[pindex].Type == type)
+                {
 #ifdef CHIMES_HII_REGIONS 
-		if(SphP[pindex].DelayTimeHII > 0) {for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) {fp[k] = (MyOutputFloat) (SphP[pindex].Chimes_fluxPhotIon[k] + SphP[pindex].Chimes_fluxPhotIon_HII[k]);}}
-            else {for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) {fp[k] = (MyOutputFloat) SphP[pindex].Chimes_fluxPhotIon[k];}}
+                    if(SphP[pindex].DelayTimeHII > 0) {for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) {fp[k] = (MyOutputFloat) (SphP[pindex].Chimes_fluxPhotIon[k] + SphP[pindex].Chimes_fluxPhotIon_HII[k]);}}
+                        else {for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) {fp[k] = (MyOutputFloat) SphP[pindex].Chimes_fluxPhotIon[k];}}
 #else 
-		for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) {fp[k] = (MyOutputFloat) SphP[pindex].Chimes_fluxPhotIon[k];}
+                    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) {fp[k] = (MyOutputFloat) SphP[pindex].Chimes_fluxPhotIon[k];}
 #endif 
-		fp += CHIMES_LOCAL_UV_NBINS;
-		n++; 
-	      }
+                    fp += CHIMES_LOCAL_UV_NBINS;
+                    n++;
+                }
 #endif 
-	  break; 
+            break;
 
         case IO_DENS_AROUND_STAR:
 #ifdef OUTPUT_DENS_AROUND_STAR
@@ -879,7 +879,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #ifdef DIVBCLEANING_DEDNER
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
-   
+                {
                     *fp++ = (Get_Gas_PhiField(pindex) * All.cf_a3inv * gizmo2gauss);
                     n++;
                 }

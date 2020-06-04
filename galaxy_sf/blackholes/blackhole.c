@@ -759,7 +759,8 @@ void blackhole_final_operations(void)
 #endif // ifdef BH_WIND_CONTINUOUS
         
 	
-#ifdef SINGLE_STAR_SINK_DYNAMICS /* save local effective signal velocity of gas for sink particle CFL-like timestep criterion */
+#if defined(SINGLE_STAR_TIMESTEPPING)
+        /* save local effective signal velocity of gas for sink particle CFL-like timestep criterion */
         P[n].BH_SurroundingGasVel = 0; for(k=0; k<3; k++) {P[n].BH_SurroundingGasVel += BlackholeTempInfo[i].BH_SurroundingGasVel[k]*BlackholeTempInfo[i].BH_SurroundingGasVel[k];}
         P[n].BH_SurroundingGasVel += convert_internalenergy_soundspeed2(n,BlackholeTempInfo[i].BH_InternalEnergy);
         P[n].BH_SurroundingGasVel = sqrt(P[n].BH_SurroundingGasVel);
