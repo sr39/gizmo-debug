@@ -69,7 +69,11 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
     if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
     {
         double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-	    if((star_age > 0.1)||(star_age <= 0)||(isnan(star_age))) return 0;
+#ifdef CHIMES_STELLAR_FLUXES  
+	if((star_age <= 0)||(isnan(star_age))) return 0;
+#else 
+	if((star_age > 0.1)||(star_age <= 0)||(isnan(star_age))) return 0;
+#endif 
     }
 #endif
 

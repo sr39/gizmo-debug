@@ -844,6 +844,10 @@ void read_parameter_file(char *fname)
   char alternate_tag[MAXTAGS][50];
   int pnum, errorFlag = 0;
 
+#ifdef CHIMES 
+  double Tdust_buf, Tmol_buf, relTol_buf, absTol_buf, expTol_buf, z_reion_buf; 
+#endif 
+
   if(sizeof(long long) != 8)
     {
       if(ThisTask == 0)
@@ -1148,7 +1152,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 #endif
-        
+       
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
         strcpy(tag[nt], "WindMomentumLoading");
         strcpy(alternate_tag[nt], "RP_Local_Momentum_Renormalization");
@@ -1872,8 +1876,12 @@ void read_parameter_file(char *fname)
       addr[nt] = ChimesDataPath;
       id[nt++] = STRING;
   
-      strcpy(tag[nt], "PhotoIon_table_path");
-      addr[nt] = ChimesGlobalVars.PhotoIonTablePath;
+      strcpy(tag[nt], "PhotoIonTable");
+      addr[nt] = ChimesPhotoIonTable;
+      id[nt++] = STRING;
+  
+      strcpy(tag[nt], "EqAbundanceTable");
+      addr[nt] = ChimesEqAbundanceTable;
       id[nt++] = STRING;
   
       strcpy(tag[nt], "Thermal_Evolution_On");
@@ -1881,11 +1889,15 @@ void read_parameter_file(char *fname)
       id[nt++] = INT;
 
       strcpy(tag[nt], "Chemistry_eqm");
-      addr[nt] = &ForceEqOn;
+      addr[nt] = &ChimesEqmMode;
       id[nt++] = INT;
 
-      strcpy(tag[nt], "Reduction_On");
-      addr[nt] = &ChimesGlobalVars.reductionOn;
+      strcpy(tag[nt], "redshift_dependent_UVB_mode");
+      addr[nt] = &ChimesUVBMode;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "InitIonState");
+      addr[nt] = &ChimesInitIonState;
       id[nt++] = INT;
 
       strcpy(tag[nt], "StaticMolCooling");
@@ -1899,53 +1911,37 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "Shielding_length_factor");
       addr[nt] = &shielding_length_factor;
       id[nt++] = REAL;
-
-      strcpy(tag[nt], "Reduction_N_Ions_Low");
-      addr[nt] = &ChimesGlobalVars.n_ions_low;
-      id[nt++] = INT;
-
-      strcpy(tag[nt], "Reduction_N_Ions_Med");
-      addr[nt] = &ChimesGlobalVars.n_ions_med;
-      id[nt++] = INT;
-
-      strcpy(tag[nt], "Reduction_N_Ions_High");
-      addr[nt] = &ChimesGlobalVars.n_ions_high;
-      id[nt++] = INT;
   
       strcpy(tag[nt], "Grain_Temperature");
-      addr[nt] = &ChimesGlobalVars.grain_temperature;
+      addr[nt] = &Tdust_buf;
       id[nt++] = REAL;
   
       strcpy(tag[nt], "CR_rate");
       addr[nt] = &cr_rate;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "macrostep_tolerance");
-      addr[nt] = &ChimesGlobalVars.time_tolerance;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "min_macrostep");
-      addr[nt] = &ChimesGlobalVars.min_subcyclestep;
-      id[nt++] = REAL;
-
       strcpy(tag[nt], "max_mol_temperature");
-      addr[nt] = &ChimesGlobalVars.T_mol;
+      addr[nt] = &Tmol_buf;
       id[nt++] = REAL;
   
-      strcpy(tag[nt], "Isotropic_photon_density");
-      addr[nt] = &isotropic_photon_density;
+      strcpy(tag[nt], "rad_field_norm_factor");
+      addr[nt] = &chimes_rad_field_norm_factor;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "relativeTolerance");
-      addr[nt] = &ChimesGlobalVars.relativeTolerance;
+      addr[nt] = &relTol_buf;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "absoluteTolerance");
-      addr[nt] = &ChimesGlobalVars.absoluteTolerance;
+      addr[nt] = &absTol_buf;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "thermalAbsoluteTolerance");
-      addr[nt] = &ChimesGlobalVars.thermalAbsoluteTolerance;
+      strcpy(tag[nt], "explicitTolerance");
+      addr[nt] = &expTol_buf;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "reionisation_redshift");
+      addr[nt] = &z_reion_buf;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "scale_metal_tolerances");
@@ -1990,6 +1986,10 @@ void read_parameter_file(char *fname)
 
       strcpy(tag[nt], "N_chimes_full_output_freq");
       addr[nt] = &N_chimes_full_output_freq;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "chimes_debug");
+      addr[nt] = &ChimesGlobalVars.chimes_debug;
       id[nt++] = INT;
 
 #ifdef CHIMES_STELLAR_FLUXES 
@@ -2212,13 +2212,26 @@ void read_parameter_file(char *fname)
     /* now communicate the relevant parameters to the other processes */
     MPI_Bcast(&All, sizeof(struct global_data_all_processes), MPI_BYTE, 0, MPI_COMM_WORLD);
 #ifdef CHIMES 
+    if (ThisTask == 0) 
+      {
+	ChimesGlobalVars.grain_temperature = (ChimesFloat) Tdust_buf; 
+	ChimesGlobalVars.T_mol = (ChimesFloat) Tmol_buf; 
+	ChimesGlobalVars.relativeTolerance = (ChimesFloat) relTol_buf; 
+	ChimesGlobalVars.absoluteTolerance = (ChimesFloat) absTol_buf; 
+	ChimesGlobalVars.explicitTolerance = (ChimesFloat) expTol_buf; 
+	ChimesGlobalVars.reionisation_redshift = (ChimesFloat) z_reion_buf; 
+      }
     MPI_Bcast(&ChimesGlobalVars, sizeof(struct globalVariables), MPI_BYTE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&ChimesDataPath, 500 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&isotropic_photon_density, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&ChimesDataPath, 256 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&ChimesEqAbundanceTable, 196 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&ChimesPhotoIonTable, 196 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&chimes_rad_field_norm_factor, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&shielding_length_factor, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&cr_rate, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&N_chimes_full_output_freq, sizeof(int), MPI_BYTE, 0, MPI_COMM_WORLD); 
-    MPI_Bcast(&ForceEqOn, sizeof(int), MPI_BYTE, 0, MPI_COMM_WORLD); 
+    MPI_Bcast(&ChimesEqmMode, sizeof(int), MPI_BYTE, 0, MPI_COMM_WORLD); 
+    MPI_Bcast(&ChimesUVBMode, sizeof(int), MPI_BYTE, 0, MPI_COMM_WORLD); 
+    MPI_Bcast(&ChimesInitIonState, sizeof(int), MPI_BYTE, 0, MPI_COMM_WORLD); 
 #endif 
     
     

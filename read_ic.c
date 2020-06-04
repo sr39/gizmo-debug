@@ -239,12 +239,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             
         case IO_ID:		/* particle ID */
             for(n = 0; n < pc; n++)
-            {
-                P[offset + n].ID = *ip++;
-#ifdef CHIMES 
-                if(type == 0) {ChimesGasVars[offset + n].ID = P[offset + n].ID; }
-#endif 
-            }
+	      P[offset + n].ID = *ip++;
             break;
             
             
@@ -252,12 +247,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             if(RestartFlag == 2)
             {
                 for(n = 0; n < pc; n++)
-                {
-                    P[offset + n].ID_child_number = *ip++;
-#ifdef CHIMES 
-                    if(type==0) {ChimesGasVars[offset + n].ID_child_number = P[offset + n].ID_child_number; }
-#endif 
-                }
+		  P[offset + n].ID_child_number = *ip++;
             }
             break;
 
@@ -302,7 +292,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++) {P[offset + n].caustic_counter = *fp++;}
             break;
 #endif
-            
+   
         case IO_U:			/* temperature */
             for(n = 0; n < pc; n++) {SphP[offset + n].InternalEnergy = *fp++;}
             break;
@@ -475,7 +465,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++) {for(k = 0; k < N_RT_FREQ_BINS; k++) {SphP[offset + n].Rad_E_gamma[k] = *fp++;}}
 #endif
             break;
-            
+   
             /* adaptive softening parameters */
         case IO_AGS_SOFT:
 #if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTGRAVSOFT)
@@ -495,7 +485,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 	  for (n = 0; n < pc; n++) 
 	    {
 	      allocate_gas_abundances_memory(&(ChimesGasVars[offset + n]), &ChimesGlobalVars); 
-	      for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) {ChimesGasVars[offset + n].abundances[k] = (double) (*fp++);}
+	      for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) {ChimesGasVars[offset + n].abundances[k] = (ChimesFloat) (*fp++);}
 #ifdef CHIMES_TURB_DIFF_IONS
 	      chimes_update_turbulent_abundances(n, 1); 
 #endif 	      

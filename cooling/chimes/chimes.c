@@ -1,684 +1,448 @@
+/****************************************************************************
+ * This file is part of CHIMES.
+ * Copyright (c) 2020 Alexander Richings (alexander.j.richings@durham.ac.uk)
+ *
+ * CHIMES is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ***************************************************************************/
+
+#ifdef CHIMES_ENABLE_GNU_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 
+#endif 
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <sys/types.h>
 #include <time.h>
-#include <kinsol/kinsol.h>
-#include <kinsol/kinsol_dense.h>
-#include <kinsol/kinsol_spgmr.h>
 #include <cvode/cvode.h>
-#include <cvode/cvode_dense.h> 
 #include <nvector/nvector_serial.h> 
 #include <sundials/sundials_types.h>
-#include "proto.h"
+#include <sunlinsol/sunlinsol_dense.h> 
+#include <sunmatrix/sunmatrix_dense.h> 
+#include "chimes_proto.h"
+#include "chimes_vars.h"
 
-#define MAXSTEPS 1e7
-#define FTOL 1.0e-13
-#define STOL 1.0e-25
-
-void set_equilibrium_abundances(void *user_data)
+/** 
+ * @brief Sets equilibrium abundances. 
+ * 
+ * Sets the abundances to their equilibrium values, taken 
+ * from the pre-computed equilibrium abundance tables. 
+ * 
+ * @param data The #UserData struct containing the input data. 
+ */ 
+void set_equilibrium_abundances_from_tables(struct UserData data)
 {
-  /* This is used when ForceEqOn == 2 */
-  realtype reltol, abstol_scalar;
-  void *cvode_mem;
-  int flag, i, j, thermEvolFlag;
-  int *enum_indices;
-  realtype t;
-  N_Vector constr_vector, scale_vector, y;
-  double dt_hydro;
-  void *k_mem;
-  struct gasVariables *myGasVars;
-  struct globalVariables *myGlobalVars;
-  struct Species_Structure *species;
-  double network_size;
-  UserData data;
-  data = (UserData) user_data;
+  // This is used when ForceEqOn == 1 
+  int T_index, nH_index, Z_index, i;
+  ChimesFloat dT, dnH, dZ;
 
-  myGasVars = data->myGasVars;
-  myGlobalVars = data->myGlobalVars;
-  species = data->species;
-  network_size = data->network_size;
+  const int N_T = chimes_table_eqm_abundances.N_Temperatures;
+  const int N_nH = chimes_table_eqm_abundances.N_Densities;
+  const int N_Z = chimes_table_eqm_abundances.N_Metallicities; 
+  chimes_get_table_index(chimes_table_eqm_abundances.Temperatures, N_T, chimes_log10(data.myGasVars->temperature), &T_index, &dT); 
+  chimes_get_table_index(chimes_table_eqm_abundances.Densities, N_nH, chimes_log10(data.myGasVars->nH_tot), &nH_index, &dnH); 
+  chimes_get_table_index(chimes_table_eqm_abundances.Metallicities, N_Z, chimes_log10(chimes_max(data.myGasVars->metallicity, CHIMES_FLT_MIN)), &Z_index, &dZ); 
 
-  double init_abundances[myGlobalVars->totalNumberOfSpecies];
-
-  /* Set up solution, constraint & scale vectors */
-  y = N_VNew_Serial(network_size);
-  constr_vector = N_VNew_Serial(network_size);
-  scale_vector  = N_VNew_Serial(network_size);
-  N_VConst_Serial(1.0, constr_vector);
-  N_VConst_Serial(1.0, scale_vector);
-	  
-  /* Set up KINSol solver */
-  k_mem = KINCreate();
-  flag = KINInit(k_mem, kin_f, y);
-  flag = KINSetUserData(k_mem, data);
-  flag = KINSetConstraints(k_mem, constr_vector);
-  flag = KINSetFuncNormTol(k_mem, FTOL);
-  flag = KINSetScaledStepTol(k_mem, STOL); 
-  flag = KINDense(k_mem, network_size);
-  flag = KINSetMaxSetupCalls(k_mem, 1);
-  flag = KINSetNumMaxIters(k_mem, 10000);
-
-  /* Set initial guess */
-  enum_indices = (int *) malloc(myGlobalVars->totalNumberOfSpecies * sizeof(int));  /* Gives position in y for given enum. */
-  i = 0;
-  for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
-    {
-      if (species[j].include_species == 1)
-	{  	
-	  NV_Ith_S(y, i) = myGasVars->abundances[j];
-	  enum_indices[j] = i;
-	  i++;
-	}
-      else
-	enum_indices[j] = -1;
-    }
-
-  /* Scale each species by its corresponding
-   * element abundance. */
-  set_kin_scale_vector(scale_vector, enum_indices, myGasVars, myGlobalVars);
-  free(enum_indices);
-
-  for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
-    init_abundances[j] = myGasVars->abundances[j];
-
-  flag = KINSol(k_mem, y, KIN_NONE, scale_vector, scale_vector);  
-
-  /* If necessary, update the column densities. */
-  if (myGlobalVars->cellSelfShieldingOn == 1)
-    {
-      *(data->HI_column) = myGasVars->abundances[myGlobalVars->speciesIndices[HI]] * myGasVars->cell_size * myGasVars->nH_tot;
-      *(data->H2_column) = myGasVars->abundances[myGlobalVars->speciesIndices[H2]] * myGasVars->cell_size * myGasVars->nH_tot;
-      *(data->HeI_column) = myGasVars->abundances[myGlobalVars->speciesIndices[HeI]] * myGasVars->cell_size * myGasVars->nH_tot;
-      *(data->HeII_column) = myGasVars->abundances[myGlobalVars->speciesIndices[HeII]] * myGasVars->cell_size * myGasVars->nH_tot;
-      if (myGlobalVars->speciesIndices[CO] > -1) 
-	*(data->CO_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[CO]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-      else 
-	*(data->CO_column) = 0.0; 
-      if (myGlobalVars->speciesIndices[H2O] > -1) 
-	*(data->H2O_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[H2O]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-      else 
-	*(data->H2O_column) = 0.0; 
-      if (myGlobalVars->speciesIndices[OH] > -1) 
-	*(data->OH_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[OH]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-      else 
-	*(data->OH_column) = 0.0; 
-      *(data->extinction) = DUSTEFFSIZE * myGasVars->cell_size * myGasVars->nH_tot * myGasVars->metallicity;
-    }
-
-  /* If flag == 2, KINSol may have had problems with
-   * the initial conditions being too far from equilibrium.
-   * Try evolving the abundances from InitIonState for
-   * 10,000 years and then redo KINSol. */
-  /* If flag == 1, the initial guess was OK. Still, integrate 
-   * for 10 Myr to make sure. */ 
-  if (flag == 1 || flag == 2)
-    {
-      /* Start by integrating init abundances for
-       * 10 kyr, followed by a call to 
-       * KINsol to finally get it into equilibrium.
-       * Then repeat this with a factor 10 greater
-       * integration time until the kinsol flag is
-       * no longer 2. */
-
-      thermEvolFlag = myGasVars->ThermEvolOn;
-      myGasVars->ThermEvolOn = 0;
-      dt_hydro = myGasVars->hydro_timestep;  
-      myGasVars->hydro_timestep = 3.17e11;  // 10 kyr ;
-      do
-	{
-	  /* Update the y vector with the abundances before
-	   * KINSol was called. */
-	  for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
-	    myGasVars->abundances[j] = init_abundances[j];
-
-	  i = 0;
-	  for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
-	    {
-	      if (species[j].include_species == 1)
-		{
-		  NV_Ith_S(y, i) = myGasVars->abundances[j];
-		  i++;
-		}
-	    }
-			
-	  /* Update all rates. */
-	  set_constant_rates(myGasVars, myGlobalVars, data->this_all_rates);
-	  update_rates(myGasVars, myGlobalVars, *(data->HI_column), *(data->H2_column), *(data->HeI_column), *(data->HeII_column), *(data->CO_column), *(data->extinction), data->this_all_rates);
-	  update_T_dependent_rates(myGasVars, myGlobalVars, data->this_all_rates);
-
-	  /* Set up CVode */
-	  reltol = myGlobalVars->relativeTolerance;
-	  abstol_scalar = myGlobalVars->absoluteTolerance;
-	  cvode_mem = CVodeCreate(CV_BDF, CV_NEWTON);
-	  data->cvode_mem = cvode_mem;
-	  flag = CVodeSetUserData(cvode_mem, data);
-	  flag = CVodeSetMaxNumSteps(cvode_mem, MAXSTEPS);
-	  flag = CVodeInit(cvode_mem, f, 0.0, y);
-	  flag = CVodeSStolerances(cvode_mem, reltol, abstol_scalar);
-	  flag = CVDense(cvode_mem, network_size);
-	  flag = CVodeSetMaxConvFails(cvode_mem, 5000);
-
-	  /* Integrate for dt_hydro. */
-	  flag = CVode(cvode_mem, myGasVars->hydro_timestep, y, &t, CV_NORMAL);
-
-	  /* Update abundance array with solution vector. */
-	  i = 0;
-	  for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
-	    {
-	      if (species[j].include_species == 1)
-		{
-		  myGasVars->abundances[j] = NV_Ith_S(y, i);
-		  i++;
-		}
-	    }
-      
-	  check_constraint_equations(myGasVars, myGlobalVars);
-
-	  /* Some abundances may have been updated by the constraint
-	   * equations. Update y accordingly. */
-	  i = 0;
-	  for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
-	    {
-	      if (species[j].include_species == 1)
-		{  	
-		  NV_Ith_S(y, i) = myGasVars->abundances[j];
-		  i++;
-		}
-	    }
-
-	  /* Record abundances in case KINSol crashes again. */
-	  for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
-	    init_abundances[j] = myGasVars->abundances[j];
-			
-	  /* Call KINSol to try and find equilibrium. */
-	  flag = KINSol(k_mem, y, KIN_NONE, scale_vector, scale_vector); 
-
-	  /* If necessary, update the column densities. */
-	  if (myGlobalVars->cellSelfShieldingOn == 1)
-	    {
-	      *(data->HI_column) = myGasVars->abundances[myGlobalVars->speciesIndices[HI]] * myGasVars->cell_size * myGasVars->nH_tot;
-	      *(data->H2_column) = myGasVars->abundances[myGlobalVars->speciesIndices[H2]] * myGasVars->cell_size * myGasVars->nH_tot;
-	      *(data->HeI_column) = myGasVars->abundances[myGlobalVars->speciesIndices[HeI]] * myGasVars->cell_size * myGasVars->nH_tot;
-	      *(data->HeII_column) = myGasVars->abundances[myGlobalVars->speciesIndices[HeII]] * myGasVars->cell_size * myGasVars->nH_tot;
-	      if (myGlobalVars->speciesIndices[CO] > -1) 
-		*(data->CO_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[CO]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-	      else 
-		*(data->CO_column) = 0.0; 
-	      if (myGlobalVars->speciesIndices[H2O] > -1) 
-		*(data->H2O_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[H2O]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-	      else 
-		*(data->H2O_column) = 0.0; 
-	      if (myGlobalVars->speciesIndices[OH] > -1) 
-		*(data->OH_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[OH]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-	      else 
-		*(data->OH_column) = 0.0; 
-	      *(data->extinction) = DUSTEFFSIZE * myGasVars->cell_size * myGasVars->nH_tot * myGasVars->metallicity;
-	    }
-
-	  /* If we need to repeat these steps, increase
-	   * dt_hydro by a factor of 10. */
-	  myGasVars->hydro_timestep *= 10.0;
-
-	  CVodeFree(&cvode_mem);
-	  data->cvode_mem = NULL;	  
-	  /* Quit once dt_hydro > 1000 Gyr */
-	  if (myGasVars->hydro_timestep > 3.16e19)
-	    break;
-
-	} while (flag == 2); // For flag == 1, only integrate once. 
-
-      /* Reset ThermEvol flag & dt_hydro. */
-      myGasVars->ThermEvolOn = thermEvolFlag;
-      myGasVars->hydro_timestep = dt_hydro;
-    } 
-
-  if (flag == 2)
-    {
-      /* Set abundances to what they were after
-       * integrating for 1000 Gyr. */
-      for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
-	myGasVars->abundances[j] = init_abundances[j];
-    }
-  else
-    {
-      i = 0;
-      for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
-	{
-	  if (species[j].include_species == 1)
-	    {
-	      myGasVars->abundances[j] = NV_Ith_S(y, i);
-	      i++;
-	    }
-	}
-    }
-
-  N_VDestroy_Serial(y);
-  N_VDestroy_Serial(scale_vector);
-  N_VDestroy_Serial(constr_vector);
-  KINFree(&k_mem);
-  return;
-}
-
-void set_equilibrium_abundances_from_tables(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars)
-{
-  /* This is used when ForceEqOn == 1 */
-  int i, j, k, l;
-  double dT, dnH, dZ;
-
-  if (myGasVars->temperature <= pow(10.0, EquilibriumAbundances.Temperatures[0]))
-    {
-      i = 0;
-      dT = 0.0;
-    }
-  else
-    get_index_1d_mydbl(EquilibriumAbundances.Temperatures, EquilibriumAbundances.N_Temperatures, log10(myGasVars->temperature), &i, &dT);
-
-  if (myGasVars->nH_tot <= pow(10.0, EquilibriumAbundances.Densities[0]))
-    {
-      j = 0;
-      dnH = 0.0;
-    }
-  else
-    get_index_1d_mydbl(EquilibriumAbundances.Densities, EquilibriumAbundances.N_Densities, log10(myGasVars->nH_tot), &j, &dnH);
-
-  if (myGasVars->metallicity <= pow(10.0, EquilibriumAbundances.Metallicities[0]))
-    {
-      k = 0;
-      dZ = 0.0;
-    }
-  else
-    get_index_1d_mydbl(EquilibriumAbundances.Metallicities, EquilibriumAbundances.N_Metallicities, log10(myGasVars->metallicity), &k, &dZ);
-	  
   /* Note that the equilibrium tables tabulate
    * ionisation (or molecular) fraction, and 
    * NOT the abundance wrt H. Now we need to 
    * multiply by the appropriate element abundance. */
-  for (l = myGlobalVars->speciesIndices[elec]; l <= myGlobalVars->speciesIndices[Hm]; l++)
-    myGasVars->abundances[l] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, l, dT, dnH, dZ));
-  for (l = myGlobalVars->speciesIndices[HeI]; l <= myGlobalVars->speciesIndices[HeIII]; l++)
-    myGasVars->abundances[l] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, l, dT, dnH, dZ)) * myGasVars->element_abundances[0];
-  if (myGlobalVars->element_included[0] == 1)
-    for (l = myGlobalVars->speciesIndices[CI]; l <= myGlobalVars->speciesIndices[Cm]; l++)
-      myGasVars->abundances[l] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, l, dT, dnH, dZ)) * myGasVars->element_abundances[1];
-  if (myGlobalVars->element_included[1] == 1)
-    for (l = myGlobalVars->speciesIndices[NI]; l <= myGlobalVars->speciesIndices[NVIII]; l++)
-      myGasVars->abundances[l] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, l, dT, dnH, dZ)) * myGasVars->element_abundances[2];
-  if (myGlobalVars->element_included[2] == 1)
-    for (l = myGlobalVars->speciesIndices[OI]; l <= myGlobalVars->speciesIndices[Om]; l++)
-      myGasVars->abundances[l] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, l, dT, dnH, dZ)) * myGasVars->element_abundances[3];
-  if (myGlobalVars->element_included[3] == 1)
-    for (l = myGlobalVars->speciesIndices[NeI]; l <= myGlobalVars->speciesIndices[NeXI]; l++)
-      myGasVars->abundances[l] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, l, dT, dnH, dZ)) * myGasVars->element_abundances[4];
-  if (myGlobalVars->element_included[4] == 1)
-    for (l = myGlobalVars->speciesIndices[MgI]; l <= myGlobalVars->speciesIndices[MgXIII]; l++)
-      myGasVars->abundances[l] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, l, dT, dnH, dZ)) * myGasVars->element_abundances[5];
-  if (myGlobalVars->element_included[5] == 1)
-    for (l = myGlobalVars->speciesIndices[SiI]; l <= myGlobalVars->speciesIndices[SiXV]; l++)
-      myGasVars->abundances[l] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, l, dT, dnH, dZ)) * myGasVars->element_abundances[6];
-  if (myGlobalVars->element_included[6] == 1)
-    for (l = myGlobalVars->speciesIndices[SI]; l <= myGlobalVars->speciesIndices[SXVII]; l++)
-      myGasVars->abundances[l] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, l, dT, dnH, dZ)) * myGasVars->element_abundances[7];
-  if (myGlobalVars->element_included[7] == 1)
-    for (l = myGlobalVars->speciesIndices[CaI]; l <= myGlobalVars->speciesIndices[CaXXI]; l++)
-      myGasVars->abundances[l] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, l, dT, dnH, dZ)) * myGasVars->element_abundances[8];
-  if (myGlobalVars->element_included[8] == 1)
-    for (l = myGlobalVars->speciesIndices[FeI]; l <= myGlobalVars->speciesIndices[FeXXVII]; l++)
-      myGasVars->abundances[l] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, l, dT, dnH, dZ)) * myGasVars->element_abundances[9];
+  for (i = 0; i < data.myGlobalVars->totalNumberOfSpecies; i++) 
+    data.myGasVars->abundances[i] = chimes_exp10(chimes_interpol_4d_fix_x(chimes_table_eqm_abundances.Abundances, i, T_index, nH_index, Z_index, dT, dnH, dZ, N_T, N_nH, N_Z)) * data.species[i].element_abundance;
 
-  myGasVars->abundances[myGlobalVars->speciesIndices[H2]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[H2], dT, dnH, dZ));
-  myGasVars->abundances[myGlobalVars->speciesIndices[H2p]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[H2p], dT, dnH, dZ));
-  myGasVars->abundances[myGlobalVars->speciesIndices[H3p]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[H3p], dT, dnH, dZ));
+  /* Enforce constraint equations. */
+  check_constraint_equations(data.myGasVars, data.myGlobalVars);
 
-  if (myGlobalVars->element_included[0] == 1)
-    {	
-      myGasVars->abundances[myGlobalVars->speciesIndices[C2]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[C2], dT, dnH, dZ)) * myGasVars->element_abundances[1];
-      myGasVars->abundances[myGlobalVars->speciesIndices[CH]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[CH], dT, dnH, dZ)) * myGasVars->element_abundances[1];
-      myGasVars->abundances[myGlobalVars->speciesIndices[CH2]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[CH2], dT, dnH, dZ)) * myGasVars->element_abundances[1];
-      myGasVars->abundances[myGlobalVars->speciesIndices[CH3p]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[CH3p], dT, dnH, dZ)) * myGasVars->element_abundances[1];
-      myGasVars->abundances[myGlobalVars->speciesIndices[CHp]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[CHp], dT, dnH, dZ)) * myGasVars->element_abundances[1];
-      myGasVars->abundances[myGlobalVars->speciesIndices[CH2p]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[CH2p], dT, dnH, dZ)) * myGasVars->element_abundances[1];
-    }
-  if (myGlobalVars->element_included[2] == 1)
-    {
-      myGasVars->abundances[myGlobalVars->speciesIndices[OH]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[OH], dT, dnH, dZ)) * myGasVars->element_abundances[3];
-      myGasVars->abundances[myGlobalVars->speciesIndices[H2O]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[H2O], dT, dnH, dZ)) * myGasVars->element_abundances[3];
-      myGasVars->abundances[myGlobalVars->speciesIndices[O2]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[O2], dT, dnH, dZ)) * myGasVars->element_abundances[3];
-      myGasVars->abundances[myGlobalVars->speciesIndices[OHp]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[OHp], dT, dnH, dZ)) * myGasVars->element_abundances[3];
-      myGasVars->abundances[myGlobalVars->speciesIndices[H2Op]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[H2Op], dT, dnH, dZ)) * myGasVars->element_abundances[3];
-      myGasVars->abundances[myGlobalVars->speciesIndices[H3Op]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[H3Op], dT, dnH, dZ)) * myGasVars->element_abundances[3];
-      myGasVars->abundances[myGlobalVars->speciesIndices[O2p]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[O2p], dT, dnH, dZ)) * myGasVars->element_abundances[3];
-    }
-  if (myGlobalVars->element_included[0] == 1 && myGlobalVars->element_included[2] == 1)
-    {
-      myGasVars->abundances[myGlobalVars->speciesIndices[HCOp]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[HCOp], dT, dnH, dZ)) * myGasVars->element_abundances[1];
-      myGasVars->abundances[myGlobalVars->speciesIndices[CO]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[CO], dT, dnH, dZ)) * myGasVars->element_abundances[1];
-      myGasVars->abundances[myGlobalVars->speciesIndices[COp]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[COp], dT, dnH, dZ)) * myGasVars->element_abundances[1];
-      myGasVars->abundances[myGlobalVars->speciesIndices[HOCp]] = pow(10.0, interpol_3d_special(EquilibriumAbundances.EqAbundances, i, j, k, myGlobalVars->speciesIndices[HOCp], dT, dnH, dZ)) * myGasVars->element_abundances[1];	  
-    }
   return;
 }
 
-void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars, struct All_rate_variables_structure *this_all_rates, struct Reactions_Structure *this_all_reactions_root, struct Reactions_Structure *this_nonmolecular_reactions_root)
+/** 
+ * @brief Prints the gasVariables struct. 
+ * 
+ * Prints everything in the #gasVariables struct. 
+ * 
+ * @param log_file Output file to print to (typically, you would set this to stderr). 
+ * @param myGasVars The #gasVariables struct. 
+ * @param myGlobalVars The #globalVariables struct. 
+ */ 
+void chimes_print_gas_vars(FILE *log_file, struct gasVariables *myGasVars, struct globalVariables *myGlobalVars) 
+{
+  int i; 
+
+  fprintf(log_file, "**************\n"); 
+  fprintf(log_file, "ChimesGasVars:\n"); 
+  fprintf(log_file, "**************\n"); 
+
+  for (i = 0; i < 10; i++) 
+    fprintf(log_file, "element_abundances[%d] = %.6e \n", i, myGasVars->element_abundances[i]); 
+
+  fprintf(log_file, "nH_tot = %.6e \n", myGasVars->nH_tot); 
+  fprintf(log_file, "temperature = %.6e \n", myGasVars->temperature); 
+  fprintf(log_file, "TempFloor = %.6e \n", myGasVars->TempFloor); 
+  fprintf(log_file, "divVel = %.6e \n", myGasVars->divVel); 
+  fprintf(log_file, "doppler_broad = %.6e \n", myGasVars->doppler_broad); 
+
+  for (i = 0; i < myGlobalVars->N_spectra; i++) 
+    {
+      fprintf(log_file, "isotropic_photon_density[%d] = %.6e \n", i, myGasVars->isotropic_photon_density[i]); 
+      fprintf(log_file, "G0_parameter[%d] = %.6e \n", i, myGasVars->G0_parameter[i]); 
+      fprintf(log_file, "H2_dissocJ[%d] = %.6e \n", i, myGasVars->H2_dissocJ[i]); 
+    }
+
+  fprintf(log_file, "cr_rate = %.6e \n", myGasVars->cr_rate); 
+  fprintf(log_file, "metallicity = %.6e \n", myGasVars->metallicity); 
+  fprintf(log_file, "dust_ratio = %.6e \n", myGasVars->dust_ratio); 
+  fprintf(log_file, "cell_size = %.6e \n", myGasVars->cell_size); 
+  fprintf(log_file, "hydro_timestep = %.6e \n", myGasVars->hydro_timestep); 
+  fprintf(log_file, "ForceEqOn = %d \n", myGasVars->ForceEqOn); 
+  fprintf(log_file, "ThermEvolOn = %d \n", myGasVars->ThermEvolOn); 
+  fprintf(log_file, "InitIonState = %d \n", myGasVars->InitIonState); 
+  fprintf(log_file, "constant_heating_rate = %.6e \n", myGasVars->constant_heating_rate); 
+
+  for (i = 0; i < myGlobalVars->totalNumberOfSpecies; i++) 
+    fprintf(log_file, "abundances[%d] = %.6e \n", i, myGasVars->abundances[i]); 
+
+  fprintf(log_file, "++++++++++++++\n"); 
+}
+
+/** 
+ * @brief Error handler function.
+ * 
+ * Error handler function for the 
+ * CVODE error and warning messages. 
+ * 
+ * @param error_code The error code.
+ * @param module CVODE module. 
+ * @param function Function where the error occurred. 
+ * @param msg The error message. 
+ * @param eh_data Pointer to the user data. 
+ */ 
+void chimes_err_handler_fn(int error_code, const char *module, const char *function, char *msg, void *eh_data)
+{
+  struct UserData *user_data;
+
+  user_data = (struct UserData *) eh_data;
+
+  if (user_data->myGlobalVars->chimes_debug != 0)
+    {
+      if (!((user_data->myGasVars->temp_floor_mode == 1) && ((error_code == CV_RHSFUNC_FAIL) || (error_code == CV_LSETUP_FAIL))))
+	{
+	  cvErrHandler(error_code, module, function, msg, user_data->cvode_mem);
+
+	  if (user_data->myGlobalVars->chimes_debug == 2)
+	    {
+	      fprintf(stderr, "CHIMES CVode error occurred for the following particle: \n"); 
+	      chimes_print_gas_vars(stderr, user_data->myGasVars, user_data->myGlobalVars);
+	    }
+	}
+    }
+
+  return;
+}
+
+/** 
+ * @brief Evolves the CHIMES network. 
+ * 
+ * This is the main CHIMES routine that actually integrates 
+ * the chemical abundances and, if required, the temperature. 
+ * 
+ * @param myGasVars The #gasVariables struct. 
+ * @param myGlobalVars The #globalVariables struct. 
+ */ 
+void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars)
 {
   realtype reltol, abstol_scalar, t;
   N_Vector abstol_vector, y;
   void *cvode_mem;
 
-  int flag, i, j, old_network_size;
-  double t_current_substep, dt_subcycle;
-  double HI_column_density, H2_column_density, HeI_column_density, HeII_column_density, CO_column_density, H2O_column_density, OH_column_density, extinction;
-  double internal_energy;
-  int network_size, total_network_size, nonmolecular_network_size;
-  struct Reactions_Structure *root_node_reaction_list;
+  ChimesFloat internal_energy;
+  int total_network_size, nonmolecular_network_size, i, j;
   struct Species_Structure species[myGlobalVars->totalNumberOfSpecies];  
-  UserData data;
+  struct UserData data;
 
-  if (myGlobalVars->cellSelfShieldingOn > 0)
-    {
-      /* if cellSelfShieldingOn == 1, these column densities will 
-       * subsequently be updated throughout the course of the 
-       * integration. If cellSelfShieldingOn == 2, we will set 
-       * these column densities here but they will NOT subsequently 
-       * be updated. */
-      HI_column_density = myGasVars->abundances[myGlobalVars->speciesIndices[HI]] * myGasVars->cell_size * myGasVars->nH_tot;
-      H2_column_density = myGasVars->abundances[myGlobalVars->speciesIndices[H2]] * myGasVars->cell_size * myGasVars->nH_tot;
-      HeI_column_density = myGasVars->abundances[myGlobalVars->speciesIndices[HeI]] * myGasVars->cell_size * myGasVars->nH_tot;
-      HeII_column_density = myGasVars->abundances[myGlobalVars->speciesIndices[HeII]] * myGasVars->cell_size * myGasVars->nH_tot;
-      if (myGlobalVars->speciesIndices[CO] > -1) 
-	CO_column_density = max(myGasVars->abundances[myGlobalVars->speciesIndices[CO]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-      else 
-	CO_column_density = 0.0; 
-      if (myGlobalVars->speciesIndices[H2O] > -1) 
-	H2O_column_density = max(myGasVars->abundances[myGlobalVars->speciesIndices[H2O]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-      else 
-	H2O_column_density = 0.0; 
-      if (myGlobalVars->speciesIndices[OH] > -1) 
-	OH_column_density = max(myGasVars->abundances[myGlobalVars->speciesIndices[OH]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-      else 
-	OH_column_density = 0.0; 
-      extinction = DUSTEFFSIZE * myGasVars->cell_size * myGasVars->nH_tot * myGasVars->metallicity;
-    }
-  else
-    {
-      HI_column_density = 0.0;
-      H2_column_density = 0.0;
-      HeI_column_density = 0.0;
-      HeII_column_density = 0.0;
-      CO_column_density = 0.0;
-      H2O_column_density = 0.0;
-      OH_column_density = 0.0;
-      extinction = 0.0;
-    }
+  struct chimes_current_rates_struct chimes_current_rates; 
+  allocate_current_rates_memory(&chimes_current_rates, myGlobalVars); 
 
-  set_constant_rates(myGasVars, myGlobalVars, this_all_rates);
-  update_rates(myGasVars, myGlobalVars, HI_column_density, H2_column_density, HeI_column_density, HeII_column_density, CO_column_density, extinction, this_all_rates);
-  update_T_dependent_rates(myGasVars, myGlobalVars, this_all_rates);
-
-  set_species_arrays(species, myGasVars, &total_network_size, &nonmolecular_network_size, myGlobalVars);
-  if (myGasVars->temperature <= myGlobalVars->T_mol)
-    {
-      root_node_reaction_list = this_all_reactions_root;
-      network_size = total_network_size;
-    }
-  else
-    {
-      /* Exclude all molecular species and set their
-       * abundances to zero. */
-      for (i = H2; i <= O2p; i++)
-	{
-	  if (myGlobalVars->speciesIndices[i] > -1)
-	    {
-	      species[myGlobalVars->speciesIndices[i]].include_species = 0;
-	      myGasVars->abundances[myGlobalVars->speciesIndices[i]] = 0.0;
-	    }
-	}
-      check_constraint_equations(myGasVars, myGlobalVars);
-      root_node_reaction_list = this_nonmolecular_reactions_root;
-      network_size = nonmolecular_network_size;
-    }
+  set_species_structures(species, myGasVars, &total_network_size, &nonmolecular_network_size, myGlobalVars);
 
   /* Set up structure to pass user
    * data to the solver. */
-  data = (UserData) malloc(sizeof *data);
-  data->myGasVars = myGasVars;
-  data->myGlobalVars = myGlobalVars;
-  data->species = species;
-  data->root_reactions = root_node_reaction_list; 
-  data->this_all_rates = this_all_rates;
-  data->HI_column = &HI_column_density;
-  data->H2_column = &H2_column_density;
-  data->HeI_column = &HeI_column_density;
-  data->HeII_column = &HeII_column_density;
-  data->CO_column = &CO_column_density;
-  data->H2O_column = &H2O_column_density;
-  data->OH_column = &OH_column_density;
-  data->extinction = &extinction;
-  data->network_size = network_size;
+  data.myGasVars = myGasVars;
+  data.myGlobalVars = myGlobalVars;
+  data.species = species; 
+  data.chimes_current_rates = &chimes_current_rates; 
 
-  if (myGasVars->ForceEqOn > 0)
+  if (myGasVars->temperature <= myGlobalVars->T_mol)
+    {
+      data.mol_flag_index = 1; 
+      data.network_size = total_network_size;
+    }
+  else
+    {
+      zero_molecular_abundances(species, myGasVars, myGlobalVars); 
+      data.mol_flag_index = 0; 
+      data.network_size = nonmolecular_network_size;
+    }
+
+  /* Enforce constraint equations. */
+  check_constraint_equations(myGasVars, myGlobalVars);
+
+  if (myGlobalVars->cellSelfShieldingOn > 0)
+    {
+      data.HI_column = myGasVars->abundances[myGlobalVars->speciesIndices[sp_HI]] * myGasVars->cell_size * myGasVars->nH_tot;
+      data.H2_column = myGasVars->abundances[myGlobalVars->speciesIndices[sp_H2]] * myGasVars->cell_size * myGasVars->nH_tot;
+      data.HeI_column = myGasVars->abundances[myGlobalVars->speciesIndices[sp_HeI]] * myGasVars->cell_size * myGasVars->nH_tot;
+      data.HeII_column = myGasVars->abundances[myGlobalVars->speciesIndices[sp_HeII]] * myGasVars->cell_size * myGasVars->nH_tot;
+      if (myGlobalVars->speciesIndices[sp_CO] > -1) 
+	data.CO_column = chimes_max(myGasVars->abundances[myGlobalVars->speciesIndices[sp_CO]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+      else 
+	data.CO_column = 0.0f; 
+      if (myGlobalVars->speciesIndices[sp_H2O] > -1) 
+	data.H2O_column = chimes_max(myGasVars->abundances[myGlobalVars->speciesIndices[sp_H2O]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+      else 
+	data.H2O_column = 0.0f; 
+      if (myGlobalVars->speciesIndices[sp_OH] > -1) 
+	data.OH_column = chimes_max(myGasVars->abundances[myGlobalVars->speciesIndices[sp_OH]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+      else 
+	data.OH_column = 0.0f; 
+      data.extinction = DUSTEFFSIZE * myGasVars->cell_size * myGasVars->nH_tot * myGasVars->dust_ratio;
+    }
+  else
+    {
+      data.HI_column = 0.0f;
+      data.H2_column = 0.0f;
+      data.HeI_column = 0.0f;
+      data.HeII_column = 0.0f;
+      data.CO_column = 0.0f;
+      data.H2O_column = 0.0f;
+      data.OH_column = 0.0f;
+      data.extinction = 0.0f;
+    }
+
+  /* To determine whether to use case A or 
+   * case B recombination, consider tau_HI 
+   * and tau_HeI. Cross sections are taken 
+   * from Verner et al. (1996). */ 
+  if ((6.3463e-18f * data.HI_column) < 1.0f) 
+    data.case_AB_index[0] = 0; 
+  else 
+    data.case_AB_index[0] = 1; 
+
+  if ((7.4347e-18f * data.HeI_column) < 1.0f) 
+    data.case_AB_index[1] = 0; 
+  else 
+    data.case_AB_index[1] = 1; 
+
+  set_initial_rate_coefficients(myGasVars, myGlobalVars, data); 
+
+  if (myGasVars->ForceEqOn == 1)
     {
       if (myGasVars->ThermEvolOn == 0)
-	{
-	  if (myGasVars->ForceEqOn == 1)
-	    set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
-	  else
-	    set_equilibrium_abundances(data);
-	}
-      else		  
+	set_equilibrium_abundances_from_tables(data);
+      else	  
 	do_equilibrium_cooling(data); 
-	
-      free(data);
+
+      free_current_rates_memory(&chimes_current_rates, myGlobalVars); 
+
       return;
     }
 
-  if (myGlobalVars->reductionOn == 1)
-    dt_subcycle = evaluate_reduced_network_size(species, myGasVars, myGlobalVars, root_node_reaction_list, &network_size, this_all_rates, this_all_reactions_root, this_nonmolecular_reactions_root);
 
-  /* Create a serial vector of length network_size
-   * for the initial conditions. */
-  if (myGasVars->ThermEvolOn == 0)
-    {
-      y = N_VNew_Serial(network_size);
-      if (myGlobalVars->scale_metal_tolerances == 1)
-	abstol_vector = N_VNew_Serial(network_size);
-    }
-  else
-    {
-      y = N_VNew_Serial(network_size + 1);
-      internal_energy = myGasVars->temperature * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN;
-      NV_Ith_S(y, network_size) = internal_energy;
-      abstol_vector = N_VNew_Serial(network_size + 1);
-      NV_Ith_S(abstol_vector, network_size) = myGlobalVars->thermalAbsoluteTolerance;
-    }
-      
-  i = 0;
+  /***************************** 
+   * Try the explicit solution * 
+   *****************************/ 
+
+  // Update rates 
+  int indices[CHIMES_TOTSIZE]; 
+  update_rate_coefficients(data.myGasVars, data.myGlobalVars, data, data.myGasVars->ThermEvolOn); 
+  update_rates(data.myGasVars, data.myGlobalVars, data); 
+  
+  // Zero all species rates 
+  i = 0; 
   for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
     {
-      if (species[j].include_species == 1)
-	{  	
-	  NV_Ith_S(y, i) = myGasVars->abundances[j];
-
-	  if (myGlobalVars->scale_metal_tolerances == 1) 
-            NV_Ith_S(abstol_vector, i) = myGlobalVars->absoluteTolerance * species[j].element_abundance; 
-	  else if (myGasVars->ThermEvolOn == 1)
-	    NV_Ith_S(abstol_vector, i) = myGlobalVars->absoluteTolerance;
-
-	  i++;
+      if (data.species[j].include_species == 1)
+	{
+	  data.species[i].creation_rate = 0.0f;
+	  data.species[i].destruction_rate = 0.0f;
+	  indices[i] = j; 
+	  i++; 
 	}
     }
 
-  /* Set up the solver */
-  /* Set the tolerances*/
-  reltol = myGlobalVars->relativeTolerance;
-  abstol_scalar = myGlobalVars->absoluteTolerance;
-    
-  /* Use CVodeCreate to create the solver 
-   * memory and specify the Backward Differentiation
-   * Formula and Newton iteration. */
-  cvode_mem = CVodeCreate(CV_BDF, CV_NEWTON);
-  data->cvode_mem = cvode_mem;
-
-  /* Set the user data for CVode */
-  flag = CVodeSetUserData(cvode_mem, data);
-      
-  /* Use CVodeSetMaxNumSteps to set the maximum number
-   * of steps CVode takes. */      
-  flag = CVodeSetMaxNumSteps(cvode_mem, MAXSTEPS);
-
-  /* Use CVodeInit to initialise the integrator 
-   * memory and specify the right hand side 
-   * function in y' = f(t,y) (i.e. the rate
-   * equations), the initial time 0.0 and the 
-   * initial conditions, in y. */  
-  flag = CVodeInit(cvode_mem, f, 0.0, y);
-
-  /* Use CVodeSVtolerances to specify the scalar
-   * relative and absolute tolerances. */
-  if ((myGasVars->ThermEvolOn == 0) && (myGlobalVars->scale_metal_tolerances == 0))
-    flag = CVodeSStolerances(cvode_mem, reltol, abstol_scalar);
-  else
-    flag = CVodeSVtolerances(cvode_mem, reltol, abstol_vector); 
-
-  /* Use CVDense to specify the CVDENSE dense linear
-   * solver. */
-  if (myGasVars->ThermEvolOn == 0)
-    flag = CVDense(cvode_mem, network_size);
-  else
-    flag = CVDense(cvode_mem, network_size + 1);
-      
-  /* Specify the maximum number of convergence 
-   * test failures. */
-  flag = CVodeSetMaxConvFails(cvode_mem, 5000);
-
-  if (myGlobalVars->reductionOn == 1 && dt_subcycle < myGasVars->hydro_timestep)
+  // Compute creation and destruction rates 
+  update_rate_vector(data.species, data.myGasVars, data.myGlobalVars, data); 
+  
+  ChimesFloat new_abundances[CHIMES_TOTSIZE]; 
+  ChimesFloat old_energy, cool_rate, relative_change, this_absolute_tolerance; 
+  ChimesFloat new_energy = 0.0f; 
+  ChimesFloat max_relative_change = 0.0f; 
+  
+  for (i = 0; i < data.network_size; i++) 
     {
-      /* This means that we will have to re-evaluate
-       * the reduced network more than once before 
-       * the end of the hydro time step*/
-      t_current_substep = 0.0;
-      while (t_current_substep < myGasVars->hydro_timestep)
+      new_abundances[indices[i]] = myGasVars->abundances[indices[i]] + ((data.species[indices[i]].creation_rate - data.species[indices[i]].destruction_rate) * myGasVars->hydro_timestep); 
+
+      if (myGlobalVars->scale_metal_tolerances == 1) 
+	this_absolute_tolerance = myGlobalVars->absoluteTolerance * data.species[indices[i]].element_abundance; 
+      else 
+	this_absolute_tolerance = myGlobalVars->absoluteTolerance; 
+      
+      if ((new_abundances[indices[i]] > this_absolute_tolerance) || (myGasVars->abundances[indices[i]] > this_absolute_tolerance)) 
 	{
-	  dt_subcycle = min(dt_subcycle, myGasVars->hydro_timestep - t_current_substep);
-	  dt_subcycle = max(dt_subcycle, myGlobalVars->min_subcyclestep);
-
-	  flag = CVode(cvode_mem, dt_subcycle, y, &t, CV_NORMAL);
-
-	  /* Write the output abundances to the gas cell .
-	   * Note that species not included in the reduced
-	   * network are kept constant in the GasVars struct. */
-	  i = 0;
-	  for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
-	    {
-	      if (species[j].include_species == 1)
-		{
-		  myGasVars->abundances[j] = NV_Ith_S(y, i);
-		  i++;
-		}
-	    }
-      
-	  check_constraint_equations(myGasVars, myGlobalVars);
-
-	  if (myGasVars->ThermEvolOn == 1)
-	    {
-	      myGasVars->temperature = max(NV_Ith_S(y, network_size) / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN), myGasVars->TempFloor);
-	      /* If T has reached TempFloor, ensure that the thermal 
-	       * energy is put back onto this floor */
-	      if (myGasVars->temperature == myGasVars->TempFloor) 
-		NV_Ith_S(y, network_size) = myGasVars->temperature * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN;
-	    }
-
-	  old_network_size = network_size;    /* This variable is used to see when the size of the network changes. */
-	  if (myGlobalVars->reductionOn == 1)
-	    dt_subcycle = evaluate_reduced_network_size(species, myGasVars, myGlobalVars, root_node_reaction_list, &network_size, this_all_rates, this_all_reactions_root, this_nonmolecular_reactions_root);
-
-	  data->root_reactions = root_node_reaction_list;
-
-	  /* If the network size has changed we will need
-	   * to recreate y */
-	  if (old_network_size != network_size)
-	    {
-	      N_VDestroy_Serial(y);
-	      if (myGasVars->ThermEvolOn == 0)
-		{
-		  y = N_VNew_Serial(network_size);
-		  if (myGlobalVars->scale_metal_tolerances == 1)
-                    {
-                      N_VDestroy_Serial(abstol_vector);
-                      abstol_vector = N_VNew_Serial(network_size);
-                    }
-		}
-	      else
-		{
-		  N_VDestroy_Serial(abstol_vector);
-		  y = N_VNew_Serial(network_size + 1);
-		  NV_Ith_S(y, network_size) = myGasVars->temperature * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN; 
-		  abstol_vector = N_VNew_Serial(network_size + 1);
-		  NV_Ith_S(abstol_vector, network_size) = myGlobalVars->thermalAbsoluteTolerance;
-		}
-
-	      i = 0;
-              for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
-                {
-                  if (species[j].include_species == 1)
-                    {
-                      if (myGlobalVars->scale_metal_tolerances == 1)
-                        NV_Ith_S(abstol_vector, i) = myGlobalVars->absoluteTolerance * species[j].element_abundance;
-                      else if (myGasVars->ThermEvolOn == 1)
-                        NV_Ith_S(abstol_vector, i) = myGlobalVars->absoluteTolerance;
-
-                      i++;
-                    }
-                }
-	    }
-
-	  /* The check_constrain_equations routine
-	   * may have changed the abundances - 
-	   * need to update the vector y */
-	  i = 0;
-	  for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
-	    {
-	      if (species[j].include_species == 1)
-		{
-		  NV_Ith_S(y, i) = myGasVars->abundances[j];
-		  i++;
-		}
-	    }
-
-	  /* Now update data->network_size & reset the CVode memory */ 
-	  data->network_size = network_size;
-
-	  CVodeFree(&cvode_mem);
-	  cvode_mem = CVodeCreate(CV_BDF, CV_NEWTON);
-	  data->cvode_mem = cvode_mem;
-	  flag = CVodeSetUserData(cvode_mem, data);
-	  flag = CVodeSetMaxNumSteps(cvode_mem, MAXSTEPS);
-	  flag = CVodeInit(cvode_mem, f, 0.0, y);
-	  if (myGasVars->ThermEvolOn == 0)
-	    {
-	      if (myGlobalVars->scale_metal_tolerances == 0)
-		flag = CVodeSStolerances(cvode_mem, reltol, abstol_scalar);
-	      else
-                flag = CVodeSVtolerances(cvode_mem, reltol, abstol_vector);
-	      flag = CVDense(cvode_mem, network_size);
-	    }
-	  else
-	    {
-	      flag = CVodeSVtolerances(cvode_mem, reltol, abstol_vector);
-	      flag = CVDense(cvode_mem, network_size + 1);
-	    } 
-	  flag = CVodeSetMaxConvFails(cvode_mem, 5000);
-	  t_current_substep += t;
+	  relative_change = fabs(new_abundances[indices[i]] - myGasVars->abundances[indices[i]]) / chimes_max(myGasVars->abundances[indices[i]], CHIMES_FLT_MIN); 
+	  if (relative_change > max_relative_change) 
+	    max_relative_change = relative_change; 
 	}
-    }   
-  else
+    }
+
+  if (data.myGasVars->ThermEvolOn == 1) 
     {
-      /* Either reduction is off, or the subcyclestep 
-       * is long enough that we can just integrate 
-       * to the end of the hydro timestep, without
-       * needing to re-evaluate the reduced network.
-       */      
-      flag = CVode(cvode_mem, myGasVars->hydro_timestep, y, &t, CV_NORMAL);
+      if (data.myGasVars->temperature > data.myGasVars->TempFloor) 
+	cool_rate = calculate_total_cooling_rate(data.myGasVars, data.myGlobalVars, data, 0); 
+      else 
+	cool_rate = chimes_min(calculate_total_cooling_rate(data.myGasVars, data.myGlobalVars, data, 0), 0.0f); 
+
+      old_energy = myGasVars->temperature * 1.5f * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS;
+
+      new_energy = old_energy - (cool_rate * myGasVars->hydro_timestep); 
+
+      relative_change = fabs(new_energy - old_energy) / chimes_max(old_energy, CHIMES_FLT_MIN); 
+      if (relative_change > max_relative_change) 
+	max_relative_change = relative_change; 
+    } 
+
+  if (max_relative_change < myGlobalVars->explicitTolerance) 
+    { 
+      for (i = 0; i < data.network_size; i++) 
+	myGasVars->abundances[indices[i]] = new_abundances[indices[i]]; 
+
+      /* Enforce constraint equations. */
+      check_constraint_equations(myGasVars, myGlobalVars);
+
+      if (data.myGasVars->ThermEvolOn == 1) 
+	myGasVars->temperature = chimes_max(new_energy / (1.5f * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS), myGasVars->TempFloor); 
+      
+      free_current_rates_memory(&chimes_current_rates, myGlobalVars); 
+
+      return; 
+    }
+  else 
+    {
+      /************************************** 
+       * Explicit solution is insufficient. * 
+       * Use implicit solver.               *
+       **************************************/ 
+      
+      /* Create a serial vector of length network_size
+       * for the initial conditions. */
+      if (myGasVars->ThermEvolOn == 0)
+	{
+	  y = N_VNew_Serial(data.network_size);
+	  abstol_vector = N_VNew_Serial(data.network_size);
+	}
+      else
+	{
+	  y = N_VNew_Serial(data.network_size + 1);
+	  internal_energy = myGasVars->temperature * 1.5f * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS;
+	  NV_Ith_S(y, data.network_size) = (realtype) internal_energy;
+	  abstol_vector = N_VNew_Serial(data.network_size + 1);
+
+	  /* For the integration of the thermal energy,
+	   * set the absolute tolerance to the minimum 
+	   * float value. */ 
+	  NV_Ith_S(abstol_vector, data.network_size) = (realtype) CHIMES_FLT_MIN;
+	}
+      
+      i = 0;
+      for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
+	{
+	  if (species[j].include_species == 1)
+	    {  
+	      NV_Ith_S(y, i) = (realtype) myGasVars->abundances[j];
+
+	      if (myGlobalVars->scale_metal_tolerances == 1) 
+		NV_Ith_S(abstol_vector, i) = (realtype) (myGlobalVars->absoluteTolerance * species[j].element_abundance); 
+	      else if (myGasVars->ThermEvolOn == 1)
+		NV_Ith_S(abstol_vector, i) = (realtype) myGlobalVars->absoluteTolerance;
+
+	      i++;
+	    }
+	}
+
+      /* Set up the solver */
+      /* Set the tolerances*/
+      reltol = (realtype) myGlobalVars->relativeTolerance;
+      abstol_scalar = (realtype) myGlobalVars->absoluteTolerance;
+    
+      /* Use CVodeCreate to create the solver 
+       * memory and specify the Backward Differentiation
+       * Formula. Note that CVODE now uses Newton iteration
+       * iteration by default, so no need to specify this. */
+      cvode_mem = CVodeCreate(CV_BDF);
+      data.cvode_mem = cvode_mem;
+
+      /* Set the user data for CVode */
+      CVodeSetUserData(cvode_mem, &data);
+      
+      /* Use CVodeSetMaxNumSteps to set the maximum number
+       * of steps CVode takes. */      
+      CVodeSetMaxNumSteps(cvode_mem, MAXSTEPS);
+
+      /* Set the error handler function. */ 
+      CVodeSetErrHandlerFn(cvode_mem, chimes_err_handler_fn, &data); 
+
+      /* Use CVodeInit to initialise the integrator 
+       * memory and specify the right hand side 
+       * function in y' = f(t,y) (i.e. the rate
+       * equations), the initial time 0.0 and the 
+       * initial conditions, in y. */  
+      CVodeInit(cvode_mem, f, 0.0f, y);
+
+      /* Use CVodeSVtolerances to specify the scalar
+       * relative and absolute tolerances. */
+      if ((myGasVars->ThermEvolOn == 0) && (myGlobalVars->scale_metal_tolerances == 0))
+	CVodeSStolerances(cvode_mem, reltol, abstol_scalar);
+      else
+	CVodeSVtolerances(cvode_mem, reltol, abstol_vector); 
+
+      /* Create a dense SUNMatrix to use in the 
+       * linear solver. */ 
+      SUNMatrix A_sun; 
+
+      if (myGasVars->ThermEvolOn == 0)
+	A_sun = SUNDenseMatrix(data.network_size, data.network_size);
+      else 
+	A_sun = SUNDenseMatrix(data.network_size + 1, data.network_size + 1);
+
+      /* Create a denst SUNLinearSolver object 
+       * to use in CVode. */ 
+      SUNLinearSolver LS_sun; 
+      LS_sun = SUNLinSol_Dense(y, A_sun);
+
+      /* Attach the matrix and linear 
+       * solver to CVode. */ 
+      CVodeSetLinearSolver(cvode_mem, LS_sun, A_sun);
+      
+      /* Specify the maximum number of convergence 
+       * test failures. */
+      CVodeSetMaxConvFails(cvode_mem, 5000);
+
+      /* Call CVode() to integrate the chemistry. */ 
+      CVode(cvode_mem, (realtype) myGasVars->hydro_timestep, y, &t, CV_NORMAL);
 
       /* Write the output abundances to the gas cell 
        * Note that species not included in the reduced
@@ -688,25 +452,25 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
 	{
 	  if (species[j].include_species == 1)
 	    {
-	      myGasVars->abundances[j] = NV_Ith_S(y, i);
+	      myGasVars->abundances[j] = (ChimesFloat) NV_Ith_S(y, i);
 	      i++;
 	    }
 	}
       
+      /* Enforce constraint equations. */
       check_constraint_equations(myGasVars, myGlobalVars);
 
       if (myGasVars->ThermEvolOn == 1)
-	{
-	  myGasVars->temperature = max(NV_Ith_S(y, network_size) / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANN), myGasVars->TempFloor);
-	}
-    }
+	myGasVars->temperature = chimes_max(((ChimesFloat) NV_Ith_S(y, data.network_size)) / (1.5f * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS), myGasVars->TempFloor); 
 
-  N_VDestroy_Serial(y);
-  if ((myGasVars->ThermEvolOn == 1) || (myGlobalVars->scale_metal_tolerances == 1))
-    N_VDestroy_Serial(abstol_vector);
-  CVodeFree(&cvode_mem);
+      SUNLinSolFree(LS_sun);
+      SUNMatDestroy(A_sun);
+      N_VDestroy_Serial(y);
+      N_VDestroy_Serial(abstol_vector);
+      CVodeFree(&cvode_mem);
 
-  free(data);
+      free_current_rates_memory(&chimes_current_rates, myGlobalVars); 
 
-  return;
+      return;
+  }
 }  

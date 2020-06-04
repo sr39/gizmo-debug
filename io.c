@@ -391,7 +391,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_CRATE:
 #if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
             for(n = 0; n < pc; pindex++)
@@ -510,7 +510,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_VSTURB_DISS:
 #if defined(TURB_DRIVING)
             for(n = 0; n < pc; pindex++)
@@ -586,10 +586,10 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	  for (n = 0; n < pc; pindex++) 
 	    if (P[pindex].Type == type) 
 	      {
-		fp[0] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[elec]]; 
-		fp[1] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[HI]]; 
-		fp[2] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[H2]]; 
-		fp[3] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[CO]]; 
+		fp[0] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[sp_elec]]; 
+		fp[1] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[sp_HI]]; 
+		fp[2] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[sp_H2]]; 
+		fp[3] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[sp_CO]]; 
 		fp += 4; 
 		n++; 
 	      }
@@ -749,7 +749,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_TSTP:		/* timestep  */
 #ifdef OUTPUT_TIMESTEP
             
@@ -773,7 +773,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_VDIV:		/* Divergence of Vel */
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
@@ -783,7 +783,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     n++;
                 }
             break;
-            
+   
         case IO_VORT:		/* Vorticity */
 #if defined(TURB_DRIVING) || defined(OUTPUT_VORTICITY)
             for(n = 0; n < pc; pindex++)
@@ -796,7 +796,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_IMF:		/* parameters describing the IMF  */
 #ifdef GALSF_SFR_IMF_VARIATION
             for(n = 0; n < pc; pindex++)
@@ -885,7 +885,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #ifdef DIVBCLEANING_DEDNER
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
-                {
+   
                     *fp++ = (Get_Gas_PhiField(pindex) * All.cf_a3inv * gizmo2gauss);
                     n++;
                 }
@@ -903,7 +903,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_COOLRATE:		/* current cooling rate of particle  */
 #ifdef OUTPUT_COOLRATE
             for(n = 0; n < pc; pindex++)
@@ -922,7 +922,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif // OUTPUT_COOLRATE
             break;
-            
+   
         case IO_BHMASS:
 #ifdef BLACK_HOLES
             for(n = 0; n < pc; pindex++)
@@ -1066,7 +1066,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_TIDALTENSORPS:   /* 3x3 configuration-space tidal tensor that is driving the GDE */
 #ifdef OUTPUT_TIDAL_TENSOR
             for(n = 0; n < pc; pindex++)
@@ -1091,7 +1091,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_GDE_DISTORTIONTENSOR:   /* full 6D phase-space distortion tensor from GDE integration */
 #ifdef OUTPUT_GDE_DISTORTIONTENSOR
             for(n = 0; n < pc; pindex++)
@@ -1111,7 +1111,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_CAUSTIC_COUNTER:   /* caustic counter */
 #ifdef GDE_DISTORTIONTENSOR
             for(n = 0; n < pc; pindex++)
@@ -1122,7 +1122,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_FLOW_DETERMINANT:   /* physical NON-CUTOFF corrected stream determinant = 1.0/normed stream density * 1.0/initial stream density */
 #if defined(GDE_DISTORTIONTENSOR) && !defined(GDE_LEAN)
             for(n = 0; n < pc; pindex++)
@@ -1134,7 +1134,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_STREAM_DENSITY:   /* physical CUTOFF corrected stream density = normed stream density * initial stream density */
 #ifdef GDE_DISTORTIONTENSOR
             for(n = 0; n < pc; pindex++)
@@ -1145,7 +1145,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_PHASE_SPACE_DETERMINANT:   /* determinant of phase-space distortion tensor -> should be 1 due to Liouville theorem */
 #ifdef GDE_DISTORTIONTENSOR
             for(n = 0; n < pc; pindex++)
@@ -1157,7 +1157,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_ANNIHILATION_RADIATION:   /* time integrated stream density in physical units */
 #if defined(GDE_DISTORTIONTENSOR) && !defined(GDE_LEAN)
             for(n = 0; n < pc; pindex++)
@@ -1170,7 +1170,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_LAST_CAUSTIC:   /* extensive information on the last caustic the particle has passed */
 #ifdef OUTPUT_GDE_LASTCAUSTIC
             for(n = 0; n < pc; pindex++)
@@ -1202,7 +1202,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_SHEET_ORIENTATION:   /* initial orientation of the CDM sheet where the particle started */
 #if defined(GDE_DISTORTIONTENSOR) && (!defined(GDE_LEAN) || defined(GDE_READIC))
             for(n = 0; n < pc; pindex++)
@@ -1221,7 +1221,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_INIT_DENSITY:   /* initial stream density in physical units  */
 #if defined(GDE_DISTORTIONTENSOR) && (!defined(GDE_LEAN) || defined(GDE_READIC))
             for(n = 0; n < pc; pindex++)
@@ -1235,7 +1235,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_EOSABAR:
 #ifdef EOS_CARRIES_ABAR
             for(n = 0; n < pc; pindex++)
@@ -1402,7 +1402,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+   
         case IO_AGS_SOFT:		/* Adaptive Gravitational Softening: softening */
 #if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTGRAVSOFT)
             for(n = 0; n < pc; pindex++)
@@ -1926,7 +1926,7 @@ int get_datatype_in_block(enum iofields blocknr)
             typekey = 0;		/* native int */
 #endif            
             break;
-            
+   
         case IO_BHPROGS:
         case IO_GRAINTYPE:
         case IO_EOSCOMP:
@@ -1996,7 +1996,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_ABVC:
         case IO_AMDC:
         case IO_PHI:
-        case IO_COOLRATE:
+        case IO_COOLRATE: 
         case IO_BHMASS:
         case IO_BHDUSTMASS:
         case IO_BHMASSALPHA:
@@ -2409,7 +2409,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
                     typelist[i] = 0;
             return nsel;
             break;
-            
+   
         case IO_LASTENTRY:
             endrun(216);
             break;
@@ -2622,6 +2622,8 @@ int blockpresent(enum iofields blocknr)
         case IO_VORT:
 #if defined(TURB_DRIVING) || defined(OUTPUT_VORTICITY)
             return 1;
+#else
+            return 0;
 #endif
             break;
             
@@ -3726,7 +3728,7 @@ void write_file(char *fname, int writeTask, int lastTask)
     
     
     header.time = All.Time;
-    
+   
     if(All.ComovingIntegrationOn) {header.redshift = 1.0 / All.Time - 1;}
         else {header.redshift = 0;}
     
