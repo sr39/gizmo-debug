@@ -1,17 +1,28 @@
-#include <math.h>
+#include <mpi.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
+#include <ctype.h>
 #include <gsl/gsl_math.h>
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_const_cgs.h>
+#include <gsl/gsl_const_num.h>
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_vector.h>
+#include "../allvars.h"
+#include "../proto.h"
+#include "../kernel.h"
+
 
 /*
  *  This code is place-holder, inherited from GADGET3
  */
 
 #ifdef NUCLEAR_NETWORK
-#include "./nuclear_network.h"
+//#include "./nuclear_network.h"
 
 #ifdef NETWORK_SUPERLU
 #include "slu_ddefs.h"
@@ -204,7 +215,7 @@ static void network_solver_interpolate_traj_rhotemp(struct network_solver_trajec
 {
   double energy;
   network_solver_interpolate_trajectory(traj, time, rho, &energy);
-  eos_calc_egiven_y(*rho, y, energy, temp, NULL);
+  //eos_calc_egiven_y(*rho, y, energy, temp, NULL);
 }
 
 void network_solver_integrate_traj(const struct network_data *nd, struct network_workspace *nw,
@@ -491,7 +502,7 @@ static void network_solver_integrate_internal(double temp, double rho, double *y
     }
 
 #ifdef NUCLEARNET_OUTPUT_TIMEEVOLUTION
-  printf("t(%03d): %11.5e, dt (%02d): %11.5e, x:", step, t, m, dttry);
+  printf("t(%03d): %11.5e, dt (%02d): %11.5e, x:", step, time, m, dttry);
   for(i = 0; i < nsd->nelements; i++)
     {
       printf(" %8.1e", y[i] * nsd->aion[i]);
@@ -501,7 +512,7 @@ static void network_solver_integrate_internal(double temp, double rho, double *y
       printf(" %8.1e", y[nsd->nelements]);
     }
   printf("\n");
-  fwrite(&t, sizeof(double), 1, fp);
+  fwrite(&time, sizeof(double), 1, fp);
   fwrite(y, sizeof(double), nsd->matrixsize, fp);
   fclose(fp);
 #endif

@@ -60,7 +60,7 @@ static int *first_slab_of_task;
 #endif
 
 #ifndef USE_FFTW3
-static int slabstart_x, nslab_x, slabstart_y, nslab_y, smallest_slab;
+static int slabstart_x, nslab_x, slabstart_y, nslab_y; //, smallest_slab;
 static int fftsize, maxfftsize;
 #else 
 static ptrdiff_t *slabs_per_task;
@@ -108,11 +108,11 @@ static int *part_sortindex;
  */
 void pm_init_periodic(void)
 {
-  int i;
-  int slab_to_task_local[PMGRID];
-  double bytes_tot = 0;
-  size_t bytes;
-
+  int i, slab_to_task_local[PMGRID];
+#ifdef USE_FFTW3
+  double bytes_tot; bytes_tot = 0; size_t bytes;
+#endif
+    
   All.Asmth[0] = PM_ASMTH * All.BoxSize / PMGRID; /* note that these routines REQUIRE a uniform (BOX_LONG_X=BOX_LONG_Y=BOX_LONG_Z=1) box, so we can just use 'BoxSize' */
   All.Rcut[0] = PM_RCUT * All.Asmth[0];
 

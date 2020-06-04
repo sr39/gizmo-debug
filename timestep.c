@@ -301,9 +301,6 @@ integertime get_timestep(int p,		/*!< particle index */
 {
     double ax, ay, az, ac, csnd = 0, dt = All.MaxSizeTimestep, dt_courant = 0, dt_divv = 0;
     integertime ti_step; int k; k=0;
-#ifdef NUCLEAR_NETWORK
-    double dt_network, dt_species;
-#endif
 
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     P[p].SuperTimestepFlag = 0;
@@ -598,7 +595,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
                     if(All.ComovingIntegrationOn) {cr_diffusion_opt = 1;}
                     double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p,k_CRegy);
-                    double L_cr_weak = CRPressureGradScaleLength;
+                    double L_cr_weak; L_cr_weak = CRPressureGradScaleLength;
 #if defined(COSMIC_RAYS_M1)
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
 #else
@@ -824,6 +821,7 @@ integertime get_timestep(int p,		/*!< particle index */
 	    
 	    
 #ifdef NUCLEAR_NETWORK
+            double dt_network, dt_species;
             if(SphP[p].Temperature > 1e7)
             {
                 /* check if the new timestep blows up our abundances */
@@ -1032,8 +1030,12 @@ integertime get_timestep(int p,		/*!< particle index */
         if(P[p].ProtoStellarStage == 5) {double dt_spawn = All.BAL_wind_particle_mass / single_star_wind_mdot(p,1); if(dt > dt_spawn) dt = 1.01 * dt_spawn;}
 #endif
 #ifdef SINGLE_STAR_FB_SNE
-        if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ){ //Star going supernova, still has mass to eject
-            double t_clear=P[p].SinkRadius/single_star_SN_velocity(p);  dt = DMIN(dt,DMAX(t_clear/2,DMAX(All.MinSizeTimestep,All.Timebase_interval)* 1.01)); } // time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
+        if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ) { //Star going supernova, still has mass to eject
+            double eps = DMIN(KERNEL_CORE_SIZE*All.ForceSoftening[P[p].Type], PPP[p].Hsml);
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+            eps = DMAX(eps, P[p].SinkRadius);
+#endif
+            double t_clear=eps/single_star_SN_velocity(p);  dt = DMIN(dt,DMAX(t_clear/2,DMAX(All.MinSizeTimestep,All.Timebase_interval)* 1.01)); } // time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
 #endif
 #endif
     } // if(P[p].Type == 5)

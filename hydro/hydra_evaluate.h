@@ -145,7 +145,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif
 
                 /* check if I need to compute this pair-wise interaction from "i" to "j", or skip it and let it be computed from "j" to "i" */
-                integertime TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
+                integertime TimeStep_J; TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
                 int j_is_active_for_fluxes = 0;
 #if !defined(BOX_SHEARING) && !defined(_OPENMP) // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this; OpenMP on some new compilers goes bad here because pointers [e.g. P...] are not thread-safe shared with predictive operations, and vectorization means no gain here with OMP anyways) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
@@ -200,7 +200,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 kernel.dv[1] = local.Vel[1] - VelPred_j[1];
                 kernel.dv[2] = local.Vel[2] - VelPred_j[2];
                 kernel.rho_ij_inv = 2.0 / (local.Density + SphP[j].Density);
-                double Particle_Size_j = Get_Particle_Size(j) * All.cf_atime; /* physical units */
+                double Particle_Size_j; Particle_Size_j = Get_Particle_Size(j) * All.cf_atime; /* physical units */
 
                 /* --------------------------------------------------------------------------------- */
                 /* sound speed, relative velocity, and signal velocity computation */

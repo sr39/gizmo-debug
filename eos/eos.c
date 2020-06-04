@@ -44,7 +44,7 @@ double return_user_desired_target_pressure(int i)
     variable as well. */
 double get_pressure(int i)
 {
-    double soundspeed=0, press=0, gamma_eos_index = GAMMA(i); /* get effective adiabatic index */
+    double soundspeed, press=0, gamma_eos_index = GAMMA(i); soundspeed=0; /* get effective adiabatic index */
     press = (gamma_eos_index-1) * SphP[i].InternalEnergyPred * Get_Gas_density_for_energy_i(i); /* ideal gas EOS (will get over-written it more complex EOS assumed) */
     
     
@@ -86,15 +86,16 @@ double get_pressure(int i)
 #ifdef EOS_GMC_BAROTROPIC // barytropic EOS calibrated to Masunaga & Inutsuka 2000, eq. 4 in Federrath 2014 Apj 790. Reasonable over the range of densitites relevant to some small-scale star formation problems
     gamma_eos_index=7./5.; double rho=Get_Gas_density_for_energy_i(i), nH_cgs=rho*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
     if(nH_cgs > 2.30181e16) {gamma_eos_index=5./3.;} /* dissociates to atomic if dense enough (hot) */
-#if (EOS_GMC_BAROTROPIC==0) // EOS used in Bate Bonnell & Bromm 2003 and related works - isothermal below 6e10 cm^-3, adiabatic above. Assumes c_s = 200m/s at low density
-    if (nH_cgs < 6e10) {press = 6.60677e-16 * nH_cgs;} // isothermal below 6e10 cm^-3 (adiabatic gamma=5/3 for soundspeed, etc, but this assumes effective eos from cooling, etc
-    else press = 3.964062e-5 * pow(nH_cgs/6e10,1.4);
-#else    
     if (nH_cgs < 1.49468e8) {press = 6.60677e-16 * nH_cgs;} // isothermal below ~10^8 cm^-3 (adiabatic gamma=5/3 for soundspeed, etc, but this assumes effective eos from cooling, etc
     else if (nH_cgs < 2.30181e11) {press = 1.00585e-16 * pow(nH_cgs, 1.1);} // 'transition' region
     else if (nH_cgs < 2.30181e16) {press = 3.92567e-20 * pow(nH_cgs, gamma_eos_index);} // adiabatic molecular
     else if (nH_cgs < 2.30181e21) {press = 3.1783e-15 * pow(nH_cgs, 1.1);} // 'transition' region
     else {press = 2.49841e-27 * pow(nH_cgs, gamma_eos_index);} // adiabatic atomic
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(EOS_GMC_BAROTROPIC)
+#if (EOS_GMC_BAROTROPIC==1) // EOS used in Bate Bonnell & Bromm 2003 and related works - isothermal below 6e10 cm^-3, adiabatic above. Assumes c_s = 200m/s at low density
+    if (nH_cgs < 6e10) {press = 6.60677e-16 * nH_cgs;} // isothermal below 6e10 cm^-3 (adiabatic gamma=5/3 for soundspeed, etc, but this assumes effective eos from cooling, etc
+    else press = 3.964062e-5 * pow(nH_cgs/6e10,1.4);
+#endif
 #endif
     press /= UNIT_PRESSURE_IN_CGS;
     /* in this case the EOS is modeling cooling, etc, so -does not- allow shocks or deviations from adiabat, so we reset the internal energy every time this is checked */
@@ -282,7 +283,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 {
     /* if tracking chemistry explicitly, return the explicitly-evolved H2 fraction */
 #ifdef CHIMES // use the CHIMES molecular network for H2
-    return DMIN(1,DMAX(0, ChimesGasVars[i].abundances[H2] * 2.0)); // factor 2 converts to mass fraction in molecular gas, as desired
+    return DMIN(1,DMAX(0, ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[H2]] * 2.0)); // factor 2 converts to mass fraction in molecular gas, as desired
 #endif
     
 #if (COOL_GRACKLE_CHEMISTRY >= 2) // Use GRACKLE explicitly-tracked H2 [using the molecular network if this is valid]

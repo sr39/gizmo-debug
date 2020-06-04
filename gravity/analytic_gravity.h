@@ -161,7 +161,7 @@ void GravAccel_StaticHernquist()
         for(k=0;k<3;k++) {P[i].GravAccel[k] += -All.G * m * dp[k]/(r2*r);}
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
         double f0=All.G*HQ_Mtot, fa=f0*(2/f+1/r)/(r2*f*f), fxx=-f0/(r*f*f);
-        for(k=0;k<3;k++) {P[i].tidal_tensorps[k][k]+=fxx; int j; for(j=0;j<3;j++) {P[i].tidal_tensorps[k][j]+fa*dp[k]*dp[j];}}
+        for(k=0;k<3;k++) {P[i].tidal_tensorps[k][k]+=fxx; int j; for(j=0;j<3;j++) {P[i].tidal_tensorps[k][j]+=fa*dp[k]*dp[j];}}
 #endif
     }
 }

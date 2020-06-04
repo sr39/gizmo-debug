@@ -60,7 +60,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
             if(gnew > 0)
             {
                 gnew = sqrt(gnew);
-                for(k=0;k<3;k++) {grad_ij[k] / grad_mag * gnew;}
+                for(k=0;k<3;k++) {grad_ij[k] *= gnew / grad_mag;}
                 grad_mag = gnew;
             }
         }
@@ -196,7 +196,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_j_to_i] += flux_tmp[k_j_to_i] * SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k_j_to_i];
         Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_i_to_j] += flux_tmp[k_i_to_j] * local.CosmicRayAlfvenEnergy[k_CRegy][k_i_to_j];
         for(k=0;k<2;k++) {out.DtCosmicRayAlfvenEnergy[k_CRegy][k] += Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}
-        if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= Fluxes.CosmicRayAlfvenEnergy[k_CR_egy][k];}}
+        if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}}
 #endif
         
 #endif // COSMIC_RAYS_M1

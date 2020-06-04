@@ -780,9 +780,7 @@ void output_log_messages(void)
 
 void write_cpu_log(void)
 {
-  double max_CPU_Step[CPU_PARTS], avg_CPU_Step[CPU_PARTS], t0, t1, tsum;
-  int i;
-
+  double max_CPU_Step[CPU_PARTS], avg_CPU_Step[CPU_PARTS], t0, t1, tsum; int i; t0=0; t1=0; tsum=0;
   CPU_Step[CPU_MISC] += measure_time();
 
   for(i = 1, CPU_Step[0] = 0; i < CPU_PARTS; i++) {CPU_Step[0] += CPU_Step[i];}

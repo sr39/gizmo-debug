@@ -121,7 +121,7 @@ struct OUTPUT_STRUCT_NAME
 /* this subroutine assigns the values to the variables that need to be sent -back to- the 'searching' element */
 static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
-    int k, target = P[i].IndexMapToTempStruc;
+    int k, target = P[i].IndexMapToTempStruc; k=0;
     ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_Mass, out->accreted_Mass, mode);    
     ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_BH_Mass, out->accreted_BH_Mass, mode);
     ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_BH_Mass_alphadisk, out->accreted_BH_Mass_alphadisk, mode);
@@ -231,7 +231,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif
 
                     /* handle accretion/conservation of certain conserved quantities, depending on whether we are intending our sub-grid model to follow them */
-                    double mcount_for_conserve = f_accreted * P[j].Mass;
+                    double mcount_for_conserve; mcount_for_conserve = f_accreted * P[j].Mass;
 #if (BH_FOLLOW_ACCRETED_ANGMOM == 1) /* in this case we are only counting this if its coming from BH particles */
                     if(P[j].Type!=5) {mcount_for_conserve=0;} else {mcount_for_conserve=BPP(j).BH_Mass;}
 #ifdef BH_ALPHADISK_ACCRETION
@@ -519,7 +519,7 @@ void get_random_orthonormal_basis(int seed, double *nx, double *ny, double *nz){
     /* velocities (determined by wind velocity direction) */
     nz[0]=sin_theta*cos_phi; nz[1]=sin_theta*sin_phi; nz[2]=cos_theta; // random z axis
 
-    double dot_product, norm=0; int k;
+    double dot_product=0, norm=0; int k;
     while(norm==0){ // necessary in case ny is parallel to nz - believe it or not this happened once!
         phi=2.*M_PI*get_random_number(seed+4+ThisTask), cos_theta=2.*(get_random_number(seed+5+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
         ny[0]=sin_theta*cos_phi; ny[1]=sin_theta*sin_phi; ny[2]=cos_theta; // random y axis, needs to have its z component deprojected
@@ -598,7 +598,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         n_particles_split = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
         if (P[i].BH_Mass == 0){ //Last batch to be spawned
             n_particles_split = SINGLE_STAR_FB_SNE_N_EJECTA; //we are going to spawn a bunch of low mass particles to take the last bit of mass away
-            printf("Spawning last SN ejecta of star %llu with %g mass and %d particles \n",P[i].ID,total_mass_in_winds,n_particles_split);
+            printf("Spawning last SN ejecta of star %llu with %g mass and %d particles \n",(unsigned long long) P[i].ID,total_mass_in_winds,n_particles_split);
             P[i].Mass = 0; //set mass to zero so that this sink will get cleaned up (TreeReconstructFlag = 1 should be already set in blackhole.c)
 #ifdef BH_ALPHADISK_ACCRETION
             P[i].BH_Mass_AlphaDisk = 0; //just to be safe

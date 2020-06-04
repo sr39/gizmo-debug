@@ -157,7 +157,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     int startnode, numngb_inbox, listindex = 0;
     int j, k, n;
     double u,r2,h2;
-    double v_ejecta_max,kernel_zero,wk,dM,dP;
+    double kernel_zero,wk,dM,dP;
     double E_coupled,dP_sum,dP_boost_sum;
     
     struct kernel_addFB kernel;
@@ -165,8 +165,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     struct OUTPUT_STRUCT_NAME out;
     memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME));
     
-    v_ejecta_max = 5000.0 / UNIT_VEL_IN_KMS;
-    // 'speed limit' to prevent numerically problematic kicks at low resolution //
     kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0;
     
     /* Load the data for the particle injecting feedback */
@@ -463,7 +461,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double unitlength_in_kpc= UNIT_LENGTH_IN_KPC * All.cf_atime;
     double density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
     double unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS;
-    double v_ejecta_max = 5000.0 * 1.0e5/UNIT_VEL_IN_CGS; // 'speed limit' to prevent numerically problematic kicks at low resolution //
     
     // now define quantities that will be used below //
     double psi_cool=1, psi_egycon=1, v_ejecta_eff=local.SNe_v_ejecta;

@@ -69,7 +69,7 @@ int GasGrad_isactive(int i)
     if(P[i].Mass <= 0) return 0;
     if(SphP[i].Density <= 0 || PPP[i].Hsml <= 0) return 0;
 #if defined(GALSF_SUBGRID_WINDS) && !defined(TURB_DIFF_DYNAMIC)
-    if(SphP[j].DelayTime > 0) return 0;
+    if(SphP[i].DelayTime > 0) return 0;
 #endif
     return 1;
 }
@@ -906,7 +906,7 @@ void hydro_gradient_calc(void)
                 double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/All.cf_afac1 * SphP[i].Pressure*v_tmp*v_tmp) +
                                     SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
                 double tmp = 3.0e3 * fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d;
-                double alim = 1. + DMIN(1.,tmp*tmp);
+                double alim; alim = 1. + DMIN(1.,tmp*tmp);
 #if (MHD_CONSTRAINED_GRADIENT <= 1)
                 double dbmax=0, dbgrad=0;
                 double dh=0.25*PPP[i].Hsml; // need to be more aggressive with new wt_i,wt_j formalism
@@ -1041,7 +1041,7 @@ void hydro_gradient_calc(void)
 #endif
 #ifdef COSMIC_RAYS
             for(k=0;k<N_CR_PARTICLE_BINS;k++) {construct_gradient(SphP[i].Gradients.CosmicRayPressure[k],i);}
-            int is_particle_local_extremum[N_CR_PARTICLE_BINS]={0}; // test for local extremum to revert to lower-order reconstruction if necessary
+            int is_particle_local_extremum[N_CR_PARTICLE_BINS]={0}; is_particle_local_extremum[0]=0; // test for local extremum to revert to lower-order reconstruction if necessary
 #endif
 #ifdef DOGRAD_SOUNDSPEED
             construct_gradient(SphP[i].Gradients.SoundSpeed,i);
@@ -1178,7 +1178,8 @@ void hydro_gradient_calc(void)
             
             
 
-#if defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII) || (defined(MHD_NON_IDEAL) && defined(COOLING))
+#if (defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII) || defined(MHD_NON_IDEAL))
+#if defined(COOLING)
             /* get the neutral fraction */
             double ion_frac, nHe0, nHepp, nhp, nHeII, temperature, u, ne, nh0 = 0, mu_meanwt=1;
             ne = SphP[i].Ne;
@@ -1188,6 +1189,9 @@ void hydro_gradient_calc(void)
             if(SphP[i].DelayTimeHII>0) nh0=0;
 #endif 
 	        ion_frac = DMIN(DMAX(0,1.-nh0),1);
+#else
+            double ion_frac; ion_frac=1;
+#endif
 #endif
             
             
@@ -1731,10 +1735,6 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     int startnode, numngb, listindex = 0;
     int j, k, k2, n, swap_to_j;
     double hinv, hinv3, hinv4, r2, u, hinv_j, hinv3_j, hinv4_j;
-#ifdef TURB_DIFF_DYNAMIC
-    double hhat_i, hhat_j, hhatinv_i, hhatinv3_i, hhatinv4_i, hhatinv_j, hhatinv3_j, hhatinv4_j, wkhat_i, wkhat_j, dwkhat_i, dwkhat_j;
-    double tstart, tend;
-#endif
     struct kernel_GasGrad kernel;
     struct GasGraddata_in local;
     struct GasGraddata_out out;
@@ -1806,7 +1806,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 j = ngblist[n];
                 if(GasGrad_isactive(j)==0) continue;
 
-                integertime TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
+                integertime TimeStep_J; TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
 #if !defined(BOX_SHEARING) && !defined(_OPENMP) // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this; OpenMP on some new compilers goes bad here because pointers [e.g. P...] are not thread-safe shared with predictive operations, and vectorization means no gain here with OMP anyways) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
                 /* use relative positions to break degeneracy */
@@ -1837,6 +1837,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #else
                 if (gradient_iteration == 0) {
 #endif
+                    double hhat_i, hhat_j, hhatinv_i, hhatinv3_i, hhatinv4_i, wkhat_i, dwkhat_i;
                     hhat_i = All.TurbDynamicDiffFac * kernel.h_i; hhat_j = All.TurbDynamicDiffFac * h_j;
                     if((r2 >= (hhat_i * hhat_i)) && (r2 >= (hhat_j * hhat_j))) continue;
                     double h_avg = 0.5 * (hhat_i + hhat_j), particle_distance = sqrt(r2);

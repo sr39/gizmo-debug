@@ -372,8 +372,8 @@ double rt_kappa(int i, int k_freq)
 #endif
 
 #if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) || defined(RT_PHOTOELECTRIC) || defined (GALSF_FB_FIRE_RT_LONGRANGE) || defined(RT_NUV) || defined(RT_OPTICAL_NIR) || defined(RT_LYMAN_WERNER) || defined(RT_INFRARED) || defined(RT_FREEFREE)
-    double fac = UNIT_SURFDEN_IN_CGS; /* units */
-    double Zfac = 1.0; // assume solar metallicity 
+    double fac = UNIT_SURFDEN_IN_CGS, Zfac; /* units */
+    Zfac = 1.0; // assume solar metallicity 
 #ifdef METALS
     Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
 #endif
@@ -458,7 +458,9 @@ double rt_kappa(int i, int k_freq)
             if(dx_excess > 0) {kappa *= exp(0.57*dx_excess);} // assumes kappa scales linearly with temperature (1/lambda) above maximum in fit; pretty good approximation //
             kappa *= Zfac; // the above are all dust opacities, so they scale with metallicity
         }
+#ifdef COOLING
         kappa += 0.35 * SphP[i].Ne; // Thompson scattering
+#endif
         return kappa * fac; // convert units and return
     }
 #endif
@@ -493,7 +495,7 @@ double rt_absorb_frac_albedo(int i, int k_freq)
 #endif
 
 #if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) || defined(RT_INFRARED) /* these have mixed opacities from dust(assume albedo=1/2), ionization(albedo=0), and Thompson (albedo=1) */
-    double fac = UNIT_SURFDEN_IN_CGS; /* units */
+    double fac; fac = UNIT_SURFDEN_IN_CGS; /* units */
 #ifdef RT_HARD_XRAY /* opacity comes from H+He (Thompson) + metal ions -- assume 0 scattering from ions, 1 from Thompson */
     if(k_freq==RT_FREQ_BIN_HARD_XRAY) {return 1.-0.5*(0. + DMIN(1.,0.35*fac/rt_kappa(i,k_freq)));}
 #endif
@@ -501,7 +503,14 @@ double rt_absorb_frac_albedo(int i, int k_freq)
     if(k_freq==RT_FREQ_BIN_SOFT_XRAY) {return 1.-0.5*(0. + DMIN(1.,0.35*fac/rt_kappa(i,k_freq)));}
 #endif
 #ifdef RT_INFRARED /* opacity comes from Thompson + dust -- assume 0.5/(1 + (Trad/725K)^(-2)) scattering from dust [Rayleigh, since we're in the long-wavelength limit by definition here], 1 from Thompson */
-    if(k_freq==RT_FREQ_BIN_INFRARED) {return (1.-0.5/(1.+((725.*725.)/(1.+SphP[i].Radiation_Temperature*SphP[i].Radiation_Temperature))))*(1.-DMIN(1.,0.35*SphP[i].Ne*fac/rt_kappa(i,k_freq)));}
+    if(k_freq==RT_FREQ_BIN_INFRARED)
+    {
+        double fA_tmp = (1.-0.5/(1.+((725.*725.)/(1.+SphP[i].Radiation_Temperature*SphP[i].Radiation_Temperature))));
+#ifdef COOLING
+        fA_tmp *= (1.-DMIN(1.,0.35*SphP[i].Ne*fac/rt_kappa(i,k_freq)));
+#endif
+        return fA_tmp;
+    }
 #endif
 #endif
     
@@ -665,11 +674,10 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #endif
 #ifdef RT_INFRARED
     double E_abs_tot = 0;/* energy absorbed in other bands is transfered to IR, by default: track it here */
-    double c_light = C_LIGHT_CODE, c_light_reduced = C_LIGHT_CODE_REDUCED;
     double Rad_E_gamma_tot = 0; // dust temperature defined by total radiation energy density //
     {int j; for(j=0;j<N_RT_FREQ_BINS;j++) {Rad_E_gamma_tot += SphP[i].Rad_E_gamma[j];}}
     double u_gamma = Rad_E_gamma_tot * (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_CGS; // photon energy density in CGS //
-    double Dust_Temperature_4 = c_light_reduced*UNIT_VEL_IN_CGS * u_gamma / (4. * 5.67e-5); // estimated effective temperature of local rad field in equilibrium with dust emission //
+    double Dust_Temperature_4 = C_LIGHT_CODE_REDUCED*UNIT_VEL_IN_CGS * u_gamma / (4. * 5.67e-5); // estimated effective temperature of local rad field in equilibrium with dust emission //
     SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
     double T_min = get_min_allowed_dustIRrad_temperature();
     if(SphP[i].Dust_Temperature <= T_min) {SphP[i].Dust_Temperature = T_min;} // dust temperature shouldn't be below CMB
@@ -716,7 +724,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 total_de_dt = E_abs_tot + SphP[i].Rad_Je[kf] + dt_e_gamma_band;
                 if(fabs(a0)>0)
                 {
-                    Dust_Temperature_4 = total_emission_rate * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. * (MIN_REAL_NUMBER + fabs(a0)) / c_light_reduced); // flux units
+                    Dust_Temperature_4 = total_emission_rate * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. * (MIN_REAL_NUMBER + fabs(a0)) / C_LIGHT_CODE_REDUCED); // flux units
                     Dust_Temperature_4 *= UNIT_FLUX_IN_CGS / (5.67e-5); // convert to cgs
                     SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
                     if(SphP[i].Dust_Temperature < T_min) {SphP[i].Dust_Temperature = T_min;} // dust temperature shouldn't be below CMB
@@ -756,7 +764,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             {
                 double radacc[3]={0}, rmag=0, vel_i[3], L_particle = Get_Particle_Size(i)*All.cf_atime; // particle effective size/slab thickness
                 double Sigma_particle = P[i].Mass / (M_PI*L_particle*L_particle); // effective surface density through particle
-                double abs_per_kappa_dt = c_light_reduced * (SphP[i].Density*All.cf_a3inv) * dt_entr; // fractional absorption over timestep
+                double abs_per_kappa_dt = C_LIGHT_CODE_REDUCED * (SphP[i].Density*All.cf_a3inv) * dt_entr; // fractional absorption over timestep
                 double f_kappa_abs = rt_absorb_frac_albedo(i,kf); // get albedo, we'll need this below
                 double slabfac_rp = slab_averaging_function(f_kappa_abs*SphP[i].Rad_Kappa[kf]*Sigma_particle) * slab_averaging_function(f_kappa_abs*SphP[i].Rad_Kappa[kf]*abs_per_kappa_dt); // reduction factor for absorption over dt
                 int kx; for(kx=0;kx<3;kx++)
@@ -768,7 +776,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 if(rmag > 0)
                 {
                     rmag = sqrt(rmag); for(kx=0;kx<3;kx++) {radacc[kx] /= rmag;} // normalize
-                    double rmag_max = de_abs / (P[i].Mass * c_light_reduced * (MIN_REAL_NUMBER + f_kappa_abs)); // limit magnitude to absorbed photon momentum
+                    double rmag_max = de_abs / (P[i].Mass * C_LIGHT_CODE_REDUCED * (MIN_REAL_NUMBER + f_kappa_abs)); // limit magnitude to absorbed photon momentum
                     if(rmag > rmag_max) {rmag=rmag_max;}
 #if defined(RT_ENABLE_R15_GRADIENTFIX)
                     rmag = rmag_max; // set to maximum (optically thin limit)
@@ -1021,7 +1029,7 @@ void rt_init_intensity_directions(void)
     int n_polar = RT_LOCALRAYGRID;
     if(n_polar < 1) {printf("Number of rays is invalid (<1). Terminating.\n"); endrun(5346343);}
 
-    double mu[n_polar]; int i,j,k,l,n=0,n_oct=n_polar*(n_polar+1)/2,n_tot=8*n_oct;
+    double mu[n_polar]; int i,j,k,l,n=0,n_oct=n_polar*(n_polar+1)/2;
     double Rad_Intensity_Direction_tmp[n_oct][3];
     for(j=0;j<n_polar;j++) {mu[j] = sqrt( (j + 1./6.) / (n_polar - 1./2.) );}
     
@@ -1098,6 +1106,7 @@ double get_min_allowed_dustIRrad_temperature(void)
 /* return LambdaDust, the dust heating/cooling rate (>0 is heating, <0 is cooling) */
 double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, double *ne_guess, int target)
 {
+#ifdef COOLING
     double Tdust_0 = SphP[target].Dust_Temperature; // dust temperature estimate from previous loop over radiation operators
     double LambdaDust_initial_guess = 1.116e-32 * (Tdust_0-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * (P[target].Metallicity[0]/All.SolarAbundances[0]); // guess value based on the -current- values of T, Tdust //
         
@@ -1124,8 +1133,9 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, d
     double lambda_eff = sign_term * L0_abs * xfac; // final effective cooling/heating rate
 
     SphP[target].Dust_Temperature = DMAX(pow(Erad_to_T4_fac*DMAX( 0., egy_rad - lambda_eff*ratefact*dt ), 0.25), get_min_allowed_dustIRrad_temperature()); // update dust temperature guess //
-    
     return lambda_eff;
+#endif
+    return 0;
 }
 
 #endif

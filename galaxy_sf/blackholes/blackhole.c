@@ -93,7 +93,7 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
 #endif
     }
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-    double hinv; if(P[j].Type==0) hinv=1/All.ForceSoftening[5];
+    double hinv = 1./All.ForceSoftening[5];
     if(r_code < 1/hinv) {return sqrt(-2*All.G*m_eff*kernel_gravity(r_code*hinv, hinv, hinv*hinv*hinv, -1));}
 #endif    
     return sqrt(2.0*All.G*(m_eff)/(r_code*All.cf_atime) + cs_to_add_km_s*cs_to_add_km_s);
@@ -204,7 +204,7 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double dx, doubl
 void set_blackhole_mdot(int i, int n, double dt)
 {
     double mdot=0; int k; k=0;
-    double soundspeed2 = convert_internalenergy_soundspeed2(n,BlackholeTempInfo[i].BH_InternalEnergy);
+    double soundspeed2; soundspeed2 = convert_internalenergy_soundspeed2(n,BlackholeTempInfo[i].BH_InternalEnergy);
 #ifdef BH_GRAVACCRETION
     double m_tmp_for_bhar, mdisk_for_bhar, bh_mass, fac;
     double rmax_for_bhar,fgas_for_bhar,f_disk_for_bhar, f0_for_bhar;
@@ -478,8 +478,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 /* Update the BH_Mass and the BH_Mass_AlphaDisk */
 void set_blackhole_new_mass(int i, int n, double dt)
 {
-    int k;
-    if(BPP(n).BH_Mdot <= 0) {BPP(n).BH_Mdot=0;} /* check unphysical values */
+    int k; k=0; if(BPP(n).BH_Mdot <= 0) {BPP(n).BH_Mdot=0;} /* check unphysical values */
 
     /* before mass update, track angular momentum in disk for 'smoothed' accretion case [using continuous accretion rate and specific AM of all material in kernel around BH] */
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM) && (BH_FOLLOW_ACCRETED_ANGMOM == 1)
@@ -639,7 +638,7 @@ void set_blackhole_long_range_rp(int i, int n) /* pre-set quantities needed for 
 
 void blackhole_final_operations(void)
 {
-    int i, k, n, bin; double dt, mass_disk, mdot_disk, MgasBulge, MstarBulge, r0;
+    int i, k, n, bin; double dt, mass_disk, mdot_disk, MgasBulge, MstarBulge, r0; k=0;
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
     int count_bhelim=0, tot_bhelim;
 #endif
@@ -690,7 +689,7 @@ void blackhole_final_operations(void)
 #ifdef HERMITE_INTEGRATION
             P[n].AccretedThisTimestep = 1;
 #endif          
-            double m_new = P[n].Mass + BlackholeTempInfo[i].accreted_Mass;
+            double m_new; m_new = P[n].Mass + BlackholeTempInfo[i].accreted_Mass;
 #if (BH_FOLLOW_ACCRETED_ANGMOM == 1) /* in this case we are only counting this if its coming from BH particles */
             m_new = P[n].Mass + BlackholeTempInfo[i].accreted_BH_Mass + BlackholeTempInfo[i].accreted_BH_Mass_alphadisk;
 #endif
@@ -793,10 +792,14 @@ void blackhole_final_operations(void)
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
         if (P[n].ProtoStellarStage == 6){ //Star old enough to go out with a boom
-            double t_clear=P[n].SinkRadius/single_star_SN_velocity(n); // time needed spawned wind particles to clear the sink
+            double eps = DMIN(KERNEL_CORE_SIZE*All.ForceSoftening[P[n].Type], PPP[n].Hsml);
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+            eps = DMAX(eps, P[n].SinkRadius);
+#endif
+            double t_clear=eps/single_star_SN_velocity(n); // time needed spawned wind particles to clear the sink
             double SN_mdot = (SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger)/t_clear; // we spawn SINGLE_STAR_FB_SNE_N_EJECTA per ejected shell, and we can have maximum 1 shell per t_clear
             dm_wind = DMIN(SN_mdot*dt, BPP(n).BH_Mass); // We will spawn particles to model the SN ejecta, but not more than what we can handle at the same time, these particles will have the same mass as gas particles, not like wind particles
-            printf("Adding SN ejecta of mass %g from star %llu at time %g, unspawned mass at %g\n", dm_wind, P[n].ID, All.Time, (BPP(n).unspawned_wind_mass+dm_wind));
+            printf("Adding SN ejecta of mass %g from star %llu at time %g, unspawned mass at %g\n", dm_wind, (unsigned long long) P[n].ID, All.Time, (BPP(n).unspawned_wind_mass+dm_wind));
             BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
             if (BPP(n).BH_Mass < 0.5*(SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger)){ // less than half a shell mass left in the star: instead of spawning the last shell with very low mass particles we will make the one before slightly more massive
                 dm_wind += BPP(n).BH_Mass; BPP(n).BH_Mass = 0; // add leftover mass to be spawned and zero-out mass

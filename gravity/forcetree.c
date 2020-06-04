@@ -1294,9 +1294,6 @@ void force_treeupdate_pseudos(int no)
     s_dm[1] = vs_dm[1] = 0;
     s_dm[2] = vs_dm[2] = 0;
 #endif
-#ifdef RT_USE_TREECOL_FOR_NH
-    MyFloat gasmass = 0;
-#endif    
     mass = 0;
     s[0] = 0;
     s[1] = 0;
@@ -1732,7 +1729,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef DM_SCALARFIELD_SCREENING
     double dx_dm = 0, dy_dm = 0, dz_dm = 0, mass_dm = 0;
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
     double soft=0, pmass;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     double h_p_inv=0, h_p3_inv=0, u_p=0, zeta, zeta_sec=0;
@@ -1771,7 +1768,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         pos_z = P[target].Pos[2];
         ptype = P[target].Type;
 
-#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
         pmass = P[target].Mass;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE)
@@ -1780,7 +1777,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         vel_z = P[target].Vel[2];
 #endif
         aold = All.ErrTolForceAcc * P[target].OldAcc;
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
         soft = All.ForceSoftening[ptype];
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS)
@@ -1808,7 +1805,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         pos_x = GravDataGet[target].Pos[0];
         pos_y = GravDataGet[target].Pos[1];
         pos_z = GravDataGet[target].Pos[2];
-#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
         pmass = GravDataGet[target].Mass;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE)
@@ -1818,7 +1815,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
         ptype = GravDataGet[target].Type;
         aold = All.ErrTolForceAcc * GravDataGet[target].OldAcc;
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
         soft = GravDataGet[target].Soft;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
         zeta = GravDataGet[target].AGS_zeta;
@@ -2595,7 +2592,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 r2 = dx_stellarlum*dx_stellarlum + dy_stellarlum*dy_stellarlum + dz_stellarlum*dz_stellarlum; r = sqrt(r2);
                 if(r >= soft) {fac=1./(r2*r);} else {h_inv=1./soft; h3_inv=h_inv*h_inv*h_inv; u=r*h_inv; fac=kernel_gravity(u,h_inv,h3_inv,1);}
                 if((soft>r)&&(soft>0)) fac *= (r2/(soft*soft)); // don't allow cross-section > r2
-                double fac_intensity = fac * r * All.cf_a2inv / (4.*M_PI); // ~L/(4pi*r^2), in -physical- units, since L is physical
+                double fac_intensity; fac_intensity = fac * r * All.cf_a2inv / (4.*M_PI); // ~L/(4pi*r^2), in -physical- units, since L is physical
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
                 {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {Rad_E_gamma[kf] += fac_intensity * mass_stellarlum[kf];}}
 #endif
@@ -2771,10 +2768,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].Potential = pot;
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-        for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
+        {int i1,i2; for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}}
 #endif
 #ifdef COMPUTE_JERK_IN_GRAVTREE
-        for(i1 = 0; i1 < 3; i1++) {P[target].GravJerk[i1] = jerk[i1];}
+        {int i1; for(i1 = 0; i1 < 3; i1++) {P[target].GravJerk[i1] = jerk[i1];}}
 #endif	
 #ifdef BH_CALC_DISTANCES
         P[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
@@ -2786,7 +2783,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         if (min_bh_t_orbital<MAX_REAL_NUMBER)
         {
 	        P[target].is_in_a_binary=1; P[target].comp_Mass=comp_Mass; //mass of binary companion
-            for(i1=0;i1<3;i1++) {P[target].comp_dx[i1]=comp_dx[i1]; P[target].comp_dv[i1]=comp_dv[i1];}
+            int i1; for(i1=0;i1<3;i1++) {P[target].comp_dx[i1]=comp_dx[i1]; P[target].comp_dv[i1]=comp_dv[i1];}
         }
 #endif	
 #ifdef SINGLE_STAR_TIMESTEPPING
@@ -2833,10 +2830,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         GravDataResult[target].Potential = pot;
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-        for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
+        {int i1,i2; for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}}
 #endif
 #ifdef COMPUTE_JERK_IN_GRAVTREE
-	for(i1 = 0; i1 < 3; i1++) {GravDataResult[target].GravJerk[i1] = jerk[i1];}
+        {int i1; for(i1 = 0; i1 < 3; i1++) {GravDataResult[target].GravJerk[i1] = jerk[i1];}}
 #endif	
 #ifdef BH_CALC_DISTANCES
         GravDataResult[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
@@ -2848,7 +2845,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         if (min_bh_t_orbital<MAX_REAL_NUMBER)
         {
 		    GravDataResult[target].is_in_a_binary = 1; GravDataResult[target].comp_Mass=comp_Mass; //mass of binary companion
-            for(i1=0;i1<3;i1++) {GravDataResult[target].comp_dx[i1]=comp_dx[i1]; GravDataResult[target].comp_dv[i1]=comp_dv[i1];}
+            int i1; for(i1=0;i1<3;i1++) {GravDataResult[target].comp_dx[i1]=comp_dx[i1]; GravDataResult[target].comp_dv[i1]=comp_dv[i1];}
 	    }
 #endif	    
 #ifdef SINGLE_STAR_TIMESTEPPING
@@ -2886,19 +2883,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
  *  that was mapped to a different nearest neighbour position when the tree
  *  walk would be further refined.
  */
-int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, int *exportnodecount,
-                                        int *exportindex)
+int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex)
 {
     struct NODE *nop = 0;
-    int no, cost, listindex = 0;
-    double dx, dy, dz, mass, r2;
-    int signx, signy, signz, nexp;
-    int i, j, k, openflag, task;
-    double u, v, w;
-    double f1, f2, f3, f4, f5, f6, f7, f8;
-    MyLongDouble acc_x, acc_y, acc_z, xtmp;
-    double boxsize, boxhalf;
-    double pos_x, pos_y, pos_z, aold;
+    int signx, signy, signz, nexp, i, j, k, openflag, task, no, cost, listindex = 0;
+    double dx, dy, dz, mass, r2, u, v, w, f1, f2, f3, f4, f5, f6, f7, f8;
+    double boxsize, boxhalf, pos_x, pos_y, pos_z, aold;
+    MyLongDouble acc_x, acc_y, acc_z, xtmp; xtmp=0;
     
     boxsize = All.BoxSize;
     boxhalf = 0.5 * All.BoxSize;

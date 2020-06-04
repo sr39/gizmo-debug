@@ -230,12 +230,12 @@ double get_starformation_rate(int i)
     double egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold; /* specific energy of hot [volume-filling] phase gas */
     double tcool = GetCoolingTime(egyhot, SphP[i].Density * All.cf_a3inv, SphP[i].Ne, i); /* cooling time of two-phase mix */
     y = tsfr / tcool * egyhot / (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold); /* parameter */
-    double cloudmass = (1 + 1 / (2 * y) - sqrt(1 / y + 1 / (4 * y * y))) * P[i].Mass; /* quasi-equilibrium mass in cold phase */
-    rateOfSF = (1 - All.FactorSN) * cloudmass / tsfr; /* SFR given by cold mass (less SNe-entrainment fraction) divided by tSFR */
-    update_internalenergy_for_galsf_effective_eos(i,tcool,tsfr,x,rateOfSF); /* updates entropies for the effective equation-of-state */
+    double cloudmass_fraction = (1 + 1 / (2 * y) - sqrt(1 / y + 1 / (4 * y * y))); /* quasi-equilibrium mass in cold phase */
+    rateOfSF = (1 - All.FactorSN) * cloudmass_fraction * P[i].Mass / tsfr; /* SFR given by cold mass (less SNe-entrainment fraction) divided by tSFR */
+    update_internalenergy_for_galsf_effective_eos(i,tcool,tsfr,cloudmass_fraction,rateOfSF); /* updates entropies for the effective equation-of-state */
 #endif
     
-    int exceeds_force_softening_threshold = 0; /* flag that notes if the density is so high such that gravity is non-Keplerian [inside of smallest force-softening limits] */
+    int exceeds_force_softening_threshold; exceeds_force_softening_threshold = 0; /* flag that notes if the density is so high such that gravity is non-Keplerian [inside of smallest force-softening limits] */
 #if (SINGLE_STAR_SINK_FORMATION & 1024)
     if(PPP[i].Hsml <= DMAX(All.MinHsml, 2.*All.ForceSoftening[0])) {exceeds_force_softening_threshold=1;}
 #endif
@@ -256,7 +256,7 @@ double get_starformation_rate(int i)
 #endif
     
 #if (SINGLE_STAR_SINK_FORMATION & 1) || defined(GALSF_SFR_VIRIAL_SF_CRITERION) /* apply standard virial-parameter criteria here. note that our definition of virial parameter here is ratio of [Kinetic+Internal Energy]/|Gravitational Energy| -- so <1=bound, >1=unbound, 1/2=bound-and-virialized, etc. */
-    double k_cs = M_PI * v_fast / (Get_Particle_Size(i)*All.cf_atime), alpha_crit = 1.0; /* effective wavenumber for thermal+B-field+CR+whatever internal energy support, and threshold virial parameter */
+    double k_cs = M_PI * v_fast / (Get_Particle_Size(i)*All.cf_atime), alpha_crit; alpha_crit = 1.0; /* effective wavenumber for thermal+B-field+CR+whatever internal energy support, and threshold virial parameter */
     double Mach_eff_2=0, cs2_contrib=2.*k_cs*k_cs; Mach_eff_2=dv2abs/cs2_contrib; dv2abs+=2.*k_cs*k_cs; // account for thermal+magnetic pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
     double alpha_vir = dv2abs / (8.*M_PI * All.G * SphP[i].Density * All.cf_a3inv); // coefficient comes from different density profiles, assuming a constant velocity gradient tensor: 22.6=constant-density cube, 8pi[approximate]=constant-density sphere, e.g. rho~exp(-r^n) n={4,8,16,32,64}->{17.1,22.1,24.1,24.9,25.1,25.15} [approaches uniform-density sphere as n->infinity]
 #if defined(GALSF_SFR_VIRIAL_CRITERION_TIMEAVERAGED) /* compute and prepare to use our time-rolling average virial criterion */
@@ -273,8 +273,7 @@ double get_starformation_rate(int i)
     if(alpha_vir>alpha_crit) {rateOfSF=0;} /* simple 'hard' threshold here */
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 512) || defined(GALSF_SFR_VIRIAL_CONTINUOUS_THOLD) /* semi-continuous SF as a function of alpha_vir */
-    double avir_coeff = DMIN(DMAX(sqrt(DMAX(MIN_REAL_NUMBER,alpha_vir)), 1.e-4), 1.e10); /* limit the values of sqrt(alpha_vir) here since we'll take an exponential so don't want a nan */
-    //rateOfSF *= exp(-1.4 * DMIN(avir_coeff,22.)); /* continuous cutoff of rateOfSF with increasing virial parameter as ~exp[-1.4*sqrt(alpha_vir)], following fitting function from Padoan 2012 */
+    //rateOfSF *= exp(-1.4 * DMIN(DMIN(DMAX(sqrt(DMAX(MIN_REAL_NUMBER,alpha_vir)), 1.e-4), 1.e10),22.)); /* continuous cutoff of rateOfSF with increasing virial parameter as ~exp[-1.4*sqrt(alpha_vir)], following fitting function from Padoan 2012 [limit the values of sqrt(alpha_vir) here since we'll take an exponential so don't want a nan] */
     Mach_eff_2 = DMIN(DMAX(1.e-5, Mach_eff_2/3.), 1.e4); if(!isfinite(Mach_eff_2)) {Mach_eff_2=1.e4;}
     double S_ln=log(1.+Mach_eff_2/4.), S_crit=log(alpha_vir*(1.+2.*Mach_eff_2*Mach_eff_2/(1.+Mach_eff_2*Mach_eff_2))); // Mach_eff_2 is determined by the ratio of the kinetic to the thermal terms in the virial parameter, corrected to the 1D dispersion here
     rateOfSF *= 0.5 * exp(3.*S_ln/8.) * (1. + erf((S_ln-S_crit)/sqrt(2.*S_ln))); // multi-free-fall model, as in e.g. Federrath+Klessen 2012/2013 ApJ 761,156; 763,51 (similar to that implemented in e.g. Kretschmer+Teyssier 2020), based on the analytic models in Hopkins MNRAS 2013, 430 1653, with correct virial parameter [K+T used a definition which gives the wrong value for thermally-supported clouds]
@@ -338,10 +337,10 @@ double get_starformation_rate(int i)
 
 #ifdef GALSF_EFFECTIVE_EQS
 /* compute the 'effective eos' cooling/heating, including thermal feedback sources, here */
-void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double x, double rateOfSF)
+void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double cloudmass_fraction, double rateOfSF)
 {
     double dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval, dtime = dt / All.cf_hubble_a; /*  the actual time-step */
-    double factorEVP = pow(SphP[i].Density * All.cf_a3inv / All.PhysDensThresh, -0.8) * All.FactorEVP, trelax = tsfr * (1 - x) / x / (All.FactorSN * (1 + factorEVP));
+    double x = cloudmass_fraction, factorEVP = pow(SphP[i].Density * All.cf_a3inv / All.PhysDensThresh, -0.8) * All.FactorEVP, trelax = tsfr * (1 - x) / x / (All.FactorSN * (1 + factorEVP));
     double egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold, egyeff = egyhot * (1 - x) + All.EgySpecCold * x, egycurrent = SphP[i].InternalEnergy, ne;
     ne=1.0;
 

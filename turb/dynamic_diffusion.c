@@ -204,7 +204,7 @@ static inline void out2particle_DynamicDiff(struct DynamicDiffdata_out *out, int
 void dynamic_diff_calc(void) {
     PRINT_STATUS("Start dynamic diffusion calculations...");
     CPU_Step[CPU_MISC] += measure_time();
-    int i, j, k, v, k1, u, ngrp, ndone, ndone_flag, dynamic_iteration;
+    int i, j, k, v, u, ngrp, ndone, ndone_flag, dynamic_iteration;
     double shear_factor, dynamic_denominator, trace = 0, trace_dynamic_fac = 0, hhat2 = 0, leonardTensor[3][3], prefactor = 0;
 #ifdef IO_TURB_DIFF_DYNAMIC_ERROR
     double trace_dynamic_fac_const = 0;
@@ -215,7 +215,6 @@ void dynamic_diff_calc(void) {
     double timecomp, timecomm, timewait, tstart, tend, t0, t1;
     int save_NextParticle;
     long long n_exported = 0;
-    int startnode, numngb;
 
     /* allocate buffers to arrange communication */
     long long NTaskTimesNumPart;
@@ -757,8 +756,8 @@ void dynamic_diff_calc(void) {
  */
 int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int dynamic_iteration) {
     int startnode, numngb, listindex = 0;
-    int j, k, v, k2, n, swap_to_j;
-    double hinv, hinv3, hinv4, r2, u, hinv_j, hinv3_j, hinv4_j;
+    int j, k, v, n, swap_to_j;
+    double hinv, hinv3, hinv4, r2, u;
     struct kernel_DynamicDiff kernel;
     struct DynamicDiffdata_in local;
 

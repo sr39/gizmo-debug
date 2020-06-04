@@ -489,24 +489,19 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
-#ifdef CHIMES 
-        case IO_CHIMES_ABUNDANCES: 
-#ifndef CHIMES_INITIALISE_IN_EQM 
-	  for (n = 0; n < pc; n++) 
-	    {
-	      allocate_gas_abundances_memory(&(ChimesGasVars[offset + n]), &ChimesGlobalVars); 
-	      for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) {ChimesGasVars[offset + n].abundances[k] = (double) (*fp++);}
+        case IO_CHIMES_ABUNDANCES:
+#if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM)
+            for (n = 0; n < pc; n++)
+            {
+                allocate_gas_abundances_memory(&(ChimesGasVars[offset + n]), &ChimesGlobalVars);
+                for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) {ChimesGasVars[offset + n].abundances[k] = (double) (*fp++);}
 #ifdef CHIMES_TURB_DIFF_IONS
-	      chimes_update_turbulent_abundances(n, 1); 
+                chimes_update_turbulent_abundances(n, 1);
 #endif 	      
-	    }
-#endif // CHIMES_INITIALISE_IN_EQM 
-	  break; 
+            }
+#endif
+            break;
 	  
-        case IO_CHIMES_REDUCED: 
-	  break; 
-#endif 
-
         case IO_COSMICRAY_ENERGY:
 #ifdef COSMIC_RAYS            
             for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {SphP[offset + n].CosmicRayEnergy[k] = *fp++;}}
@@ -601,6 +596,17 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_TURB_DIFF_COEFF:
         case IO_DYNERROR:
         case IO_DYNERRORDEFAULT:
+        case IO_VDIV:
+        case IO_VORT:
+        case IO_CHIMES_MU:
+        case IO_CHIMES_REDUCED:
+        case IO_CHIMES_NH:
+        case IO_CHIMES_STAR_SIGMA:
+        case IO_DENS_AROUND_STAR:
+        case IO_DELAY_TIME_HII:
+        case IO_MOLECULARFRACTION:
+        case IO_CHIMES_FLUX_G0:
+        case IO_CHIMES_FLUX_ION:
             break;
 
         case IO_LASTENTRY:

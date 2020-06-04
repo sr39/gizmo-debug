@@ -324,14 +324,14 @@ GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = #
 MKL_LIBS = #
-GSL_INCL = -I/usr/local/include -I$(PORTINCLUDE)
-GSL_LIBS = -L/usr/local/lib -L$(PORTLIB)
+GSL_INCL = -I/usr/local/include #-I$(PORTINCLUDE)
+GSL_LIBS = -L/usr/local/lib #-L$(PORTLIB)
 FFTW_INCL= -I/usr/local/include
 FFTW_LIBS= -L/usr/local/lib
-HDF5INCL = -I/usr/local/include -I$(PORTINCLUDE) -DH5_USE_16_API
-HDF5LIB  = -L/usr/local/lib -L$(PORTLIB) -lhdf5 -lz
+HDF5INCL = -I/usr/local/include -DH5_USE_16_API #-I$(PORTINCLUDE) -DH5_USE_16_API
+HDF5LIB  = -L/usr/local/lib -lhdf5 -lz #-L$(PORTLIB)
 MPICHLIB = #
-OPT     += #
+OPT     += -DDISABLE_ALIGNED_ALLOC #
 ##
 ## PFH: this is my own laptop installation (2013 MacBook Pro running Yosemite)
 ## --
@@ -1119,7 +1119,7 @@ EOSCOOL_OBJS =  cooling/cooling.o \
 				solids/elastic_physics.o \
 				solids/grain_physics.o \
 				nuclear/nuclear_network_solver.o \
-				nuclear/nuclear_network.o \
+				nuclear/nuclear_network.o 
 
 STARFORM_OBJS = galaxy_sf/sfr_eff.o \
                 galaxy_sf/stellar_evolution.o \

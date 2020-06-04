@@ -278,6 +278,7 @@ double H2O_rotational_cooling(double T, double N, double xm, double xH2, double 
 double H2O_vibrational_cooling(double T, double N, double xm, double xH2, double xHI, double xe, double nH, struct globalVariables *myGlobalVars);
 double OH_rotational_cooling(double T, double N, double dv, double xm, double nH, double n, double tau_d);
 double calculate_total_number_density(double *my_abundances, double nH, struct globalVariables *myGlobalVars);
+void init_chimes_parallel(struct globalVariables *myGlobalVars, struct All_rate_variables_structure **this_all_rates, struct Reactions_Structure **this_all_reactions_root, struct Reactions_Structure **this_nonmolecular_reactions_root, double *dustG_arr, double *H2_dissocJ_arr);
 
 void allocate_molecular_header_arrays(struct globalVariables *myGlobalVars);
 void ReadMolecularCoolingHeader(struct globalVariables *myGlobalVars);

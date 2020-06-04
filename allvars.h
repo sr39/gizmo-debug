@@ -908,13 +908,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #include <assert.h>
 
 
-#ifdef NUCLEAR_NETWORK
-#include "nuclear/nuclear_network.h"
-void network_normalize(double *x, double *e, const struct network_data *nd, struct network_workspace *nw);
-int network_integrate( double temp, double rho, const double *x, double *dx, double dt, double *dedt, double *drhodt, const struct network_data *nd, struct network_workspace *nw );
-#endif
-
-
 #ifdef MYSORT
 #define MYSORT_DATAINDEX mysort_dataindex
 #else // MYSORT
@@ -962,6 +955,9 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 //#define AGS_OUTPUTZETA 1 /*! output correction zeta term to snapshots */
 #endif
 
+#ifdef NUCLEAR_NETWORK
+#include "nuclear/nuclear_network.h"
+#endif
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
 #define RT_BIN0 (-1)
@@ -2373,6 +2369,7 @@ extern struct global_data_all_processes
 #endif
 
 #ifdef NUCLEAR_NETWORK
+  char EosSpecies[100];
   char NetworkRates[100];
   char NetworkPartFunc[100];
   char NetworkMasses[100];
@@ -2458,7 +2455,7 @@ extern ALIGN(32) struct particle_data
     MyFloat PM_Potential;
 #endif
 #endif
-#if defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(OUTPUT_TIDAL_TENSOR)
+#if defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(OUTPUT_TIDAL_TENSOR) || (defined(SINGLE_STAR_TIMESTEPPING) && (SINGLE_STAR_TIMESTEPPING > 0))
 #define COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     double tidal_tensorps[3][3];                        /*!< tidal tensor (=second derivatives of grav. potential) */
 #ifdef PMGRID
@@ -2578,9 +2575,13 @@ extern ALIGN(32) struct particle_data
 #endif    
 #ifdef SINGLE_STAR_SINK_DYNAMICS  
     MyFloat SwallowTime; /* freefall time of a particle onto a sink particle  */
-    int BH_Ngb_Flag; /* Whether or not the gas live's in a sink's hydro stencil */
+#endif
+#if defined(SINGLE_STAR_TIMESTEPPING)
     MyFloat BH_SurroundingGasVel; /* Relative speed of sink to surrounding gas  */
-#endif 
+#endif
+#if (SINGLE_STAR_SINK_FORMATION & 8)
+    int BH_Ngb_Flag; /* Whether or not the gas live's in a sink's hydro stencil */
+#endif
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
 #endif
@@ -3065,6 +3066,10 @@ extern struct sph_particle_data
 #endif
 #endif
     
+#ifdef NUCLEAR_NETWORK
+    MyDouble Temperature;
+    MyDouble xnuc[EOS_NSPECIES], dxnuc[EOS_NSPECIES]; 
+#endif
     
 #if defined(WAKEUP) && !defined(AGS_HSML_CALCULATION_IS_ACTIVE)
     short int wakeup;                     /*!< flag to wake up particle */
@@ -3168,14 +3173,14 @@ extern struct data_nodelist
 extern struct gravdata_in
 {
     MyFloat Pos[3];
-#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
     MyFloat Mass;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE)
     MyFloat Vel[3];
 #endif  
     int Type;
-#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
     MyFloat Soft;
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
     MyFloat AGS_zeta;

@@ -28,6 +28,8 @@
     they are only defined once in a global operation, then locked for particle-by-particle operations */
 /* requires the cooling table TREECOOL, which is included in the GIZMO source in the cooling directory */
 #define NCOOLTAB  2000 /* defines size of cooling table */
+
+#if !defined(CHIMES)
 static double Tmin = 0.0, Tmax = 9.0, deltaT; /* minimum/maximum temp, in log10(T/K) and temperature gridding: will be appropriately set in make_cooling_tables subroutine below */
 static double *BetaH0, *BetaHep, *Betaff, *AlphaHp, *AlphaHep, *Alphad, *AlphaHepp, *GammaeH0, *GammaeHe0, *GammaeHep; // UV background parameters
 #ifdef COOL_METAL_LINES_BY_SPECIES
@@ -37,21 +39,17 @@ static float *SpCoolTable0, *SpCoolTable1;
 #endif
 /* these are constants of the UV background at a given redshift: they are interpolated from TREECOOL but then not modified particle-by-particle */
 static double J_UV = 0, gJH0 = 0, gJHep = 0, gJHe0 = 0, epsH0 = 0, epsHep = 0, epsHe0 = 0;
+#endif
 
 #ifdef CHIMES 
-struct gasVariables *ChimesGasVars; 
+char ChimesDataPath[500];
+int ForceEqOn, N_chimes_full_output_freq, Chimes_incl_full_output = 1;
+double isotropic_photon_density, shielding_length_factor, cr_rate, *dustG_arr, *H2_dissocJ_arr;
+struct gasVariables *ChimesGasVars;
 struct globalVariables ChimesGlobalVars; 
-char ChimesDataPath[500]; 
-double isotropic_photon_density;  
-double shielding_length_factor; 
-double cr_rate; 
-int ForceEqOn, N_chimes_full_output_freq; 
-int Chimes_incl_full_output = 1; 
 struct All_rate_variables_structure *AllRates;
 struct Reactions_Structure *all_reactions_root;
 struct Reactions_Structure *nonmolecular_reactions_root;
-double *dustG_arr; 
-double *H2_dissocJ_arr; 
 #ifdef _OPENMP
 struct All_rate_variables_structure **AllRates_omp; 
 struct Reactions_Structure **all_reactions_root_omp; 
@@ -278,8 +276,7 @@ void do_the_cooling_for_particle(int i)
  */
 double DoCooling(double u_old, double rho, double dt, double ne_guess, int target)
 {
-    double u, du, u_lower, u_upper, ratefact, LambdaNet;
-    int iter=0, iter_upper=0, iter_lower=0;
+    double u, du; u=0; du=0;
     
 #ifdef COOL_GRACKLE
 #ifndef COOLING_OPERATOR_SPLIT
@@ -326,7 +323,9 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     
     return DMAX(u, All.MinEgySpec);
 
-#else // CHIMES    
+#else // CHIMES
+    
+    int iter=0, iter_upper=0, iter_lower=0; double LambdaNet, ratefact, u_upper, u_lower;
     rho *= UNIT_DENSITY_IN_CGS;	/* convert to physical cgs units */
     u_old *= UNIT_SPECEGY_IN_CGS;
     dt *= UNIT_TIME_IN_CGS;
@@ -336,7 +335,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     u = u_old; u_lower = u; u_upper = u; /* initialize values */
     LambdaNet = CoolingRateFromU(u, rho, ne_guess, target);
 
- /* bracketing */
+    /* bracketing */
     if(u - u_old - ratefact * LambdaNet * dt < 0)	/* heating */
     {
         u_upper *= sqrt(1.1); u_lower /= sqrt(1.1);
@@ -504,7 +503,7 @@ double chimes_convert_u_to_temp(double u, double rho, int target)
 double convert_u_to_temp(double u, double rho, int target, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess, double *mu_guess)
 {
     int iter = 0;
-    double temp, temp_old, temp_old_old = 0, temp_new, max = 0, ne_old, uvb_contrib = 0;
+    double temp, temp_old, temp_old_old = 0, temp_new, max = 0, ne_old;
     double u_input = u, rho_input = rho, temp_guess;
     temp_guess = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS;
     *mu_guess = get_mu(temp_guess, rho, nH0_guess, ne_guess, 0., target);
@@ -825,21 +824,7 @@ double CoolingRateFromU(double u, double rho, double ne_guess, int target)
 }
 
 
-
-/*  this function computes the self-consistent temperature and electron fraction */ 
-double ThermalProperties(double u, double rho, int target, double *mu_guess, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess)
-{
-    double temp;
-    rho *= UNIT_DENSITY_IN_CGS;	/* convert to physical cgs units */
-    u *= UNIT_SPECEGY_IN_CGS;
-    temp = convert_u_to_temp(u, rho, target, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess);
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
-    if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target);}} /* fully ionized [if using older model] */
-    *mu_guess = get_mu(temp, rho, nH0_guess, ne_guess, 0, target);
-#endif
-    return temp;
-}
-#endif // !(CHIMES) 
+#endif // !(CHIMES)
 
 
 
@@ -902,7 +887,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     if(target >= 0) {AGN_LambdaPre = 4.488e-34 * SphP[target].Rad_Flux_AGN * UNIT_FLUX_IN_CGS;} /* convert physical code units to cgs; need to convert to relevant pre-factor for heating rate:  sigma_T x 4*k_B/(me*c^2) in CGS, just pre-computed here for convenience */
 #endif
     
-#if defined(COOL_METAL_LINES_BY_SPECIES) && defined(COOL_LOW_TEMPERATURES)
+#if defined(COOL_LOW_TEMPERATURES)
     double Tdust = 30., LambdaDust = 0.; /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
 #if defined(SINGLE_STAR_SINK_DYNAMICS) || (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
     Tdust = DMIN(DMAX(10., 2.73/All.cf_atime),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
@@ -1096,7 +1081,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
 
         
-#if defined(COOL_METAL_LINES_BY_SPECIES) && defined(COOL_LOW_TEMPERATURES)
+#if defined(COOL_LOW_TEMPERATURES)
         if(LambdaDust>0) {Heat += LambdaDust;} /* Dust collisional heating (Tdust > Tgas) */
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
         if(LambdaMetal<0) {Heat -= LambdaMetal;} // potential net heating from low-temperature gas-phase metal line absorption //
@@ -1772,6 +1757,31 @@ double get_equilibrium_dust_temperature_estimate(int i)
     return DMAX(DMIN(Tdust_eqm , 2000.) , 1.); // limit at sublimation temperature or some very low temp //
 }
 
+
+
+
+/*  this function computes the self-consistent temperature and electron fraction */
+double ThermalProperties(double u, double rho, int target, double *mu_guess, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess)
+{
+#if defined(CHIMES)
+    int i = target; *ne_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[elec]]; *nH0_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HI]];
+    *nHp_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HII]]; *nHe0_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HeI]];
+    *nHep_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HeII]]; *nHepp_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HeIII]];
+    double temp = ChimesGasVars[target].temperature;
+    *mu_guess = get_mu(temp, rho, nH0_guess, ne_guess, 0, target);
+    return temp;
+#else
+    
+    rho *= UNIT_DENSITY_IN_CGS; u *= UNIT_SPECEGY_IN_CGS;   /* convert to physical cgs units */
+    double temp = convert_u_to_temp(u, rho, target, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess);
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
+    if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target);}} /* fully ionized [if using older model] */
+    *mu_guess = get_mu(temp, rho, nH0_guess, ne_guess, 0, target);
+#endif
+    return temp;
+    
+#endif
+}
 
 
 

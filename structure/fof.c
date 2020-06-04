@@ -2217,7 +2217,7 @@ void read_fof(int num)
   MyIDType *ids;
   int *list_of_ngroups, *list_of_nids, *list_of_allgrouplen;
   int *recvoffset;
-  int grnr, ngrp, sendTask, recvTask, imax1, imax2;
+  int grnr, ngrp, sendTask, recvTask;
   int nprocgroup, masterTask, groupTask, nid_previous;
   int fof_compare_P_SubNr(const void *a, const void *b);
     PRINT_STATUS("Trying to read preexisting FoF group catalogues...  (presently allocated=%g MB)",AllocatedBytes / (1024.0 * 1024.0));

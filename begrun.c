@@ -389,6 +389,7 @@ void begrun(void)
 #endif
 
 #ifdef NUCLEAR_NETWORK
+      strcpy(All.EosSpecies, all.EosSpecies);
       strcpy(All.NetworkRates, all.NetworkRates);
       strcpy(All.NetworkPartFunc, all.NetworkPartFunc);
       strcpy(All.NetworkMasses, all.NetworkMasses);
@@ -1737,7 +1738,11 @@ void read_parameter_file(char *fname)
         
         
 #ifdef NUCLEAR_NETWORK
-      strcpy(tag[nt], "NetworkRates");
+      strcpy(tag[nt], "EosSpecies");
+      addr[nt] = All.EosSpecies;
+      id[nt++] = STRING;
+
+        strcpy(tag[nt], "NetworkRates");
       addr[nt] = All.NetworkRates;
       id[nt++] = STRING;
 

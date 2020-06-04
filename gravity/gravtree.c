@@ -51,7 +51,7 @@ void sum_top_level_node_costfactors(void);
 void gravity_tree(void)
 {
     /* initialize variables */
-    long long n_exported = 0; int i, j, maxnumnodes, iter; j = 0; iter = 0;
+    long long n_exported = 0; int i, j, maxnumnodes, iter; i = 0; j = 0; iter = 0; maxnumnodes=0;
     double t0, t1, timeall = 0, timetree1 = 0, timetree2 = 0, timetree, timewait, timecomm;
     double timecommsumm1 = 0, timecommsumm2 = 0, timewait1 = 0, timewait2 = 0, sum_costtotal, ewaldtot;
     double maxt, sumt, maxt1, sumt1, maxt2, sumt2, sumcommall, sumwaitall, plb, plb_max;
@@ -219,7 +219,7 @@ void gravity_tree(void)
                 GravDataIn[j].Type = P[place].Type;
                 GravDataIn[j].OldAcc = P[place].OldAcc;
                 for(k = 0; k < 3; k++) {GravDataIn[j].Pos[k] = P[place].Pos[k];}
-#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
                 GravDataIn[j].Mass = P[place].Mass;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE)
@@ -234,6 +234,9 @@ void gravity_tree(void)
                     for(k=0;k<3;k++) {GravDataIn[j].comp_dx[k]=P[place].comp_dx[k]; GravDataIn[j].comp_dv[k]=P[place].comp_dv[k];}
                 }
                 else {P[place].is_in_a_binary=0; /* setting values to zero just to be sure */}
+#endif
+#if defined(SINGLE_STAR_TIMESTEPPING)
+                GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];
 #endif
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
                 if( (P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]) ) {GravDataIn[j].Soft = PPP[place].Hsml;} else {GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];}

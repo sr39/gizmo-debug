@@ -109,9 +109,8 @@ void dynamic_diff_vel_calc_initial_operations_preloop(void)
  */
 int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration) {
     int startnode, numngb, listindex = 0;
-    int j, k, v, k2, n, swap_to_j;
-    double hinv, hinv3, hinv4, r2, u, hinv_j, hinv3_j, hinv4_j;
-    double shear_factor;
+    int j, k, n, swap_to_j;
+    double hinv, hinv3, hinv4, r2, u;
     struct kernel_DiffFilter kernel;
     struct INPUT_STRUCT_NAME local;
     struct OUTPUT_STRUCT_NAME out;
@@ -192,7 +191,6 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
                 double h_avg = 0.5 * (kernel.h_i + h_j);
                 double hhat = All.TurbDynamicDiffFac * kernel.h_i;
                 double hhat_j = All.TurbDynamicDiffFac * h_j;
-                double hhat_avg = All.TurbDynamicDiffFac * h_avg;
                 double hhat2 = hhat * hhat;
                 double hhatj2 = hhat_j * hhat_j;
 

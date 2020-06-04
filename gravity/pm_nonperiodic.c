@@ -779,8 +779,8 @@ int pmforce_nonperiodic(int grnr)
 		  if(flag == 0)
 		    {
 		      printf
-			("Particle Id=%d on task=%d with coordinates (%g|%g|%g) lies outside PM mesh.\nStopping\n",
-			 (int) P[i].ID, ThisTask, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+			("Particle Id=%llu on task=%d with coordinates (%g|%g|%g) lies outside PM mesh.\nStopping\n",
+			 (unsigned long long) P[i].ID, ThisTask, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
 		      fflush(stdout);
 		    }
 		  flag++;
@@ -1675,8 +1675,8 @@ int pmpotential_nonperiodic(int grnr)
 		  if(flag == 0)
 		    {
 		      printf
-			("Particle Id=%d on task=%d with coordinates (%g|%g|%g) lies outside PM mesh.\nStopping\n",
-			 (int) P[i].ID, ThisTask, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+			("Particle Id=%llu on task=%d with coordinates (%g|%g|%g) lies outside PM mesh.\nStopping\n",
+			 (unsigned long long) P[i].ID, ThisTask, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
 		      fflush(stdout);
 		    }
 		  flag++;
@@ -2162,8 +2162,8 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
 		  if(flag == 0)
 		    {
 		      printf
-			("Particle Id=%d on task=%d with coordinates (%g|%g|%g) lies outside PM mesh.\nStopping\n",
-			 (int) P[i].ID, ThisTask, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+			("Particle Id=%llu on task=%d with coordinates (%g|%g|%g) lies outside PM mesh.\nStopping\n",
+			 (unsigned long long) P[i].ID, ThisTask, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
 		      fflush(stdout);
 		    }
 		  flag++;
@@ -2877,8 +2877,8 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
 		  if(flag == 0)
 		    {
 		      printf
-			("Particle Id=%d on task=%d with coordinates (%g|%g|%g) lies outside PM mesh.\nStopping\n",
-			 (int) P[i].ID, ThisTask, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+			("Particle Id=%llu on task=%d with coordinates (%g|%g|%g) lies outside PM mesh.\nStopping\n",
+			 (unsigned long long) P[i].ID, ThisTask, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
 		      fflush(stdout);
 		    }
 		  flag++;

@@ -169,8 +169,8 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
     return R_SNe;
 #endif
     
-#ifdef SINGLE_STAR_SINK_DYNAMICS /* SINGLE-STAR version: simple implementation of single-star wind mass-loss and SNe rates */
-    double m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR, l_sol=bh_lum_bol(0,P[i].Mass,i)*UNIT_LUM_IN_SOLAR;
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* SINGLE-STAR version: simple implementation of single-star wind mass-loss and SNe rates */
+    double m_sol,l_sol; m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR; l_sol=bh_lum_bol(0,P[i].Mass,i)*UNIT_LUM_IN_SOLAR;
 #ifdef SINGLE_STAR_FB_WINDS
     double gam=DMIN(0.5,3.2e-5*l_sol/m_sol), alpha=0.5+0.4/(1.+16./m_sol), q0=(1.-alpha)*gam/(1.-gam), k0=1./30.; // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons, approximate scaling for alpha factor with stellar type (weak effect)
     P[i].SNe_ThisTimeStep = DMIN(0.5, (2.338 * alpha * pow(l_sol,7./8.) * pow(m_sol,0.1845) * (1./q0) * pow(q0*k0,1./alpha) / m_sol) * (dt*UNIT_TIME_IN_GYR)); // Castor, Abbot, & Klein scaling
@@ -455,7 +455,7 @@ double single_star_jet_velocity(int n){
 #if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* begins large block of 'fancy' protostar-through-MS stellar evolution models */
 
 /* 'master' function to update the size (and other properties like effective temperature) of accreting protostars along relevant stellar evolution tracks */
-double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt)
+void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt)
 {
 #if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
     /* this is the simple version written by Phil: intentionally simplified PS evolution tracks, designed to make it easy to understand and model the evolution and reduce un-necessary complications */
@@ -664,6 +664,7 @@ double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, 
 #endif
     {printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: 0 rel_dr: 0 dm: %g dm_D: 0 Tc: 0 Pc: 0 rhoc: 0 beta: 0 dt: %g n_ad: 0 lum_int: 0 lum_I: 0 lum_D: 0 age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: 0 n_subcycle: 0.ZAMS_Mass %g PS_end\n",All.Time, P[n].ID,BPP(n).BH_Mass*UNIT_MASS_IN_SOLAR,BPP(n).ProtoStellarRadius_inSolar,BPP(n).ProtoStellarStage, BPP(n).BH_Mdot*UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR , dm*UNIT_MASS_IN_SOLAR, dt*UNIT_TIME_IN_MYR, (All.Time-P[n].ProtoStellarAge)*UNIT_TIME_IN_MYR, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk*UNIT_MASS_IN_SOLAR, BPP(n).SinkRadius, P[n].ZAMS_Mass );}
 #endif
+    return;
 }
 
 #if defined(SINGLE_STAR_FB_WINDS)
@@ -672,7 +673,6 @@ double single_star_wind_mdot(int n, int set_mode){ //if set_mode is zero then th
     double minimum_stellarmass_for_winds_solar  = 2.0;  // minimum stellar mass allowed to have winds
     int    model_wolf_rayet_phase_explicitly    = 1;    // assumes that O stars turn into WR stars at the end of their lifetime, increasing their mass loss rate
     double n_particles_for_discrete_wind_spawn  = 1e-2; // parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds) -- particle number required to trigger 'explicit' spawn module. Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
-    double spawning_min_wind_jet_mom_ratio = 10.0; //If winds are much more powerful than jets ( (wind momentum injection/jet momentum injection) > this value) then we can safely spawn the winds and neglect the jets if we want to
     
     double wind_mass_loss_rate=0; //mass loss rate in code units
     if (P[n].Type != 5) {return 0;}
@@ -703,6 +703,7 @@ double single_star_wind_mdot(int n, int set_mode){ //if set_mode is zero then th
             P[n].wind_mode = 2; //we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
         }
 #ifdef SINGLE_STAR_FB_JETS
+        double spawning_min_wind_jet_mom_ratio = 10.0; //If winds are much more powerful than jets ( (wind momentum injection/jet momentum injection) > this value) then we can safely spawn the winds and neglect the jets if we want to
         if ( (P[n].wind_mode == 1) && (P[n].BH_Mdot>0) ){ //we want to spawn winds but we have jets too
             double jet_mom_inj = single_star_jet_velocity(n) * P[n].BH_Mdot;
             double wind_mom_inj = v_wind * wind_mass_loss_rate;
@@ -710,7 +711,7 @@ double single_star_wind_mdot(int n, int set_mode){ //if set_mode is zero then th
         }
 #endif
         if (old_wind_mode != P[n].wind_mode){
-            printf("Wind mode change for star %llu to %d at %g. Mdot_wind %g\n",P[n].ID,P[n].wind_mode,All.Time, wind_mass_loss_rate);
+            printf("Wind mode change for star %llu to %d at %g. Mdot_wind %g\n",(unsigned long long) P[n].ID,P[n].wind_mode,All.Time, wind_mass_loss_rate);
         }
     }
     return wind_mass_loss_rate;
@@ -750,7 +751,7 @@ void single_star_SN_init_directions(void){
     /* routine to initialize the distribution of spawned wind particles during SNe. This is essentially a copy of the function rt_init_intensity_directions() in rt_utilities.c */
     int n_polar = SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT;
     if(n_polar < 1) {printf("Number of SN ejecta particles is invalid (<1). Terminating.\n"); endrun(53463431);}
-    double mu[n_polar]; int i,j,k,l,n=0,n_oct=n_polar*(n_polar+1)/2,n_tot=8*n_oct;
+    double mu[n_polar]; int i,j,k,l,n=0,n_oct=n_polar*(n_polar+1)/2;
     double SN_Ejecta_Direction_tmp[n_oct][3];
     for(j=0;j<n_polar;j++) {mu[j] = sqrt( (j + 1./6.) / (n_polar - 1./2.) );}
     for(i=0;i<n_polar;i++)
@@ -802,8 +803,8 @@ double ps_beta(double m, double n_ad, double rhoc, double Pc) {
         printf("ps_beta: bisection solve failed to converge"); return(-1);
     } else {
         // For n != 3, we use a table lookup. The values of beta have been pre-computed with mathematica. The table goes from M=5 to 50 solar masses in steps of 2.5 M_sun, and from n=1.5 to n=3 in steps of 0.5. We should never call this routine with M > 50 Msun, since by then the star should be fully on the main sequence.
-        double MTABMIN=5.0, MTABMAX=50.0, MTABSTEP=2.5, NTABMIN=1.5, NTABMAX=3.0, NTABSTEP=0.5, MBETMIN=0.1 ;
-        //if (mass < MBETMIN){return (1.0+ 0.25*log(mass/MBETMIN)/log(0.01/MBETMIN) );}  // Setting from Offner+Mckee2011, not sure why, does not make much sense above 1, probably to fit to previous results. I made it change continously to avoid big drops in R at 0.1 Msun, value adjusted from 1.15
+        double MTABMIN=5.0, MTABMAX=50.0, MTABSTEP=2.5, NTABMIN=1.5, NTABMAX=3.0, NTABSTEP=0.5;
+        //double MBETMIN=0.1; if (mass < MBETMIN){return (1.0+ 0.25*log(mass/MBETMIN)/log(0.01/MBETMIN) );}  // Setting from Offner+Mckee2011, not sure why, does not make much sense above 1, probably to fit to previous results. I made it change continously to avoid big drops in R at 0.1 Msun, value adjusted from 1.15
         if (mass < MTABMIN){return (1.0);}  // Set beta = 1 for M < 5 Msun
         if ((mass >= MTABMAX) || (n_ad >= NTABMAX)) {printf("ps_beta: too high protostar mass, m: %g n_ad %g",m, n_ad); return(-1.0);}
         static double betatab[19][4] = {{0.98785, 0.988928, 0.98947, 0.989634}, {0.97438, 0.976428, 0.977462, 0.977774}, {0.957927, 0.960895, 0.962397, 0.962846},

@@ -321,7 +321,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
         endrun(8888);
     }
 #ifndef SPAWN_PARTICLES_VIA_SPLITTING
-    if(P[i].Type != 0) {printf("SPLITTING NON-GAS-PARTICLE: i=%d ID=%d Type=%d \n",i,P[i].ID,P[i].Type);} //fflush(stdout); endrun(8889);
+    if(P[i].Type != 0) {printf("SPLITTING NON-GAS-PARTICLE: i=%d ID=%llu Type=%d \n",i,(unsigned long long) P[i].ID,P[i].Type);} //fflush(stdout); endrun(8889);
 #endif
 
     /* here is where the details of the split are coded, the rest is bookkeeping */

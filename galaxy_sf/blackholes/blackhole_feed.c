@@ -116,8 +116,8 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
     /* initialize variables before loop is started */
     int startnode, numngb, listindex = 0, j, k, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
-    double h_i = local.Hsml, wk, dwk, vrel, vesc, dpos[3], dvel[3], f_accreted=1; if((local.Mass<0)||(h_i<=0)) return -1;
-    double w, p, r2, r, u, sink_radius=All.ForceSoftening[5], h_i2 = h_i * h_i, hinv = 1 / h_i, hinv3 = hinv * hinv * hinv, ags_h_i = All.ForceSoftening[5];
+    double h_i = local.Hsml, wk, dwk, vrel, vesc, dpos[3], dvel[3], f_accreted; f_accreted=1; if((local.Mass<0)||(h_i<=0)) {return -1;}
+    double w, p, r2, r, u, sink_radius=All.ForceSoftening[5], h_i2 = h_i * h_i, hinv = 1 / h_i, hinv3 = hinv * hinv * hinv, ags_h_i = All.ForceSoftening[5]; p=0; w=0;
 #ifdef BH_REPOSITION_ON_POTMIN
     out.BH_MinPot = BHPOTVALUEINIT;
 #endif
@@ -131,7 +131,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
     double meddington = bh_eddington_mdot(local.BH_Mass), medd_max_accretable = All.BlackHoleEddingtonFactor * meddington * local.Dt, eddington_factor = local.mass_to_swallow_edd / medd_max_accretable;   /* if <1 no problem, if >1, need to not set some swallowIDs */
 #endif
 #if defined(BH_SWALLOWGAS)
-    double mass_markedswallow=0, bh_mass_withdisk=local.BH_Mass;
+    double mass_markedswallow,bh_mass_withdisk; mass_markedswallow=0; bh_mass_withdisk=local.BH_Mass;
 #ifdef BH_ALPHADISK_ACCRETION
     bh_mass_withdisk += local.BH_Mass_AlphaDisk;
 #endif

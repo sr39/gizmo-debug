@@ -39,10 +39,6 @@ void init(void)
     int count_holes = 0;
 #endif
     
-#ifdef CHIMES 
-    double H_mass_fraction, He_mass_fraction; 
-#endif 
-    
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();    
     
@@ -435,7 +431,7 @@ void init(void)
 #ifdef COOL_METAL_LINES_BY_SPECIES 
 	if (P[i].Type == 0) 
 	  {
-	    H_mass_fraction = 1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1]); 
+	    double H_mass_fraction = 1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1]);
 	    ChimesGasVars[i].element_abundances[0] = P[i].Metallicity[1] / (4.0 * H_mass_fraction);   // He 
 	    ChimesGasVars[i].element_abundances[1] = P[i].Metallicity[2] / (12.0 * H_mass_fraction);  // C 
 	    ChimesGasVars[i].element_abundances[2] = P[i].Metallicity[3] / (14.0 * H_mass_fraction);  // N 
@@ -462,7 +458,7 @@ void init(void)
 #ifdef CHIMES 
 	if (P[i].Type == 0) 
 	  {
-	    H_mass_fraction = HYDROGEN_MASSFRAC; 
+	    double H_mass_fraction = HYDROGEN_MASSFRAC;
 	    ChimesGasVars[i].element_abundances[0] = (1.0 - H_mass_fraction) / (4.0 * H_mass_fraction);  // He 
 	    for (j = 1; j < 10; j++) {ChimesGasVars[i].element_abundances[j] = 0.0;}
 	    ChimesGasVars[i].metallicity = 0.0; 
@@ -476,7 +472,7 @@ void init(void)
 #ifdef BH_WAKEUP_GAS
 	    if(P[i].Type == 0) {P[i].LowestBHTimeBin = TIMEBINS;}
 #endif
-#ifdef SINGLE_STAR_FORMATION
+#if (SINGLE_STAR_SINK_FORMATION & 8)
         P[i].BH_Ngb_Flag = 0;
 #endif	
 #ifdef SINGLE_STAR_TIMESTEPPING
@@ -1023,8 +1019,16 @@ void init(void)
 	      ChimesGasVars[i].ThermEvolOn = 0; 
 
 	      for (iter_number = 0; iter_number < 10; iter_number++)
-		chimes_network(&(ChimesGasVars[i]), &ChimesGlobalVars, AllRates_omp[ThisThread], all_reactions_root_omp[ThisThread], nonmolecular_reactions_root_omp[ThisThread]); 
+          {
+#ifdef _OPENMP
+              int ThisThread = omp_get_thread_num();
+              chimes_network(&(ChimesGasVars[i]), &ChimesGlobalVars, AllRates_omp[ThisThread], all_reactions_root_omp[ThisThread], nonmolecular_reactions_root_omp[ThisThread]);
+#else
+              chimes_network(&(ChimesGasVars[i]), &ChimesGlobalVars, AllRates, all_reactions_root, nonmolecular_reactions_root);
+#endif
+          }
 
+            
 #ifdef CHIMES_TURB_DIFF_IONS 
 	      chimes_update_turbulent_abundances(i, 1); 
 #endif 
@@ -1286,7 +1290,7 @@ void test_id_uniqueness(void)
                    (int) (ids[i] / 1000000000), (int) (ids[i] % 1000000000), ThisTask, i, NumPart);
             
 #else
-            printf("non-unique ID=%d found on task=%d   (i=%d NumPart=%d)\n", (int) ids[i], ThisTask, i, NumPart);
+            printf("non-unique ID=%llu found on task=%d   (i=%d NumPart=%d)\n", (unsigned long long) ids[i], ThisTask, i, NumPart);
 #endif
             endrun(12);
         }
@@ -1296,7 +1300,7 @@ void test_id_uniqueness(void)
     if(ThisTask < NTask - 1)
         if(ids[NumPart - 1] == ids_first[ThisTask + 1])
         {
-            printf("non-unique ID=%d found on task=%d\n", (int) ids[NumPart - 1], ThisTask);
+            printf("non-unique ID=%llu found on task=%d\n", (unsigned long long) ids[NumPart - 1], ThisTask);
             endrun(13);
         }
     

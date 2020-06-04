@@ -775,7 +775,7 @@ void hydro_final_operations_and_cleanup(void)
             
 #if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_EVOLVE_FLUX) && !defined(RT_RADPRESSURE_IN_HYDRO) //#elif defined(RT_COMPGRAD_EDDINGTON_TENSOR) /* // -- moved for OTVET+FLD to drift-kick operation to deal with limiters more accurately -- // */
             /* calculate the radiation pressure force */
-            double radacc[3],fluxcorr; radacc[0]=radacc[1]=radacc[2]=0;  int kfreq;
+            double radacc[3]; radacc[0]=radacc[1]=radacc[2]=0;  int kfreq;
             for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++)
             {
                 double vol_inv = SphP[i].Density*All.cf_a3inv/P[i].Mass, f_kappa_abs = rt_absorb_frac_albedo(i,kfreq), vel_i[3]={0}, vdot_h[3]={0}, flux_i[3]={0}, flux_mag=0, erad_i=0, flux_corr=1, work_band=0;
@@ -862,38 +862,23 @@ void hydro_final_operations_and_cleanup(void)
     
     
 #ifdef NUCLEAR_NETWORK
-    if(ThisTask == 0)
-    {
-        printf("Doing nuclear network.\n");
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-    tstart = my_second();
+    PRINT_STATUS("Doing nuclear network");
+    MPI_Barrier(MPI_COMM_WORLD); int nuc_particles=0,nuc_particles_sum=0; double dedt_nuc;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
         if(P[i].Type == 0)
-        {
-            /* evaluate network here, but do it only for high enough temperatures */
+        {   /* evaluate network here, but do it only for high enough temperatures */
             if(SphP[i].Temperature > All.NetworkTempThreshold)
             {
                 nuc_particles++;
+                double dt = ((P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a) * UNIT_TIME_IN_CGS;
                 network_integrate(SphP[i].Temperature, SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS, SphP[i].xnuc,
-                                  SphP[i].dxnuc, dt * UNIT_TIME_IN_CGS, &dedt_nuc, NULL, &All.nd, &All.nw);
+                                  SphP[i].dxnuc, dt, &dedt_nuc, NULL, &All.nd, &All.nw);
                 SphP[i].DtInternalEnergy += dedt_nuc * UNIT_ENERGY_IN_CGS / UNIT_TIME_IN_CGS;
             }
-            else
-            {
-                for(k = 0; k < EOS_NSPECIES; k++)
-                {
-                    SphP[i].dxnuc[k] = 0;
-                }
-            }
+            else {for(k = 0; k < EOS_NSPECIES; k++) {SphP[i].dxnuc[k] = 0;}}
         }
-    tend = my_second();
     MPI_Allreduce(&nuc_particles, &nuc_particles_sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    if(ThisTask == 0)
-    {
-        printf("Nuclear network done for %d particles.\n", nuc_particles_sum);
-    }
-    timewait1 += timediff(tend, my_second());
+    PRINT_STATUS("Nuclear network done for %d particles", nuc_particles_sum);
 #endif
 }
 

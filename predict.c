@@ -297,7 +297,7 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
     }
 #endif
 #ifdef MHD_ALTERNATIVE_LEAPFROG_SCHEME
-    for(k=0;k<3;k++) {SphP[i].B[k]=SphP[i].BPred[k];}
+    for(kB=0;kB<3;kB++) {SphP[i].B[kB]=SphP[i].BPred[kB];}
 #ifdef DIVBCLEANING_DEDNER
     SphP[i].Phi=SphP[i].PhiPred;
 #endif
@@ -605,16 +605,16 @@ void advect_mesh_point(int i, double dt)
     for(k=0;k<3;k++) {dp[k] += dp_offset[k];}
 #if (HYDRO_FIX_MESH_MOTION == 2) // cylindrical
     double r2=dp[0]*dp[0]+dp[1]*dp[1], r=sqrt(r2), c0=dp[0]/r, s0=dp[1]/r, z=dp[2]; // get r, sin/cos theta, z
-    double vr=c0*SphP[i].ParticleVel[0] + s0*SphP[i].ParticleVel[1], vt=s0*SphP[i].ParticleVel[0] - c0*SphP[i].ParticleVel[1]; vz=SphP[i].ParticleVel[2]; // velocities in these directions
+    double vr=c0*SphP[i].ParticleVel[0] + s0*SphP[i].ParticleVel[1], vt=s0*SphP[i].ParticleVel[0] - c0*SphP[i].ParticleVel[1], vz=SphP[i].ParticleVel[2]; // velocities in these directions
     double r_n=r+vr*dt, z_n=z+vz*dt, c_n=c0-s0*(vt/r)*dt, s_n=s0+c0*(vt/r)*dt; // updated cylindrical values
     dp[0] = c_n*r_n; dp[1] = s_n*r_n; dp[2] = z_n; // back to coordinates
     SphP[i].ParticleVel[0] = c_n*vr + s_n*vt; // re-set velocities in these coordinates //
-    SphP[i].ParticleVel[1] = s_n*vr - c_n*vt
+    SphP[i].ParticleVel[1] = s_n*vr - c_n*vt;
     SphP[i].ParticleVel[2] = vz;
     return;
 #elif (HYDRO_FIX_MESH_MOTION == 3) // spherical
-    double dp[3],v[3],r2=0; for(k=0;k<3;k++) {r2+=dp[k]*dp[k]; v[k]=SphP[i].ParticleVel[k];} // assume center is at coordinate origin
-    double r=sqrt(r2), rxy=sqrt(dp[0]*dp[0]+dp[1]*dp[1]); vr=(dp[0]*v[0] + dp[1]*v[1] + dp[2]*v[2])/r; // updated r is easy
+    double v[3],r2=0; for(k=0;k<3;k++) {r2+=dp[k]*dp[k]; v[k]=SphP[i].ParticleVel[k];} // assume center is at coordinate origin
+    double r=sqrt(r2), rxy=sqrt(dp[0]*dp[0]+dp[1]*dp[1]), vr=(dp[0]*v[0] + dp[1]*v[1] + dp[2]*v[2])/r; // updated r is easy
     double ct = 1./sqrt(1.+dp[1]*dp[1]/(dp[0]*dp[0])), st = (dp[1]/dp[0])*ct; // cos and sin theta
     double cp = sqrt(1.-dp[2]*dp[2]/(r*r)), sp = dp[2]/r; // cos and sin phi
     double t_dot = (v[0]*dp[1]-v[1]*dp[0])/(rxy*rxy), p_dot = (dp[2]*(dp[0]*v[0]+dp[1]*v[1])-rxy*rxy*v[2])/(r*r*rxy); // theta, phi derivatives

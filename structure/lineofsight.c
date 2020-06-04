@@ -9,6 +9,7 @@
 
 #include "../allvars.h"
 #include "../proto.h"
+#include "../kernel.h"
 
 /*! compute line-of-sight integrated quantities (for e.g. Lyman-alpha forest studies) */
 
@@ -253,7 +254,7 @@ void find_particles_and_save_them(int num)
 void add_along_lines_of_sight(void)
 {
   int n, bin, i, iz0, iz1, iz;
-  double dx, dy, dz, r, r2, ne, nh0, nHeII, utherm, temp, meanWeight;
+  double dx, dy, dz, r, r2, ne, nh0, nHeII, utherm, temp;
   double u, wk, dwk, weight, h3inv;
   double z0, z1;
 
