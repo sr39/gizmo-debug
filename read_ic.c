@@ -292,15 +292,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++) {P[offset + n].caustic_counter = *fp++;}
             break;
 #endif
-            
-        case IO_SECONDORDERMASS:
-            for(n = 0; n < pc; n++)
-            {
-                P[offset + n].OldAcc = P[offset + n].Mass;	/* use this to temporarily store the masses in the 2plt IC case */
-                P[offset + n].Mass = *fp++;
-            }
-            break;
-            
+   
         case IO_U:			/* temperature */
             for(n = 0; n < pc; n++) {SphP[offset + n].InternalEnergy = *fp++;}
             break;
@@ -350,23 +342,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #ifdef METALS
             for(n = 0; n < pc; n++) {for(k = 0; k < NUM_METAL_SPECIES; k++) {P[offset + n].Metallicity[k] = *fp++;}}
 #endif
-            break;
-            
-        case IO_VRMS:		/* Turbulence on kernel scale */
-            break;
-        case IO_VBULK:
-            break;
-        case IO_VTAN:
-            break;
-        case IO_VRAD:
-            break;
-        case IO_VDIV:
-            break;
-        case IO_VROT:
-            break;
-        case IO_VORT:
-            break;
-        case IO_TRUENGB:
             break;
             
         case IO_BFLD:		/* Magnetic field */
@@ -490,10 +465,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++) {for(k = 0; k < N_RT_FREQ_BINS; k++) {SphP[offset + n].Rad_E_gamma[k] = *fp++;}}
 #endif
             break;
-            
-        case IO_CHEM:		/* Chemical abundances */
-            break;
-            
+   
             /* adaptive softening parameters */
         case IO_AGS_SOFT:
 #if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTGRAVSOFT)
@@ -563,9 +535,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
              initial conditions of the code */
             
         case IO_COSMICRAY_KAPPA:
-        case IO_AGS_OMEGA:
-        case IO_AGS_CORR:
-        case IO_AGS_NGBS:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
         case IO_AGS_PSI_RE:
@@ -577,42 +546,26 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_POT:
         case IO_ACCEL:
         case IO_DTENTR:
-        case IO_STRESSDIAG:
-        case IO_STRESSOFFDIAG:
         case IO_RAD_ACCEL:
         case IO_GDE_DISTORTIONTENSOR:
-        case IO_HeHII:
-        case IO_DI:
-        case IO_DII:
-        case IO_HD:
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
         case IO_HHRATE:
         case IO_MCRATE:
-        case IO_HM:
-        case IO_H2II:
-        case IO_H2I:
-        case IO_HeIII:
         case IO_HeII:
         case IO_HeI:
         case IO_HII:
         case IO_NH:
-        case IO_STRESSBULK:
-        case IO_SHEARCOEFF:
         case IO_TSTP:
-        case IO_DBDT:
         case IO_IMF:
         case IO_DIVB:
         case IO_ABVC:
         case IO_COOLRATE:
-        case IO_CONDRATE:
-        case IO_DENN:
         case IO_AMDC:
         case IO_PHI:
         case IO_GRADPHI:
         case IO_TIDALTENSORPS:
-        case IO_ROTB:
         case IO_FLOW_DETERMINANT:
         case IO_STREAM_DENSITY:
         case IO_PHASE_SPACE_DETERMINANT:
@@ -624,8 +577,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_ACRB:
         case IO_VSTURB_DISS:
         case IO_VSTURB_DRIVE:
-        case IO_MG_PHI:
-        case IO_MG_ACCEL:
         case IO_grHI:
         case IO_grHII:
         case IO_grHM:
@@ -957,12 +908,6 @@ void read_file(char *fname, int readTask, int lastTask)
             if(blocknr == IO_AGS_ZETA)
                 continue;
 #endif
-            if(blocknr == IO_AGS_OMEGA)
-                continue;
-            if(blocknr == IO_AGS_NGBS)
-                continue;
-            if(blocknr == IO_AGS_CORR)
-                continue;
 #endif
             
             

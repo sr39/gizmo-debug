@@ -6,13 +6,13 @@
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_const_cgs.h>
 #include <gsl/gsl_const_num.h>
-#include "./nuclear_network.h"
 
 /*
  *  This code is place-holder, inherited from GADGET3
  */
 
 #ifdef NUCLEAR_NETWORK
+#include "./nuclear_network.h"
 
 /* to use this network you need 5 files:
  * one file containing information about which species your network should use [species.txt]

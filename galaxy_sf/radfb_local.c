@@ -16,18 +16,18 @@
 void radiation_pressure_winds_consolidated(void)
 {
     MyDouble *pos; int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,i,j,k,n;
-    double dx,dy,dz,r2,u,h,hinv,hinv3,wk,rho,wt_sum,p_random,p_cumulative,star_age,lm_ssp,dv_units,dE_over_c,unitmass_in_msun,prob,dt,v,vq=0,dv_imparted,dv_imparted_uv,norm,dir[3], total_n_wind,total_m_wind,total_mom_wind,total_prob_kick,avg_v_kick,momwt_avg_v_kick,avg_taufac;
+    double dx,dy,dz,r2,u,h,hinv,hinv3,wk,rho,wt_sum,p_random,p_cumulative,star_age,lm_ssp,dv_units,dE_over_c,prob,dt,v,vq=0,dv_imparted,dv_imparted_uv,norm,dir[3], total_n_wind,total_m_wind,total_mom_wind,total_prob_kick,avg_v_kick,momwt_avg_v_kick,avg_taufac;
     double totMPI_n_wind,totMPI_m_wind,totMPI_mom_wind,totMPI_prob_kick,totMPI_avg_v,totMPI_pwt_avg_v,totMPI_taufac, sigma_eff_0, RtauMax = 0, age_thold = 0.1;
     total_n_wind=total_m_wind=total_mom_wind=total_prob_kick=avg_v_kick=momwt_avg_v_kick=avg_taufac=0; totMPI_n_wind=totMPI_m_wind=totMPI_mom_wind=totMPI_prob_kick=totMPI_avg_v=totMPI_pwt_avg_v=totMPI_taufac=0; p_random=p_cumulative=0;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     age_thold = 1.0e10;
 #endif
-    if(All.WindMomentumLoading<=0) return;
+    if(All.RP_Local_Momentum_Renormalization<=0) return;
     Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
     PRINT_STATUS("Local Radiation-Pressure acceleration calculation");
 
-    unitmass_in_msun=(All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS; sigma_eff_0 = All.UnitMass_in_g*All.HubbleParam/(All.UnitLength_in_cm*All.UnitLength_in_cm) / (All.cf_atime*All.cf_atime) * KAPPA_IR;
-    double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
+    sigma_eff_0 = UNIT_SURFDEN_IN_CGS / (All.cf_atime*All.cf_atime) * KAPPA_IR;
+    double unitlength_in_kpc = UNIT_LENGTH_IN_KPC * All.cf_atime;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
@@ -41,29 +41,29 @@ void radiation_pressure_winds_consolidated(void)
             star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
             if( (star_age < age_thold) && (P[i].Mass > 0) && (P[i].DensAroundStar > 0) )
             {
-                RtauMax = P[i].Hsml*All.cf_atime * (2.0 * KAPPA_UV * P[i].Hsml*P[i].DensAroundStar/(All.cf_atime*All.cf_atime) * All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm);
+                RtauMax = P[i].Hsml*All.cf_atime * (2.0 * KAPPA_UV * P[i].Hsml*P[i].DensAroundStar*All.cf_a2inv * UNIT_SURFDEN_IN_CGS);
                 RtauMax /= All.cf_atime; RtauMax += 5.*P[i].Hsml;
                 double rmax0 = 10.0 / unitlength_in_kpc; if(RtauMax > rmax0) RtauMax = rmax0;
                 rmax0 = 1.0 / unitlength_in_kpc; if(RtauMax < rmax0) RtauMax = rmax0;
 #ifndef GALSF_FB_FIRE_RT_CONTINUOUSRP
                 /* if kicks are stochastic, we don't want to waste time doing a neighbor search every timestep; it can be much faster to pre-estimate the kick probabilities */
-                double v_wind_threshold = 15.e5 / All.UnitVelocity_in_cm_per_s;
+                double v_wind_threshold = 15. / UNIT_VEL_IN_KMS;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                v_wind_threshold = 0.2e5 / All.UnitVelocity_in_cm_per_s;
+                v_wind_threshold = 0.2 / UNIT_VEL_IN_KMS;
 #endif
                 rho=P[i].DensAroundStar; h=P[i].Hsml;
                 v = sqrt( All.G * (P[i].Mass + NORM_COEFF*rho*h*h*h) / (h*All.cf_atime) ); if(vq<v) v=vq;
-                vq = 1.82*(65.748e5/All.UnitVelocity_in_cm_per_s) * pow(1.+rho*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam/(1.67e-24),-0.25);
+                vq = 1.82 * (65.748/UNIT_VEL_IN_KMS) * pow(1.+rho*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS,-0.25);
                 /* this corresponds to =G M_star/R_e for a 10^6 Msun cluster, scaling upwards from there; note that All.WindEnergyFraction will boost appropriately; should be at least sqrt(2), if want full velocities; in fact for Hernquist profile, the mass-weighted V_esc=1.82 times this */
                 if(vq<v) {v=vq;}
                 if(v<=v_wind_threshold) v=v_wind_threshold;
                 lm_ssp = evaluate_light_to_mass_ratio(star_age, i);
-                dE_over_c = lm_ssp * (4.0/2.0) * (P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // L in CGS
-                dE_over_c *= (dt*All.UnitTime_in_s/All.HubbleParam) / 2.9979e10; // dE/c in CGS
-                dv_units = KAPPA_IR * dE_over_c / (4*M_PI * All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime);
-                dv_units /= All.UnitVelocity_in_cm_per_s; // dv in code units per unit distance
-                dv_units *= All.WindMomentumLoading; // rescale tau_ir component here
-                dE_over_c /= (All.UnitMass_in_g/All.HubbleParam) * All.UnitVelocity_in_cm_per_s; // dv per unit mass
+                dE_over_c = lm_ssp * SOLAR_LUM * (P[i].Mass*UNIT_MASS_IN_SOLAR); // L in CGS
+                dE_over_c *= (dt*UNIT_TIME_IN_CGS) / C_LIGHT; // dE/c in CGS
+                dv_units = KAPPA_IR * dE_over_c / (4*M_PI * UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS*All.cf_atime*All.cf_atime);
+                dv_units /= UNIT_VEL_IN_CGS; // dv in code units per unit distance
+                dv_units *= All.RP_Local_Momentum_Renormalization; // rescale tau_ir component here
+                dE_over_c /= UNIT_MASS_IN_CGS * UNIT_VEL_IN_CGS; // dv per unit mass
                 total_prob_kick += dE_over_c; dv_imparted = dE_over_c/P[i].Mass; // estimate of summed dv_imparted from neighbors from L/c part
                 dv_imparted += dv_units * (0.1+P[i].Metallicity[0]/All.SolarAbundances[0]) * (4.0*M_PI*rho/P[i].Mass*h); // sum over neighbor IR term
                 prob = dv_imparted / v; prob *= 2000.; // need to include a buffer for errors in the estimates above
@@ -115,12 +115,12 @@ void radiation_pressure_winds_consolidated(void)
                         if(v<=v_wind_threshold) v=v_wind_threshold;
 #else
                         lm_ssp = evaluate_light_to_mass_ratio(star_age, i);
-                        dE_over_c = lm_ssp * (4.0/2.0) * (P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // L in CGS
-                        dE_over_c *= (dt*All.UnitTime_in_s/All.HubbleParam) / 2.9979e10; // dE/c in CGS
-                        dv_units = KAPPA_IR * dE_over_c / (4*M_PI * All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime);
-                        dv_units /= All.UnitVelocity_in_cm_per_s; // dv in code units per unit distance
-                        dv_units *= All.WindMomentumLoading; // rescale tau_ir component here
-                        dE_over_c /= (All.UnitMass_in_g/All.HubbleParam) * All.UnitVelocity_in_cm_per_s; // dv per unit mass
+                        dE_over_c = lm_ssp * SOLAR_LUM * (P[i].Mass*UNIT_MASS_IN_SOLAR); // L in CGS
+                        dE_over_c *= (dt*UNIT_TIME_IN_CGS) / C_LIGHT; // dE/c in CGS
+                        dv_units = KAPPA_IR * dE_over_c / (4*M_PI * UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS*All.cf_atime*All.cf_atime);
+                        dv_units /= UNIT_VEL_IN_CGS; // dv in code units per unit distance
+                        dv_units *= All.RP_Local_Momentum_Renormalization; // rescale tau_ir component here
+                        dE_over_c /= (UNIT_MASS_IN_CGS) * UNIT_VEL_IN_CGS; // dv per unit mass
                         total_prob_kick += dE_over_c;
 #endif
                         for(n=0; n<numngb_inbox; n++)
@@ -142,7 +142,7 @@ void radiation_pressure_winds_consolidated(void)
                                 if(p_random < prob)
 #endif
                                 { /* open subloop with wind kick */
-                                    if(v>5.0e8/All.UnitVelocity_in_cm_per_s) v=5.0e8/All.UnitVelocity_in_cm_per_s; /* limiter */
+                                    if(v>5000./UNIT_VEL_IN_KMS) {v=5000./UNIT_VEL_IN_KMS;} /* limiter */
                                     /* collect numbers to output */
                                     total_n_wind += 1.0; total_mom_wind += P[j].Mass*v; avg_v_kick += v; momwt_avg_v_kick += P[j].Mass*v * sigma_eff_0 * P[j].Mass/(h_eff_j*h_eff_j) * (0.01 + P[j].Metallicity[0]/All.SolarAbundances[0]); 
                                     
@@ -211,8 +211,8 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 #ifdef RT_CHEM_PHOTOION
     return; // the work here is done in the actual RT routines if this switch is enabled //
 #endif
-    if(All.HIIRegion_fLum_Coupled<=0) return;
-    if(All.Time<=0) return;
+    if(All.HIIRegion_fLum_Coupled<=0) {return;}
+    if(All.Time<=0) {return;}
     MyDouble *pos; MyFloat h_i, dt, rho;
     int startnode, numngb, j, n, i, NITER_HIIFB, MAX_N_ITERATIONS_HIIFB, jnearest,already_ionized,do_ionize,dummy;
     double totMPI_m_ionizing,totMPI_l_ionizing,totMPI_m_ionized,totMPI_m_ionizable,totMPI_avg_RHII,dx, dy, dz, h_i2, r2, r, u, u_to_temp_fac,mionizable,mionized,RHII,RHIIMAX,R_search,rnearest,stellum,uion,prob,rho_j,prandom,m_available,m_effective,RHII_initial,RHIImultiplier, total_l_ionizing,total_m_ionizing,total_m_ionizable,total_m_ionized,avg_RHII;
@@ -239,16 +239,16 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
             if(stellum <= 0) continue;
             pos = P[i].Pos; rho = P[i].DensAroundStar; h_i = PPP[i].Hsml; total_m_ionizing += 1; total_l_ionizing += stellum;
             
-            RHII = 4.67e-9*pow(stellum,0.333)*pow(rho*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam,-0.66667);
-            RHII /= All.cf_atime*All.UnitLength_in_cm/All.HubbleParam;
-            RHIIMAX=240.0*pow(stellum,0.5)/(All.cf_atime*All.UnitLength_in_cm/All.HubbleParam); // crude estimate of where flux falls below cosmic background
-            if(RHIIMAX < h_i) RHIIMAX=h_i;
-            if(RHIIMAX > 5.0*h_i) RHIIMAX=5.*h_i;
+            RHII = 4.67e-9*pow(stellum,0.333)*pow(rho*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667);
+            RHII /= All.cf_atime*UNIT_LENGTH_IN_CGS;
+            RHIIMAX=240.0*pow(stellum,0.5)/(All.cf_atime*UNIT_LENGTH_IN_CGS); // crude estimate of where flux falls below cosmic background
+            if(RHIIMAX < h_i) {RHIIMAX=h_i;}
+            if(RHIIMAX > 5.0*h_i) {RHIIMAX=5.*h_i;}
             mionizable=NORM_COEFF*rho*RHII*RHII*RHII;
-            double M_ionizing_emitted = (3.05e10 * PROTONMASS) * stellum * (dt * All.UnitTime_in_s / All.HubbleParam) ; // number of ionizing photons times proton mass, gives max mass ionized
-            mionizable = DMIN( mionizable , M_ionizing_emitted/(All.UnitMass_in_g/All.HubbleParam) );
-            if(RHII>RHIIMAX) RHII=RHIIMAX;
-            if(RHII<0.5*h_i) RHII=0.5*h_i;
+            double M_ionizing_emitted = (3.05e10 * PROTONMASS) * stellum * (dt * UNIT_TIME_IN_CGS) ; // number of ionizing photons times proton mass, gives max mass ionized
+            mionizable = DMIN( mionizable , M_ionizing_emitted/UNIT_MASS_IN_CGS ); // in code units
+            if(RHII>RHIIMAX) {RHII=RHIIMAX;}
+            if(RHII<0.5*h_i) {RHII=0.5*h_i;}
             RHII_initial=RHII;
             
             prandom = get_random_number(P[i].ID + 7); // pre-calc the (eventually) needed random number
@@ -258,26 +258,34 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                 mionized=0.0; total_m_ionizable += mionizable; h_i2=h_i*h_i;
                 u_to_temp_fac = 0.59 * (5./3.-1.) * U_TO_TEMP_UNITS; /* assume fully-ionized gas with gamma=5/3 */
                 uion = HIIRegion_Temp / u_to_temp_fac;
-                startnode = All.MaxPart; jnearest=-1; rnearest=1.0e10; dummy=0; NITER_HIIFB=0;
+                startnode = All.MaxPart; jnearest=-1; rnearest=MAX_REAL_NUMBER; dummy=0; NITER_HIIFB=0;
                 
                 do {
-                    jnearest=-1; rnearest=1.0e10;
+                    jnearest=-1; rnearest=MAX_REAL_NUMBER;
                     R_search = RHII; if(h_i>R_search) R_search=h_i;
                     numngb = ngb_treefind_variable_threads(pos, R_search, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist);
                     if(numngb>0)
                     {
+                        int ngb_list_touse[numngb]; for(n=0; n<numngb; n++) {ngb_list_touse[n]=Ngblist[n];}
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+                        qsort(ngb_list_touse, numngb, sizeof(int), compare_densities_for_sort); // sort on densities before processing, so ionize least-dense-first
+#endif
                         for(n = 0; n < numngb; n++)
                         {
-                            j = Ngblist[n];
+                            j = ngb_list_touse[n];
                             if(P[j].Type == 0 && P[j].Mass > 0)
                             {
                                 dx = pos[0] - P[j].Pos[0]; dy = pos[1] - P[j].Pos[1]; dz = pos[2] - P[j].Pos[2];
                                 NEAREST_XYZ(dx,dy,dz,1); /*  now find the closest image in the given box size */
                                 r2 = dx * dx + dy * dy + dz * dz; r=sqrt(r2);
                                 /* check whether the particle is already ionized */
-                                already_ionized = 0; rho_j = Particle_density_for_energy_i(j);
+                                already_ionized = 0; rho_j = Get_Gas_density_for_energy_i(j);
                                 if(SphP[j].InternalEnergy<SphP[j].InternalEnergyPred) {u=SphP[j].InternalEnergy;} else {u=SphP[j].InternalEnergyPred;}
-                                if((SphP[j].DelayTimeHII > 0)||(u>uion)) already_ionized=1;
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+                                if((SphP[j].DelayTimeHII>0) || (SphP[i].Ne>0.8) || (u>5.*uion)) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
+#else
+                                if((SphP[j].DelayTimeHII > 0)||(u>uion)) {already_ionized=1;}
+#endif
                                 /* now, if inside RHII and mionized<mionizeable and not already ionized, can be ionized! */
                                 do_ionize=0; prob=0;
                                 if((r<=RHII)&&(already_ionized==0)&&(mionized<mionizable))
@@ -291,16 +299,16 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                         prob = m_available/m_effective; // determine randomly if ionized
                                         if(prandom < prob) do_ionize=1;
                                     } // if(m_effective<=m_available) {
-                                    if(do_ionize==1)
-                                    {
-                                        SphP[j].InternalEnergy = uion; SphP[j].InternalEnergyPred = SphP[j].InternalEnergy; SphP[j].DelayTimeHII = dt; already_ionized = 1;
-                                        SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* fully ionized */
-                                    } // if(do_ionize==1)
+                                    if(do_ionize==1) {already_ionized=do_the_local_ionization(j,dt,i);}
                                     mionized += prob*m_effective;
                                 } // if((r<=RHII)&&(already_ionized==0)&&(mionized<mionizable))
                                 
                                 /* if nearest un-ionized particle, mark as such */
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+                                if((SphP[j].Density<rnearest)&&(already_ionized==0)) {rnearest = SphP[j].Density; jnearest = j;} // rank by density, not distance
+#else
                                 if((r<rnearest)&&(already_ionized==0)) {rnearest = r; jnearest = j;}
+#endif
                             } // if(P[j].Type == 0 && P[j].Mass > 0)
                         } // for(n = 0; n < numngb; n++)
                     } // if(numngb>0)
@@ -308,12 +316,9 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                     // if still have photons and jnearest is un-ionized
                     if((mionized<mionizable)&&(jnearest>=0))
                     {
-                        j=jnearest; m_effective = P[j].Mass*(SphP[j].Density/rho); m_available = mionizable-mionized; prob=m_available/m_effective; do_ionize=0; if(prandom < prob) do_ionize=1;
-                        if(do_ionize==1)
-                        {
-                            SphP[j].InternalEnergy = uion; SphP[j].InternalEnergyPred = SphP[j].InternalEnergy; SphP[j].DelayTimeHII = dt;
-                            SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* fully ionized */
-                        } // if(do_ionize==1)
+                        j=jnearest; m_effective=P[j].Mass*(SphP[j].Density/rho); m_available=mionizable-mionized; prob=m_available/m_effective; do_ionize=0;
+                        if(prandom < prob) {do_ionize=1;}
+                        if(do_ionize==1) {already_ionized=do_the_local_ionization(j,dt,i);}
                         mionized += prob*m_effective;
                     } // if((mionized<mionizable)&&(jnearest>=0))
                     
@@ -332,11 +337,11 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                             {
                                 RHIImultiplier = 2.0;
                             } else {
-                                RHIImultiplier=pow(mionized/mionizable,-0.333);
-                                if(RHIImultiplier>5.0) RHIImultiplier=5.0;
-                                if(RHIImultiplier<1.26) RHIImultiplier=1.26;
+                                RHIImultiplier = pow(mionized/mionizable , -0.333);
+                                if(RHIImultiplier>5.0) {RHIImultiplier=5.0;}
+                                if(RHIImultiplier<1.26) {RHIImultiplier=1.26;}
                             } // if(mionized <= 0)
-                            RHII *= RHIImultiplier; if(RHII>1.26*RHIIMAX) RHII=1.26*RHIIMAX;
+                            RHII *= RHIImultiplier; if(RHII>1.26*RHIIMAX) {RHII=1.26*RHIIMAX;}
                             startnode=All.MaxPart; // this will trigger the while loop to continue
                         } // if((RHII >= 5.0*RHII_initial)||(RHII>=RHIIMAX)||(NITER_HIIFB >= MAX_N_ITERATIONS_HIIFB))
                     } // if(mionized < 0.95*mionizable)
@@ -364,6 +369,23 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
     } // ThisTask == 0
     CPU_Step[CPU_HIIHEATING] += measure_time();
 } // void HII_heating_singledomain(void)
+
+
+
+int do_the_local_ionization(int target, double dt, int source)
+{
+#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
+    SphP[target].InternalEnergy = DMAX(SphP[target].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
+    SphP[target].InternalEnergyPred = SphP[target].InternalEnergy; /* full reset of the internal energy */
+#else
+    double delta_U_of_ionization = (18.-13.6) * ((ELECTRONVOLT_IN_ERGS / PROTONMASS) / UNIT_SPECEGY_IN_CGS) * (1.-DMAX(0.,DMIN(1.,SphP[target].Ne/1.5))); /* energy injected per unit mass, in code units, by ionization, assuming each atom absorbs, and mean energy of absorbed photons is given by x=18 eV here (-13.6 for energy of ionization) */
+    SphP[target].InternalEnergy += delta_U_of_ionization; SphP[target].InternalEnergyPred += delta_U_of_ionization; /* add it */
+#endif
+    SphP[target].DelayTimeHII = DMIN(dt, 10./UNIT_TIME_IN_MYR); /* tell the code to flag this in the cooling subroutine */
+    SphP[target].Ne = 1.0 + 2.0*yhelium(target); /* set the cell to fully ionized */
+    return 1;
+}
+
 #endif // GALSF_FB_FIRE_RT_HIIHEATING
 
 
@@ -407,7 +429,7 @@ void chimes_HII_regions_singledomain(void)
 	    continue; // don't keep going with this loop
 
 	  stellar_age = evaluate_stellar_age_Gyr(P[i].StellarAge); 
-	  stellar_mass = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam  * SOLAR_MASS); 
+	  stellar_mass = P[i].Mass * UNIT_MASS_IN_SOLAR; 
 	  
 	  // stellum is the number of H-ionising photons per second 
 	  // produced by the star particle 
@@ -419,7 +441,7 @@ void chimes_HII_regions_singledomain(void)
 	  stellum_G0 = chimes_G0_luminosity(stellar_age * 1000.0, stellar_mass); 
 
 	  // Gravitational Softening (cgs units) 
-	  eps_cgs = All.SofteningTable[P[i].Type] * All.cf_atime * All.UnitLength_in_cm / All.HubbleParam; 
+	  eps_cgs = All.SofteningTable[P[i].Type] * All.cf_atime * UNIT_LENGTH_IN_CGS;
 	  
 	  // Determine stellar age bin 
 	  log_age_Myr = log10(stellar_age * 1000.0); 	  
@@ -441,10 +463,10 @@ void chimes_HII_regions_singledomain(void)
 	  // Stromgren radius, RHII, computed using a case B recombination coefficient 
 	  // at 10^4 K of 2.59e-13 cm^3 s^-1, as used in CHIMES, and assuming a 
 	  // Hydrogen mass fraction XH = 0.7. 
-	  RHII = 1.7376e-12 * pow(stellum, 0.33333) * pow(rho * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam, -0.66667);
+	  RHII = 1.7376e-12 * pow(stellum, 0.33333) * pow(rho * All.cf_a3inv * UNIT_DENSITY_IN_CGS, -0.66667);
 	  
 	  // Convert RHII from cm to code units 
-	  RHII /= All.cf_atime*All.UnitLength_in_cm/All.HubbleParam;
+	  RHII /= All.cf_atime*UNIT_LENGTH_IN_CGS;
 	  
 	  /* Impose a maximum RHII, to prevent the code trying to search 
 	   * for neighbours too far away. Unlike the standard FIRE routines, 
@@ -466,8 +488,8 @@ void chimes_HII_regions_singledomain(void)
 	  mionizable = 4.18879 * rho * pow(RHII, 3.0);  
 
 	  // number of ionizing photons times proton mass, gives max mass ionized 
-	  M_ionizing_emitted = PROTONMASS * stellum * (dt * All.UnitTime_in_s / All.HubbleParam);  // g
-	  mionizable = DMIN(mionizable , M_ionizing_emitted/(All.UnitMass_in_g/All.HubbleParam)); 
+	  M_ionizing_emitted = PROTONMASS * stellum * (dt * UNIT_TIME_IN_CGS); // in cgs
+	  mionizable = DMIN(mionizable , M_ionizing_emitted/UNIT_MASS_IN_CGS); // in code units
 	  
 	  // Now limit RHII to be between the min and max defined above. 
 	  if(RHII > RHIImax) 
@@ -539,8 +561,8 @@ void chimes_HII_regions_singledomain(void)
 				   
 				    for(k = 0; k < CHIMES_LOCAL_UV_NBINS; k++)  {SphP[j].Chimes_fluxPhotIon_HII[k] = 0; SphP[j].Chimes_G0_HII[k] = 0;}
 				    
-				    SphP[j].Chimes_fluxPhotIon_HII[age_bin] = (1.0 - All.Chimes_f_esc_ion) * stellum / (pow(r * All.cf_atime * All.UnitLength_in_cm / All.HubbleParam, 2.0) + pow(eps_cgs, 2.0)) ; 
-				    SphP[j].Chimes_G0_HII[age_bin] = (1.0 - All.Chimes_f_esc_G0) * stellum_G0 / (pow(r * All.cf_atime * All.UnitLength_in_cm / All.HubbleParam, 2.0) + pow(eps_cgs, 2.0)); 
+				    SphP[j].Chimes_fluxPhotIon_HII[age_bin] = (1.0 - All.Chimes_f_esc_ion) * stellum / (pow(r * All.cf_atime * UNIT_LENGTH_IN_CGS, 2.0) + pow(eps_cgs, 2.0)) ;
+				    SphP[j].Chimes_G0_HII[age_bin] = (1.0 - All.Chimes_f_esc_G0) * stellum_G0 / (pow(r * All.cf_atime * UNIT_LENGTH_IN_CGS, 2.0) + pow(eps_cgs, 2.0));
 				  }
 			      } // if((r <= RHII) && (SphP[j].DelayTimeHII <= 0) && (mionized<mionizable)) 
 			  } // if(P[j].Type == 0 && P[j].Mass > 0)

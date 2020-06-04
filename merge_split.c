@@ -46,13 +46,13 @@ int does_particle_need_to_be_merged(int i)
         MyFloat vr2 = (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) * All.cf_a2inv; // physical
         if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
 #else
-        if(P[i].Mass < (All.MaxMassForParticleSplit * ref_mass_factor(i))) {return 1;}
-        if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO) {return 1;}
+        if(P[i].Mass < (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
+        if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO*target_mass_renormalization_factor_for_mergesplit(i)) {return 1;}
 #endif
     }
 #endif
-    if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*ref_mass_factor(i))) {return 0;}
-    if(P[i].Mass <= (All.MinMassForParticleMerger* ref_mass_factor(i))) {return 1;}
+    if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 0;}
+    if(P[i].Mass <= (All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
     return 0;
 #endif
 }
@@ -66,21 +66,20 @@ int does_particle_need_to_be_split(int i)
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
-    if(P[i].Mass >= (All.MaxMassForParticleSplit * ref_mass_factor(i))) {return 1;}
+    if(P[i].Mass >= (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
     return 0;
 #endif
 }
 
-/*! A multiplcative factor that determines the target mass of a particle for the (de)refinement routines */
-double ref_mass_factor(int i)
+/*! A multiplicative factor that determines the target mass of a particle for the (de)refinement routines */
+double target_mass_renormalization_factor_for_mergesplit(int i)
 {
     double ref_factor=1.0;
-#if defined(BH_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
-#ifndef SINGLE_STAR_SINK_DYNAMICS
-    ref_factor = sqrt(P[i].min_dist_to_bh + 0.0001);
-    if(ref_factor>1.0) { ref_factor = 1.0; }
-#endif 
+/*!
+ #if defined(BH_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE) && !defined(SINGLE_STAR_SINK_DYNAMICS)
+    ref_factor = DMIN(1.,sqrt(P[i].min_dist_to_bh + 0.0001)); // this is an example of the kind of routine you could use to scale resolution with BH distance //
 #endif
+ */
     return ref_factor;
 }
 
@@ -207,10 +206,10 @@ void merge_and_split_particles(void)
                                 if(vr_tmp > 0) {do_allow_merger=0;}
                                 if(v2_tmp > 0) {v2_tmp=sqrt(v2_tmp*All.cf_a2inv);} else {v2_tmp=0;}
 #if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS)
-                                if(v2_tmp >  DMIN(Particle_effective_soundspeed_i(i),Particle_effective_soundspeed_i(j))) {do_allow_merger = 0;}
+                                if(v2_tmp >  DMIN(Get_Gas_effective_soundspeed_i(i),Get_Gas_effective_soundspeed_i(j))) {do_allow_merger = 0;}
                                 if(P[j].ID == All.AGNWindID) {do_allow_merger = 0;} // wind particles can't intermerge
 #else                                
-                                if((v2_tmp > 0.25*All.BAL_v_outflow) && (v2_tmp > 0.9*Particle_effective_soundspeed_i(j)*All.cf_afac3)) {do_allow_merger=0;}
+                                if((v2_tmp > 0.25*All.BAL_v_outflow) && (v2_tmp > 0.9*Get_Gas_effective_soundspeed_i(j)*All.cf_afac3)) {do_allow_merger=0;}
 #endif                                
                             }
                         }
@@ -1009,3 +1008,37 @@ void rearrange_particle_sequence(void)
 }
 
 
+/* function to apply -optional- cell excision for special cases where e.g. cells go far outside of the desired 'zoom-in region' or target region of a multi-scale simulation */
+void apply_pm_hires_region_clipping_selection(int i)
+{
+#ifdef PM_HIRES_REGION_CLIPPING
+    int clip_flag = 0; // flag for clipping
+    if(All.Time <= All.TimeBegin) {return;} // no clips before run properly starts
+    if(P[i].Type==5) {return;} // no clips for sinks
+    if(P[i].Type==0 && density_isactive(i)) {if((SphP[i].Density <= 0) || (PPP[i].NumNgb <= 0)) {clip_flag=1;}} // undefined density behavior
+    if(density_isactive(i)) {if(PPP[i].Hsml >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+    if(ags_density_isactive(i)) {if(PPP[i].AGS_Hsml >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip
+#endif
+#ifdef GALSF
+    if((All.ComovingIntegrationOn) && (P[i].Type==0) && (P[i].Mass>0)) // clip material outside of a hires zoom-in region [unphysically well below cosmic mean density]
+        if((SphP[i].Density>0) && (PPP[i].Hsml>0))
+        {
+            double rho_igm = COSMIC_BARYON_DENSITY_CGS * DMIN(1., 1000./All.cf_a3inv); /* density of IGM: cap scaling with z at z=10, so that we don't accidentally rule out very dense real stuff b/c IGM is also very dense */
+            double rho_gas = DMAX( SphP[i].Density , All.DesNumNgb*P[i].Mass/(4.*M_PI/3.*PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml) )* All.cf_a3inv * UNIT_DENSITY_IN_CGS;
+            if(rho_gas < 1.e-6*rho_igm) {clip_flag=1;} // clip
+        }
+#endif
+#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
+    if(All.ComovingIntegrationOn)
+    {
+        int k; double v_i=0; for(k=0;k<3;k++) {v_i+=P[i].Vel[k]*P[i].Vel[k];}
+        v_i=sqrt(v_i)/All.cf_atime*UNIT_VEL_IN_KMS; // check for unphysical velocities
+        if(v_i>1.e5) {clip_flag=1;} // clip
+        if(v_i>3.e4) {for(k=0;k<3;k++) {P[i].Vel[k]*=3.e4/v_i;}} // limit
+    }
+#endif
+    if(clip_flag==1) {P[i].Mass=0;} // clip
+#endif
+    return; // done
+}

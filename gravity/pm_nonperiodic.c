@@ -195,13 +195,13 @@ void pm_init_regionsize(void)
 
 
 #ifndef BOX_PERIODIC
-  All.Asmth[0] = ASMTH * All.TotalMeshSize[0] / GRID;
-  All.Rcut[0] = RCUT * All.Asmth[0];
+  All.Asmth[0] = PM_ASMTH * All.TotalMeshSize[0] / GRID;
+  All.Rcut[0] = PM_RCUT * All.Asmth[0];
 #endif
 
 #ifdef PM_PLACEHIGHRESREGION
-  All.Asmth[1] = ASMTH * All.TotalMeshSize[1] / GRID;
-  All.Rcut[1] = RCUT * All.Asmth[1];
+  All.Asmth[1] = PM_ASMTH * All.TotalMeshSize[1] / GRID;
+  All.Rcut[1] = PM_RCUT * All.Asmth[1];
 #endif
 
 #ifdef PM_PLACEHIGHRESREGION
@@ -226,8 +226,8 @@ void pm_init_regionsize(void)
 	    }
 	}
 
-      All.Asmth[1] = ASMTH * All.TotalMeshSize[1] / GRID;
-      All.Rcut[1] = RCUT * All.Asmth[1];
+      All.Asmth[1] = PM_ASMTH * All.TotalMeshSize[1] / GRID;
+      All.Rcut[1] = PM_RCUT * All.Asmth[1];
     }
 #endif
 
@@ -540,7 +540,7 @@ void pm_setup_nonperiodic_kernel(void)
 
 	  r = sqrt(xx * xx + yy * yy + zz * zz);
 
-	  u = 0.5 * r / (((double) ASMTH) / GRID);
+	  u = 0.5 * r / (((double) PM_ASMTH) / GRID);
 
 	  fac = 1 - erfc(u);
 
@@ -548,14 +548,14 @@ void pm_setup_nonperiodic_kernel(void)
 	    kernel[0][GRID * GRID2 * (i - slabstart_x) + GRID2 * j + k] = -fac / r;
 	  else
 	    kernel[0][GRID * GRID2 * (i - slabstart_x) + GRID2 * j + k] =
-	      -1 / (sqrt(M_PI) * (((double) ASMTH) / GRID));
+	      -1 / (sqrt(M_PI) * (((double) PM_ASMTH) / GRID));
 #ifdef DM_SCALARFIELD_SCREENING
 	  if(r > 0)
 	    kernel_scalarfield[0][GRID * GRID2 * (i - slabstart_x) + GRID2 * j + k] =
 	      -fac * All.ScalarBeta * exp(-r / All.ScalarScreeningLength) / r;
 	  else
 	    kernel_scalarfield[0][GRID * GRID2 * (i - slabstart_x) + GRID2 * j + k] =
-	      -1 / (sqrt(M_PI) * (((double) ASMTH) / GRID));
+	      -1 / (sqrt(M_PI) * (((double) PM_ASMTH) / GRID));
 #endif
 	}
 
@@ -599,7 +599,7 @@ void pm_setup_nonperiodic_kernel(void)
 
 	  r = sqrt(xx * xx + yy * yy + zz * zz);
 
-	  u = 0.5 * r / (((double) ASMTH) / GRID);
+	  u = 0.5 * r / (((double) PM_ASMTH) / GRID);
 
 	  fac = erfc(u * All.Asmth[1] / All.Asmth[0]) - erfc(u);
 
@@ -609,7 +609,7 @@ void pm_setup_nonperiodic_kernel(void)
 	    {
 	      fac = 1 - All.Asmth[1] / All.Asmth[0];
 	      kernel[1][GRID * GRID2 * (i - slabstart_x) + GRID2 * j + k] =
-		-fac / (sqrt(M_PI) * (((double) ASMTH) / GRID));
+		-fac / (sqrt(M_PI) * (((double) PM_ASMTH) / GRID));
 	    }
 #ifdef DM_SCALARFIELD_SCREENING
 	  if(r > 0)
@@ -619,7 +619,7 @@ void pm_setup_nonperiodic_kernel(void)
 	    {
 	      fac = 1 - All.Asmth[1] / All.Asmth[0];
 	      kernel_scalarfield[1][GRID * GRID2 * (i - slabstart_x) + GRID2 * j + k] =
-		-fac / (sqrt(M_PI) * (((double) ASMTH) / GRID));
+		-fac / (sqrt(M_PI) * (((double) PM_ASMTH) / GRID));
 	    }
 #endif
 	}

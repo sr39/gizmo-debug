@@ -101,7 +101,7 @@ void find_timesteps(void)
             if(P[i].Type==0)
             {
                 double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i].MaxSignalVel); // in v_phys units //
-                double vsig1 = All.cf_afac3 * sqrt( Particle_effective_soundspeed_i(i)*Particle_effective_soundspeed_i(i) + fac_magnetic_pressure * (Get_Particle_BField(i,0)*Get_Particle_BField(i,0)+Get_Particle_BField(i,1)*Get_Particle_BField(i,1)+Get_Particle_BField(i,2)*Get_Particle_BField(i,2)) / SphP[i].Density );
+                double vsig1 = All.cf_afac3 * sqrt( Get_Gas_effective_soundspeed_i(i)*Get_Gas_effective_soundspeed_i(i) + fac_magnetic_pressure * (Get_Gas_BField(i,0)*Get_Gas_BField(i,0)+Get_Gas_BField(i,1)*Get_Gas_BField(i,1)+Get_Gas_BField(i,2)*Get_Gas_BField(i,2)) / SphP[i].Density );
                 double vsig0 = DMAX(vsig1,vsig2);
 
                 if(vsig0 > fastwavespeed) fastwavespeed = vsig0; // physical unit
@@ -124,20 +124,13 @@ void find_timesteps(void)
     for(i = FirstActiveParticle, ti_min = TIMEBASE; i >= 0; i = NextActiveParticle[i])
     {
         ti_step = get_timestep(i, &aphys, 0);
-        
-        if(ti_step < ti_min)
-            ti_min = ti_step;
+        if(ti_step < ti_min) {ti_min = ti_step;}
     }
-    
-    if(ti_min > (dt_displacement / All.Timebase_interval))
-        ti_min = (dt_displacement / All.Timebase_interval);
+    if(ti_min > (dt_displacement / All.Timebase_interval)) {ti_min = (dt_displacement / All.Timebase_interval);}
     
     ti_step = TIMEBASE;
-    while(ti_step > ti_min)
-        ti_step >>= 1;
-    
+    while(ti_step > ti_min) {ti_step >>= 1;}
     integertime ti_min_glob;
-    
     MPI_Allreduce(&ti_step, &ti_min_glob, 1, MPI_TYPE_TIME, MPI_MIN, MPI_COMM_WORLD);
 #endif
     
@@ -308,9 +301,6 @@ integertime get_timestep(int p,		/*!< particle index */
 {
     double ax, ay, az, ac, csnd = 0, dt = All.MaxSizeTimestep, dt_courant = 0, dt_divv = 0;
     integertime ti_step; int k; k=0;
-#ifdef CHEMCOOL
-    double hubble_param; if(All.ComovingIntegrationOn) {hubble_param=All.HubbleParam;} else {hubble_param=1;}
-#endif
 #ifdef NUCLEAR_NETWORK
     double dt_network, dt_species;
 #endif
@@ -509,9 +499,9 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef PIC_MHD
         if(P[p].Grain_SubType==3)
         {
-            double lorentz_units = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); // code B to Gauss
-            lorentz_units *= All.UnitVelocity_in_cm_per_s * (ELECTRONCHARGE/(PROTONMASS*C_LIGHT)); // code velocity to CGS, times base units e/(mp*c)
-            lorentz_units /= All.UnitVelocity_in_cm_per_s / (All.UnitTime_in_s / All.HubbleParam); // convert 'back' to code-units acceleration
+            double lorentz_units = UNIT_B_IN_GAUSS; // code B to Gauss
+            lorentz_units *= UNIT_VEL_IN_CGS * (ELECTRONCHARGE/(PROTONMASS*C_LIGHT)); // code velocity to CGS, times base units e/(mp*c)
+            lorentz_units /= UNIT_VEL_IN_CGS / UNIT_TIME_IN_CGS; // convert 'back' to code-units acceleration
             double reduced_C = PIC_SPEEDOFLIGHT_REDUCTION * C_LIGHT_CODE;
             double charge_to_mass_ratio_dimensionless = All.PIC_Charge_to_Mass_Ratio;
             double v2=0, B2=0; for(k=0;k<3;k++) {v2=P[p].Vel[k]*P[p].Vel[k]; B2+=P[p].Gas_B[k]*P[p].Gas_B[k];}
@@ -578,7 +568,7 @@ integertime get_timestep(int p,		/*!< particle index */
                         double tmp_grad = SphP[p].Gradients.B[k][k2];
                         b_grad += tmp_grad * tmp_grad;
                     }
-                    double tmp_grad = Get_Particle_BField(p,k);
+                    double tmp_grad = Get_Gas_BField(p,k);
                     b_mag += tmp_grad * tmp_grad;
                 }
                 double L_cond_inv = sqrt(b_grad / (1.e-37 + b_mag));
@@ -600,7 +590,7 @@ integertime get_timestep(int p,		/*!< particle index */
             int k_CRegy;
             for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
             {
-                if(Get_Particle_CosmicRayPressure(p,k_CRegy) > 1.0e-20)
+                if(Get_Gas_CosmicRayPressure(p,k_CRegy) > 1.0e-20)
                 {
                     int explicit_timestep_on, cr_diffusion_opt = 0;
 #if defined(DIFFUSION_OPTIMIZERS) || defined(COSMIC_RAYS_M1)
@@ -750,8 +740,8 @@ integertime get_timestep(int p,		/*!< particle index */
                     change, which can happen particularly for ionizing photons */
                 if(kf==RT_FREQ_BIN_H0)
                 {
-                    double ne_cgs = (SphP[p].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
-                    double dt_recombination = All.CourantFac * (3.3e12/ne_cgs) / (All.UnitTime_in_s / All.HubbleParam);
+                    double ne_cgs = (SphP[p].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
+                    double dt_recombination = All.CourantFac * (3.3e12/ne_cgs) / UNIT_TIME_IN_CGS;
                     double dt_change = 1.e10*dt; if((SphP[p].Rad_E_gamma[kf] > 0)&&(fabs(SphP[p].Dt_Rad_E_gamma[kf])>0)) {dt_change = SphP[p].Rad_E_gamma[kf] / fabs(SphP[p].Dt_Rad_E_gamma[kf]);}
                     dt_recombination = DMIN(DMAX(dt_recombination,dt_change), DMAX(dt_courant,dt_rad));
                     if(dt_recombination < dt_rad) {dt_rad = dt_recombination;}
@@ -813,11 +803,11 @@ integertime get_timestep(int p,		/*!< particle index */
             
 #if defined(DIVBCLEANING_DEDNER) 
             double fac_magnetic_pressure = All.cf_afac1 / All.cf_atime;
-            double phi_b_units = Get_Particle_PhiField(p) / (All.cf_afac3 * All.cf_atime * SphP[p].MaxSignalVel);
-            double vsig1 = All.cf_afac3 * sqrt( Particle_effective_soundspeed_i(p)*Particle_effective_soundspeed_i(p) +
-                    fac_magnetic_pressure * (Get_Particle_BField(p,0)*Get_Particle_BField(p,0) +
-                                             Get_Particle_BField(p,1)*Get_Particle_BField(p,1)+
-                                             Get_Particle_BField(p,2)*Get_Particle_BField(p,2) +
+            double phi_b_units = Get_Gas_PhiField(p) / (All.cf_afac3 * All.cf_atime * SphP[p].MaxSignalVel);
+            double vsig1 = All.cf_afac3 * sqrt( Get_Gas_effective_soundspeed_i(p)*Get_Gas_effective_soundspeed_i(p) +
+                    fac_magnetic_pressure * (Get_Gas_BField(p,0)*Get_Gas_BField(p,0) +
+                                             Get_Gas_BField(p,1)*Get_Gas_BField(p,1)+
+                                             Get_Gas_BField(p,2)*Get_Gas_BField(p,2) +
                                              phi_b_units*phi_b_units) / SphP[p].Density );
 
             dt_courant = 0.8 * All.CourantFac * (All.cf_atime*L_particle) / vsig1; // 2.0 factor may be added (PFH) //
@@ -837,27 +827,24 @@ integertime get_timestep(int p,		/*!< particle index */
             if(SphP[p].Temperature > 1e7)
             {
                 /* check if the new timestep blows up our abundances */
-                dt_network = dt * All.UnitTime_in_s;
+                dt_network = dt * UNIT_TIME_IN_CGS;
                 for(k = 0; k < EOS_NSPECIES; k++)
                 {
                     if(SphP[p].dxnuc[k] > 0)
                     {
                         dt_species = (1.0 - SphP[p].xnuc[k]) / SphP[p].dxnuc[k];
-                        if(dt_species < dt_network)
-                            dt_network = dt_species;
+                        if(dt_species < dt_network) {dt_network = dt_species;}
                     }
                     else if(SphP[p].dxnuc[k] < 0)
                     {
                         dt_species = (0.0 - SphP[p].xnuc[k]) / SphP[p].dxnuc[k];
-                        if(dt_species < dt_network)
-                            dt_network = dt_species;
+                        if(dt_species < dt_network) {dt_network = dt_species;}
                     }
                     
                 }
-                
-                dt_network /= All.UnitTime_in_s;
-                if(dt_network < dt)
-                    dt = dt_network;
+   
+                dt_network /= UNIT_TIME_IN_CGS;
+                if(dt_network < dt) {dt = dt_network;}
             }
 #endif
             
@@ -956,11 +943,10 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_stellar_evol = star_age/10.;
         }
         // PFH: temporarily modifying the terms above while Marcel studies them: turns out not to be necessary to use as strict a mass-dependent timestep, so faster to comment out //
-        //dt_stellar_evol /= ( 1. + 0.1*(P[p].Mass*All.UnitMass_in_g)/(1.0e4*1.989e33) ); // multiply by inverse particle mass, since goal is to prevent too much energy in one time //
-        double mcorr = 0.1 * (P[p].Mass*All.UnitMass_in_g/All.HubbleParam)/(1.0e4*1.989e33);
+        double mcorr = 1.e-5 * (P[p].Mass*UNIT_MASS_IN_SOLAR);
         if(mcorr < 1 && mcorr > 0) {dt_stellar_evol /= mcorr;}
         if(dt_stellar_evol < 1.e-6) {dt_stellar_evol = 1.e-6;}
-        dt_stellar_evol /= (0.001*All.UnitTime_in_Megayears/All.HubbleParam); // convert to code units //
+        dt_stellar_evol /= (UNIT_TIME_IN_GYR); // convert to code units //
         if(dt_stellar_evol>0) {if(dt_stellar_evol<dt) {dt = dt_stellar_evol;}}
     }
 #endif
@@ -978,8 +964,8 @@ integertime get_timestep(int p,		/*!< particle index */
 
     if(P[p].Type == 5)
     {
-#ifndef SINGLE_STAR_SINK_DYNAMICS
-      double dt_accr = 1.e-2 * 4.2e7 * SEC_PER_YEAR / All.UnitTime_in_s; // this is the Eddington timescale; not relevant for low radiative efficiency
+#if !defined(SINGLE_STAR_SINK_DYNAMICS) && defined(GALSF)
+      double dt_accr = 4.2e5 / UNIT_TIME_IN_YR; // this is the 1% of Salpeter timescale; not relevant for low radiative efficiency
 #else
       double dt_accr = All.MaxSizeTimestep;
 #endif      
@@ -990,10 +976,10 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_accr = 0.001 * DMAX(BPP(p).BH_Mass, All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
             dt_accr *= DMAX(0.1, All.BAL_f_accretion);
-#endif // BH_WIND_CONTINUOUS
+#endif
 #else
             dt_accr = 0.05 * DMAX(BPP(p).BH_Mass , All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
-#endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS)	    
+#endif 	    
 #ifdef SINGLE_STAR_SINK_DYNAMICS
             dt_accr = All.MinMassForParticleMerger / BPP(p).BH_Mdot;
 #ifdef SINGLE_STAR_FB_JETS
@@ -1002,7 +988,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
         } // if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
 #ifdef BH_SEED_GROWTH_TESTS
-            double dt_evol = 1.e4 * SEC_PER_YEAR / All.UnitTime_in_s;
+            double dt_evol = 1.e4 / UNIT_TIME_IN_YR;
 #ifdef TURB_DRIVING
             if(dt_evol > 1.e-3*All.StDecay) {dt_evol=1.e-3*All.StDecay;}
 #endif
@@ -1041,18 +1027,15 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt > dt_min && dt_min > 0) dt = 1.01 * dt_min;
         }
 #endif
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_FB_WINDS
+        if(P[p].ProtoStellarStage == 5) {double dt_spawn = All.BAL_wind_particle_mass / single_star_wind_mdot(p,1); if(dt > dt_spawn) dt = 1.01 * dt_spawn;}
+#endif
 #ifdef SINGLE_STAR_FB_SNE
         if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ){ //Star going supernova, still has mass to eject
-            double t_clear=P[p].SinkRadius/single_star_SN_velocity(p); // time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
-            dt = DMIN(dt,DMAX(t_clear/2,DMAX(All.MinSizeTimestep,All.Timebase_interval)* 1.01)); // Let's make the timestep as low as possible but longer than the time needed for previous ejecta to clear the area and safely above the smallest allowable timestep to avoid crashing
-        }
+            double t_clear=P[p].SinkRadius/single_star_SN_velocity(p);  dt = DMIN(dt,DMAX(t_clear/2,DMAX(All.MinSizeTimestep,All.Timebase_interval)* 1.01)); } // time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
 #endif
-#ifdef SINGLE_STAR_FB_WINDS
-        if(P[p].ProtoStellarStage == 5) {
-            double dt_spawn = All.BAL_wind_particle_mass / single_star_wind_mdot(p);
-            if(dt > dt_spawn) dt = 1.01 * dt_spawn;
-        }
-#endif                    
+#endif
     } // if(P[p].Type == 5)
 
 #ifdef BH_DEBUG_SPAWN_JET_TEST /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
@@ -1088,7 +1071,7 @@ integertime get_timestep(int p,		/*!< particle index */
             PRINT_WARNING("Part-ID=%llu  dt=%g dtc=%g ac=%g agrav=%g ahydro=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g m=%g type=%d\n",
                           (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type], P[p].Mass,P[p].Type);
 #endif // ndef LONGIDS
-#ifdef SINGLE_STAR_DEFAULTS //extra info for single star runs
+#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE //extra info for single star runs
             PRINT_WARNING("Part-ID=%llu min_dist_to_bh=%g cs_est=%g u_int=%g Pressure=%g",  (MyIDType) P[p].ID, P[p].min_dist_to_bh, sqrt(convert_internalenergy_soundspeed2(p, SphP[p].InternalEnergy)), SphP[p].InternalEnergy, SphP[p].Pressure);
 #endif
         }
@@ -1099,7 +1082,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #else
             PRINT_WARNING("Part-ID=%llu  dt=%g ac=%g agrav=%g xyz=(%g|%g|%g) type=%d\n", (MyIDType) P[p].ID, dt, ac, agrav, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],P[p].Type);
 #endif // ndef LONGIDS
-#ifdef SINGLE_STAR_DEFAULTS //extra info for single star runs
+#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE //extra info for single star runs
             PRINT_WARNING("Part-ID=%llu min_dist_to_bh=%g DensAroundStar=%g BH_Mdot=%g min_bh_approach_time=%g min_bh_freefall_time=%g BH_SurroundingGasVel=%g BH_dr_to_NearestGasNeighbor=%g\n", (MyIDType) P[p].ID, P[p].min_dist_to_bh, P[p].DensAroundStar, P[p].BH_Mdot, P[p].min_bh_approach_time, P[p].min_bh_freefall_time, P[p].BH_SurroundingGasVel, P[p].BH_dr_to_NearestGasNeighbor);
 #endif
         }

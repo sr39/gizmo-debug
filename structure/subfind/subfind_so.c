@@ -50,9 +50,9 @@ int Subfind_DensityOtherProps_evaluate(int target, int mode, int *nexport, int *
 #ifdef SUBFIND_ADDIO_BARYONS
             if(P[j].Type==0)
             {
-                double temp_keV = 6.14e-16 * (SphP[j].InternalEnergy*All.UnitMass_in_g/All.UnitEnergy_in_cgs); /* temp in keV, for fully-ionized primordial gas */
+                double temp_keV = 6.14e-16 * (SphP[j].InternalEnergy/UNIT_SPECEGY_IN_CGS); /* temp in keV, for fully-ionized primordial gas */
                 out.gas_mass += P[j].Mass; out.temp += P[j].Mass * temp_keV;
-                out.xlum += 1.52e-20 * (P[j].Mass*All.UnitMass_in_g/All.HubbleParam) * (SphP[j].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam) * sqrt(temp_keV); /* converts to 1e44 erg/s assuming thermal brems for fully-ionized primordial composition */
+                out.xlum += 1.52e-20 * (P[j].Mass*UNIT_MASS_IN_CGS) * (SphP[j].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS) * sqrt(temp_keV); /* converts to 1e44 erg/s assuming thermal brems for fully-ionized primordial composition */
             } else if (P[j].Type==4) {out.star_mass += P[j].Mass;}
 #endif
             

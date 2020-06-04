@@ -27,7 +27,7 @@ int addFB_evaluate_active_check(int i, int fb_loop_iteration)
     if(P[i].MassReturn_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==1) return 1;}
     if(P[i].RProcessEvent_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==2) return 1;}
 #endif
-#ifdef SINGLE_STAR_FB_WINDS
+#if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
     if(P[i].wind_mode != 2 || P[i].ProtoStellarStage != 5) return 0;
 #endif    
     return 0;
@@ -49,9 +49,11 @@ void determine_where_SNe_occur(void)
         P[i].MassReturn_ThisTimeStep=0;
         P[i].RProcessEvent_ThisTimeStep=0;
 #endif
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-        if(P[i].Type != 5) {continue;} //Sink particles are stars
-        if(P[i].ProtoStellarStage < 5) {continue;} //We need to have started MS to have winds or SN
+#if defined(SINGLE_STAR_SINK_DYNAMICS)
+        if(P[i].Type == 0) {continue;} // any non-gas type is eligible to be a 'star' here
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+        if(P[i].ProtoStellarStage < 5) {continue;} // We need to have started MS to have winds or SN
+#endif
 #else
         if(All.ComovingIntegrationOn) {if(P[i].Type != 4) {continue;}} // in cosmological simulations, 'stars' have particle type=4
         if(All.ComovingIntegrationOn==0) {if((P[i].Type<2)||(P[i].Type>4)) {continue;}} // in non-cosmological sims, types 2,3,4 are valid 'stars'
@@ -68,7 +70,7 @@ void determine_where_SNe_occur(void)
         // now use a calculation of mechanical event rates to determine where/when the events actually occur //
         npossible++;
         double RSNe = mechanical_fb_calculate_eventrates(i,dt);
-        rmean += RSNe; ptotal += RSNe * dt * P[i].Mass * (All.UnitTime_in_Megayears/All.HubbleParam) * (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS;
+        rmean += RSNe; ptotal += RSNe * (P[i].Mass*UNIT_MASS_IN_SOLAR) * (dt*UNIT_TIME_IN_MYR);
 #ifdef GALSF_SFR_IMF_SAMPLING
         if(P[i].IMF_NumMassiveStars>0) {P[i].IMF_NumMassiveStars=DMAX(0,P[i].IMF_NumMassiveStars-P[i].SNe_ThisTimeStep);} // lose an O-star for every SNe //
 #endif
@@ -163,7 +165,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     struct OUTPUT_STRUCT_NAME out;
     memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME));
     
-    v_ejecta_max = 5000.0 * 1.0e5/ All.UnitVelocity_in_cm_per_s;
+    v_ejecta_max = 5000.0 / UNIT_VEL_IN_KMS;
     // 'speed limit' to prevent numerically problematic kicks at low resolution //
     kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0;
     
@@ -179,14 +181,14 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
     
     // some units (just used below, but handy to define for clarity) //
-    double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
-    double density_to_n=All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / PROTONMASS;
-    double unit_egy_SNe = 1.0e51/(All.UnitEnergy_in_cgs/All.HubbleParam);
+    double unitlength_in_kpc=UNIT_LENGTH_IN_KPC * All.cf_atime;
+    double density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
+    double unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS;
     
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
     // account for energy going into CRs, so we don't 'double count' //
     double CR_energy_to_inject = 0;
-    if((local.SNe_v_ejecta > 2.0e8 / All.UnitVelocity_in_cm_per_s))
+    if((local.SNe_v_ejecta > 2000./UNIT_VEL_IN_KMS))
     {
         local.SNe_v_ejecta *= sqrt(1-All.CosmicRay_SNeFraction);
         CR_energy_to_inject = (All.CosmicRay_SNeFraction/(1.-All.CosmicRay_SNeFraction)) * 0.5 * local.Msne * local.SNe_v_ejecta * local.SNe_v_ejecta;
@@ -382,6 +384,10 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* inject the post-shock energy and momentum (convert to specific units as needed first) */
                 e_shock *= 1 / P[j].Mass;
                 SphP[j].InternalEnergy += e_shock;
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+                double uion = HIIRegion_Temp / (0.59*(5./3.-1.)*U_TO_TEMP_UNITS);
+                if(SphP[j].InternalEnergy > uion) {SphP[j].Ne = 1.0 + 2.0*yhelium(j);} /* reset ionized fraction and treat as fully-ionized from the shock */
+#endif
                 SphP[j].InternalEnergyPred += e_shock;
                 /* inject momentum */
                 double m_ej_input = pnorm * local.Msne;
@@ -389,8 +395,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double m_cooling = 4.18879*pnorm*SphP[j].Density*RsneKPC*RsneKPC*RsneKPC;
                 /* apply limiter for energy conservation */
                 double mom_boost_fac = 1 + sqrt(DMIN(mj_preshock , m_cooling) / m_ej_input);
-                if(loop_iteration > 0) {mom_boost_fac=1;}
-                
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+                if(loop_iteration > 0) {mom_boost_fac=1;} /* no unresolved PdV component for winds+r-process */
+#endif
                 /* save summation values for outputs */
                 dP = local.unit_mom_SNe / P[j].Mass * pnorm;
                 dP_sum += dP;
@@ -404,12 +411,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     P[j].Vel[k] += q;
                     SphP[j].VelPred[k] += q;
                 }
-
-#ifdef PM_HIRES_REGION_CLIPPING
-                dP=0; for(k=0;k<3;k++) dP+=P[j].Vel[k]*P[j].Vel[k]; dP=sqrt(dP);
-                if(dP>5.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) P[j].Mass=0;
-                if(dP>1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) for(k=0;k<3;k++) P[j].Vel[k]*=(1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s)/dP;
-#endif
+                apply_pm_hires_region_clipping_selection(j);
                 
             } // for(n = 0; n < numngb; n++)
         } // while(startnode >= 0)
@@ -458,10 +460,10 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double h2 = local.Hsml*local.Hsml;
     kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0; // define the kernel zero-point value, needed to prevent some nasty behavior when no neighbors found
     kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4); // define kernel quantities
-    double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
-    double density_to_n=All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / PROTONMASS;
-    double unit_egy_SNe = 1.0e51/(All.UnitEnergy_in_cgs/All.HubbleParam);
-    double v_ejecta_max = 5000.0 * 1.0e5/ All.UnitVelocity_in_cm_per_s; // 'speed limit' to prevent numerically problematic kicks at low resolution //
+    double unitlength_in_kpc= UNIT_LENGTH_IN_KPC * All.cf_atime;
+    double density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
+    double unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS;
+    double v_ejecta_max = 5000.0 * 1.0e5/UNIT_VEL_IN_CGS; // 'speed limit' to prevent numerically problematic kicks at low resolution //
     
     // now define quantities that will be used below //
     double psi_cool=1, psi_egycon=1, v_ejecta_eff=local.SNe_v_ejecta;
@@ -482,7 +484,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
     // account for energy going into CRs, so we don't 'double count' //
     double CR_energy_to_inject = 0;
-    if((v_ejecta_eff > 2.0e8 / All.UnitVelocity_in_cm_per_s))
+    if((v_ejecta_eff > 2000./UNIT_VEL_IN_KMS))
     {
         v_ejecta_eff *= sqrt(1-All.CosmicRay_SNeFraction);
         CR_energy_to_inject = (All.CosmicRay_SNeFraction/(1.-All.CosmicRay_SNeFraction)) * 0.5 * local.Msne * v_ejecta_eff * v_ejecta_eff;
@@ -491,7 +493,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     
     double Energy_injected_codeunits = 0.5 * local.Msne * v_ejecta_eff * v_ejecta_eff;
     double Esne51 = Energy_injected_codeunits / unit_egy_SNe;
-    double RsneKPC = 0., RsneKPC_3 = 0., m_cooling = 0., v_cooling = 2.1e7 / All.UnitVelocity_in_cm_per_s;
+    double RsneKPC = 0., RsneKPC_3 = 0., m_cooling = 0., v_cooling = 210./UNIT_VEL_IN_KMS;
     double RsneKPC_0 = (0.0284/unitlength_in_kpc);
     int feedback_type_is_SNe = 0;
     if(loop_iteration == 0) {feedback_type_is_SNe = 1;} // assume, for now, that loop 0 represents SNe, for purposes of energy-momentum switch below //
@@ -572,8 +574,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     if(z0 < 0.01) {z0 = 0.01;}
                     if(z0 < 1.) {z0_term = z0*sqrt(z0);} else {z0_term = z0;}
                     double nz_dep  = pow(n0 * z0_term , 0.14);;
-                    v_cooling = 2.10e7 * DMAX(nz_dep,0.5) / All.UnitVelocity_in_cm_per_s;
-                    m_cooling = 4.56e36 * e0 / (nz_dep*nz_dep * All.UnitMass_in_g/All.HubbleParam);
+                    v_cooling = 210. * DMAX(nz_dep,0.5) / UNIT_VEL_IN_KMS;
+                    m_cooling = 4.56e36 * e0 / (nz_dep*nz_dep * UNIT_MASS_IN_CGS);
                     RsneKPC = pow( 0.238732 * m_cooling/SphP[j].Density , 1./3. );
                 }
                 RsneKPC_3 = RsneKPC*RsneKPC*RsneKPC;
@@ -694,7 +696,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double boostfac_max = DMIN(1000. , v_ejecta_eff/v_cooling_lim); // boost factor cant exceed velocity limiter - if recession vel large, limits boost
                     if(mom_boost_fac > boostfac_max) {mom_boost_fac = boostfac_max;} // apply limiter
                 } else {
-#ifndef SINGLE_STAR_FB_WINDS
+#if !defined(SINGLE_STAR_FB_WINDS)
                     mom_boost_fac = DMIN(boost_egycon , boost_max); // simply take minimum - nothing fancy for winds
 #endif
                 }
@@ -716,25 +718,26 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 KE_final *= 0.5 * P[j].Mass * All.cf_a2inv;
                 double E_sne_initial = pnorm * Energy_injected_codeunits;
                 double d_Egy_internal = KE_initial + E_sne_initial - KE_final;
-#ifndef SINGLE_STAR_FB_WINDS
-                if(d_Egy_internal < 0.5*E_sne_initial) {d_Egy_internal = 0.5*E_sne_initial;}                     
+#if !defined(SINGLE_STAR_FB_WINDS)
                 /* if coupling radius > R_cooling, account for thermal energy loss in the post-shock medium: from Thornton et al. thermal energy scales as R^(-6.5) for R>R_cool */
+                if(d_Egy_internal < 0.5*E_sne_initial) {d_Egy_internal = 0.5*E_sne_initial;}  /* (for stellar wind module we ignore this b/c assume always trying to resolve R_cool */
                 double r_eff_ij = kernel.r - Get_Particle_Size(j);
                 if(r_eff_ij > RsneKPC) {d_Egy_internal *= RsneKPC_3 / (r_eff_ij*r_eff_ij*r_eff_ij);}
 #endif          
                 d_Egy_internal /= P[j].Mass; // convert to specific internal energy, finally //
 #ifndef MECHANICAL_FB_MOMENTUM_ONLY
-                if(d_Egy_internal > 0) {SphP[j].InternalEnergy += d_Egy_internal; SphP[j].InternalEnergyPred += d_Egy_internal; E_coupled += d_Egy_internal;}
-#endif                 
-                
-#ifdef PM_HIRES_REGION_CLIPPING
-                double dP=0; for(k=0;k<3;k++) dP+=P[j].Vel[k]*P[j].Vel[k]; dP=sqrt(dP);
-                if(dP>5.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) P[j].Mass=0;
-                if(dP>1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) for(k=0;k<3;k++) P[j].Vel[k]*=(1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s)/dP;
+                if(d_Egy_internal > 0)
+                {
+                    SphP[j].InternalEnergy += d_Egy_internal; SphP[j].InternalEnergyPred += d_Egy_internal; E_coupled += d_Egy_internal;
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+                    double uion = HIIRegion_Temp / (0.59*(5./3.-1.)*U_TO_TEMP_UNITS);
+                    if(SphP[j].InternalEnergy > uion) {SphP[j].Ne = 1.0 + 2.0*yhelium(j);} /* reset ionized fraction and treat as fully-ionized from the shock */
 #endif
+                }
+#endif                 
+                apply_pm_hires_region_clipping_selection(j);
 #ifdef SINGLE_STAR_FB_WINDS
-                SphP[j].wakeup = 1;
-                NeedToWakeupParticles_local = 1;
+                SphP[j].wakeup = 1; NeedToWakeupParticles_local = 1;
 #endif          
             } // for(n = 0; n < numngb; n++)
         } // while(startnode >= 0)

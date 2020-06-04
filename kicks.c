@@ -273,7 +273,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             //  both are not needed. we find slightly cleaner results on that test keeping the gravity and removing the KE switch
             
             // also check for flows which are totally dominated by the adiabatic component of their temperature evolution //
-            // double mach = fabs(SphP[i].MaxSignalVel/Particle_effective_soundspeed_i(i) - 2.0); //
+            // double mach = fabs(SphP[i].MaxSignalVel/Get_Gas_effective_soundspeed_i(i) - 2.0); //
             // if(mach < 1.1) {do_entropy=1;} // (actually, this switch tends to do more harm than good!) //
             //do_entropy = 0; // seems unstable in tests like interacting blastwaves... //
             if(do_entropy)
@@ -453,14 +453,14 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
     if(SphP[i].Density > 0)
     {
         /* now we're going to check for physically reasonable phi values */
-        double cs_phys = All.cf_afac3 * Particle_effective_soundspeed_i(i);
+        double cs_phys = All.cf_afac3 * Get_Gas_effective_soundspeed_i(i);
         double b_phys = 0.0;
-        for(j = 0; j < 3; j++) {b_phys += Get_Particle_BField(i,j)*Get_Particle_BField(i,j);}
+        for(j = 0; j < 3; j++) {b_phys += Get_Gas_BField(i,j)*Get_Gas_BField(i,j);}
         b_phys = sqrt(b_phys)*All.cf_a2inv;
         double vsig1 = sqrt(cs_phys*cs_phys + b_phys*b_phys/(SphP[i].Density*All.cf_a3inv));
         double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i].MaxSignalVel);
         double vsig_max = DMAX( DMAX(vsig1,vsig2) , All.FastestWaveSpeed );
-        double phi_phys_abs = fabs(Get_Particle_PhiField(i)) * All.cf_a3inv;
+        double phi_phys_abs = fabs(Get_Gas_PhiField(i)) * All.cf_a3inv;
         double vb_phy_abs = vsig_max * b_phys;
 
         if((!isnan(SphP[i].DtPhi))&&(phi_phys_abs>0)&&(vb_phy_abs>0)&&(!isnan(phi_phys_abs))&&(!isnan(vb_phy_abs)))
@@ -493,7 +493,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
         SphP[i].Phi = SphP[i].PhiPred = SphP[i].DtPhi = 0;
     }
     /* now apply the usual damping term */
-    double t_damp = Get_Particle_PhiField_DampingTimeInv(i);
+    double t_damp = Get_Gas_PhiField_DampingTimeInv(i);
     if((t_damp>0) && (!isnan(t_damp)) && (dt_entr>0))
     {
         SphP[i].Phi *= exp( -dt_entr * t_damp );
@@ -506,7 +506,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 #endif
     
 #ifdef NUCLEAR_NETWORK
-    for(j = 0; j < EOS_NSPECIES; j++) {SphP[i].xnuc[j] += SphP[i].dxnuc[j] * dt_entr * All.UnitTime_in_s;}    
+    for(j = 0; j < EOS_NSPECIES; j++) {SphP[i].xnuc[j] += SphP[i].dxnuc[j] * dt_entr * UNIT_TIME_IN_CGS;}    
     network_normalize(SphP[i].xnuc, &SphP[i].InternalEnergy, &All.nd, &All.nw);
 #endif
     

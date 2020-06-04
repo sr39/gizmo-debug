@@ -204,17 +204,17 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 
                 /* --------------------------------------------------------------------------------- */
                 /* sound speed, relative velocity, and signal velocity computation */
-                kernel.sound_j = Particle_effective_soundspeed_i(j);
+                kernel.sound_j = Get_Gas_effective_soundspeed_i(j);
                 kernel.vsig = kernel.sound_i + kernel.sound_j;
 #ifdef COSMIC_RAYS
-                double CosmicRayPressure_j[N_CR_PARTICLE_BINS]; for(k=0;k<N_CR_PARTICLE_BINS;k++) {CosmicRayPressure_j[k] = Get_Particle_CosmicRayPressure(j,k);} /* compute this for use below */
+                double CosmicRayPressure_j[N_CR_PARTICLE_BINS]; for(k=0;k<N_CR_PARTICLE_BINS;k++) {CosmicRayPressure_j[k] = Get_Gas_CosmicRayPressure(j,k);} /* compute this for use below */
                 //double Streaming_Loss_Term = 0; // alternative evaluation of streaming+diffusion losses: still experimental //
 #endif
 #ifdef MAGNETIC
                 double BPred_j[3];
-                for(k=0;k<3;k++) {BPred_j[k]=Get_Particle_BField(j,k);} /* defined j b-field in appropriate units for everything */
+                for(k=0;k<3;k++) {BPred_j[k]=Get_Gas_BField(j,k);} /* defined j b-field in appropriate units for everything */
 #ifdef DIVBCLEANING_DEDNER
-                double PhiPred_j = Get_Particle_PhiField(j); /* define j phi-field in appropriate units */
+                double PhiPred_j = Get_Gas_PhiField(j); /* define j phi-field in appropriate units */
 #endif
                 kernel.b2_j = BPred_j[0]*BPred_j[0] + BPred_j[1]*BPred_j[1] + BPred_j[2]*BPred_j[2];
                 kernel.alfven2_j = kernel.b2_j * fac_magnetic_pressure / SphP[j].Density;

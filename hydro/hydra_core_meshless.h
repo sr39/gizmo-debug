@@ -204,7 +204,7 @@
         if((P[j].ID==All.AGNWindID)||(local.ConditionNumber<0)) {recon_mode = 0;} // one of the particles is a wind particle: use a low-order reconstruction for safety
 #endif
 #if defined(GALSF) || defined(COOLING)
-        if(fabs(vdotr2_phys)*All.UnitVelocity_in_cm_per_s > 1.0e8) {recon_mode = 0;} // particle approach/recession velocity > 1000 km/s: be extra careful here!
+        if(fabs(vdotr2_phys)*UNIT_VEL_IN_KMS > 1000.) {recon_mode = 0;} // particle approach/recession velocity > 1000 km/s: be extra careful here!
 #endif
         reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, recon_mode);

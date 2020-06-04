@@ -30,7 +30,7 @@ void init(void)
     
 #ifdef MAGNETIC
     double a2_fac;
-    double gauss2gizmo = All.UnitMagneticField_in_gauss / sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam);
+    double gauss2gizmo = All.UnitMagneticField_in_gauss / UNIT_B_IN_GAUSS;
     /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here;
         [much simpler, but be sure of your conversions!] */
 #endif
@@ -192,7 +192,7 @@ void init(void)
 #endif
     
     All.TimeLastStatistics = All.TimeBegin - All.TimeBetStatistics;
-#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
+#if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
     All.TimeNextOnTheFlyFoF = All.TimeBegin;
 #endif
     
@@ -309,15 +309,14 @@ void init(void)
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
 #endif
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
 #if defined(SINGLE_STAR_FB_SNE)
             P[i].Mass_final = P[i].Mass; //best guess, only matters if we restart in the middle of spawning an SN 
 #endif
 #if defined(SINGLE_STAR_FB_WINDS)
             P[i].wind_mode = 0; //this will make single_star_wind_mdot reset it
-            double nx[3], ny[3], nz[3];
-            get_random_orthonormal_basis(P[i].ID,nx,ny,nz);
-            int kw; for(kw=0;kw<3;kw++) {P[i].Wind_direction[kw] = nx[kw]; P[i].Wind_direction[kw+3] = ny[kw];
-} 
+            double nx[3],ny[3],nz[3]; int kw; get_random_orthonormal_basis(P[i].ID,nx,ny,nz); for(kw=0;kw<3;kw++) {P[i].Wind_direction[kw] = nx[kw]; P[i].Wind_direction[kw+3] = ny[kw];}
+#endif
 #endif
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
             P[i].SNe_ThisTimeStep = 0;
@@ -334,7 +333,7 @@ void init(void)
 #if defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         if(RestartFlag == 0)
         {
-	        P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001) * get_random_number(P[i].ID + 3);
+	        P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (UNIT_TIME_IN_GYR) * get_random_number(P[i].ID + 3);
         }
 #endif
         
@@ -395,21 +394,26 @@ void init(void)
 #ifdef METALS
         All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
                                             //   also Anders+Grevesse 1989 (older, but hugely-cited compilation; their Z=0.0201, proto-solar=0.0213)
-
 #ifdef COOL_METAL_LINES_BY_SPECIES
         if (NUM_METAL_SPECIES>=10) {
-            All.SolarAbundances[1]=0.28;    // He  (10.93 in units where log[H]=12, so photospheric mass fraction -> Y=0.2485 [Hydrogen X=0.7381]; Anders+Grevesse Y=0.2485, X=0.7314)
-            All.SolarAbundances[2]=3.26e-3; // C   (8.43 -> 2.38e-3, AG=3.18e-3)
-            All.SolarAbundances[3]=1.32e-3; // N   (7.83 -> 0.70e-3, AG=1.15e-3)
-            All.SolarAbundances[4]=8.65e-3; // O   (8.69 -> 5.79e-3, AG=9.97e-3)
-            All.SolarAbundances[5]=2.22e-3; // Ne  (7.93 -> 1.26e-3, AG=1.72e-3)
-            All.SolarAbundances[6]=9.31e-4; // Mg  (7.60 -> 7.14e-4, AG=6.75e-4)
-            All.SolarAbundances[7]=1.08e-3; // Si  (7.51 -> 6.71e-4, AG=7.30e-4)
-            All.SolarAbundances[8]=6.44e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4)
-            All.SolarAbundances[9]=1.01e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4)
-            All.SolarAbundances[10]=1.73e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3)
+            All.SolarAbundances[1]=0.28;    // He  (10.93 in units where log[H]=12, so photospheric mass fraction -> Y=0.2485 [Hydrogen X=0.7381]; Anders+Grevesse Y=0.2485, X=0.7314), with proto-solar Y=0.27
+            All.SolarAbundances[2]=3.26e-3; // C   (8.43 -> 2.38e-3, AG=3.18e-3); proto-solar from Asplund=8.47 -> 2.53e-3
+            All.SolarAbundances[3]=1.32e-3; // N   (7.83 -> 0.70e-3, AG=1.15e-3); PS=7.87->7.41e-4
+            All.SolarAbundances[4]=8.65e-3; // O   (8.69 -> 5.79e-3, AG=9.97e-3); PS=8.73->6.13e-3
+            All.SolarAbundances[5]=2.22e-3; // Ne  (7.93 -> 1.26e-3, AG=1.72e-3); PS=7.97->1.34e-3
+            All.SolarAbundances[6]=9.31e-4; // Mg  (7.60 -> 7.14e-4, AG=6.75e-4); PS=7.64->7.57e-4
+            All.SolarAbundances[7]=1.08e-3; // Si  (7.51 -> 6.71e-4, AG=7.30e-4); PS=7.55->7.12e-4
+            All.SolarAbundances[8]=6.44e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4); PS=7.16->3.31e-4
+            All.SolarAbundances[9]=1.01e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4); PS=6.38->6.87e-5
+            All.SolarAbundances[10]=1.73e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3); PS=7.54->1.38e-3
         }
 #endif // COOL_METAL_LINES_BY_SPECIES
+        
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // new default abundances; using Asplund et al. 2009 proto-solar abundances ??
+        All.SolarAbundances[0]=0.0142; if(NUM_METAL_SPECIES>=10) {
+            All.SolarAbundances[1]=0.27030; All.SolarAbundances[2]=2.53e-3; All.SolarAbundances[3]=7.41e-4; All.SolarAbundances[4]=6.13e-3; All.SolarAbundances[5]=1.34e-3;
+            All.SolarAbundances[6]=7.57e-4; All.SolarAbundances[7]=7.12e-4; All.SolarAbundances[8]=3.31e-4; All.SolarAbundances[9]=6.87e-5; All.SolarAbundances[10]=1.38e-3;}
+#endif
 #ifdef GALSF_FB_FIRE_RPROCESS
         //All.SolarAbundances[NUM_METAL_SPECIES-1]=0.0; // R-process tracer
         for(j=1;j<=NUM_RPROCESS_SPECIES;j++) All.SolarAbundances[NUM_METAL_SPECIES-j]=0.0; // R-process tracer
@@ -424,7 +428,7 @@ void init(void)
             /* initialize abundance ratios. for now, assume solar */
             for(j=0;j<NUM_METAL_SPECIES;j++) P[i].Metallicity[j]=All.SolarAbundances[j]*P[i].Metallicity[0]/All.SolarAbundances[0];
             /* need to allow for a primordial He abundance */
-            if(NUM_METAL_SPECIES>=10) P[i].Metallicity[1]=0.25+(All.SolarAbundances[1]-0.25)*P[i].Metallicity[0]/All.SolarAbundances[0];
+            if(NUM_METAL_SPECIES>=10) P[i].Metallicity[1]=(1.-HYDROGEN_MASSFRAC)+(All.SolarAbundances[1]-(1.-HYDROGEN_MASSFRAC))*P[i].Metallicity[0]/All.SolarAbundances[0];
         } // if(RestartFlag == 0)
 
 #ifdef CHIMES 
@@ -461,8 +465,7 @@ void init(void)
 	  {
 	    H_mass_fraction = HYDROGEN_MASSFRAC; 
 	    ChimesGasVars[i].element_abundances[0] = (ChimesFloat) ((1.0 - H_mass_fraction) / (4.0 * H_mass_fraction));  // He 
-	    for (j = 1; j < 10; j++) 
-	      ChimesGasVars[i].element_abundances[j] = 0.0; 
+	    for (j = 1; j < 10; j++) {ChimesGasVars[i].element_abundances[j] = 0.0;} 
 	    ChimesGasVars[i].metallicity = 0.0; 
 	    ChimesGasVars[i].dust_ratio = 0.0; 
 	  }
@@ -495,7 +498,7 @@ void init(void)
 #endif
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION // properly initialize luminosity
                 singlestar_subgrid_protostellar_evolution_update_track(i,0,0);             
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION==1)
+#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2)
                 calculate_individual_stellar_luminosity(BPP(i).BH_Mdot, BPP(i).BH_Mass, i);
 #endif        
 #endif
@@ -635,7 +638,7 @@ void init(void)
 #if (GALSF_SUBGRID_WIND_SCALING==1)
         SphP[i].HostHaloMass = 0;
 #endif
-#endif // GALSF_SUBGRID_WINDS //
+#endif
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) 
         SphP[i].DelayTimeHII = 0;
 #endif
@@ -644,7 +647,7 @@ void init(void)
 #endif
 #ifdef GALSF
         SphP[i].Sfr = 0;
-#if (GALSF_SFR_VIRIAL_SF_CRITERION>=3)
+#if defined(GALSF_SFR_VIRIAL_CRITERION_TIMEAVERAGED)
         SphP[i].AlphaVirial_SF_TimeSmoothed = 0;
 #endif
 #endif
