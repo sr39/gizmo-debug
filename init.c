@@ -431,7 +431,7 @@ void init(void)
 #ifdef COOL_METAL_LINES_BY_SPECIES 
 	if (P[i].Type == 0) 
 	  {
-	    H_mass_fraction = 1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1]); 
+	    double H_mass_fraction = 1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1]); 
 	    ChimesGasVars[i].element_abundances[0] = (ChimesFloat) (P[i].Metallicity[1] / (4.0 * H_mass_fraction));   // He 
 	    ChimesGasVars[i].element_abundances[1] = (ChimesFloat) (P[i].Metallicity[2] / (12.0 * H_mass_fraction));  // C 
 	    ChimesGasVars[i].element_abundances[2] = (ChimesFloat) (P[i].Metallicity[3] / (14.0 * H_mass_fraction));  // N 
@@ -459,7 +459,7 @@ void init(void)
 #ifdef CHIMES 
 	if (P[i].Type == 0) 
 	  {
-	    H_mass_fraction = HYDROGEN_MASSFRAC; 
+	    double H_mass_fraction = HYDROGEN_MASSFRAC; 
 	    ChimesGasVars[i].element_abundances[0] = (ChimesFloat) ((1.0 - H_mass_fraction) / (4.0 * H_mass_fraction));  // He 
 	    for (j = 1; j < 10; j++) {ChimesGasVars[i].element_abundances[j] = 0.0;} 
 	    ChimesGasVars[i].metallicity = 0.0; 
@@ -1013,8 +1013,7 @@ void init(void)
 	      ChimesGasVars[i].hydro_timestep = (ChimesFloat) DMIN(3.16e13 / ChimesGasVars[i].nH_tot, 3.16e16); 
 	      ChimesGasVars[i].ThermEvolOn = 0; 
 
-	      for (iter_number = 0; iter_number < 10; iter_number++)
-		chimes_network(&(ChimesGasVars[i]), &ChimesGlobalVars); 
+	      for (iter_number = 0; iter_number < 10; iter_number++) chimes_network(&(ChimesGasVars[i]), &ChimesGlobalVars); 
 
             
 #ifdef CHIMES_TURB_DIFF_IONS 
