@@ -2877,7 +2877,7 @@ extern struct sph_particle_data
 #endif
 #endif
 #ifdef CHIMES_TURB_DIFF_IONS 
-    double ChimesNIons[TOTSIZE];
+    double ChimesNIons[CHIMES_TOTSIZE];
 #endif
 #ifdef BH_COMPTON_HEATING
     MyFloat Rad_Flux_AGN;             /*!< local AGN flux */

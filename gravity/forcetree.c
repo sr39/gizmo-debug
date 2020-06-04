@@ -2618,7 +2618,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double m_lum_total = 0; int ks_q; for(ks_q=0;ks_q<N_RT_FREQ_BINS;ks_q++) {m_lum_total += mass_stellarlum[ks_q];}
                     incident_flux_euv += All.PhotonMomentum_fUV * fac_intensity * m_lum_total;
                 }
-#endif
                 // don't multiply by shortrange_table since that is to prevent 2x-counting by PMgrid (which never happens here) //
 #endif
 #ifdef BH_PHOTONMOMENTUM

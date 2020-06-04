@@ -286,7 +286,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 {
     /* if tracking chemistry explicitly, return the explicitly-evolved H2 fraction */
 #ifdef CHIMES // use the CHIMES molecular network for H2
-    return DMIN(1,DMAX(0, ChimesGasVars[i].abundances[H2] * 2.0)); // factor 2 converts to mass fraction in molecular gas, as desired
+    return DMIN(1,DMAX(0, ChimesGasVars[i].abundances[sp_H2] * 2.0)); // factor 2 converts to mass fraction in molecular gas, as desired
 #endif
     
 #if (COOL_GRACKLE_CHEMISTRY >= 2) // Use GRACKLE explicitly-tracked H2 [using the molecular network if this is valid]
