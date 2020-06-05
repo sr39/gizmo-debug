@@ -40,9 +40,9 @@ static float *SpCoolTable0, *SpCoolTable1;
 static double J_UV = 0, gJH0 = 0, gJHep = 0, gJHe0 = 0, epsH0 = 0, epsHep = 0, epsHe0 = 0;
 #endif
 
-#ifdef CHIMES 
-int ForceEqOn, N_chimes_full_output_freq, ChimesEqmMode, ChimesUVBMode, ChimesInitIonState, N_chimes_full_output_freq, Chimes_incl_full_output = 1;
-double isotropic_photon_density, shielding_length_factor, cr_rate, *dustG_arr, *H2_dissocJ_arr, chimes_rad_field_norm_factor, shielding_length_factor, cr_rate;
+#ifdef CHIMES
+int ChimesEqmMode, ChimesUVBMode, ChimesInitIonState, N_chimes_full_output_freq, Chimes_incl_full_output = 1;
+double chimes_rad_field_norm_factor, shielding_length_factor, cr_rate;
 char ChimesDataPath[256], ChimesEqAbundanceTable[196], ChimesPhotoIonTable[196];
 struct gasVariables *ChimesGasVars;
 struct globalVariables ChimesGlobalVars; 
