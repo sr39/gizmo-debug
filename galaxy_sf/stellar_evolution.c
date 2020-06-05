@@ -46,7 +46,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 #if !defined(SINGLE_STAR_SINK_DYNAMICS)
     return 0; /* not defined */
 #endif
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2) /* this is pre-calculated, simply return it */
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2) /* this is pre-calculated, simply return it */
     return P[i].StarLuminosity_Solar / UNIT_LUM_IN_SOLAR;
 #endif
     /* if above flags not defined, estimate accretion + main-sequence luminosity as simply as possible */
@@ -61,7 +61,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
         else if(m_solar < 53.9) {lum_sol = 1.5 * m_solar*m_solar*m_solar * sqrt(m_solar);}
         else {lum_sol = 32000. * m_solar;}
     }
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1) // now, account for pre-main sequence evolution and calculate accretion luminosity using protostellar radius
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 1) // now, account for pre-main sequence evolution and calculate accretion luminosity using protostellar radius
     if(i > 0) {if(P[i].Type == 5) {
         double eps_protostar=1.0, T4000_4 = pow(m_solar , 0.55), l_kh = 0.2263 * P[i].ProtoStellarRadius_inSolar*P[i].ProtoStellarRadius_inSolar * T4000_4; // protostellar temperature along Hayashi track and luminosity from KH contraction
         lum = DMAX(lum_sol,l_kh) / UNIT_LUM_IN_SOLAR + eps_protostar * (All.G * P[i].Mass / (P[i].ProtoStellarRadius_inSolar / UNIT_LENGTH_IN_SOLAR)) * mdot; // assume GM/r liberated per unit mass. Note we need radius in code units here since everything else in 'lum' is code-units as well. for pre-ms evolution, if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
@@ -169,7 +169,7 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
     return R_SNe;
 #endif
     
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* SINGLE-STAR version: simple implementation of single-star wind mass-loss and SNe rates */
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) /* SINGLE-STAR version: simple implementation of single-star wind mass-loss and SNe rates */
     double m_sol,l_sol; m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR; l_sol=bh_lum_bol(0,P[i].Mass,i)*UNIT_LUM_IN_SOLAR;
 #ifdef SINGLE_STAR_FB_WINDS
     double gam=DMIN(0.5,3.2e-5*l_sol/m_sol), alpha=0.5+0.4/(1.+16./m_sol), q0=(1.-alpha)*gam/(1.-gam), k0=1./30.; // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons, approximate scaling for alpha factor with stellar type (weak effect)
@@ -211,7 +211,7 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 
 double mechanical_fb_calculate_eventrates_SNe(int i, double dt) 
 {
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && (!defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)) /* no single-star module to use here, for these flags its in the spawn routine */
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && (!defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)) /* no single-star module to use here, for these flags its in the spawn routine */
     return 0;
 #endif
     if(All.SNe_Energy_Renormalization <= 0) return 0;
@@ -266,7 +266,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 #if defined(SINGLE_STAR_FB_WINDS) /* SINGLE-STAR VERSION: single-star wind mass-loss rates */
     double fire_wind_rel_mass_res = 1e-4; //relative mass resolution of winds, essentially the wind will get spawned in packets of fire_wind_rel_mass_res*(gas_mass_resolution) mass
     D_RETURN_FRAC = fire_wind_rel_mass_res * (2.0*All.MinMassForParticleMerger)/ P[i].Mass;
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION /* for 'fancy' multi-stage modules, have a separate subroutine to compute this */
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION /* for 'fancy' multi-stage modules, have a separate subroutine to compute this */
     if(P[i].wind_mode != 2) {return;} /* only some eligible particles have winds in this module */
     p = single_star_wind_mdot(i,0) * dt / P[i].Mass; /* actual mdot from its own subroutine, given in code units */
 #else /* otherwise use standard scaling from e.g. Castor, Abbot, & Klein */
@@ -417,7 +417,7 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
 #if defined(SINGLE_STAR_FB_WINDS) /* SINGLE-STAR VERSION: instead of a stellar population, this is wind from a single star */
     double m_msun=P[i].Mass*UNIT_MASS_IN_SOLAR;
     in->SNe_v_ejecta = (616. * sqrt((1.+0.1125*m_msun)/(1.+0.0125*m_msun)) * pow(m_msun,0.131)) / UNIT_VEL_IN_KMS; // scaling from size-mass relation+eddington factor, assuming line-driven winds //
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     in->SNe_v_ejecta = single_star_wind_velocity(i); /* for fancy models, wind velocity in subroutine, based on Leitherer 1992 and stellar evolutions tage, size, etc. */
 #endif
 #endif
@@ -443,7 +443,7 @@ double Z_for_stellar_evol(int i)
 #ifdef SINGLE_STAR_FB_JETS
 double single_star_jet_velocity(int n){
     /*Calculates the launch velocity of jets*/
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* use the fancy stellar evolution modules to calculate these for stars or protostars */
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) /* use the fancy stellar evolution modules to calculate these for stars or protostars */
     return (All.BAL_f_launch_v * sqrt(All.G * P[n].BH_Mass / (P[n].ProtoStellarRadius_inSolar / UNIT_LENGTH_IN_SOLAR)) * All.cf_atime); // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
 #else
     return (All.BAL_f_launch_v * sqrt(All.G * P[n].BH_Mass / (10. / UNIT_LENGTH_IN_SOLAR)) * All.cf_atime); // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum; without a better guess, assume fiducial protostellar radius of 10*Rsun, as in Federrath 2014
@@ -452,12 +452,12 @@ double single_star_jet_velocity(int n){
 #endif
 
 
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* begins large block of 'fancy' protostar-through-MS stellar evolution models */
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) /* begins large block of 'fancy' protostar-through-MS stellar evolution models */
 
 /* 'master' function to update the size (and other properties like effective temperature) of accreting protostars along relevant stellar evolution tracks */
 void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt)
 {
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
+#if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 1)
     /* this is the simple version written by Phil: intentionally simplified PS evolution tracks, designed to make it easy to understand and model the evolution and reduce un-necessary complications */
     double lum_sol = 0.0, m_initial = DMAX(1.e-37 , (BPP(n).BH_Mass - dm)), mu = DMAX(0, dm/m_initial), m_solar = BPP(n).BH_Mass*UNIT_MASS_IN_SOLAR, T4000_4 = pow(m_solar, 0.55); // m_initial = mass before the accretion, mu = relative mass accreted, m_solar = mass in solar units, T4000_4 = (temperature/4000K)^4 along Hayashi track
     if(m_solar > 0.012) // below this limit, negligible luminosity //
@@ -481,13 +481,13 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
     if(m_solar <= 1) {R_main_sequence_ignition = pow(m_solar,0.8);} else {R_main_sequence_ignition = pow(m_solar,0.57);}
     if(BPP(n).ProtoStellarRadius_inSolar <= R_main_sequence_ignition)
     {
-        BPP(n).ProtoStellarRadius_inSolar = R_main_sequence_ignition; BPP(n).ProtoStellarStage = 5; //using same notation for MS as SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1
+        BPP(n).ProtoStellarRadius_inSolar = R_main_sequence_ignition; BPP(n).ProtoStellarStage = 5; //using same notation for MS as SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 1
 #ifdef SINGLE_STAR_PROMOTION
         P[n].Type = 4; P[n].StellarAge = All.Time; P[n].Mass = DMAX(P[n].Mass , BPP(n).BH_Mass + BPP(n).BH_Mass_AlphaDisk); // convert type, mark the new ZAMS age according to the current time, and accrete remaining mass
 #endif
     }
 
-#elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2) /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */
+#elif (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2) /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */
     
     double frad = 0.18; //limit for forming radiative barrier, based on Offner+MckKee 2011 source code
     double fk = 0.5; //fraction of kinetic energy that is radiated away in the inner disk before reaching the surface, using default ORION value here as it is not a GIZMO input parameter
@@ -656,10 +656,10 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
 #else
     BPP(n).StarLuminosity_Solar = (eps_protostar*All.G*mass*mdot/r + lum_Hayashi) * UNIT_LUM_IN_SOLAR; //same as above but we don't count H burning for th emission. Thsi way the radial evolution follows the same track as with the full model, but we don't provide feedback from H burning to the nearby gas
 #endif
-#endif//end of SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2
+#endif//end of SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2
 
 #ifdef PS_EVOL_OUTPUT_MOREINFO // print out the basic star info
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2)
+#if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
     if (BPP(n).ProtoStellarStage >= 5) //only for MS stars, for previous stages we will print out the properties before
 #endif
     {printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: 0 rel_dr: 0 dm: %g dm_D: 0 Tc: 0 Pc: 0 rhoc: 0 beta: 0 dt: %g n_ad: 0 lum_int: 0 lum_I: 0 lum_D: 0 age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: 0 n_subcycle: 0.ZAMS_Mass %g PS_end\n",All.Time, P[n].ID,BPP(n).BH_Mass*UNIT_MASS_IN_SOLAR,BPP(n).ProtoStellarRadius_inSolar,BPP(n).ProtoStellarStage, BPP(n).BH_Mdot*UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR , dm*UNIT_MASS_IN_SOLAR, dt*UNIT_TIME_IN_MYR, (All.Time-P[n].ProtoStellarAge)*UNIT_TIME_IN_MYR, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk*UNIT_MASS_IN_SOLAR, BPP(n).SinkRadius, P[n].ZAMS_Mass );}
@@ -787,7 +787,7 @@ void single_star_SN_init_directions(void){
 #endif
 
 
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2) /* Functions for protosteller evolution model based on Offner 2009 */
+#if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2) /* Functions for protosteller evolution model based on Offner 2009 */
 /* Calculate the mean ratio of the gas pressure to the gas+radiation pressure, either by solving the Eddington quartic (for n_ad=3, Eq B5) or by using tabulated values, based on Offner 2009, code taken from ORION */
 double ps_beta(double m, double n_ad, double rhoc, double Pc) {
     double mass=m*UNIT_MASS_IN_SOLAR;//in units of solar mass
@@ -910,7 +910,7 @@ double ps_radius_MS_in_solar(double m) {
     return (1.71535900*pow(m_solar,2.5)+6.59778800*pow(m_solar,6.5)+10.08855000*pow(m_solar,11)+1.01249500*pow(m_solar,19)+0.07490166*pow(m_solar,19.5)) /
         (0.01077422+3.08223400*pow(m_solar,2)+17.84778000*pow(m_solar,8.5)+pow(m_solar,18.5)+0.00022582*pow(m_solar,19.5));
 }
-#endif // (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2) /* end functions for protosteller evolution model based on Offner 2009 */
+#endif // (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2) /* end functions for protosteller evolution model based on Offner 2009 */
 
 
 #endif //end of protostellar evolution functions

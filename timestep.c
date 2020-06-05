@@ -1025,7 +1025,7 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt > dt_min && dt_min > 0) dt = 1.01 * dt_min;
         }
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
 #ifdef SINGLE_STAR_FB_WINDS
         if(P[p].ProtoStellarStage == 5) {double dt_spawn = All.BAL_wind_particle_mass / single_star_wind_mdot(p,1); if(dt > dt_spawn) dt = 1.01 * dt_spawn;}
 #endif
@@ -1073,7 +1073,7 @@ integertime get_timestep(int p,		/*!< particle index */
             PRINT_WARNING("Part-ID=%llu  dt=%g dtc=%g ac=%g agrav=%g ahydro=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g m=%g type=%d\n",
                           (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type], P[p].Mass,P[p].Type);
 #endif // ndef LONGIDS
-#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE //extra info for single star runs
+#ifdef SINGLE_STAR_STARFORGE_DEFAULTS //extra info for single star runs
             PRINT_WARNING("Part-ID=%llu min_dist_to_bh=%g cs_est=%g u_int=%g Pressure=%g",  (MyIDType) P[p].ID, P[p].min_dist_to_bh, sqrt(convert_internalenergy_soundspeed2(p, SphP[p].InternalEnergy)), SphP[p].InternalEnergy, SphP[p].Pressure);
 #endif
         }
@@ -1084,7 +1084,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #else
             PRINT_WARNING("Part-ID=%llu  dt=%g ac=%g agrav=%g xyz=(%g|%g|%g) type=%d\n", (MyIDType) P[p].ID, dt, ac, agrav, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],P[p].Type);
 #endif // ndef LONGIDS
-#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE //extra info for single star runs
+#ifdef SINGLE_STAR_STARFORGE_DEFAULTS //extra info for single star runs
             PRINT_WARNING("Part-ID=%llu min_dist_to_bh=%g DensAroundStar=%g BH_Mdot=%g min_bh_approach_time=%g min_bh_freefall_time=%g BH_SurroundingGasVel=%g BH_dr_to_NearestGasNeighbor=%g\n", (MyIDType) P[p].ID, P[p].min_dist_to_bh, P[p].DensAroundStar, P[p].BH_Mdot, P[p].min_bh_approach_time, P[p].min_bh_freefall_time, P[p].BH_SurroundingGasVel, P[p].BH_dr_to_NearestGasNeighbor);
 #endif
         }

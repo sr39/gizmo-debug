@@ -639,7 +639,7 @@ void set_blackhole_long_range_rp(int i, int n) /* pre-set quantities needed for 
 void blackhole_final_operations(void)
 {
     int i, k, n, bin; double dt, mass_disk, mdot_disk, MgasBulge, MstarBulge, r0; k=0;
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
     int count_bhelim=0, tot_bhelim;
 #endif
 
@@ -782,7 +782,7 @@ void blackhole_final_operations(void)
         BPP(n).BH_Mass -= dm_wind;
 #endif 
 #endif
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 #if defined(SINGLE_STAR_FB_WINDS)
        if(P[n].ProtoStellarStage == 5){
            if(P[n].wind_mode == 1) {
@@ -828,7 +828,7 @@ void blackhole_final_operations(void)
 #endif
     
 #if defined(BH_OUTPUT_MOREINFO)
-#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE
+#ifdef SINGLE_STAR_STARFORGE_DEFAULTS
         fprintf(FdBlackHolesDetails, "%2.12f %u  %g %g %g %g %g  %g %g %g %g %g %g  %2.10f %2.10f %2.10f  %2.7f %2.7f %2.7f  %g %g %g  %g %g %g\n",
                 All.Time, P[n].ID,  P[n].Mass, BPP(n).BH_Mass, mass_disk, BPP(n).BH_Mdot, mdot_disk, dt, BPP(n).DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy,
                 BlackholeTempInfo[i].Mgas_in_Kernel, BlackholeTempInfo[i].Mstar_in_Kernel, r0, P[n].Pos[0], P[n].Pos[1], P[n].Pos[2],  P[n].Vel[0], P[n].Vel[1], P[n].Vel[2],
@@ -853,14 +853,14 @@ void blackhole_final_operations(void)
         TimeBin_BH_Mdot[bin] += BPP(n).BH_Mdot;
         if(BPP(n).BH_Mass > 0) {TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;}
         
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
         singlestar_subgrid_protostellar_evolution_update_track(n, dm, dt);
         if((P[n].Type!=5) || (P[n].Mass==0)) {count_bhelim++;} // our subroutine has promoted or removed this sink: one fewer BH-type particle exists now //
 #endif
         
     } // for(i=0; i<N_active_loc_BHs; i++)
             
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     MPI_Allreduce(&count_bhelim, &tot_bhelim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     All.TotBHs -= tot_bhelim;
 #endif

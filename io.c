@@ -971,7 +971,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_R_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -982,7 +982,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_MASS_D_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -993,7 +993,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_ZAMS_MASS:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1004,7 +1004,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_STAGE_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1015,7 +1015,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_LUM_SINGLESTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -2643,31 +2643,31 @@ int blockpresent(enum iofields blocknr)
             break;
             
         case IO_R_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             return 1;
 #endif
             break;
             
         case IO_MASS_D_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             return 1;
 #endif
             break;
             
         case IO_ZAMS_MASS:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             return 1;
 #endif
             break;
             
         case IO_STAGE_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             return 1;
 #endif
             break;
             
         case IO_LUM_SINGLESTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             return 1;
 #endif
             break;

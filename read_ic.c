@@ -393,31 +393,31 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++) {P[offset + n].BH_Mdot = *fp++;}
 #endif
         case IO_R_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].ProtoStellarRadius_inSolar = *fp++;}
 #endif
             break;
             
         case IO_MASS_D_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].Mass_D = *fp++;}
 #endif
             break;
             
         case IO_ZAMS_MASS:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].ZAMS_Mass = *fp++;}
 #endif
             break;
             
         case IO_STAGE_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].ProtoStellarStage = *ip_int++;}
 #endif
             break;
             
         case IO_LUM_SINGLESTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].StarLuminosity_Solar = *fp++;}
 
 #endif
@@ -872,7 +872,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #ifdef PIC_MHD
                    && blocknr != IO_GRAINTYPE
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
                    && blocknr != IO_R_PROTOSTAR
                    && blocknr != IO_MASS_D_PROTOSTAR
                    && blocknr != IO_ZAMS_MASS

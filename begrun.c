@@ -439,7 +439,7 @@ void begrun(void)
 #endif
 #endif
 
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     single_star_SN_init_directions();
 #endif
 #ifdef RADTRANSFER
@@ -762,7 +762,7 @@ void open_outputfiles(void)
     }
 #endif
 
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
   sprintf(buf, "%s%s", All.OutputDir, "SN_details.txt");
   if(!(FdBhSNDetails = fopen(buf, mode)))
     {
@@ -2135,7 +2135,7 @@ void read_parameter_file(char *fname)
                 if(strcmp("UnitMagneticField_in_gauss",tag[i])==0) {*((double *)addr[i])=3.5449077018110318; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitMagneticField_in_gauss); continue;}
 #endif
 #endif
-#if defined(SINGLE_STAR_FB_JETS) && defined(SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE)
+#if defined(SINGLE_STAR_FB_JETS) && defined(SINGLE_STAR_STARFORGE_DEFAULTS)
                 if(strcmp("BAL_f_launch_v",tag[i])==0) {*((double *)addr[i])=0.3; printf("Tag %s (%s) not set in parameter file: will default to %g \n",tag[i],alternate_tag[i],All.BAL_f_launch_v); continue;}
 #endif
 #ifdef CONDUCTION_SPITZER

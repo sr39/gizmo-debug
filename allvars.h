@@ -446,10 +446,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif // CHIMES_METAL_DEPLETION 
 #endif // CHIMES 
 
-#ifdef SINGLE_STAR_DEFAULTS //legacy flag
-#define SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE 
-#endif
-#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
+
+#ifdef SINGLE_STAR_STARFORGE_DEFAULTS /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
 #define LONGIDS
 #define OUTPUT_POSITIONS_IN_DOUBLE
 #define INPUT_POSITIONS_IN_DOUBLE
@@ -472,7 +470,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define MHD_CONSTRAINED_GRADIENT 1
 #endif
 #if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) )
-#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION 2 //we are using the protostellar evolution model from ORION
+#define SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION 2 //we are using the protostellar evolution model from ORION
 #endif
 #ifdef RT_INFRARED
 #define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
@@ -483,10 +481,10 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifdef COOLING
 #define EOS_SUBSTELLAR_ISM
 #endif
-#if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
-#define GALSF_FB_FIRE_STELLAREVOLUTION 3 // enable multi-loop feedback from such sources [this is specific to the DG-MG implementations here, not for public use right now!]
+#if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
+#define GALSF_FB_FIRE_STELLAREVOLUTION 2 // enable multi-loop feedback from such sources [this is specific to the DG-MG implementations here, not for public use right now!]. for now set to =2, which should force the code version to match previous iterations, as compared to the newer implementations.
 #endif
-#endif // SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE
+#endif // SINGLE_STAR_STARFORGE_DEFAULTS
 
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
@@ -525,7 +523,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define BH_COMPTON_HEATING // turn on the heating term: this just calculates incident BH-particle flux, to be used in the cooling routine
 #endif
 
-#if defined(SINGLE_STAR_FB_JETS) || ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION))
+#if defined(SINGLE_STAR_FB_JETS) || ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION))
 #define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
 #define MAINTAIN_TREE_IN_REARRANGE // don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed
 #if defined(SINGLE_STAR_FB_WINDS)
@@ -541,7 +539,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 
-#if ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && !defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION))
+#if ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && !defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION))
 #define GALSF_FB_MECHANICAL // enable mechanical feedback from single stellar sources
 #endif
 
@@ -1812,7 +1810,7 @@ extern FILE *FdBlackHoles;	/*!< file handle for blackholes.txt log-file. */
 #ifdef BH_OUTPUT_GASSWALLOW
 extern FILE *FdBhSwallowDetails;
 #endif
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 extern FILE *FdBhSNDetails;
 #endif
 #ifdef BH_OUTPUT_FORMATION_PROPERTIES
@@ -2121,7 +2119,7 @@ extern struct global_data_all_processes
     double Rad_Intensity_Direction[N_RT_INTENSITY_BINS][3];
 #endif
 
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     double SN_Ejecta_Direction[SINGLE_STAR_FB_SNE_N_EJECTA][3];
 #endif
 
@@ -2627,7 +2625,7 @@ extern ALIGN(32) struct particle_data
 #endif
 
 
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION    
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION    
     MyFloat ProtoStellarAge; /*!< record the proto-stellar age instead of age */
     MyFloat ProtoStellarRadius_inSolar; /*!< protostellar radius (also tracks evolution from protostar to ZAMS star) */
     int ProtoStellarStage; /*Track the stage of protostellar evolution, 0: pre collapse, 1: no burning, 2: fixed Tc burning, 3: variable Tc burning, 4: shell burning, 5: main sequence, 6: supernova, see Offner 2009 Appendix B*/ //IO flag IO_STAGE_PROTOSTAR

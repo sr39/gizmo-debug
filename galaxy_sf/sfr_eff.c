@@ -552,7 +552,7 @@ void star_formation_parent_routine(void)
 #endif
                 P[i].BH_Mdot = 0;
                 P[i].DensAroundStar = SphP[i].Density;
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION 
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION 
                 P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age
                 P[i].StellarAge = All.Time; // record the time at which point the sink entered the current stage of stellar evolution (will become actual stellar age when reaching MS)
                 P[i].ProtoStellarStage = 0;

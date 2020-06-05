@@ -474,7 +474,7 @@ void spawn_bh_wind_feedback(void)
             if(BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*All.BAL_wind_particle_mass) {sink_eligible_to_spawn=1;} // have 'enough' mass to spawn
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
             if((P[i].Mass <= 7.*All.MinMassForParticleMerger) || (P[i].BH_Mass*UNIT_MASS_IN_SOLAR < 0.01)) {sink_eligible_to_spawn=0;}  // spawning causes problems in these modules for low-mass sinks, so arbitrarily restrict to this, since it's roughly a criterion on the minimum particle mass. and for <0.01 Msun, in pre-collapse phase, no jets
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
             if(P[i].ProtoStellarStage==6) {sink_eligible_to_spawn=1;} // spawn the SNe ejecta no matter what the sink or 'unspawned' mass flag actually is
 #endif
 #endif
@@ -564,7 +564,7 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
         cos_theta = cos(theta), sin_theta=sin(theta), sin_phi=sin(phi), cos_phi=cos(phi);
         for(k=0;k<3;k++) {veldir[k] = sin_theta*cos_phi*nx[k] + sin_theta*sin_phi*ny[k] + cos_theta*nz[k];} //converted from angular momentum relative to into standard coordinates
     }
-#if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     else if (mode==2){ //random 3-axis isotropized - spawn along z axis, then y, then x
         if(((P[i].ID_child_number-1) % 6) == 0) { // need to generate a brand new coordinate frame
             get_random_orthonormal_basis(P[i].ID_child_number, nx, ny, nz);
@@ -574,7 +574,7 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
         else {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k+3];}}
     }
 #endif
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     else { // angular grid
         int dir_ind = num_spawned_this_call % SINGLE_STAR_FB_SNE_N_EJECTA;
         for(k=0;k<3;k++) { //Particle positioned at one of the regular positions on the randomized coordinate system
@@ -593,7 +593,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass ); /* if we set BH_WIND_SPAWN we presumably wanted to do this in an exactly-conservative manner, which means we want to have an even number here. */
     int k=0; long j;
     
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     if (P[i].ProtoStellarStage == 6){
         n_particles_split = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
         if (P[i].BH_Mass == 0){ //Last batch to be spawned
@@ -612,7 +612,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     if((((int)BH_WIND_SPAWN) % 2) == 0) {if(( n_particles_split % 2 ) != 0) {n_particles_split -= 1;}} /* n_particles_split was not even. we'll wait to spawn this last particle, to keep an even number, rather than do it right now and break momentum conservation */
     if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
     int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1)); if((n0max % 2) != 0) {n0max += 1;} // should ensure n0max is always an even number //
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     if (P[i].ProtoStellarStage == 6) {n0max = DMAX(n0max, SINGLE_STAR_FB_SNE_N_EJECTA);} //so that we can spawn the number of wind particles we want, by setting BH_WIND_SPAWN high it ispossible to spawn multitudes of SINGLE_STAR_FB_SNE_N_EJECTA, but in practice we usually spawn just one
 #endif
     if(n_particles_split > n0max) {n_particles_split = n0max;}
@@ -621,7 +621,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     /* here is where the details of the split are coded, the rest is bookkeeping */
     //double mass_of_new_particle = total_mass_in_winds / n_particles_split; /* don't do this, as can produce particles with extremely large masses; instead wait to spawn */
     double mass_of_new_particle = All.BAL_wind_particle_mass;
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     if(P[i].ProtoStellarStage == 6) {mass_of_new_particle = total_mass_in_winds/(double) n_particles_split;} // ejecta will have the gas mass resolution except the last batch which will lower masses
 #endif
     printf("Task %d wants to create %g mass in wind with %d new particles each of mass %g \n .. splitting BH %d using hydro element %d\n", ThisTask,total_mass_in_winds, n_particles_split, mass_of_new_particle, i, dummy_sph_i_to_clone);
@@ -655,7 +655,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #if defined(BH_DEBUG_SPAWN_JET_TEST) || defined(SINGLE_STAR_FB_JETS) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK) || defined(BH_FB_COLLIMATED)
     mode = 1; // collimated mode
 #endif
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     mode = 0;
 #if defined(SINGLE_STAR_FB_JETS)
     mode = 1; // launch polar jets
@@ -805,7 +805,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #ifdef SINGLE_STAR_FB_JETS
         v_magnitude = single_star_jet_velocity(i);
 #endif
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 #if defined(SINGLE_STAR_FB_WINDS)
         if ( (P[i].ProtoStellarStage == 5) && (P[i].wind_mode == 1) ){v_magnitude = single_star_wind_velocity(i);} //Only MS stars launch winds: get velocity from fancy model
 #endif
@@ -827,7 +827,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         //SphP[j].Density *= 1e-10; SphP[j].Pressure *= 1e-10; PPP[j].Hsml = All.SofteningTable[0];  /* set dummy values: will be re-generated anyways [actually better to use nearest-neighbor values to start] */
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
         SphP[j].MaxSignalVel = 2*DMAX(v_magnitude, SphP[j].MaxSignalVel);// need this to satisfy the Courant condition in the first timestep after spawn
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
         if(P[i].ProtoStellarStage < 6) {P[j].Hsml = pow(mass_of_new_particle / SphP[j].Density, 1./3);} else {P[j].Hsml = d_r*sqrt(4.0*M_PI/(double)n_particles_split);}
 #endif
 #endif
@@ -835,7 +835,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         PPP[j].Hsml=5.*d_r; SphP[j].Density=mass_of_new_particle/pow(KERNEL_CORE_SIZE*PPP[j].Hsml,NUMDIMS); /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
 #endif
         SphP[j].InternalEnergy = All.BAL_internal_temperature / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ); /* internal energy, determined by desired wind temperature (assume fully ionized primordial gas with gamma=5/3) */
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
         if(P[i].ProtoStellarStage == 6) {SphP[j].InternalEnergy = All.MinGasTemp / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ) + (1.0-SINGLE_STAR_FB_SNE)/SINGLE_STAR_FB_SNE * pow(single_star_SN_velocity(i),2.0);}
 #endif
         SphP[j].InternalEnergyPred = SphP[j].InternalEnergy;

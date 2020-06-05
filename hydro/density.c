@@ -646,7 +646,7 @@ void density(void)
                     double unitlength_in_kpc=UNIT_LENGTH_IN_KPC*All.cf_atime;
                     maxsoft = 2.0 / unitlength_in_kpc;
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES) && (defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL))
-                    if(P[i].SNe_ThisTimeStep>0 || P[i].MassReturn_ThisTimeStep>0 || All.Time==All.TimeBegin) {maxsoft=2.0/unitlength_in_kpc;} else {maxsoft=0.1/unitlength_in_kpc;};
+                    if((P[i].SNe_ThisTimeStep>0) || (P[i].MassReturn_ThisTimeStep>0) || (All.Time==All.TimeBegin)) {maxsoft=2.0/unitlength_in_kpc;} else {maxsoft=0.1/unitlength_in_kpc;};
 #endif
 #endif
                     desnumngbdev = desnumngb / 2; // enforcing exact number not important

@@ -66,38 +66,34 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
 
 #if defined(RADTRANSFER) && defined(GALSF) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
     /* restrict the star particles acting as sources, because they need their own sub-loops-- this is currently just an optimization for specific stellar evolution models */
-    if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
+    if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && (P[i].Mass>0) && (PPP[i].Hsml>0) )
     {
         double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-#ifdef CHIMES_STELLAR_FLUXES  
-	if((star_age <= 0)||(isnan(star_age))) return 0;
-#else 
-	if((star_age > 0.1)||(star_age <= 0)||(isnan(star_age))) return 0;
+#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
+        if(star_age > 0.1) {return 0;}
 #endif 
+        if((star_age <= 0)||(isnan(star_age))) {return 0;}
     }
 #endif
 
     
 #ifdef GALSF_FB_FIRE_RT_LONGRANGE
     /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
-    if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
+    if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && (P[i].Mass>0) && (PPP[i].Hsml>0) )
     {
         if(mode<0) {return 1;} active_check = 1;
         double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
         double fac = P[i].Mass * UNIT_MASS_IN_SOLAR / UNIT_LUM_IN_SOLAR; // converts to [physical] code units
         double L = evaluate_light_to_mass_ratio(star_age, i) * fac;
         if((L<=0)||(star_age<=0)||(isnan(star_age))||(isnan(L))) {L=0; star_age=0;}
-
-        double f_uv, f_op;
+        double f_uv=All.PhotonMomentum_fUV, f_op=All.PhotonMomentum_fOPT;
 #ifndef RT_FIRE_FIX_SPECTRAL_SHAPE
         double sigma_eff = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,P[i].DensAroundStar,PPP[i].NumNgb,0,i) * UNIT_SURFDEN_IN_CGS;
         if((sigma_eff <= 0)||(isnan(sigma_eff))) {sigma_eff=0;}
         if(star_age <= 0.0025) {f_op=0.09;} else {
             if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));
             } else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
-      
         double tau_uv = sigma_eff*KAPPA_UV; double tau_op = sigma_eff*KAPPA_OP;
-
         f_uv = (1-f_op)*(All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV)/(1+0.8*tau_uv+0.85*tau_uv*tau_uv));
         f_op *= All.PhotonMomentum_fOPT + (1-All.PhotonMomentum_fOPT)/(1+0.8*tau_op+0.85*tau_op*tau_op);
         /*
@@ -108,9 +104,6 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
          f_uv = (1-f_op)*(All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV)/ (1 + pow(tau_uv,1./(4.*tau_disp))/(3.*tau_disp) + pow(2.*tau_disp*tau_uv,1./tau_disp)));
          f_op *= All.PhotonMomentum_fOPT + (1-All.PhotonMomentum_fOPT)/ (1 + pow(tau_op,1./(4.*tau_disp))/(3.*tau_disp) + pow(2.*tau_disp*tau_op,1./tau_disp));
          */
-#else
-        f_uv = All.PhotonMomentum_fUV;
-        f_op = All.PhotonMomentum_fOPT;
 #endif
         lum[RT_FREQ_BIN_FIRE_UV]  = L * f_uv;
         lum[RT_FREQ_BIN_FIRE_OPT] = L * f_op;
@@ -120,39 +113,34 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
 	int age_bin, j; 
 	double log_age_Myr = log10(star_age * 1000.0); 
 	double stellar_mass = P[i].Mass * UNIT_MASS_IN_SOLAR;
-	if (log_age_Myr < CHIMES_LOCAL_UV_AGE_LOW) 
-	  age_bin = 0; 
+	if (log_age_Myr < CHIMES_LOCAL_UV_AGE_LOW) {age_bin = 0;}
 	else if (log_age_Myr < CHIMES_LOCAL_UV_AGE_MID) 
-	  age_bin = (int) floor(((log_age_Myr - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW) + 1); 
+	  {age_bin = (int) floor(((log_age_Myr - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW) + 1);}
 	else 
 	  { 
 	    age_bin = (int) floor((((log_age_Myr - CHIMES_LOCAL_UV_AGE_MID) / CHIMES_LOCAL_UV_DELTA_AGE_HI) + ((CHIMES_LOCAL_UV_AGE_MID - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW)) + 1); 
-	    if (age_bin > CHIMES_LOCAL_UV_NBINS - 1) 
-	      age_bin = CHIMES_LOCAL_UV_NBINS - 1; 
+	    if (age_bin > CHIMES_LOCAL_UV_NBINS - 1) {age_bin = CHIMES_LOCAL_UV_NBINS - 1;}
 	  } 
 	
-	for (j = 0; j < CHIMES_LOCAL_UV_NBINS; j++) 
-	  {
-	    chimes_lum_G0[j] = 0.0; 
-	    chimes_lum_ion[j] = 0.0; 
-	  }
-
-	chimes_lum_G0[age_bin] = chimes_G0_luminosity(star_age * 1000.0, stellar_mass) * All.Chimes_f_esc_G0; 
+	for(j = 0; j < CHIMES_LOCAL_UV_NBINS; j++) {chimes_lum_G0[j] = 0.0; chimes_lum_ion[j] = 0.0;}
+	chimes_lum_G0[age_bin] = chimes_G0_luminosity(star_age * 1000.0, stellar_mass) * All.Chimes_f_esc_G0;
 	chimes_lum_ion[age_bin] = chimes_ion_luminosity(star_age * 1000.0, stellar_mass) * All.Chimes_f_esc_ion; 
 #endif 
     }
 #endif
 
+    
 #if defined(RT_INFRARED) /* can add direct infrared sources, but default to no direct IR (just re-emitted light) */
     if((1 << P[i].Type) & (RT_SOURCES))
     {
         lum[RT_FREQ_BIN_INFRARED] = 0.0; //default to no direct IR (just re-emitted light)
-#if defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
         if(P[i].Type == 5) {lum[RT_FREQ_BIN_INFRARED] = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i);} // for tests, entire sink bolometric luminosity
 #endif
     }
 #endif
 
+    
 #if defined(RT_NUV)
     /* Near-UV approximate spectra (UV/optical spectra, sub-photo-electric, but high-opacity) for stars as used in the FIRE (Hopkins et al.) models */
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
@@ -188,6 +176,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
     }
 #endif
 
+    
 #ifdef RT_PHOTOELECTRIC
     /* photo-electric bands (8-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
@@ -263,7 +252,6 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
 #endif // RT_CHEM_PHOTOION
 
 
-
 #if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY)
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
     {
@@ -323,7 +311,6 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
         }
     }
 #endif
-    
     
     
 #ifdef RADTRANSFER

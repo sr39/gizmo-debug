@@ -27,7 +27,7 @@ int addFB_evaluate_active_check(int i, int fb_loop_iteration)
     if(P[i].MassReturn_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==1) return 1;}
     if(P[i].RProcessEvent_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==2) return 1;}
 #endif
-#if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     if(P[i].wind_mode != 2 || P[i].ProtoStellarStage != 5) return 0;
 #endif    
     return 0;
@@ -51,7 +51,7 @@ void determine_where_SNe_occur(void)
 #endif
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
         if(P[i].Type == 0) {continue;} // any non-gas type is eligible to be a 'star' here
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
         if(P[i].ProtoStellarStage < 5) {continue;} // We need to have started MS to have winds or SN
 #endif
 #else
@@ -393,7 +393,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double m_cooling = 4.18879*pnorm*SphP[j].Density*RsneKPC*RsneKPC*RsneKPC;
                 /* apply limiter for energy conservation */
                 double mom_boost_fac = 1 + sqrt(DMIN(mj_preshock , m_cooling) / m_ej_input);
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) || defined(SINGLE_STAR_SINK_DYNAMICS) // ??
                 if(loop_iteration > 0) {mom_boost_fac=1;} /* no unresolved PdV component for winds+r-process */
 #endif
                 /* save summation values for outputs */

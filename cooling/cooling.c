@@ -207,7 +207,7 @@ void do_the_cooling_for_particle(int i)
             SphP[i].Ne = 1.0 + 2.0*yhelium(i); /* fully ionized */
 #endif 
         }
-#endif // GALSF_FB_FIRE_RT_HIIHEATING
+#endif
         
         
 #if defined(BH_THERMALFEEDBACK)
@@ -848,8 +848,10 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #if defined(COOL_LOW_TEMPERATURES)
     double Tdust = 30., LambdaDust = 0.; /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
 #if defined(SINGLE_STAR_SINK_DYNAMICS) || (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
-    Tdust = DMIN(DMAX(10., 2.73/All.cf_atime),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
     Tdust = get_equilibrium_dust_temperature_estimate(target);
+#endif
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && !defined(BH_COMPTON_HEATING) // ??
+    Tdust = DMIN(DMAX(10., 2.73/All.cf_atime),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
 #endif
 #endif
 

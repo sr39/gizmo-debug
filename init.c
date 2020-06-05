@@ -305,7 +305,7 @@ void init(void)
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
 #endif
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 #if defined(SINGLE_STAR_FB_SNE)
             P[i].Mass_final = P[i].Mass; //best guess, only matters if we restart in the middle of spawning an SN 
 #endif
@@ -492,9 +492,9 @@ void init(void)
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                 BPP(i).BH_Mass = P[i].Mass;
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION // properly initialize luminosity
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION // properly initialize luminosity
                 singlestar_subgrid_protostellar_evolution_update_track(i,0,0);             
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2)
+#if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
                 calculate_individual_stellar_luminosity(BPP(i).BH_Mdot, BPP(i).BH_Mass, i);
 #endif        
 #endif
