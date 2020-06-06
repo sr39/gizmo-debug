@@ -660,7 +660,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_DELAY_TIME_HII: 
-#ifdef OUTPUT_DELAY_TIME_HII
+#if (defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS)) && defined(OUTPUT_DELAY_TIME_HII)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -2463,7 +2463,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_DELAY_TIME_HII:
-#ifdef OUTPUT_DELAY_TIME_HII
+#if (defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS)) && defined(OUTPUT_DELAY_TIME_HII)
             return 1;
 #endif
             break;
