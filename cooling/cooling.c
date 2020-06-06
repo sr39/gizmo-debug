@@ -507,8 +507,8 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     double bH0, bHep, bff, aHp, aHep, aHepp, ad, geH0, geHe0, geHep, EPSILON_SMALL=1.e-40;
     double n_elec, nH0, nHe0, nHp, nHep, nHepp; /* ionization states */
     logT_input = logT; rho_input = rho; ne_input = *ne_guess; /* save inputs (in case of failed convergence below) */
-    if(!isfinite(logT)) {logT=Tmin};    /* nan trap (just in case) */
-    if(!isfinite(rho)) {logT=Tmin};
+    if(!isfinite(logT)) {logT=Tmin;}    /* nan trap (just in case) */
+    if(!isfinite(rho)) {logT=Tmin;}
 
     if(logT <= Tmin)		/* everything neutral */
     {
