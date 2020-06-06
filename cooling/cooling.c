@@ -1705,7 +1705,7 @@ double get_equilibrium_dust_temperature_estimate(int i)
     if(i >= 0)
     {
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
-        int k; double e_HiEgy=0, e_IR=0;
+        int k; double e_HiEgy=0, e_IR=0, E_tot_to_evol_eVcgs = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_EV;
         for(k=0;k<N_RT_FREQ_BINS;k++) {e_HiEgy+=SphP[i].Rad_E_gamma_Pred[k];}
 #if defined(GALSF_FB_FIRE_RT_LONGRANGE)
         e_IR += SphP[i].Rad_E_gamma_Pred[RT_FREQ_BIN_FIRE_IR]; // note IR
@@ -1714,6 +1714,7 @@ double get_equilibrium_dust_temperature_estimate(int i)
         e_IR += SphP[i].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED]; // note IR
 #endif
         e_HiEgy -= e_IR; // don't double-count the IR component flagged above //
+        e_IR *= E_tot_to_evol_eVcgs; e_HiEgy *= E_tot_to_evol_eVcgs;
 #endif
     }
     double Tdust_eqm = 2.92 * pow(Tdust_ext*e_IR + T_cmb*e_CMB + T_hiegy*e_HiEgy, 1./5.); // approximate equilibrium temp assuming Q~1/lambda
