@@ -378,8 +378,16 @@ int do_the_local_ionization(int target, double dt, int source)
     SphP[target].InternalEnergy = DMAX(SphP[target].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
     SphP[target].InternalEnergyPred = SphP[target].InternalEnergy; /* full reset of the internal energy */
 #else
-    double delta_U_of_ionization = (18.-13.6) * ((ELECTRONVOLT_IN_ERGS / PROTONMASS) / UNIT_SPECEGY_IN_CGS) * (1.-DMAX(0.,DMIN(1.,SphP[target].Ne/1.5))); /* energy injected per unit mass, in code units, by ionization, assuming each atom absorbs, and mean energy of absorbed photons is given by x=18 eV here (-13.6 for energy of ionization) */
-    SphP[target].InternalEnergy += delta_U_of_ionization; SphP[target].InternalEnergyPred += delta_U_of_ionization; /* add it */
+    double delta_U_of_ionization = (20.-13.6) * ((ELECTRONVOLT_IN_ERGS / PROTONMASS) / UNIT_SPECEGY_IN_CGS) * (1.-DMAX(0.,DMIN(1.,SphP[target].Ne/1.5))); /* energy injected per unit mass, in code units, by ionization, assuming each atom absorbs, and mean energy of absorbed photons is given by x=18 eV here (-13.6 for energy of ionization) */
+    double Theat_star = 1.38 * 3.2, Z_sol = 1.; // typical IMF-averaged temp of ionizing star=32,000 K, with effective ionization temperature parameter psi=1.38 (temp of ionized e's in units of stellar temp). Then metallicity in solar units.
+#ifdef METALS
+    Z_sol = P[i].Metallicity[0]/All.SolarAbundances[0]; // set metallicity
+#endif
+    double t4_eqm = DMIN( 1.5*Theat_star , 3.85/DMAX(log(DMAX(390.*Z_sol/Theat_star,1.001)),0.01) ); // equilibrium H2 region temperature in 1e4 K: 1.5*Theat = eqm temp for pure-H region, while second expression assumes eqm cooling with O+C, etc, but breaks down at low-Z when metals don't dominate cooling.
+    double u_eqm = (t4_eqm * HIIRegion_Temp) / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS); // converted to specific internal energy, assuming full ionization
+    double u_post_ion_no_cooling = SphP[target].InternalEnergy + delta_U_of_ionization; // energy after ionization, before any cooling
+    double u_final = DMIN( u_post_ion_no_cooling , u_eqm ), du = u_final-SphP[target].InternalEnergy; // don't heat to higher temperature than intial energy of ionization allows
+    SphP[target].InternalEnergy = u_final; SphP[target].InternalEnergyPred = DMAX(SphP[target].InternalEnergyPred + du , 1.e-3*SphP[target].InternalEnergyPred); /* add it */
 #endif
     SphP[target].DelayTimeHII = DMIN(dt, 10./UNIT_TIME_IN_MYR); /* tell the code to flag this in the cooling subroutine */
     SphP[target].Ne = 1.0 + 2.0*yhelium(target); /* set the cell to fully ionized */
