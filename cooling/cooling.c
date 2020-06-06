@@ -159,7 +159,7 @@ void do_the_cooling_for_particle(int i)
     if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
     {
         double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ??
         double uion=HIIRegion_Temp/(0.59*(5./3.-1.)*U_TO_TEMP_UNITS); if(SphP[i].DelayTimeHII>0) {if(uold<uion) {uold=uion;}} /* u_old should be >= ionized temp if used here [unless using newer model] */
 #endif
         
@@ -199,7 +199,7 @@ void do_the_cooling_for_particle(int i)
 #endif
         
        
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ?? /* for older model, set internal energy to minimum level if marked as ionized by stars */
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ?? /* for older model, set internal energy to minimum level if marked as ionized by stars */
         if(SphP[i].DelayTimeHII > 0)
         {
             if(unew<uion) {unew=uion; if(SphP[i].DtInternalEnergy<0) SphP[i].DtInternalEnergy=0;}
@@ -567,7 +567,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #ifdef GALSF_EFFECTIVE_EQS
         shieldfac = 1; // self-shielding is implicit in the sub-grid model already //
 #endif
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ??
         if(target>=0) {if(SphP[target].DelayTimeHII > 0) {shieldfac = 1;}} // newer HII region model irradiates and removes shielding for regions, but allows cooling function to evolve //
 #endif
     }
@@ -836,7 +836,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #ifdef GALSF_EFFECTIVE_EQS
     shieldfac = 1; // self-shielding is implicit in the sub-grid model already //
 #endif
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ??
     if(target>=0) {if(SphP[target].DelayTimeHII > 0) {shieldfac = 1;}} // newer HII region model irradiates and removes shielding for regions, but allows cooling function to evolve //
 #endif
 
@@ -847,10 +847,10 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     
 #if defined(COOL_LOW_TEMPERATURES)
     double Tdust = 30., LambdaDust = 0.; /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
-#if defined(SINGLE_STAR_SINK_DYNAMICS) || (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS)  // ??
     Tdust = get_equilibrium_dust_temperature_estimate(target);
 #endif
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && !defined(BH_COMPTON_HEATING) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(BH_COMPTON_HEATING) // ??
     Tdust = DMIN(DMAX(10., 2.73/All.cf_atime),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
 #endif
 #endif
@@ -875,7 +875,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         
 #ifdef COOL_METAL_LINES_BY_SPECIES
         /* can restrict to low-densities where not self-shielded, but let shieldfac (in ne) take care of this self-consistently */
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
         if((J_UV != 0)&&(logT > Tmin+0.5*deltaT))
 #else
         if((J_UV != 0)&&(logT > Tmin+0.5*deltaT)&&(logT > 4.00))
@@ -887,7 +887,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             /* (sorry, -- dont -- multiply by nH^2 here b/c that's how everything is normalized in this function) */
             LambdaMetal *= n_elec;
             /* (modified now to correct out tabulated ne so that calculated ne can be inserted; ni not used b/c it should vary species-to-species */
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
             if(logT<2) {LambdaMetal *= exp(-DMIN((2.-logT)*(2.-logT)/0.1,40.));}
             if(LambdaMetal > 0) {Lambda += LambdaMetal;}
 #else
@@ -912,7 +912,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             Z_sol = Z[0] / All.SolarAbundances[0]; /* use actual metallicity for this */
 #endif
             LambdaMol *= (1+Z_sol)*(0.001 + 0.1*nHcgs/(1.+nHcgs) + 0.09*nHcgs/(1.+0.1*nHcgs) + Z_sol*Z_sol/(1.0+nHcgs)); // gives very crude estimate of metal-dependent terms //
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
             double column = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs
             double Z_C = DMAX(1.e-10, Z[2]/All.SolarAbundances[2]), sqrt_T=sqrt(T), ncrit_CO=1.9e4*sqrt_T, Sigma_crit_CO=3.0e-5*T/Z_C, T3=T/1.e3, EXPmax=90.; // carbon abundance (relative to solar), critical density and column
             double Lambda_Metals = Z_C * T*sqrt_T * 2.73e-31 / (1. + (nHcgs/ncrit_CO)*(1.+0*DMAX(column,0.017)/Sigma_crit_CO)); // fit from Hollenbach & McKee 1979 for CO (+CH/OH/HCN/OH/HCl/H20/etc., but those don't matter), with slight re-calibration of normalization (factor ~1.4 or so) to better fit the results from the full Glover+Clark network. As Glover+Clark show, if you shift gas out of CO into C+ and O, you have almost no effect on the integrated cooling rate, so this is a surprisingly good approximation without knowing anything about the detailed chemical/molecular state of the gas. uncertainties in e.g. ambient radiation are -much- larger. also note this rate is really carbon-dominated as the limiting abundance, so should probably use that.
@@ -1021,7 +1021,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
                 double rhofac = rho / (1000.*COSMIC_BARYON_DENSITY_CGS);
                 if(rhofac < 0.2) {prefac_CR=0;} else {if(rhofac > 200.) {prefac_CR=1;} else {prefac_CR=exp(-1./(rhofac*rhofac));}}} // in cosmological runs, turn off CR heating for any gas with density unless it's >1000 times the cosmic mean density
             double cr_zeta=1.e-16, e_per_cr_ioniz=8.8e-12; // either high background (zeta=1e-16), with softer spectrum (5.5eV per ionization), following e.g. van Dishoeck & Black (1986); or equivalently lower rate with higher ~20eV per ionization per Goldsmith & Langer (1978); this is formally degenerate here. however both produce ~3-10x higher rates than more modern estimates (basically in both cases, assuming a CR energy density of ~2-5 eV/cm^3, instead of more modern ~0.5-2 eV/cm^3
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
             cr_zeta=1.e-17; e_per_cr_ioniz=3.0e-11; // follow e.g. Glover+Jappsen 2007, Le Teuff et al. 2000, gives about a 3x lower CR heating rate compared to older numbers above
 #endif
             Heat += prefac_CR * cr_zeta * (1. + 1.68*n_elec*HYDROGEN_MASSFRAC) / (1.e-2 + nHcgs) * e_per_cr_ioniz; // final result
@@ -1043,7 +1043,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         
 #if defined(COOL_LOW_TEMPERATURES)
         if(LambdaDust>0) {Heat += LambdaDust;} /* Dust collisional heating (Tdust > Tgas) */
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
         if(LambdaMetal<0) {Heat -= LambdaMetal;} // potential net heating from low-temperature gas-phase metal line absorption //
 #endif
 #endif
@@ -1683,7 +1683,7 @@ void selfshield_local_incident_uv_flux(void)
                 SphP[i].Rad_Flux_UV *= exp(-tau_nuv); // attenuate
                 SphP[i].Rad_Flux_EUV *= 0.01 + 0.99/(1.0 + 0.8*tau_euv + 0.85*tau_euv*tau_euv); // attenuate (for clumpy medium with 1% scattering) //
             } else {SphP[i].Rad_Flux_UV = SphP[i].Rad_Flux_EUV = 0;}
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ??
             if(SphP[i].DelayTimeHII > 0)
             {   /* assign typical strong HII region flux + enough flux to maintain cell fully-ionized, regardless (x'safety-factor') */
                 double flux_compactHII = 1.e4 + 3. * 0.12 * pow(P[i].Mass*UNIT_MASS_IN_SOLAR, 1./3.)*pow(SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, 5./3.);
@@ -1737,7 +1737,7 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
     if(target >= 0) {*ne_guess=SphP[target].Ne;} else {*ne_guess=1.;}
     rho *= UNIT_DENSITY_IN_CGS; u *= UNIT_SPECEGY_IN_CGS;   /* convert to physical cgs units */
     double temp = convert_u_to_temp(u, rho, target, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess);
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ??
     if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target);}} /* fully ionized [if using older model] */
     *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp, rho, nH0_guess, ne_guess, 0, target);
 #endif
