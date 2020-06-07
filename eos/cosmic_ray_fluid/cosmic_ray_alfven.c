@@ -79,7 +79,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     if(E_B < Eth_0) {Bmag = sqrt(2.*Eth_0/((P[i].Mass/(SphP[i].Density*All.cf_a3inv))));} // enforce this maximum beta for purposes of "B" to insert below 
     E_B = 0.5*Bmag*Bmag * (P[i].Mass/(SphP[i].Density*All.cf_a3inv)); // B-field energy (energy density times volume, for ratios with energies above)
     Bmag_Gauss = Bmag * UNIT_B_IN_GAUSS; // turn it into Gauss
-    Omega_gyro = 8987.34 * Bmag_Gauss * (Z_charge_CR/E_CRs_Gev) * UNIT_TIME_IN_CGS; // gyro frequency of the CR population we're evolving
+    Omega_gyro = (8987.34 * Bmag_Gauss * (Z_charge_CR/E_CRs_Gev)) * UNIT_TIME_IN_CGS; // gyro frequency of the CR population we're evolving, converted to physical code units //
     vA_code = sqrt( Bmag*Bmag / (SphP[i].Density*All.cf_a3inv) ); double vA_noion=vA_code; // Alfven speed^2 in code units [recall B units such that there is no 4pi here]
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
     vA_code /= sqrt(f_ion); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
@@ -140,7 +140,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 
     // calculate the wave-damping rates (again in appropriate dimensionless units)
     /* ion-neutral damping: need thermodynamic information (neutral fractions, etc) to compute self-consistently */
-    G_ion_neutral = 5.77e-11 * (rho_cgs/PROTONMASS) * nh0 * sqrt(temperature) * UNIT_TIME_IN_CGS; // need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
+    G_ion_neutral = (5.77e-11 * (rho_cgs/PROTONMASS) * nh0 * sqrt(temperature)) * UNIT_TIME_IN_CGS; // need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]. converted to -physical- code units
     if(Z_charge_CR > 1) {G_ion_neutral /= sqrt(2.*Z_charge_CR);}
 
     int i1,i2; double v2_t=0,dv2_t=0,b2_t=0,db2_t=0,x_LL,M_A,h0,fturb_multiplier=1; // factor which will represent which cascade model we are going to use
