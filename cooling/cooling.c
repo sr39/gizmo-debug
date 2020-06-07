@@ -3,10 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-
 #include "../allvars.h"
 #include "../proto.h"
-
 #include "./cooling.h"
 
 /*
@@ -876,9 +874,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #ifdef COOL_METAL_LINES_BY_SPECIES
         /* can restrict to low-densities where not self-shielded, but let shieldfac (in ne) take care of this self-consistently */
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
-        if((J_UV != 0)&&(logT > (Tmin+0.5*deltaT)))
+        if(J_UV != 0)
 #else
-        if((J_UV != 0)&&(logT > (Tmin+0.5*deltaT))&&(logT > 4.00))
+        if((J_UV != 0)&&(logT > 4.00))
 #endif
         {
             /* cooling rates tabulated for each species from Wiersma, Schaye, & Smith tables (2008) */
@@ -900,7 +898,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
         
 #ifdef COOL_LOW_TEMPERATURES
-        if((logT <= 5.3) && (logT > (Tmin+0.5*deltaT)))
+        if(logT <= 5.3)
         {
             /* approx to cooling function for solar metallicity and nH=1 cm^(-3) -- want to do something
              much better, definitely, but for now use this just to get some idea of system with cooling to very low-temp */

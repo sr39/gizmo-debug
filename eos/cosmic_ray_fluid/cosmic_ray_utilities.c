@@ -329,6 +329,9 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 #if (COSMIC_RAYS_DIFFUSION_MODEL==2)
         scatter_modes = 1; /* Fast modes only*/
 #endif
+#if defined(COSMIC_RAYS_SET_ET_MODEL)
+        scatter_modes = COSMIC_RAYS_SET_ET_MODEL; /* set to user-defined value */
+#endif
         DiffusionCoeff = diffusion_coefficient_extrinsic_turbulence(scatter_modes,i,k_CRegy,M_A,L_scale,b_muG,vA_noion,rho_cgs,temperature,cs_thermal,nh0,nHe0,f_ion) / unit_kappa_code;
 #endif
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 6) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* self-confinement-based diffusivity */

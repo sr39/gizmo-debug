@@ -308,7 +308,10 @@
 #endif
 #define COSMIC_RAYS_ION_ALFVEN_SPEED    /*! use appropriate ion Alfven speed */
 #if !defined(COSMIC_RAYS_SET_SC_MODEL)
-#define COSMIC_RAYS_SET_SC_MODEL 1      /*! set mode for SC model using best-estimate of fQLT and fCAS */
+#define COSMIC_RAYS_SET_SC_MODEL (0)    /*! set mode for SC model using best-estimate of fQLT and fCAS */
+#endif
+#if !defined(COSMIC_RAYS_SET_ET_MODEL)
+#define COSMIC_RAYS_SET_ET_MODEL (-1)   /*! set mode for ET model using best-estimate of fturb from Alfven-wave scattering */
 #endif
 #endif
 #endif // FIRE_CRS
