@@ -673,48 +673,60 @@ double get_particle_volume_ags(int j)
 /* routine to invert the NV_T matrix after neighbor pass */
 double do_cbe_nvt_inversion_for_faces(int i)
 {
-    MyLongDouble NV_T[3][3]; int j,k;
-    for(j=0;j<3;j++) {for(k=0;k<3;k++) {NV_T[j][k]=P[i].NV_T[j][k];}} // initialize matrix to be inverted //
-    double Tinv[3][3], FrobNorm=0, FrobNorm_inv=0, detT=0;
-    for(j=0;j<3;j++) {for(k=0;k<3;k++) {Tinv[j][k]=0;}}
+    /* initialize the matrix to be inverted */
+    MyLongDouble NV_T[3][3], Tinv[3][3]; int j,k; for(j=0;j<3;j++) {for(k=0;k<3;k++) {NV_T[j][k]=P[i].NV_T[j][k];}}
     /* fill in the missing elements of NV_T (it's symmetric, so we saved time not computing these directly) */
     NV_T[1][0]=NV_T[0][1]; NV_T[2][0]=NV_T[0][2]; NV_T[2][1]=NV_T[1][2];
+    /* want to work in dimensionless units for defining certain quantities robustly, so normalize out the units */
+    double dimensional_NV_T_normalizer = pow( PPP[i].Hsml , 2-NUMDIMS ); /* this has the same dimensions as NV_T here */
+    for(j=0;j<3;j++) {for(k=0;k<3;k++) {NV_T[j][k]/=dimensional_NV_T_normalizer;}} /* now NV_T should be dimensionless */
     /* Also, we want to be able to calculate the condition number of the matrix to be inverted, since
-     this will tell us how robust our procedure is (and let us know if we need to expand the neighbor number */
-    for(j=0;j<3;j++) {for(k=0;k<3;k++) {FrobNorm += NV_T[j][k]*NV_T[j][k];}}
+        this will tell us how robust our procedure is (and let us know if we need to improve the conditioning) */
+    double ConditionNumber=0, ConditionNumber_threshold = 10. * CONDITION_NUMBER_DANGER; /* set a threshold condition number - above this we will 'pre-condition' the matrix for better behavior */
+    double trace_initial = NV_T[0][0] + NV_T[1][1] + NV_T[2][2]; /* initial trace of this symmetric, positive-definite matrix; used below as a characteristic value for adding the identity */
+    double conditioning_term_to_add = 1.05 * (trace_initial / NUMDIMS) / ConditionNumber_threshold; /* this will be added as a test value if the code does not reach the desired condition number */
+    /* now enter an iterative loop to arrive at a -well-conditioned- inversion to use */
+    while(1)
+    {
+        /* initialize the matrix this will go into */
+        double FrobNorm=0, FrobNorm_inv=0, detT=0; /* initialize these quantities to null */
+        for(j=0;j<3;j++) {for(k=0;k<3;k++) {Tinv[j][k]=0;}} /* initialize Tinv to null */
+        for(j=0;j<3;j++) {for(k=0;k<3;k++) {FrobNorm += NV_T[j][k]*NV_T[j][k];}} /* calculate first part of condition number, Frobenius norm of NV_T */
 #if (NUMDIMS==1) // 1-D case //
-    detT = NV_T[0][0];
-    if(detT!=0 && !isnan(detT)) {Tinv[0][0] = 1/detT}; /* only one non-trivial element in 1D! */
+        detT = NV_T[0][0]; if((detT!=0) && !isnan(detT)) {Tinv[0][0] = 1/detT}; /* only one non-trivial element in 1D! */
 #endif
 #if (NUMDIMS==2) // 2-D case //
-    detT = NV_T[0][0]*NV_T[1][1] - NV_T[0][1]*NV_T[1][0];
-    if((detT != 0)&&(!isnan(detT)))
-    {
-        Tinv[0][0] = NV_T[1][1] / detT; Tinv[0][1] = -NV_T[0][1] / detT;
-        Tinv[1][0] = -NV_T[1][0] / detT; Tinv[1][1] = NV_T[0][0] / detT;
-    }
+        detT = NV_T[0][0]*NV_T[1][1] - NV_T[0][1]*NV_T[1][0];
+        if((detT != 0)&&(!isnan(detT)))
+        {
+            Tinv[0][0] = NV_T[1][1] / detT; Tinv[0][1] = -NV_T[0][1] / detT;
+            Tinv[1][0] = -NV_T[1][0] / detT; Tinv[1][1] = NV_T[0][0] / detT;
+        }
 #endif
 #if (NUMDIMS==3) // 3-D case //
-    detT = NV_T[0][0] * NV_T[1][1] * NV_T[2][2] + NV_T[0][1] * NV_T[1][2] * NV_T[2][0] +
-    NV_T[0][2] * NV_T[1][0] * NV_T[2][1] - NV_T[0][2] * NV_T[1][1] * NV_T[2][0] -
-    NV_T[0][1] * NV_T[1][0] * NV_T[2][2] - NV_T[0][0] * NV_T[1][2] * NV_T[2][1];
-    /* check for zero determinant */
-    if((detT != 0) && !isnan(detT))
-    {
-        Tinv[0][0] = (NV_T[1][1] * NV_T[2][2] - NV_T[1][2] * NV_T[2][1]) / detT;
-        Tinv[0][1] = (NV_T[0][2] * NV_T[2][1] - NV_T[0][1] * NV_T[2][2]) / detT;
-        Tinv[0][2] = (NV_T[0][1] * NV_T[1][2] - NV_T[0][2] * NV_T[1][1]) / detT;
-        Tinv[1][0] = (NV_T[1][2] * NV_T[2][0] - NV_T[1][0] * NV_T[2][2]) / detT;
-        Tinv[1][1] = (NV_T[0][0] * NV_T[2][2] - NV_T[0][2] * NV_T[2][0]) / detT;
-        Tinv[1][2] = (NV_T[0][2] * NV_T[1][0] - NV_T[0][0] * NV_T[1][2]) / detT;
-        Tinv[2][0] = (NV_T[1][0] * NV_T[2][1] - NV_T[1][1] * NV_T[2][0]) / detT;
-        Tinv[2][1] = (NV_T[0][1] * NV_T[2][0] - NV_T[0][0] * NV_T[2][1]) / detT;
-        Tinv[2][2] = (NV_T[0][0] * NV_T[1][1] - NV_T[0][1] * NV_T[1][0]) / detT;
-    }
+        detT =  NV_T[0][0] * NV_T[1][1] * NV_T[2][2] + NV_T[0][1] * NV_T[1][2] * NV_T[2][0] +
+                NV_T[0][2] * NV_T[1][0] * NV_T[2][1] - NV_T[0][2] * NV_T[1][1] * NV_T[2][0] -
+                NV_T[0][1] * NV_T[1][0] * NV_T[2][2] - NV_T[0][0] * NV_T[1][2] * NV_T[2][1];
+        if((detT != 0) && !isnan(detT)) /* check for zero determinant */
+        {
+            Tinv[0][0] = (NV_T[1][1] * NV_T[2][2] - NV_T[1][2] * NV_T[2][1]) / detT;
+            Tinv[0][1] = (NV_T[0][2] * NV_T[2][1] - NV_T[0][1] * NV_T[2][2]) / detT;
+            Tinv[0][2] = (NV_T[0][1] * NV_T[1][2] - NV_T[0][2] * NV_T[1][1]) / detT;
+            Tinv[1][0] = (NV_T[1][2] * NV_T[2][0] - NV_T[1][0] * NV_T[2][2]) / detT;
+            Tinv[1][1] = (NV_T[0][0] * NV_T[2][2] - NV_T[0][2] * NV_T[2][0]) / detT;
+            Tinv[1][2] = (NV_T[0][2] * NV_T[1][0] - NV_T[0][0] * NV_T[1][2]) / detT;
+            Tinv[2][0] = (NV_T[1][0] * NV_T[2][1] - NV_T[1][1] * NV_T[2][0]) / detT;
+            Tinv[2][1] = (NV_T[0][1] * NV_T[2][0] - NV_T[0][0] * NV_T[2][1]) / detT;
+            Tinv[2][2] = (NV_T[0][0] * NV_T[1][1] - NV_T[0][1] * NV_T[1][0]) / detT;
+        }
 #endif
-    for(j=0;j<3;j++) {for(k=0;k<3;k++) {FrobNorm_inv += Tinv[j][k]*Tinv[j][k];}}
+        for(j=0;j<3;j++) {for(k=0;k<3;k++) {FrobNorm_inv += Tinv[j][k]*Tinv[j][k];}} /* calculate second part of ConditionNumber as Frobenius norm of inverse matrix */
+        ConditionNumber = DMAX( sqrt(FrobNorm*FrobNorm_inv) / NUMDIMS , 1 ); /* this = sqrt( ||NV_T^-1||*||NV_T|| ) :: should be ~1 for a well-conditioned matrix */
+        if(ConditionNumber < ConditionNumber_threshold) {break;}
+        for(j=0;j<NUMDIMS;j++) {SphP[i].NV_T[j][j] += conditioning_term_to_add;} /* add the conditioning term which should make the matrix better-conditioned for subsequent use: this is a normalization times the identity matrix in the relevant number of dimensions */
+        conditioning_term_to_add *= 1.2; /* multiply the conditioning term so it will grow and eventually satisfy our criteria */
+    } // end of loop broken when condition number is sufficiently small
     for(j=0;j<3;j++) {for(k=0;k<3;k++) {P[i].NV_T[j][k]=Tinv[j][k];}} // now P[i].NV_T holds the inverted matrix elements //
-    double ConditionNumber = DMAX(sqrt(FrobNorm * FrobNorm_inv) / NUMDIMS, 1); // = sqrt( ||NV_T^-1||*||NV_T|| ) :: should be ~1 for a well-conditioned matrix //
 #ifdef CBE_DEBUG
     if((ThisTask==0)&&(ConditionNumber>1.0e10)) {printf("Condition number == %g (Task=%d i=%d)\n",ConditionNumber,ThisTask,i);}
 #endif

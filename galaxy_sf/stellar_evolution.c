@@ -330,18 +330,52 @@ void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i)
 void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
 {
     int k; if(P[i].SNe_ThisTimeStep<=0) {in->Msne=0; return;} // no event
-    int SNeIaFlag=0; if(evaluate_stellar_age_Gyr(P[i].StellarAge) > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
+    double t_gyr = evaluate_stellar_age_Gyr(P[i].StellarAge); // age in Gyr
+    int SNeIaFlag=0; if(t_gyr > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
     double Msne=10.5; if(SNeIaFlag) {Msne=1.4;} // average ejecta mass for single event (normalized to give total mass loss correctly)
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
-    Msne=8.72; if(SNeIaFlag) {Msne=1.4;} // updated table of SNe rates and energetics, this is the updated mean mass per explosion to give the correct total SNe mass
-#endif
     double SNeEgy = All.SNe_Energy_Renormalization*P[i].SNe_ThisTimeStep * 1.0e51/UNIT_ENERGY_IN_CGS; // assume each SNe has 1e51 erg
 #ifdef METALS
-    double yields[NUM_METAL_SPECIES]={0};
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+    Msne=8.72; SNeIaFlag=0; if(t_gyr > 0.044) {SNeIaFlag=1; Msne=1.4;} // updated table of SNe rates and energetics, this is the updated mean mass per explosion to give the correct total SNe mass
+    double yields[NUM_METAL_SPECIES]={0}, M_ejecta_model=10.5; // normalization total mass
     if(NUM_METAL_SPECIES>=10) {
         // All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe
         if(SNeIaFlag) {
             /* SNIa */ /* from Iwamoto et al. 1999; 'W7' models */
+            M_ejecta_model = 1.4; // total ejecta mass
+            yields[0]=1.4;/* total metal mass */
+            yields[1]=0.0;/*He*/ yields[2]=0.049;/*C*/ yields[3]=1.2e-6;/*N*/ yields[4]=0.143;/*O*/
+            yields[5]=0.0045;/*Ne*/ yields[6]=0.0086;/*Mg*/ yields[7]=0.156;/*Si*/
+            yields[8]=0.087;/*S*/ yields[9]=0.012;/*Ca*/ yields[10]=0.743;/*Fe*/
+        } else {
+            double t=t_gyr, tmin=0.0037, tbrk=0.0065, tmax=0.044, Mmax=35., Mbrk=10., Mmin=6.; // numbers for interpolation of ejecta masses [must be careful here that this integrates to the correct -total- ejecta mass]
+            if(t<=tbrk) {Msne=Mmax*pow(t/tmin, log(Mbrk/Mmax)/log(tbrk/tmin));} else {Msne=Mbrk*pow(t/tbrk, log(Mmin/Mbrk)/log(tmax/tbrk));} // power-law interpolation of ejecta mass from initial to final value over duration of CC phase
+            //M_ejecta_model=Msne; /* these are defined identically in our updated [not IMF-averaged] yields */
+            double t0y=0.009, t1y=0.012, t2y=0.018; // some reference timescales for the piecewise-constant NuGrid yields
+            if(t<=t0y) {for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k]*M_ejecta_model;}} // earliest explosions reflect surface abundances for heavy species
+            else if(t<=t1y) {t0=t0;}
+            else if(t<=t2y) {t0=t0;}
+            else {t0=t0;}
+            
+            /* SNII (IMF-averaged... may not be the best approx on short timescales..., Nomoto 2006 (arXiv:0605725) */
+            yields[0]=2.0;/*Z [total metal mass]*/
+            yields[1]=3.87;/*He*/ yields[2]=0.133;/*C*/ yields[3]=0.0479;/*N*/ yields[4]=1.17;/*O*/
+            yields[5]=0.30;/*Ne*/ yields[6]=0.0987;/*Mg*/ yields[7]=0.0933;/*Si*/
+            yields[8]=0.0397;/*S*/ yields[9]=0.00458;/*Ca*/ yields[10]=0.0741;/*Fe*/
+            // metal-dependent yields:
+            if(P[i].Metallicity[0]<0.033) {yields[3]*=P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[3]*=1.65;} // N scaling is strongly dependent on initial metallicity of the star //
+            yields[0] += yields[3]-0.0479; // correct total metal mass for this correction //
+        }
+        if(SNeIaFlag) {if(NUM_METAL_SPECIES>=10) {yields[1]=0.0;}} // no He yield for Ia SNe //
+    }
+    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]/M_ejecta_model;} // normalize to mass fraction //
+#else
+    double yields[NUM_METAL_SPECIES]={0}, M_ejecta_model=10.5; // normalization total mass
+    if(NUM_METAL_SPECIES>=10) {
+        // All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe
+        if(SNeIaFlag) {
+            /* SNIa */ /* from Iwamoto et al. 1999; 'W7' models */
+            M_ejecta_model = 1.4; // normalization total mass
             yields[0]=1.4;/* total metal mass */
             yields[1]=0.0;/*He*/ yields[2]=0.049;/*C*/ yields[3]=1.2e-6;/*N*/ yields[4]=0.143;/*O*/
             yields[5]=0.0045;/*Ne*/ yields[6]=0.0086;/*Mg*/ yields[7]=0.156;/*Si*/
@@ -366,12 +400,14 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
         }
     }
     if(NUM_METAL_SPECIES==1) {if(SNeIaFlag) {yields[0]=1.4;} else {yields[0]=2.0;}}
-    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]/Msne;} // normalize to mass fraction //
+    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]/M_ejecta_model;} // normalize to mass fraction //
     /* add a check to allow for larger abundances in the progenitor stars (usually irrelevant) */
     for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]);}
     if(SNeIaFlag) {if(NUM_METAL_SPECIES>=10) {yields[1]=0.0;}} // no He yield for Ia SNe //
-    for(k=0;k<NUM_METAL_SPECIES;k++) {if(yields[k]<0) {yields[k]=0.0;} if(yields[k]>1) {yields[k]=1;} in->yields[k]=yields[k];}
 #endif
+    for(k=0;k<NUM_METAL_SPECIES;k++) {in->yields[k]=DMIN(1.,DMAX(0.,yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
+#endif
+    
     in->Msne = P[i].SNe_ThisTimeStep * (Msne/UNIT_MASS_IN_SOLAR); // total mass in code units
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     in->Msne = P[i].Mass; // conserve mass and destroy star completely
@@ -390,12 +426,27 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
     if(NUM_METAL_SPECIES>=10)
     {
         /* All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe ;; follow AGB/O star yields in more detail for the light elements */
-        /*   the interesting species are He & CNO: below is based on a compilation of van den Hoek & Groenewegen 1997, Marigo 2001, Izzard 2004 */
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+        /* everything except He and CNO is well-approximated by surface abundances. and CNO is conserved to high accuracy in sum */
+        double f_H_0=1.-(yields[0]+yields[1]), f_He_0=yields[1], f_CNO_0=yields[2]+yields[3]+yields[4]+MIN_REAL_NUMBER; // define initial H, He, CNO fraction
+        double t = evaluate_stellar_age_Gyr(P[i].StellarAge), z_sol = f_CNO_0 / (All.SolarAbundances[2]+All.SolarAbundances[3]+All.SolarAbundances[4]); // stellar population age in Gyr, and solar-scaled CNO abundance
+        double f_He_burn = 0.076, f_C_f = 0.5, f_N_f = DMAX(0.,DMIN(1.-f_C_f, 0.37)), f_O_f = DMAX(0.,1.-(f_C_f+f_N_f)); // CNO must sum to unity, so only two degrees of freedom
+        double t0=0.001, t1=0.0037, t2=0.037, t3=3., t4=14.; // set some variables for characteristic times to use below
+        if(t <= t0) {f_He_burn=0; f_C_f=yields[2]/f_CNO_0; f_N_f=yields[3]/f_CNO_0; f_O_f=yields[4]/f_CNO_0;} // pure surface abundances at extremely early times
+        else if(t <= t1) {f_He_burn=f_He_burn;} // placeholders, for now use the constant yields above, but will replace this?????
+        else if(t <= t2) {f_He_burn=f_He_burn;}
+        else if(t <= t3) {f_He_burn=f_He_burn;}
+        else {f_He_burn=f_He_burn;}
+        yields[1] = f_He_0 + f_He_burn*f_H; // final He fraction
+        yields[2] = f_CNO_0 * f_C_f, yields[3] = f_CNO_0 * f_N_f, yields[4] = f_CNO_0 * f_O_f; // final C,N,O fractions
+#else
+        /* the interesting species are He & CNO: below is based on a compilation of van den Hoek & Groenewegen 1997, Marigo 2001, Izzard 2004 */
         yields[1]=0.36; /*He*/ yields[2]=0.016; /*C*/ yields[3]=0.0041; /*N*/ yields[4]=0.0118; /*O*/
         // metal-dependent yields: O scaling is strongly dependent on initial metallicity of the star //
         if(P[i].Metallicity[0]<0.033) {yields[4] *= P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[4] *= 1.65;}
         for(k=1;k<=4;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]); if(yields[k]<0) {yields[k]=0.0;} if(yields[k]>1) {yields[k]=1;} in->yields[k]=yields[k];} // enforce yields obeying pre-existing surface abundances, and upper/lower limits //
         yields[0]=0.0; for(k=2;k<NUM_METAL_SPECIES;k++) {yields[0]+=yields[k];}
+#endif
     } else {
         yields[0]=0.032; for(k=1;k<NUM_METAL_SPECIES;k++) {yields[k]=0.0;}
     }
@@ -412,7 +463,6 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
     double t=evaluate_stellar_age_Gyr(P[i].StellarAge), Z=Z_for_stellar_evol(i), f0=pow(Z,0.12); /* setup: updated fit here uses the same stellar evolution models/tracks as used to compute mass-loss rates. see those for references here. */
     in->SNe_v_ejecta = sqrt(All.StellarMassLoss_Energy_Renormalization) * f0 * (3000./(1.+pow(t/0.003,2.5)) + 600./(1.+pow(sqrt(Z)*t/0.05,6.)+pow(Z/0.2,1.5)) + 30.) / UNIT_VEL_IN_KMS; /* interpolates smoothly from OB winds through AGB, also versus Z */
 #endif
-
 
 #if defined(SINGLE_STAR_FB_WINDS) /* SINGLE-STAR VERSION: instead of a stellar population, this is wind from a single star */
     double m_msun=P[i].Mass*UNIT_MASS_IN_SOLAR;

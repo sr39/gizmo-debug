@@ -1352,8 +1352,8 @@ char *GetMultiSpeciesFilename(int i, int hk)
 #define JAMPL	1.0		/* amplitude factor relative to input table */
 #define TABLESIZE 250		/* Max # of lines in TREECOOL */
 static float inlogz[TABLESIZE];
-static float gH0[TABLESIZE], gHe[TABLESIZE], gHep[TABLESIZE];
-static float eH0[TABLESIZE], eHe[TABLESIZE], eHep[TABLESIZE];
+static double gH0[TABLESIZE], gHe[TABLESIZE], gHep[TABLESIZE]; // upgrade from float to double, should read fine
+static double eH0[TABLESIZE], eHe[TABLESIZE], eHep[TABLESIZE]; // upgrade from float to double, should read fine
 static int nheattab;		/* length of table */
 
 
@@ -1365,7 +1365,7 @@ void ReadIonizeParams(char *fname)
     for(i=0; i<TABLESIZE; i++) {if(fscanf(fdcool, "%g %g %g %g %g %g %g", &inlogz[i], &gH0[i], &gHe[i], &gHep[i], &eH0[i], &eHe[i], &eHep[i]) == EOF) {break;}}
     fclose(fdcool);
     for(i=0, nheattab=0; i<TABLESIZE; i++) {if(gH0[i] != 0.0) {nheattab++;} else {break;}} /*  nheattab is the number of entries in the table */
-    if(ThisTask == 0) printf(" ..read ionization table [TREECOOL] with %d entries in file `%s'. Make sure to cite the authors from which the UV background was compiled! (See user guide for the correct references).\n", nheattab, fname);
+    if(ThisTask == 0) printf(" ..read ionization table [TREECOOL] with %d non-zero UVB entries in file `%s'. Make sure to cite the authors from which the UV background was compiled! (See user guide for the correct references).\n", nheattab, fname);
 }
 
 
