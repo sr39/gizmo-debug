@@ -88,12 +88,15 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
         if((L<=0)||(star_age<=0)||(isnan(star_age))||(isnan(L))) {L=0; star_age=0;}
         double f_uv=All.PhotonMomentum_fUV, f_op=All.PhotonMomentum_fOPT;
 #ifndef RT_FIRE_FIX_SPECTRAL_SHAPE
-        double sigma_eff = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,P[i].DensAroundStar,PPP[i].NumNgb,0,i) * UNIT_SURFDEN_IN_CGS;
+        double sigma_eff = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,P[i].DensAroundStar,PPP[i].NumNgb,0,i); // code units
         if((sigma_eff <= 0)||(isnan(sigma_eff))) {sigma_eff=0;}
         if(star_age <= 0.0025) {f_op=0.09;} else {
             if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));
             } else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
-        double tau_uv = sigma_eff*KAPPA_UV; double tau_op = sigma_eff*KAPPA_OP;
+        /* note that the metallicity doing attenuation is the -gas- opacity around the star, while here we only know the stellar metallicity,
+            so we use this as a guess, but this could substantially under-estimate opacities for old stars in MW-like galaxies. But for young stars (which dominate)
+            this is generally ok. */
+        double tau_uv = sigma_eff*rt_kappa(i,RT_FREQ_BIN_FIRE_UV); double tau_op = sigma_eff*rt_kappa(i,RT_FREQ_BIN_FIRE_OPT); // kappa returned in code units
         f_uv = (1-f_op)*(All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV)/(1+0.8*tau_uv+0.85*tau_uv*tau_uv));
         f_op *= All.PhotonMomentum_fOPT + (1-All.PhotonMomentum_fOPT)/(1+0.8*tau_op+0.85*tau_op*tau_op);
         /*
@@ -366,7 +369,7 @@ double rt_kappa(int i, int k_freq)
     double fac = UNIT_SURFDEN_IN_CGS, Zfac; /* units */
     Zfac = 1.0; // assume solar metallicity 
 #ifdef METALS
-    Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
+    if(i>=0) {Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];}
 #endif
 #ifdef RT_FREEFREE /* pure (grey, non-relativistic) Thompson scattering opacity + free-free absorption opacity */
     if(k_freq==RT_FREQ_BIN_FREEFREE)
@@ -386,9 +389,14 @@ double rt_kappa(int i, int k_freq)
 #endif
 #ifdef GALSF_FB_FIRE_RT_LONGRANGE
     /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
-    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return KAPPA_UV * fac;}
-    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return KAPPA_OP * fac;}
-    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return KAPPA_IR * fac;}
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return DMAX(0.02, DMAX(0.35*SphP[i].Ne, 1800.*(0.01 + Zfac))) * fac;} // floored at Thomson/neutral H opacities
+    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return DMAX(0.02, DMAX(0.35*SphP[i].Ne, 180.*Zfac)) * fac;} // floored at Thomson/neutral H opacities
+    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return DMAX(0.02, DMAX(0.35*SphP[i].Ne, 10.*Zfac)) * fac;} // floored at Thomson/neutral H opacities
+#endif
+    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return (1800.) * fac;}
+    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return (180.)  * fac;}
+    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return (10.) * fac * (0.1 + Zfac);}
 #endif
 #ifdef RT_PHOTOELECTRIC
     /* opacity comes primarily from dust (ignoring H2 molecular opacities here) */
@@ -544,7 +552,7 @@ double rt_absorb_frac_albedo(int i, int k_freq)
 double rt_absorption_rate(int i, int k_freq)
 {
     /* should be equal to (c * Kappa_opacity * rho) */
-    return C_LIGHT_CODE_REDUCED * rt_absorb_frac_albedo(i, k_freq) * rt_kappa(i, k_freq) * SphP[i].Density*All.cf_a3inv;
+    return C_LIGHT_CODE_REDUCED * rt_absorb_frac_albedo(i, k_freq) * rt_kappa(i,k_freq) * SphP[i].Density*All.cf_a3inv;
 }
 #endif 
 

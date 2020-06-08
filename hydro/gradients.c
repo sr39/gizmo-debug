@@ -1393,7 +1393,7 @@ void hydro_gradient_calc(void)
                 int k_freq; for(k_freq = 0; k_freq < N_RT_FREQ_BINS; k_freq++)
                 {
                     /* calculate the opacity */
-                    SphP[i].Rad_Kappa[k_freq] = rt_kappa(i, k_freq); // physical units //
+                    SphP[i].Rad_Kappa[k_freq] = rt_kappa(i,k_freq); // physical units //
 #if defined(RT_FLUXLIMITER) && defined(RT_COMPGRAD_EDDINGTON_TENSOR)
                     /* compute the flux-limiter for radiation transport: also convenient here to compute the relevant opacities for all particles */
                     double lambda = 1;

@@ -1193,12 +1193,6 @@ typedef unsigned long long peanokey;
 #define HIIRegion_Temp (1.0e4) /* temperature (in K) of heated gas */
 #endif
 
-/* some convenience FIRE-module variables for the radiation here */
-#if defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_FIRE_RT_LOCALRP)
-#define KAPPA_IR    (10.0)   /* in cm^2/g for solar abundances */
-#define KAPPA_OP    (180.0)
-#define KAPPA_UV    (1800.0)
-#endif
 
 
 #ifdef METALS
