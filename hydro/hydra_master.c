@@ -781,7 +781,8 @@ void hydro_final_operations_and_cleanup(void)
                 double vol_inv = SphP[i].Density*All.cf_a3inv/P[i].Mass, f_kappa_abs = rt_absorb_frac_albedo(i,kfreq), vel_i[3]={0}, vdot_h[3]={0}, flux_i[3]={0}, flux_mag=0, erad_i=0, flux_corr=1, work_band=0;
                 erad_i = SphP[i].Rad_E_gamma_Pred[kfreq]*vol_inv;
                 for(k=0;k<3;k++) {flux_i[k]=SphP[i].Rad_Flux_Pred[kfreq][k]*vol_inv; vel_i[k]=SphP[i].VelPred[k]/All.cf_atime; flux_mag+=flux_i[k]*flux_i[k];}
-                eddington_tensor_dot_vector(SphP[i].ET[kfreq],vel_i,vdot_h); for(k=0;k<3;k++) {vdot_h[k] = erad_i * (vel_i[k] + vdot_h[k]);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term. this is the P term //
+                eddington_tensor_dot_vector(SphP[i].ET[kfreq],vel_i,vdot_h);
+                for(k=0;k<3;k++) {vdot_h[k] = erad_i * (vel_i[k] + vdot_h[k]);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term. this is the P term //
                 double flux_thin = erad_i * C_LIGHT_CODE_REDUCED; if(flux_mag>0) {flux_mag=sqrt(flux_mag);} else {flux_mag=1.e-20*flux_thin;}
                 flux_corr = DMIN(1., flux_thin/flux_mag);
 #if defined(RT_ENABLE_R15_GRADIENTFIX)

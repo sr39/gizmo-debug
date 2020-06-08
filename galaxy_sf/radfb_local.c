@@ -16,7 +16,7 @@
 void radiation_pressure_winds_consolidated(void)
 {
     MyDouble *pos; int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,i,j,k,n;
-    double dx,dy,dz,r2,u,h,hinv,hinv3,wk,rho,wt_sum,p_random,p_cumulative,star_age,lm_ssp,dE_over_c,prob,dt,delta_v_imparted_rp=0,dwk,norm,dir[3], total_n_wind,total_m_wind,total_mom_wind,total_prob_kick,avg_v_kick,momwt_avg_v_kick,avg_taufac;
+    double dx,dy,dz,r2,u,h,hinv,hinv3,wk,rho,wt_sum,p_random,p_cumulative,star_age,lm_ssp,lum_cgs=0,f_lum_ion=0,dE_over_c,prob,dt,delta_v_imparted_rp=0,dwk,norm,dir[3], total_n_wind,total_m_wind,total_mom_wind,total_prob_kick,avg_v_kick,momwt_avg_v_kick,avg_taufac;
     double totMPI_n_wind,totMPI_m_wind,totMPI_mom_wind,totMPI_prob_kick,totMPI_avg_v,totMPI_pwt_avg_v,totMPI_taufac, RtauMax = 0, age_thold = 0.1; dwk=0;
     total_n_wind=total_m_wind=total_mom_wind=total_prob_kick=avg_v_kick=momwt_avg_v_kick=avg_taufac=0; totMPI_n_wind=totMPI_m_wind=totMPI_mom_wind=totMPI_prob_kick=totMPI_avg_v=totMPI_pwt_avg_v=totMPI_taufac=0; p_random=p_cumulative=0;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
@@ -40,10 +40,20 @@ void radiation_pressure_winds_consolidated(void)
             star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
             if( (star_age < age_thold) && (P[i].Mass > 0) && (P[i].DensAroundStar > 0) )
             {
+                /* calculate some basic luminosity properties of the stars */
+                lm_ssp = evaluate_light_to_mass_ratio(star_age, i); // light-to-mass ratio in solar
+                lum_cgs = (lm_ssp * SOLAR_LUM) * (P[i].Mass*UNIT_MASS_IN_SOLAR); // total L in CGS of star particle
+                f_lum_ion = particle_ionizing_luminosity_in_cgs(i) / lum_cgs; f_lum_ion=DMAX(0.,DMIN(1.,f_lum_ion));
+                dE_over_c = lum_cgs * (dt*UNIT_TIME_IN_CGS) / C_LIGHT; // total photon momentum emitted in timestep, in CGS (= L*dt/c)
+                dE_over_c /= (UNIT_MASS_IN_CGS * UNIT_VEL_IN_CGS); // total photon momentum now in code units
+                total_prob_kick += dE_over_c; // sum contributions
+
+                /* calculate some pre-amble properties */
                 RtauMax = P[i].Hsml*All.cf_atime * (2.0 * rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * P[i].Hsml*P[i].DensAroundStar*All.cf_a2inv);
                 RtauMax /= All.cf_atime; RtauMax += 5.*P[i].Hsml;
                 double rmax0 = 10.0 / unitlength_in_kpc; if(RtauMax > rmax0) RtauMax = rmax0;
                 rmax0 = 1.0 / unitlength_in_kpc; if(RtauMax < rmax0) RtauMax = rmax0;
+
 #ifndef GALSF_FB_FIRE_RT_CONTINUOUSRP
                 /* if kicks are stochastic, we don't want to waste time doing a neighbor search every timestep; it can be much faster to pre-estimate the kick probabilities */
                 double v_wind_threshold = 15. / UNIT_VEL_IN_KMS;
@@ -51,22 +61,11 @@ void radiation_pressure_winds_consolidated(void)
                 v_wind_threshold = 0.2 / UNIT_VEL_IN_KMS;
 #endif
                 double rho_phys=P[i].DensAroundStar*All.cf_a3inv, h_phys=P[i].Hsml*All.cf_atime;
-                // delta_v_imparted_rp = sqrt( All.G * (P[i].Mass + NORM_COEFF*rho_phys*h_phys*h_phys*h_phys) / (h_phys) ); // old experiment with binding velocity - not used //
-                //if(vq<v) {v=vq;} // vq is 0, so this is always triggered
-                // vq = 1.82 * (65.748/UNIT_VEL_IN_KMS) * pow(1.+rho_phys*UNIT_DENSITY_IN_NHCGS,-0.25);
-                /* this corresponds to =G M_star/R_e for a 10^6 Msun cluster, scaling upwards from there; note that All.WindEnergyFraction will boost appropriately; should be at least sqrt(2), if want full velocities; in fact for Hernquist profile, the mass-weighted V_esc=1.82 times this */
-                // if(vq<v) {v=vq;}
-                // if(v<=v_wind_threshold) v=v_wind_threshold;
                 double v_grav_guess; v_grav_guess = DMIN( 1.82*(65.748/UNIT_VEL_IN_KMS)*pow(1.+rho_phys*UNIT_DENSITY_IN_NHCGS,-0.25) , sqrt(All.G*(P[i].Mass + NORM_COEFF*rho_phys*h_phys*h_phys*h_phys)/h_phys) ); // don't want to 'under-kick' if there are small local characteristic velocities in the region of interest
                 delta_v_imparted_rp = v_wind_threshold; // always couple this 'discrete' kick, to avoid having to couple every single timestep for every single star particle
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
                 delta_v_imparted_rp = DMIN( v_grav_guess , (2./3.)*v_wind_threshold ); // be more conservative, calling this subroutine more often //
 #endif
-                lm_ssp = evaluate_light_to_mass_ratio(star_age, i); // light-to-mass ratio in solar
-                dE_over_c = (lm_ssp * SOLAR_LUM) * (P[i].Mass*UNIT_MASS_IN_SOLAR); // total L in CGS of star particle
-                dE_over_c *= (dt*UNIT_TIME_IN_CGS) / C_LIGHT; // total photon momentum emitted in timestep, in CGS (= L*dt/c)
-                dE_over_c /= (UNIT_MASS_IN_CGS * UNIT_VEL_IN_CGS); // total photon momentum now in code units
-                total_prob_kick += dE_over_c; // sum contributions
                 double dv_imparted_perpart_guess = (dE_over_c/P[i].Mass); // estimate of summed dv_imparted [in code units] from single-scattering: = momentum/mass of particle
                 double tau_IR_guess = rt_kappa(i,RT_FREQ_BIN_FIRE_IR) * rho_phys*h_phys; // guess of IR optical depth. everything in physical code units //
                 dv_imparted_perpart_guess += All.RP_Local_Momentum_Renormalization * (dE_over_c/P[i].Mass) * tau_IR_guess; // estimate of additional IR term [1+tau_IR]*L/c assumed here as coupling //
@@ -114,17 +113,6 @@ void radiation_pressure_winds_consolidated(void)
                     if (rho > 0)  /* found at least one massive neighbor, can proceed */
                     {
                         hinv=1/h; hinv3=hinv*hinv*hinv;
-#ifndef GALSF_FB_FIRE_RT_CONTINUOUSRP
-                        // v = sqrt( All.G * (P[i].Mass + NORM_COEFF*rho*h*h*h) / (h*All.cf_atime) ); // re-calc v with our local rho estimate we just obtained //
-                        // if(vq<v) v=vq; // essentially never triggered in previous code version
-                        // if(v<=v_wind_threshold) v=v_wind_threshold;
-#else
-                        lm_ssp = evaluate_light_to_mass_ratio(star_age, i); // light-to-mass ratio in solar
-                        dE_over_c = (lm_ssp * SOLAR_LUM) * (P[i].Mass*UNIT_MASS_IN_SOLAR); // total L in CGS of star particle
-                        dE_over_c *= (dt*UNIT_TIME_IN_CGS) / C_LIGHT; // total photon momentum emitted in timestep, in CGS (= L*dt/c)
-                        dE_over_c /= (UNIT_MASS_IN_CGS * UNIT_VEL_IN_CGS); // total photon momentum now in code units
-                        total_prob_kick += dE_over_c;
-#endif
                         for(n=0; n<numngb_inbox; n++)
                         {
                             j = Ngblist[n];
@@ -136,7 +124,15 @@ void radiation_pressure_winds_consolidated(void)
                                 /* first loop -- share out the UV luminosity among the local neighbors, weighted by the gas kernel */
                                 double h_eff_j = Get_Particle_Size(j);
                                 wk = h_eff_j*h_eff_j / wt_sum; // dimensionless weight factor
+                                if(wk <= 0) {continue;}
                                 double dv_imparted_singlescattering = wk * (dE_over_c / P[j].Mass); // fractional initial photon momentum seen by this neighbor
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+                                /* estimate fraction of the available single-scattering RP that can actually be absorbed in the cell */
+                                double sigma_cell_to_total = (1./wk) * (P[j].Mass / (h_eff_j*All.cf_atime * h_eff_j*All.cf_atime)); // code units -- correct back to 'total' column through all neighbors, since thats what determines the total fraction that will be absorbed here //
+                                double tau_uv = rt_kappa(j,RT_FREQ_BIN_FIRE_UV), tau_op = rt_kappa(j,RT_FREQ_BIN_FIRE_OP); // opacity in uv and optical bands
+                                double frac_abs = f_lum_ion + (1.-f_lum_ion) * (1. - 0.5*(exp(-tau_uv) + exp(-tau_op))); // absorbed fraction in the actual cell
+                                dv_imparted_singlescattering *= frac_abs; // reduce the single-scattering flux by the fraction of that flux actually absorbed
+#endif
                                 double kappa_ir_codeunits = rt_kappa(j,RT_FREQ_BIN_FIRE_IR); // opacity in code units
                                 double dv_imparted_multiplescattering = All.RP_Local_Momentum_Renormalization * (dE_over_c / P[j].Mass) * kappa_ir_codeunits * (P[j].Mass/(4.*M_PI*r2*All.cf_atime*All.cf_atime));
 #ifdef GALSF_FB_FIRE_RT_CONTINUOUSRP
@@ -159,11 +155,8 @@ void radiation_pressure_winds_consolidated(void)
                                     for(k=0;k<3;k++) dir[k]=-P[j].GradRho[k]; // based on density gradient near star //
 #else
                                     if(dv_imparted_singlescattering > dv_imparted_multiplescattering)
-                                    {
-                                        dir[0]=dx; dir[1]=dy; dir[2]=dz; // if kick is primarily from uv, then orient directly //
-                                    } else {
-                                        for(k=0;k<3;k++) dir[k]=-P[j].GradRho[k]; // otherwise, along opacity gradient //
-                                    }
+                                        {dir[0]=dx; dir[1]=dy; dir[2]=dz;} // if kick is primarily from uv, then orient directly //
+                                        else {for(k=0;k<3;k++) {dir[k]=-P[j].GradRho[k];}} // otherwise, along opacity gradient //
 #endif
                                     norm=0; for(k=0; k<3; k++) {norm += dir[k]*dir[k];}
                                     if(norm>0) {norm=sqrt(norm); for(k=0;k<3;k++) dir[k] /= norm;} else {dir[0]=0; dir[1]=0; dir[2]=1; norm=1;}
@@ -171,8 +164,7 @@ void radiation_pressure_winds_consolidated(void)
                                     
 #if defined(GALSF_FB_FIRE_RT_CONTINUOUSRP) /* if we're not forcing the kick orientation, need to separately apply the UV kick */
                                     delta_v_imparted_rp = dv_imparted_singlescattering; // uv kick: directed from star //
-                                    dir[0]=dx; dir[1]=dy; dir[2]=dz; // based on density gradient near star //
-                                    norm=0; for(k=0; k<3; k++) {norm += dir[k]*dir[k];}
+                                    dir[0]=dx; dir[1]=dy; dir[2]=dz; norm=0; for(k=0; k<3; k++) {norm += dir[k]*dir[k];}
                                     if(norm>0) {norm=sqrt(norm); for(k=0;k<3;k++) {dir[k] /= norm;}} else {dir[0]=0; dir[1]=0; dir[2]=1; norm=1;}
                                     for(k=0; k<3; k++) {P[j].Vel[k] += delta_v_imparted_rp * All.cf_atime * dir[k]; SphP[j].VelPred[k] += delta_v_imparted_rp * All.cf_atime * dir[k];} /* apply the kick */
 #endif
