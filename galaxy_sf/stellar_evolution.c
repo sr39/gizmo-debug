@@ -353,9 +353,9 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
             //M_ejecta_model=Msne; /* these are defined identically in our updated [not IMF-averaged] yields */
             double t0y=0.009, t1y=0.012, t2y=0.018; // some reference timescales for the piecewise-constant NuGrid yields
             if(t<=t0y) {for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k]*M_ejecta_model;}} // earliest explosions reflect surface abundances for heavy species
-            else if(t<=t1y) {t0=t0;}
-            else if(t<=t2y) {t0=t0;}
-            else {t0=t0;}
+            else if(t<=t1y) {t0y=t0y;}
+            else if(t<=t2y) {t0y=t0y;}
+            else {t0y=t0y;}
             
             /* SNII (IMF-averaged... may not be the best approx on short timescales..., Nomoto 2006 (arXiv:0605725) */
             yields[0]=2.0;/*Z [total metal mass]*/
