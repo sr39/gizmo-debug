@@ -1673,7 +1673,7 @@ void selfshield_local_incident_uv_flux(void)
                 double surfdensity = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); // in CGS
                 double tau_nuv = rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * surfdensity; // optical depth: this part is attenuated by dust //
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
-                double tau_nuv *= (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // if using older FIRE defaults, this was manually added instead of rolled into rt_kappa -- annoying but here for completeness //
+                tau_nuv *= (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // if using older FIRE defaults, this was manually added instead of rolled into rt_kappa -- annoying but here for completeness //
 #endif
                 double tau_euv = 3.7e6 * surfdensity * UNIT_SURFDEN_IN_CGS; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas //
                 SphP[i].Rad_Flux_UV *= exp(-tau_nuv); // attenuate

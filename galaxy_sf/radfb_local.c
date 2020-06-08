@@ -138,7 +138,7 @@ void radiation_pressure_winds_consolidated(void)
                                 wk = h_eff_j*h_eff_j / wt_sum; // dimensionless weight factor
                                 double dv_imparted_singlescattering = wk * (dE_over_c / P[j].Mass); // fractional initial photon momentum seen by this neighbor
                                 double kappa_ir_codeunits = rt_kappa(j,RT_FREQ_BIN_FIRE_IR); // opacity in code units
-                                double dv_imparted_multiplescattering = All.RP_Local_Momentum_Renormalization * (dE_over_c / P[j].Mass) * dv_units_j * (P[j].Mass/(4.*M_PI*r2*All.cf_atime*All.cf_atime));
+                                double dv_imparted_multiplescattering = All.RP_Local_Momentum_Renormalization * (dE_over_c / P[j].Mass) * kappa_ir_codeunits * (P[j].Mass/(4.*M_PI*r2*All.cf_atime*All.cf_atime));
 #ifdef GALSF_FB_FIRE_RT_CONTINUOUSRP
                                 delta_v_imparted_rp = dv_imparted_multiplescattering + dv_imparted_singlescattering; prob = 1;
 #else
