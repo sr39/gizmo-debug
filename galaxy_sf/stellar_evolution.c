@@ -437,7 +437,7 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
         else if(t <= t2) {f_He_burn=f_He_burn;}
         else if(t <= t3) {f_He_burn=f_He_burn;}
         else {f_He_burn=f_He_burn;}
-        yields[1] = f_He_0 + f_He_burn*f_H; // final He fraction
+        yields[1] = f_He_0 + f_He_burn*f_H_0; // final He fraction
         yields[2] = f_CNO_0 * f_C_f, yields[3] = f_CNO_0 * f_N_f, yields[4] = f_CNO_0 * f_O_f; // final C,N,O fractions
 #else
         /* the interesting species are He & CNO: below is based on a compilation of van den Hoek & Groenewegen 1997, Marigo 2001, Izzard 2004 */
