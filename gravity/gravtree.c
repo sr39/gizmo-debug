@@ -524,12 +524,12 @@ void gravity_tree(void)
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX) /* multiply by volume to use standard 'finite volume-like' quantity as elsewhere in-code */
         if(P[i].Type==0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[i].Rad_Flux[kf][k2] *= P[i].Mass/(SphP[i].Density*All.cf_a3inv);}}} // convert to standard finite-volume-like units //
 #if !defined(RT_DISABLE_RAD_PRESSURE) // if we save the fluxes, we didnt apply forces on-the-spot, which means we appky them here //
-        if(P[i].Type==0)
+        if((P[i].Type==0) && (P[i].Mass>0))
         {
             int k,kfreq; double vol_inv=SphP[i].Density*All.cf_a3inv/P[i].Mass, radacc[3]={0}, h_i=Get_Particle_Size(i)*All.cf_atime, sigma_eff_i=P[i].Mass/(h_i*h_i);
             for(kfreq=0; kfreq<N_RT_FREQ_BINS; kfreq++)
             {
-                double f_slab=1, erad_i=0, vel_i[3]={0}, vdot_h[3]={0}, flux_i[3]={0}, flux_mag2=0, vdotflux=0, kappa_rad=rt_kappa(i,kfreq), tau_eff=kappa_rad*sigma_eff_i; if(tau_eff > 1.e-4) {f_slab = (1.-exp(-tau_eff)) / tau_eff;} // account for optically thick local 'slabs' self-shielding themselves
+                double f_slab=1, erad_i=0, vel_i[3]={0}, vdot_h[3]={0}, flux_i[3]={0}, flux_mag2=MIN_REAL_NUMBER, vdotflux=0, kappa_rad=rt_kappa(i,kfreq), tau_eff=kappa_rad*sigma_eff_i; if(tau_eff > 1.e-4) {f_slab = (1.-exp(-tau_eff)) / tau_eff;} // account for optically thick local 'slabs' self-shielding themselves
                 double acc_norm = kappa_rad * f_slab / C_LIGHT_CODE; // pre-factor for radiation pressure acceleration
 #if defined(RT_LEBRON)
                 acc_norm *= All.PhotonMomentum_Coupled_Fraction; // allow user to arbitrarily increase/decrease strength of RP forces for testing
