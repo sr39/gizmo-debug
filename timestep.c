@@ -367,7 +367,7 @@ integertime get_timestep(int p,		/*!< particle index */
     else
     {ac = *aphys;}
     
-    if(ac == 0) ac = 1.0e-30;
+    if(ac == 0) {ac = 1.0e-30;}
     
     
     if(flag > 0)
