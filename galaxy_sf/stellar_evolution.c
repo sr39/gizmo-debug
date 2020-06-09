@@ -342,33 +342,24 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
         // All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe
         if(SNeIaFlag) {
             /* SNIa */ /* from Iwamoto et al. 1999; 'W7' models */
-            M_ejecta_model = 1.4; // total ejecta mass
-            yields[0]=1.4;/* total metal mass */
-            yields[1]=0.0;/*He*/ yields[2]=0.049;/*C*/ yields[3]=1.2e-6;/*N*/ yields[4]=0.143;/*O*/
-            yields[5]=0.0045;/*Ne*/ yields[6]=0.0086;/*Mg*/ yields[7]=0.156;/*Si*/
-            yields[8]=0.087;/*S*/ yields[9]=0.012;/*Ca*/ yields[10]=0.743;/*Fe*/
+            M_ejecta_model = 1.4; /* total ejecta mass */
+            yields[0]=1; /* total metal mass */ yields[1]=0; /*He*/
+            yields[2]=3.50e-2;/*C*/  yields[3]=8.57e-7;/*N*/  yields[4] =0.102;/*O*/
+            yields[5]=3.21e-3;/*Ne*/ yields[6]=6.14e-3;/*Mg*/ yields[7] =0.111;/*Si*/
+            yields[8]=6.21e-2;/*S*/  yields[9]=8.57e-3;/*Ca*/ yields[10]=0.531;/*Fe*/
         } else {
             double t=t_gyr, tmin=0.0037, tbrk=0.0065, tmax=0.044, Mmax=35., Mbrk=10., Mmin=6.; // numbers for interpolation of ejecta masses [must be careful here that this integrates to the correct -total- ejecta mass]
             if(t<=tbrk) {Msne=Mmax*pow(t/tmin, log(Mbrk/Mmax)/log(tbrk/tmin));} else {Msne=Mbrk*pow(t/tbrk, log(Mmin/Mbrk)/log(tmax/tbrk));} // power-law interpolation of ejecta mass from initial to final value over duration of CC phase
             //M_ejecta_model=Msne; /* these are defined identically in our updated [not IMF-averaged] yields */
-            double t0y=0.009, t1y=0.012, t2y=0.018; // some reference timescales for the piecewise-constant NuGrid yields
-            if(t<=t0y) {for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k]*M_ejecta_model;}} // earliest explosions reflect surface abundances for heavy species
-            else if(t<=t1y) {t0y=t0y;}
-            else if(t<=t2y) {t0y=t0y;}
-            else {t0y=t0y;}
-            
-            /* SNII (IMF-averaged... may not be the best approx on short timescales..., Nomoto 2006 (arXiv:0605725) */
-            yields[0]=2.0;/*Z [total metal mass]*/
-            yields[1]=3.87;/*He*/ yields[2]=0.133;/*C*/ yields[3]=0.0479;/*N*/ yields[4]=1.17;/*O*/
-            yields[5]=0.30;/*Ne*/ yields[6]=0.0987;/*Mg*/ yields[7]=0.0933;/*Si*/
-            yields[8]=0.0397;/*S*/ yields[9]=0.00458;/*Ca*/ yields[10]=0.0741;/*Fe*/
-            // metal-dependent yields:
-            if(P[i].Metallicity[0]<0.033) {yields[3]*=P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[3]*=1.65;} // N scaling is strongly dependent on initial metallicity of the star //
-            yields[0] += yields[3]-0.0479; // correct total metal mass for this correction //
+            double t0y=0.009, t1y=0.012, t2y=0.018, z_sol=P[i].Metallicity[k]/All.SolarAbundances[0]; // some reference timescales for the piecewise-constant NuGrid yields
+            for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k];} // initialize to surface abundances //
+            if(t<=t0y)      {yields[1]=0.43; yields[2]=1.2e-3; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=4.5e-2; yields[5]=1.0e-2; yields[6]=6.e-3*pow(DMAX(z_sol,1.e-4),0.25); yields[7]=4.e-3*pow(DMAX(z_sol,1.e-4),0.2); yields[8]=1.0e-3; yields[9]=P[i].Metallicity[9]; yields[10]=P[i].Metallicity[10];}
+            else if(t<=t1y) {yields[1]=0.39; yields[2]=1.2e-3; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=1.0e-1; yields[5]=1.6e-2;            yields[6]=9.0e-3; yields[7]=9.0e-3; yields[8]=4.0e-3; yields[9]=8.0e-5; yields[10]=1.0e-3;}
+            else if(t<=t2y) {yields[1]=0.37; yields[2]=1.2e-3; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=7.0e-2; yields[5]=1.0e-2;            yields[6]=5.5e-3; yields[7]=1.6e-2; yields[8]=1.3e-2; yields[9]=2.0e-4; yields[10]=5.0e-3;}
+            else            {yields[1]=0.40; yields[2]=1.0e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=2.0e-2; yields[5]=6.e-4+2.e-3*z_sol; yields[6]=1.5e-3; yields[7]=8.5e-3; yields[8]=6.0e-3; yields[9]=7.0e-4; yields[10]=1.8e-2;}
+            yields[0]=0; for(k=2;k<NUM_METAL_SPECIES;k++) {yields[0]+=yields[k];}
         }
-        if(SNeIaFlag) {if(NUM_METAL_SPECIES>=10) {yields[1]=0.0;}} // no He yield for Ia SNe //
     }
-    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]/M_ejecta_model;} // normalize to mass fraction //
 #else
     double yields[NUM_METAL_SPECIES]={0}, M_ejecta_model=10.5; // normalization total mass
     if(NUM_METAL_SPECIES>=10) {
@@ -433,10 +424,10 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
         double f_He_burn = 0.076, f_C_f = 0.5, f_N_f = DMAX(0.,DMIN(1.-f_C_f, 0.37)), f_O_f = DMAX(0.,1.-(f_C_f+f_N_f)); // CNO must sum to unity, so only two degrees of freedom
         double t0=0.001, t1=0.0037, t2=0.037, t3=3., t4=14.; // set some variables for characteristic times to use below
         if(t <= t0) {f_He_burn=0; f_C_f=yields[2]/f_CNO_0; f_N_f=yields[3]/f_CNO_0; f_O_f=yields[4]/f_CNO_0;} // pure surface abundances at extremely early times
-        else if(t <= t1) {f_He_burn=f_He_burn;} // placeholders, for now use the constant yields above, but will replace this?????
-        else if(t <= t2) {f_He_burn=f_He_burn;}
-        else if(t <= t3) {f_He_burn=f_He_burn;}
-        else {f_He_burn=f_He_burn;}
+        else if(t <= t1) {f_He_burn=0.076;} // placeholders, for now use the constant yields above, but will replace this?????
+        else if(t <= t2) {f_He_burn=0.076;}
+        else if(t <= t3) {f_He_burn=0.076;}
+        else {f_He_burn=0.076;}
         yields[1] = f_He_0 + f_He_burn*f_H_0; // final He fraction
         yields[2] = f_CNO_0 * f_C_f, yields[3] = f_CNO_0 * f_N_f, yields[4] = f_CNO_0 * f_O_f; // final C,N,O fractions
 #else
