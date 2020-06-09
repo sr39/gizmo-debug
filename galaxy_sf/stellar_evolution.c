@@ -353,9 +353,9 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
             //M_ejecta_model=Msne; /* these are defined identically in our updated [not IMF-averaged] yields */
             double t0y=0.009, t1y=0.012, t2y=0.018, z_sol=P[i].Metallicity[k]/All.SolarAbundances[0]; // some reference timescales for the piecewise-constant NuGrid yields
             for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k];} // initialize to surface abundances //
-            if(t<=t0y)      {yields[1]=0.43; yields[2]=1.2e-3; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=4.5e-2; yields[5]=1.0e-2; yields[6]=6.e-3*pow(DMAX(z_sol,1.e-4),0.25); yields[7]=4.e-3*pow(DMAX(z_sol,1.e-4),0.2); yields[8]=1.0e-3; yields[9]=P[i].Metallicity[9]; yields[10]=P[i].Metallicity[10];}
-            else if(t<=t1y) {yields[1]=0.39; yields[2]=1.2e-3; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=1.0e-1; yields[5]=1.6e-2;            yields[6]=9.0e-3; yields[7]=9.0e-3; yields[8]=4.0e-3; yields[9]=8.0e-5; yields[10]=1.0e-3;}
-            else if(t<=t2y) {yields[1]=0.37; yields[2]=1.2e-3; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=7.0e-2; yields[5]=1.0e-2;            yields[6]=5.5e-3; yields[7]=1.6e-2; yields[8]=1.3e-2; yields[9]=2.0e-4; yields[10]=5.0e-3;}
+            if(t<=t0y)      {yields[1]=0.43; yields[2]=1.2e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=4.5e-2; yields[5]=1.0e-2; yields[6]=6.e-3*pow(DMAX(z_sol,1.e-4),0.25); yields[7]=4.e-3*pow(DMAX(z_sol,1.e-4),0.2); yields[8]=1.0e-3; yields[9]=P[i].Metallicity[9]; yields[10]=P[i].Metallicity[10];}
+            else if(t<=t1y) {yields[1]=0.39; yields[2]=1.2e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=1.0e-1; yields[5]=1.6e-2;            yields[6]=9.0e-3; yields[7]=9.0e-3; yields[8]=4.0e-3; yields[9]=8.0e-5; yields[10]=1.0e-3;}
+            else if(t<=t2y) {yields[1]=0.37; yields[2]=1.2e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=7.0e-2; yields[5]=1.0e-2;            yields[6]=5.5e-3; yields[7]=1.6e-2; yields[8]=1.3e-2; yields[9]=2.0e-4; yields[10]=5.0e-3;}
             else            {yields[1]=0.40; yields[2]=1.0e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=2.0e-2; yields[5]=6.e-4+2.e-3*z_sol; yields[6]=1.5e-3; yields[7]=8.5e-3; yields[8]=6.0e-3; yields[9]=7.0e-4; yields[10]=1.8e-2;}
             yields[0]=0; for(k=2;k<NUM_METAL_SPECIES;k++) {yields[0]+=yields[k];}
         }
