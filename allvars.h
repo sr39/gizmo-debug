@@ -577,7 +577,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #if !defined(STOP_WHEN_BELOW_MINTIMESTEP)
 #define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
 #endif
-#define RANDOMIZE_GRAVTREE /* move the top tree node around randomly so that treeforce errors are not correlated between one treebuild and another */
+//#define RANDOMIZE_GRAVTREE /* move the top tree node around randomly so that treeforce errors are not correlated between one treebuild and another */
 #define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
 #endif
 #ifdef HERMITE_INTEGRATION
