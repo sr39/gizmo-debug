@@ -401,7 +401,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
     in->Pressure = SphP[i].Pressure;
     in->InternalEnergyPred = SphP[i].InternalEnergyPred;
     in->SoundSpeed = Get_Gas_effective_soundspeed_i(i);
-    in->Timestep = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0);
+    in->Timestep = GET_PARTICLE_INTEGERTIME(i);
     in->ConditionNumber = SphP[i].ConditionNumber;
 #ifdef MHD_CONSTRAINED_GRADIENT
     /* since it is not used elsewhere, we can use the sign of the condition number as a bit 
@@ -638,8 +638,7 @@ void hydro_final_operations_and_cleanup(void)
     {
         if(P[i].Type == 0 && P[i].Mass > 0)
         {
-            double dt;
-            dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            double dt; dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
             
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             /* signal velocity needs to include rate of gas flow -over- the resolution element, which can be non-zero here */
@@ -769,7 +768,7 @@ void hydro_final_operations_and_cleanup(void)
             if(PPP[i].Hsml >= 0.99*All.MaxHsml) {SphP[i].DtInternalEnergy = 0;}
             
             // need to explicitly include adiabatic correction from the hubble-flow (for drifting) here //
-            if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*(GAMMA(i)-1) * SphP[i].InternalEnergyPred * All.cf_hubble_a;
+            if(All.ComovingIntegrationOn) {SphP[i].DtInternalEnergy -= 3*(GAMMA(i)-1) * SphP[i].InternalEnergyPred * All.cf_hubble_a;}
             // = du/dlna -3*(gamma-1)*u ; then dlna/dt = H(z) =  All.cf_hubble_a //
             
             
@@ -871,7 +870,7 @@ void hydro_final_operations_and_cleanup(void)
             if(SphP[i].Temperature > All.NetworkTempThreshold)
             {
                 nuc_particles++;
-                double dt = ((P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a) * UNIT_TIME_IN_CGS;
+                double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) * UNIT_TIME_IN_CGS;
                 network_integrate(SphP[i].Temperature, SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS, SphP[i].xnuc,
                                   SphP[i].dxnuc, dt, &dedt_nuc, NULL, &All.nd, &All.nw);
                 SphP[i].DtInternalEnergy += dedt_nuc * UNIT_ENERGY_IN_CGS / UNIT_TIME_IN_CGS;

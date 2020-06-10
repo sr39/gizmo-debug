@@ -369,7 +369,7 @@ void find_next_sync_point_and_drift(void)
 	  if(n > 0)
 	    {
 	      highest_occupied_bin = n;
-	      dt_bin = (((integertime) 1) << n);
+	      dt_bin = GET_INTEGERTIME_FROM_TIMEBIN(n);;
 	      ti_next_for_bin = (All.Ti_Current / dt_bin) * dt_bin + dt_bin;	/* next kick time for this timebin */
 	    }
 	  else
@@ -389,13 +389,11 @@ void find_next_sync_point_and_drift(void)
     {
       All.Ti_Current = All.Ti_nextoutput;
 
-      if(All.ComovingIntegrationOn)
-          All.Time = All.TimeBegin * exp(All.Ti_Current * All.Timebase_interval);
-      else
-          All.Time = All.TimeBegin + All.Ti_Current * All.Timebase_interval;
+      if(All.ComovingIntegrationOn) {All.Time = All.TimeBegin * exp(All.Ti_Current * All.Timebase_interval);}
+        else {All.Time = All.TimeBegin + All.Ti_Current * All.Timebase_interval;}
 
       set_cosmo_factors_for_current_time();
-
+        
 #ifdef GR_TABULATED_COSMOLOGY_G
       All.G = All.Gini * dGfak(All.Time);
 #endif
@@ -419,10 +417,8 @@ void find_next_sync_point_and_drift(void)
   All.Previous_Ti_Current = All.Ti_Current;
   All.Ti_Current = ti_next_kick_global;
 
-  if(All.ComovingIntegrationOn)
-    All.Time = All.TimeBegin * exp(All.Ti_Current * All.Timebase_interval);
-  else
-    All.Time = All.TimeBegin + All.Ti_Current * All.Timebase_interval;
+  if(All.ComovingIntegrationOn) {All.Time = All.TimeBegin * exp(All.Ti_Current * All.Timebase_interval);}
+    else {All.Time = All.TimeBegin + All.Ti_Current * All.Timebase_interval;}
 
   set_cosmo_factors_for_current_time();
 #ifdef BOX_SHEARING
@@ -439,7 +435,7 @@ void find_next_sync_point_and_drift(void)
   for(n = 1, TimeBinActive[0] = 1, NumForceUpdate = TimeBinCount[0], highest_active_bin = 0; n < TIMEBINS;
       n++)
     {
-      dt_bin = (((integertime) 1) << n);
+      dt_bin = GET_INTEGERTIME_FROM_TIMEBIN(n);
       if((ti_next_kick_global % dt_bin) == 0)
 	{
 	  TimeBinActive[n] = 1;
@@ -534,10 +530,8 @@ integertime find_next_outputtime(integertime ti_curr)
 
 	  if(time >= All.TimeBegin && time <= All.TimeMax)
 	    {
-	      if(All.ComovingIntegrationOn)
-		ti = (integertime) (log(time / All.TimeBegin) / All.Timebase_interval);
-	      else
-		ti = (integertime) ((time - All.TimeBegin) / All.Timebase_interval);
+	      if(All.ComovingIntegrationOn) {ti = (integertime) (log(time / All.TimeBegin) / All.Timebase_interval);}
+          else {ti = (integertime) ((time - All.TimeBegin) / All.Timebase_interval);}
 
 	      if(ti >= ti_curr)
 		{
@@ -545,16 +539,14 @@ integertime find_next_outputtime(integertime ti_curr)
 		    {
 		      ti_next = ti;
 		      DumpFlag = All.OutputListFlag[i];
-		      if(i > All.SnapshotFileCount)
-			All.SnapshotFileCount = i;
+		      if(i > All.SnapshotFileCount) {All.SnapshotFileCount = i;}
 		    }
 
 		  if(ti_next > ti)
 		    {
 		      ti_next = ti;
 		      DumpFlag = All.OutputListFlag[i];
-		      if(i > All.SnapshotFileCount)
-			All.SnapshotFileCount = i;
+		      if(i > All.SnapshotFileCount) {All.SnapshotFileCount = i;}
 		    }
 		}
 	    }
@@ -599,10 +591,8 @@ integertime find_next_outputtime(integertime ti_curr)
 	}
       while(time <= All.TimeMax)
 	{
-	  if(All.ComovingIntegrationOn)
-	    ti = (integertime) (log(time / All.TimeBegin) / All.Timebase_interval);
-	  else
-	    ti = (integertime) ((time - All.TimeBegin) / All.Timebase_interval);
+	  if(All.ComovingIntegrationOn) {ti = (integertime) (log(time / All.TimeBegin) / All.Timebase_interval);}
+        else {ti = (integertime) ((time - All.TimeBegin) / All.Timebase_interval);}
 
 	  if(ti >= ti_curr)
 	    {
@@ -635,10 +625,8 @@ integertime find_next_outputtime(integertime ti_curr)
     }
   else
     {
-      if(All.ComovingIntegrationOn)
-	next = All.TimeBegin * exp(ti_next * All.Timebase_interval);
-      else
-	next = All.TimeBegin + ti_next * All.Timebase_interval;
+      if(All.ComovingIntegrationOn) {next = All.TimeBegin * exp(ti_next * All.Timebase_interval);}
+      else {next = All.TimeBegin + ti_next * All.Timebase_interval;}
 
       if(ThisTask == 0)
 	printf("\nSetting next time for snapshot file to Time_next= %g  (DumpFlag=%d)\n", next, DumpFlag);
@@ -724,21 +712,13 @@ void output_log_messages(void)
         for(i = TIMEBINS - 1, tot = tot_sph = 0; i >= 0; i--)
             if(tot_count_sph[i] > 0 || tot_count[i] > 0)
             {
-                printf(" %c  bin=%2d      %10llu  %10llu   %16.12f       %10llu %c %c  %10.2f    %5.1f%%\n",
-                       TimeBinActive[i] ? 'X' : ' ',
-                       i, tot_count[i] - tot_count_sph[i], tot_count_sph[i],
-                       i > 0 ? (((integertime) 1) << i) * All.Timebase_interval : 0.0, tot_cumulative[i],
-                       (i == All.HighestActiveTimeBin) ? '<' : ' ',
-                       (tot_cumulative[i] > All.TreeDomainUpdateFrequency * All.TotNumPart) ? '*' : ' ',
-                       avg_CPU_TimeBin[i], 100.0 * frac_CPU_TimeBin[i]);
+                printf(" %c  bin=%2d      %10llu  %10llu   %16.12f       %10llu %c %c  %10.2f    %5.1f%%\n", TimeBinActive[i] ? 'X' : ' ', i, tot_count[i] - tot_count_sph[i], tot_count_sph[i],
+                       GET_INTEGERTIME_FROM_TIMEBIN(i) * All.Timebase_interval, tot_cumulative[i], (i == All.HighestActiveTimeBin) ? '<' : ' ',
+                       (tot_cumulative[i] > All.TreeDomainUpdateFrequency * All.TotNumPart) ? '*' : ' ', avg_CPU_TimeBin[i], 100.0 * frac_CPU_TimeBin[i]);
 #ifndef IO_REDUCED_MODE
-                fprintf(FdTimebin,
-                        " %c  bin=%2d      %10llu  %10llu   %16.12f       %10llu %c %c  %10.2f    %5.1f%%\n",
-                        TimeBinActive[i] ? 'X' : ' ', i, tot_count[i] - tot_count_sph[i], tot_count_sph[i],
-                        i > 0 ? (((integertime) 1) << i) * All.Timebase_interval : 0.0, tot_cumulative[i],
-                        (i == All.HighestActiveTimeBin) ? '<' : ' ',
-                        (tot_cumulative[i] > All.TreeDomainUpdateFrequency * All.TotNumPart) ? '*' : ' ',
-                        avg_CPU_TimeBin[i], 100.0 * frac_CPU_TimeBin[i]);
+                fprintf(FdTimebin," %c  bin=%2d      %10llu  %10llu   %16.12f       %10llu %c %c  %10.2f    %5.1f%%\n", TimeBinActive[i] ? 'X' : ' ', i, tot_count[i] - tot_count_sph[i], tot_count_sph[i],
+                        GET_INTEGERTIME_FROM_TIMEBIN(i) * All.Timebase_interval, tot_cumulative[i], (i == All.HighestActiveTimeBin) ? '<' : ' ',
+                        (tot_cumulative[i] > All.TreeDomainUpdateFrequency * All.TotNumPart) ? '*' : ' ', avg_CPU_TimeBin[i], 100.0 * frac_CPU_TimeBin[i]);
 #endif
                 if(TimeBinActive[i])
                 {

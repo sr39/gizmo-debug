@@ -650,7 +650,7 @@ void blackhole_final_operations(void)
             {
                 double fac_bh_shift=0;
 #if (BH_REPOSITION_ON_POTMIN == 2)
-                dt = (P[n].TimeBin ? (((integertime) 1) << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+                dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(n);
                 double dr_min=0; for(k=0;k<3;k++) {dr_min+=(BPP(n).BH_MinPotPos[k]-P[n].Pos[k])*(BPP(n).BH_MinPotPos[k]-P[n].Pos[k]);}
                 if(dr_min > 0 && dt > 0)
                 {
@@ -728,14 +728,8 @@ void blackhole_final_operations(void)
 #endif
 
         /* Correct for the mass loss due to radiation and BAL winds */
-#ifndef WAKEUP
-        dt = (P[n].TimeBin ? (((integertime) 1) << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-        dt = P[n].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif //ifndef WAKEUP
-        
-        
         /* always substract the radiation energy from BPP(n).BH_Mass && P[n].Mass */
+        dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(n);
         double dm = BPP(n).BH_Mdot * dt;
         double radiation_loss = All.BlackHoleRadiativeEfficiency * dm;
         if(radiation_loss > DMIN(P[n].Mass,BPP(n).BH_Mass)) radiation_loss = DMIN(P[n].Mass,BPP(n).BH_Mass);

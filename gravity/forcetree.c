@@ -1871,7 +1871,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         double h_eff_phys = soft * pow(NORM_COEFF/All.DesNumNgb,1./NUMDIMS) * All.cf_atime; // convert from softening kernel extent to effective size, assuming 3D here, and convert to physical code units
         double sigma_particle =  pmass / (h_eff_phys*h_eff_phys); // quick estimate of effective surface density of the target, in physical code units
         double fac_stellum_0 = -All.PhotonMomentum_Coupled_Fraction / (4.*M_PI * C_LIGHT_CODE * sigma_particle * All.G); // this will be multiplied by L/r^2 below, giving acceleration, then extra G because code thinks this is gravity, so put extra G here. everything is in -physical- code units here //
-        int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {fac_stellum[kf] = fac_stellum_0*(1 - exp(-rt_kappa(-1,kf)*sigma_particle));} // rt_kappa is in physical code units, so sigma_eff_abs should be also -- approximate surface-density through particle (for checking if we enter optically-thick limit)
+        int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {fac_stellum[kf] = fac_stellum_0*(1 - exp(-rt_kappa(0,kf)*sigma_particle));} // rt_kappa is in physical code units, so sigma_eff_abs should be also -- approximate surface-density through particle (for checking if we enter optically-thick limit)
     }
 #endif
 #endif
@@ -2609,7 +2609,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 {
                     // here, use ratio and linear scaling of escape with tau to correct to the escape fraction for the correspondingly higher EUV kappa: factor ~2000 here comes from the ratio of (kappa_euv/kappa_uv)
                     incident_flux_euv += fac_intensity * mass_stellarlum[RT_FREQ_BIN_FIRE_UV] * (All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV) *
-												    ((mass_stellarlum[RT_FREQ_BIN_FIRE_UV]+mass_stellarlum[RT_FREQ_BIN_FIRE_IR])/(mass_stellarlum[RT_FREQ_BIN_FIRE_UV]+mass_stellarlum[RT_FREQ_BIN_FIRE_IR]*(2042.6))));
+												    ((mass_stellarlum[RT_FREQ_BIN_FIRE_UV] + mass_stellarlum[RT_FREQ_BIN_FIRE_IR]) /
+                                                     (mass_stellarlum[RT_FREQ_BIN_FIRE_UV] + 2042.6*mass_stellarlum[RT_FREQ_BIN_FIRE_IR])));
                 } else {
                     // here, just enforce a minimum escape fraction //
                     double m_lum_total = 0; int ks_q; for(ks_q=0;ks_q<N_RT_FREQ_BINS;ks_q++) {m_lum_total += mass_stellarlum[ks_q];}

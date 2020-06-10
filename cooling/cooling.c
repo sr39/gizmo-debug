@@ -150,11 +150,9 @@ void chimes_cooling_parent_routine(void)
 /* subroutine which actually sends the particle data to the cooling routine and updates the entropies */
 void do_the_cooling_for_particle(int i)
 {
-    double unew;
-    double dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval;
-    double dtime = dt / All.cf_hubble_a; /*  the actual time-step */
+    double unew, dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
 
-    if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
+    if((dtime>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
     {
         double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ??
@@ -193,7 +191,7 @@ void do_the_cooling_for_particle(int i)
         unew = DoCooling(uold, SphP[i].Density * All.cf_a3inv, dtime, SphP[i].Ne, i);
 #endif 
 #else
-        unew = uold + dt * (rt_DoHeating(i, dt) + rt_DoCooling(i, dt));
+        unew = uold + dtime * (rt_DoHeating(i, dtime) + rt_DoCooling(i, dtime));
 #endif
         
        
@@ -250,7 +248,7 @@ void do_the_cooling_for_particle(int i)
         if(SphP[i].DelayTimeHII < 0) {SphP[i].DelayTimeHII = 0;}
 #endif
         
-    } // closes if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0)) check
+    } // closes if((dt>0)&&(P[i].Mass>0)&&(P[i].Type==0)) check
 }
 
 
@@ -549,6 +547,8 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     {
         local_gammamultiplier = SphP[target].Rad_Flux_EUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
         local_gammamultiplier = 1 + local_gammamultiplier/gJH0;
+        if(!isfinite(local_gammamultiplier)) {local_gammamultiplier=1;}
+        local_gammamultiplier=DMAX(1.,DMIN(1.e20, local_gammamultiplier));
     }
 #endif
     /* CAFG: this is the density that we should use for UV background threshold */
@@ -572,7 +572,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     n_elec = *ne_guess; if(!isfinite(n_elec)) {n_elec=1;}
     neold = n_elec; niter = 0;
     double dt = 0, fac_noneq_cgs = 0, necgs = n_elec * nHcgs; /* more initialized quantities */
-    if(target >= 0) {dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;} // dtime [code units]
+    if(target >= 0) {dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target);} // dtime [code units]
     fac_noneq_cgs = (dt * UNIT_TIME_IN_CGS) * necgs; // factor needed below to asses whether timestep is larger/smaller than recombination time
     
 #if defined(RT_CHEM_PHOTOION)
@@ -820,6 +820,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     {
         local_gammamultiplier = SphP[target].Rad_Flux_EUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
         local_gammamultiplier = 1 + local_gammamultiplier/gJH0;
+        if(!isfinite(local_gammamultiplier)) {local_gammamultiplier=1;}
+        local_gammamultiplier=DMAX(1.,DMIN(1.e20, local_gammamultiplier));
     }
 #endif
     
@@ -859,7 +861,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     if(target >= 0)
     {
         double L_particle = Get_Particle_Size(target)*All.cf_atime; // particle effective size/slab thickness
-        double dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; // dtime [code units]
+        double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target); // dtime [code units]
         Sigma_particle = P[target].Mass / (M_PI*L_particle*L_particle); // effective surface density through particle
         abs_per_kappa_dt = C_LIGHT_CODE_REDUCED * (SphP[target].Density*All.cf_a3inv) * dt; // fractional absorption over timestep
         cx_to_kappa = HYDROGEN_MASSFRAC / PROTONMASS * UNIT_MASS_IN_CGS; // pre-factor for converting cross sections into opacities
@@ -1205,12 +1207,10 @@ void InitCoolMemory(void)
 #ifdef COOL_METAL_LINES_BY_SPECIES
     long i_nH=41; long i_T=176; long kspecies=(long)NUM_METAL_SPECIES-1;
 #ifdef GALSF_FB_FIRE_RPROCESS
-    //kspecies -= 1;
     kspecies -= NUM_RPROCESS_SPECIES;
 #endif
     SpCoolTable0 = (float *) mymalloc("SpCoolTable0",(kspecies*i_nH*i_T)*sizeof(float));
-    if(All.ComovingIntegrationOn)
-        SpCoolTable1 = (float *) mymalloc("SpCoolTable1",(kspecies*i_nH*i_T)*sizeof(float));
+    if(All.ComovingIntegrationOn) {SpCoolTable1 = (float *) mymalloc("SpCoolTable1",(kspecies*i_nH*i_T)*sizeof(float));}
 #endif
 }
 
@@ -1689,7 +1689,7 @@ void selfshield_local_incident_uv_flux(void)
         }
     }
 }
-#endif // GALSF_FB_FIRE_RT_UVHEATING
+#endif
 
 
 
@@ -1749,7 +1749,7 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
 /* This routine updates the ChimesGasVars structure for particle target. */
 void chimes_update_gas_vars(int target) 
 {
-  double dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; 
+  double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target); 
   double u_old_cgs = DMAX(All.MinEgySpec, SphP[target].InternalEnergy) * UNIT_SPECEGY_IN_CGS; 
   double rho_cgs = SphP[target].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS; 
   

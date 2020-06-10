@@ -257,7 +257,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
 #endif
 
     if(SHOULD_I_USE_SPH_GRADIENTS(SphP[i].ConditionNumber)) {in->Mass *= -1;}
-    in->Timestep = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0);
+    in->Timestep = GET_PARTICLE_INTEGERTIME(i);
 #ifdef MHD_CONSTRAINED_GRADIENT
     if(gradient_iteration > 0)
         if(SphP[i].FlagForConstrainedGradients <= 0)
@@ -1134,15 +1134,15 @@ void hydro_gradient_calc(void)
             
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
             SphP[i].alpha_limiter /= SphP[i].Density;
-            NV_dt =  (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; // physical
+            NV_dt =  GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); // physical
             NV_dummy = fabs(1.0 * pow(1.0 - SphP[i].alpha_limiter,4.0) * SphP[i].NV_DivVel); // NV_ quantities are in physical units
             NV_limiter = NV_dummy*NV_dummy / (NV_dummy*NV_dummy + SphP[i].NV_trSSt);
             NV_A = DMAX(-SphP[i].NV_dt_DivVel, 0.0);
             divVel_physical = SphP[i].NV_DivVel;
             
             // add a simple limiter here: alpha_loc is 'prepped' but only switches on when the divergence goes negative: want to add hubble flow here //
-            if(All.ComovingIntegrationOn) divVel_physical += 3*All.cf_hubble_a; // hubble-flow correction added
-            if(divVel_physical>=0.0) NV_A = 0.0;
+            if(All.ComovingIntegrationOn) {divVel_physical += 3*All.cf_hubble_a;} // hubble-flow correction added
+            if(divVel_physical>=0.0) {NV_A = 0.0;}
             
             h_eff = Get_Particle_Size(i) * All.cf_atime / 0.5; // 'default' parameter choices are scaled for a cubic spline //
             cs_nv = Get_Gas_effective_soundspeed_i(i) * All.cf_afac3; // converts to physical velocity units //
@@ -1151,28 +1151,22 @@ void hydro_gradient_calc(void)
             //    that choice was quite large (requires approach velocity rate-of-change is super-sonic); better to use c_s (above), and 0.05-0.25 //
             // NV_A is physical 1/(time*time), but Hsml and vsig can be comoving, so need appropriate correction terms above //
             
-            if(SphP[i].alpha < alphaloc)
-                SphP[i].alpha = alphaloc;
-            else if (SphP[i].alpha > alphaloc)
-                SphP[i].alpha = alphaloc + (SphP[i].alpha - alphaloc) * exp(-NV_dt * (0.5*fabs(SphP[i].MaxSignalVel)*All.cf_afac3)/(0.5*h_eff) * SPHAV_CD10_VISCOSITY_SWITCH);
+            if(SphP[i].alpha < alphaloc) {SphP[i].alpha = alphaloc;}
+                else if (SphP[i].alpha > alphaloc) {SphP[i].alpha = alphaloc + (SphP[i].alpha - alphaloc) * exp(-NV_dt * (0.5*fabs(SphP[i].MaxSignalVel)*All.cf_afac3)/(0.5*h_eff) * SPHAV_CD10_VISCOSITY_SWITCH);}
             
-            if(SphP[i].alpha < All.ViscosityAMin)
-                SphP[i].alpha = All.ViscosityAMin;
-            
+            if(SphP[i].alpha < All.ViscosityAMin) {SphP[i].alpha = All.ViscosityAMin;}
             SphP[i].alpha_limiter = DMAX(NV_limiter,All.ViscosityAMin/SphP[i].alpha);
 #else
             /* compute the traditional Balsara limiter (now that we have velocity gradients) */
             double divVel = All.cf_a2inv * fabs(SphP[i].Gradients.Velocity[0][0] + SphP[i].Gradients.Velocity[1][1] + SphP[i].Gradients.Velocity[2][2]);
-            if(All.ComovingIntegrationOn) divVel += 3*All.cf_hubble_a; // hubble-flow correction added (physical units)
-            double CurlVel[3];
-            double MagCurl;
+            if(All.ComovingIntegrationOn) {divVel += 3*All.cf_hubble_a;} // hubble-flow correction added (physical units)
+            double CurlVel[3], MagCurl;
             CurlVel[0] = SphP[i].Gradients.Velocity[1][2] - SphP[i].Gradients.Velocity[2][1];
             CurlVel[1] = SphP[i].Gradients.Velocity[2][0] - SphP[i].Gradients.Velocity[0][2];
             CurlVel[2] = SphP[i].Gradients.Velocity[0][1] - SphP[i].Gradients.Velocity[1][0];
             MagCurl = All.cf_a2inv * sqrt(CurlVel[0]*CurlVel[0] + CurlVel[1]*CurlVel[1] + CurlVel[2]*CurlVel[2]);
             double fac_mu = 1 / (All.cf_afac3 * All.cf_atime);
-            SphP[i].alpha_limiter = divVel / (divVel + MagCurl + 0.0001 * Get_Gas_effective_soundspeed_i(i) /
-                                              (Get_Particle_Size(i)) / fac_mu);
+            SphP[i].alpha_limiter = divVel / (divVel + MagCurl + 0.0001 * Get_Gas_effective_soundspeed_i(i) / (Get_Particle_Size(i)) / fac_mu);
 #endif
 #endif
             
@@ -1594,7 +1588,7 @@ void hydro_gradient_calc(void)
                 double cs_invelunits = Get_Gas_effective_soundspeed_i(i) * All.cf_afac3 * All.cf_atime; // soundspeed, converted to units of code velocity
                 double L_i_code = Get_Particle_Size(i); // particle effective size (in code units)
                 double dvel[3]={0}, velnorm=0; for(k=0;k<3;k++) {dvel[k] = L_i_code*L_i_code*GasGradDataPasser[i].GlassAcc[k]; velnorm += dvel[k]*dvel[k];} // calculate quantities to use for glass
-                double dtx = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a; // need timestep for limiter below
+                double dtx = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); // need timestep for limiter below
                 if(velnorm > 0 && dtx > 0)
                 {
                     velnorm = sqrt(velnorm); // normalization for glass 'force'
@@ -1805,7 +1799,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 j = ngblist[n];
                 if(GasGrad_isactive(j)==0) continue;
 
-                integertime TimeStep_J; TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
+                integertime TimeStep_J; TimeStep_J = GET_PARTICLE_INTEGERTIME(j);
 #if !defined(BOX_SHEARING) && !defined(_OPENMP) // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this; OpenMP on some new compilers goes bad here because pointers [e.g. P...] are not thread-safe shared with predictive operations, and vectorization means no gain here with OMP anyways) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
                 /* use relative positions to break degeneracy */

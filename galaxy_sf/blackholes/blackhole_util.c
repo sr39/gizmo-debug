@@ -150,11 +150,7 @@ void blackhole_properties_loop(void) /* Note, normalize_temp_info_struct is now 
     for(i=0; i<N_active_loc_BHs; i++)
     {
         n = BlackholeTempInfo[i].index;
-#ifndef WAKEUP /* define the timestep */
-        dt = (P[n].TimeBin ? (((integertime) 1) << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-        dt = P[n].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif
+        dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(n);
         BPP(n).BH_Mdot=0;  /* always initialize/default to zero accretion rate */
         set_blackhole_long_range_rp(i, n);
         set_blackhole_mdot(i, n, dt);

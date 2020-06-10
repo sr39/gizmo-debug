@@ -112,8 +112,6 @@ static inline double DMAX(double a, double b) { return (a > b) ? a : b; }
 static inline double DMIN(double a, double b) { return (a < b) ? a : b; }
 static inline int IMAX(int a, int b) { return (a > b) ? a : b; } 
 static inline int IMIN(int a, int b) { return (a < b) ? a : b; }
-static inline integertime TIMAX(integertime a, integertime b) { return (a > b) ? a : b; }
-static inline integertime TIMIN(integertime a, integertime b) { return (a < b) ? a : b; }
 static inline double MINMOD(double a, double b) {return (a>0) ? ((b<0) ? 0 : DMIN(a,b)) : ((b>=0) ? 0 : DMAX(a,b));}
 /* special version of MINMOD below: a is always the "preferred" choice, b the stability-required one. here we allow overshoot, just not opposite signage */
 static inline double MINMOD_G(double a, double b) {return a;}
@@ -818,8 +816,8 @@ void rt_update_chemistry(void);
 void rt_get_sigma(void);
 double rt_GetCoolingTime(int i, double u, double rho);
 double rt_cooling_photoheating(int i, double dt);
-double rt_DoCooling(int i, double dt_internal);
-double rt_DoHeating(int i, double dt_internal);
+double rt_DoCooling(int i, double dt);
+double rt_DoHeating(int i, double dt);
 double rt_get_cooling_rate(int i, double internal_energy);
 void rt_write_chemistry_stats(void);
 #endif
@@ -909,7 +907,7 @@ void apply_excision();
 #endif
 
 #ifdef DM_SIDM
-double prob_of_interaction(double mass, double r, double h_si, double dV[3], integertime dt_step);
+double prob_of_interaction(double mass, double r, double h_si, double dV[3], double dt);
 double g_geo(double r);
 void calculate_interact_kick(double dV[3], double kick[3], double m);
 void init_geofactor_table(void);
@@ -918,7 +916,7 @@ double geofactor_angle_integ(double u, void * params);
 void init_self_interactions();
 #ifdef GRAIN_COLLISIONS
 double return_grain_cross_section_per_unit_mass(int i);
-double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, double h_si, double dV[3], integertime dt_step, int j_ngb);
+double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, double h_si, double dV[3], double dt, int j_ngb);
 #endif
 #endif
 

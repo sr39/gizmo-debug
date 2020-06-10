@@ -16,51 +16,44 @@
 void radiation_pressure_winds_consolidated(void)
 {
     MyDouble *pos; int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,i,j,k,n;
-    double dx,dy,dz,r2,u,h,hinv,hinv3,wk,rho,wt_sum,p_random,p_cumulative,star_age,lm_ssp,lum_cgs=0,f_lum_ion=0,dE_over_c,prob,dt,delta_v_imparted_rp=0,dwk,norm,dir[3], total_n_wind,total_m_wind,total_mom_wind,total_prob_kick,avg_v_kick,momwt_avg_v_kick,avg_taufac;
-    double totMPI_n_wind,totMPI_m_wind,totMPI_mom_wind,totMPI_prob_kick,totMPI_avg_v,totMPI_pwt_avg_v,totMPI_taufac, RtauMax = 0, age_thold = 0.1; dwk=0;
+    double dx,dy,dz,r2,u,h,hinv,hinv3,wk,rho,wt_sum,p_random,p_cumulative,prob,delta_v_imparted_rp=0,norm,dir[3], total_n_wind,total_m_wind,total_mom_wind,total_prob_kick,avg_v_kick,momwt_avg_v_kick,avg_taufac;
+    double totMPI_n_wind,totMPI_m_wind,totMPI_mom_wind,totMPI_prob_kick,totMPI_avg_v,totMPI_pwt_avg_v,totMPI_taufac, dwk=0;
     total_n_wind=total_m_wind=total_mom_wind=total_prob_kick=avg_v_kick=momwt_avg_v_kick=avg_taufac=0; totMPI_n_wind=totMPI_m_wind=totMPI_mom_wind=totMPI_prob_kick=totMPI_avg_v=totMPI_pwt_avg_v=totMPI_taufac=0; p_random=p_cumulative=0;
+    double age_threshold_in_gyr = 0.15; // don't bother for older populations, they contribute negligibly here //
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-    age_thold = 1.0e10;
+    age_threshold_in_gyr = 1.0e10; // for the single-star problems want to include everything, for completeness //
 #endif
     if(All.RP_Local_Momentum_Renormalization<=0) return;
     Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
     PRINT_STATUS("Local Radiation-Pressure acceleration calculation");
 
-    double unitlength_in_kpc = UNIT_LENGTH_IN_KPC * All.cf_atime;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
         {
-            
-#ifndef WAKEUP
-            dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-            dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif
-            star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-            if( (star_age < age_thold) && (P[i].Mass > 0) && (P[i].DensAroundStar > 0) )
+            double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+            if( (star_age < age_threshold_in_gyr) && (P[i].Mass > 0) && (P[i].DensAroundStar > 0) )
             {
                 /* calculate some basic luminosity properties of the stars */
-                lm_ssp = evaluate_light_to_mass_ratio(star_age, i); // light-to-mass ratio in solar
-                lum_cgs = (lm_ssp * SOLAR_LUM) * (P[i].Mass*UNIT_MASS_IN_SOLAR); // total L in CGS of star particle
-                f_lum_ion = particle_ionizing_luminosity_in_cgs(i) / lum_cgs; f_lum_ion=DMAX(0.,DMIN(1.,f_lum_ion));
-                dE_over_c = lum_cgs * (dt*UNIT_TIME_IN_CGS) / C_LIGHT; // total photon momentum emitted in timestep, in CGS (= L*dt/c)
+                double lm_ssp = evaluate_light_to_mass_ratio(star_age, i); // light-to-mass ratio in solar
+                double lum_cgs = (lm_ssp * SOLAR_LUM) * (P[i].Mass*UNIT_MASS_IN_SOLAR); // total L in CGS of star particle
+                double f_lum_ion = particle_ionizing_luminosity_in_cgs(i) / lum_cgs; f_lum_ion=DMAX(0.,DMIN(1.,f_lum_ion)); // fraction of luminosity in H-ionizing radiation
+                double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
+                double dE_over_c = All.RP_Local_Momentum_Renormalization * lum_cgs * (dt*UNIT_TIME_IN_CGS) / C_LIGHT; // total photon momentum emitted in timestep, in CGS (= L*dt/c)
                 dE_over_c /= (UNIT_MASS_IN_CGS * UNIT_VEL_IN_CGS); // total photon momentum now in code units
                 total_prob_kick += dE_over_c; // sum contributions
 
                 /* calculate some pre-amble properties */
-                RtauMax = P[i].Hsml*All.cf_atime * (2.0 * rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * P[i].Hsml*P[i].DensAroundStar*All.cf_a2inv);
-                RtauMax /= All.cf_atime; RtauMax += 5.*P[i].Hsml;
-                double rmax0 = 10.0 / unitlength_in_kpc; if(RtauMax > rmax0) RtauMax = rmax0;
-                rmax0 = 1.0 / unitlength_in_kpc; if(RtauMax < rmax0) RtauMax = rmax0;
+                double RtauMax = P[i].Hsml * (5. + 2.0 * rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * P[i].Hsml*P[i].DensAroundStar*All.cf_a2inv); // guess search radius which is a few H, plus larger factor if optically thick //
+                RtauMax = DMAX( 1./(UNIT_LENGTH_IN_KPC*All.cf_atime) , DMIN( 10./(UNIT_LENGTH_IN_KPC*All.cf_atime) , RtauMax )); // restrict to 1-10 kpc here
 
 #ifndef GALSF_FB_FIRE_RT_CONTINUOUSRP
                 /* if kicks are stochastic, we don't want to waste time doing a neighbor search every timestep; it can be much faster to pre-estimate the kick probabilities */
-                double v_wind_threshold = 15. / UNIT_VEL_IN_KMS;
+                double v_wind_threshold = 15. / UNIT_VEL_IN_KMS; // unit mass for kicks
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                v_wind_threshold = 0.2 / UNIT_VEL_IN_KMS;
+                v_wind_threshold = 0.2 / UNIT_VEL_IN_KMS; // for this module use lower unit mas for kicks
 #endif
-                double rho_phys=P[i].DensAroundStar*All.cf_a3inv, h_phys=P[i].Hsml*All.cf_atime;
+                double rho_phys=P[i].DensAroundStar*All.cf_a3inv, h_phys=P[i].Hsml*All.cf_atime; // density and h in -physical- units
                 double v_grav_guess; v_grav_guess = DMIN( 1.82*(65.748/UNIT_VEL_IN_KMS)*pow(1.+rho_phys*UNIT_DENSITY_IN_NHCGS,-0.25) , sqrt(All.G*(P[i].Mass + NORM_COEFF*rho_phys*h_phys*h_phys*h_phys)/h_phys) ); // don't want to 'under-kick' if there are small local characteristic velocities in the region of interest
                 delta_v_imparted_rp = v_wind_threshold; // always couple this 'discrete' kick, to avoid having to couple every single timestep for every single star particle
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
@@ -68,7 +61,7 @@ void radiation_pressure_winds_consolidated(void)
 #endif
                 double dv_imparted_perpart_guess = (dE_over_c/P[i].Mass); // estimate of summed dv_imparted [in code units] from single-scattering: = momentum/mass of particle
                 double tau_IR_guess = rt_kappa(i,RT_FREQ_BIN_FIRE_IR) * rho_phys*h_phys; // guess of IR optical depth. everything in physical code units //
-                dv_imparted_perpart_guess += All.RP_Local_Momentum_Renormalization * (dE_over_c/P[i].Mass) * tau_IR_guess; // estimate of additional IR term [1+tau_IR]*L/c assumed here as coupling //
+                dv_imparted_perpart_guess += (dE_over_c/P[i].Mass) * tau_IR_guess; // estimate of additional IR term [1+tau_IR]*L/c assumed here as coupling //
                 prob = dv_imparted_perpart_guess / delta_v_imparted_rp; prob *= 2000.; // need to include a buffer for errors in the estimates above
                 p_random = get_random_number(P[i].ID+ThisTask+i+2); // master random number for use below
                 p_cumulative = 0; // used below if the loop is executed
@@ -152,7 +145,7 @@ void radiation_pressure_winds_consolidated(void)
                                     /* determine the direction of the kick */
 #ifdef GALSF_FB_FIRE_RT_CONTINUOUSRP
                                     delta_v_imparted_rp = dv_imparted_multiplescattering; // ir kick: directed along opacity gradient //
-                                    for(k=0;k<3;k++) dir[k]=-P[j].GradRho[k]; // based on density gradient near star //
+                                    for(k=0;k<3;k++) {dir[k]=-P[j].GradRho[k];} // based on density gradient near star //
 #else
                                     if(dv_imparted_singlescattering > dv_imparted_multiplescattering)
                                         {dir[0]=dx; dir[1]=dy; dir[2]=dz;} // if kick is primarily from uv, then orient directly //
@@ -227,11 +220,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
 #endif
         {
-#ifndef WAKEUP
-            dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-            dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif
+            dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
             if(dt<=0) continue; // don't keep going with this loop
             
             stellum = All.HIIRegion_fLum_Coupled * particle_ionizing_luminosity_in_cgs(i);
@@ -427,13 +416,8 @@ void chimes_HII_regions_singledomain(void)
     {
       if((P[i].Type == 4) || ((All.ComovingIntegrationOn==0) && ((P[i].Type == 2) || (P[i].Type==3))))
 	{
-#ifndef WAKEUP
-	  dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-	  dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif
-	  if(dt<=0) 
-	    continue; // don't keep going with this loop
+        dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
+        if(dt<=0) continue; // don't keep going with this loop
 
 	  stellar_age = evaluate_stellar_age_Gyr(P[i].StellarAge); 
 	  stellar_mass = P[i].Mass * UNIT_MASS_IN_SOLAR; 

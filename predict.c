@@ -96,24 +96,16 @@ void reconstruct_timebins(void)
 
 void drift_particle(int i, integertime time1)
 {
-    int j;
-    double dt_drift;
-    
-    integertime time0 = P[i].Ti_current;
-    
+    int j; double dt_drift; integertime time0 = P[i].Ti_current;
     if(time1 < time0)
     {
         printf("i=%d time0=%lld time1=%lld\n", i, (long long)time0, (long long)time1);
         terminate("no prediction into past allowed");
     }
+    if(time1 == time0) {return;}
     
-    if(time1 == time0)
-        return;
-    
-    if(All.ComovingIntegrationOn)
-        dt_drift = get_drift_factor(time0, time1);
-    else
-        dt_drift = (time1 - time0) * All.Timebase_interval;
+    if(All.ComovingIntegrationOn) {dt_drift = get_drift_factor(time0, time1);}
+        else {dt_drift = (time1 - time0) * All.Timebase_interval;}
     
     
 #if !defined(FREEZE_HYDRO)
@@ -188,37 +180,23 @@ void drift_particle(int i, integertime time1)
     if((P[i].Type == 0) && (P[i].Mass > 0))
         {
             double dt_gravkick, dt_hydrokick, dt_entr;
-            
-            if(All.ComovingIntegrationOn)
-            {
-                dt_entr = dt_hydrokick = (time1 - time0) * All.Timebase_interval / All.cf_hubble_a;
-                dt_gravkick = get_gravkick_factor(time0, time1);
-            }
-            else
-            {
-                dt_entr = dt_gravkick = dt_hydrokick = (time1 - time0) * All.Timebase_interval;
-            }
+            dt_entr = dt_hydrokick = (time1 - time0) * UNIT_INTEGERTIME_IN_PHYSICAL;
+            if(All.ComovingIntegrationOn) {dt_gravkick = get_gravkick_factor(time0, time1);} else {dt_gravkick = dt_hydrokick;}
             
 #ifdef PMGRID
-            for(j = 0; j < 3; j++)
-                SphP[i].VelPred[j] += (P[i].GravAccel[j] + P[i].GravPM[j]) * dt_gravkick +
-                    SphP[i].HydroAccel[j]*All.cf_atime * dt_hydrokick; /* make sure v is in code units */
+            for(j = 0; j < 3; j++) {SphP[i].VelPred[j] += (P[i].GravAccel[j] + P[i].GravPM[j]) * dt_gravkick + (SphP[i].HydroAccel[j] * dt_hydrokick)*All.cf_atime;} /* make sure v is in code units */
 #else
-            for(j = 0; j < 3; j++)
-                SphP[i].VelPred[j] += P[i].GravAccel[j] * dt_gravkick +
-                    SphP[i].HydroAccel[j]*All.cf_atime * dt_hydrokick; /* make sure v is in code units */
+            for(j = 0; j < 3; j++) {SphP[i].VelPred[j] += (P[i].GravAccel[j]) * dt_gravkick + (SphP[i].HydroAccel[j] * dt_hydrokick)*All.cf_atime;} /* make sure v is in code units */
 #endif
 #if (SINGLE_STAR_TIMESTEPPING > 0)
 	        if((P[i].Type==5) && (P[i].SuperTimestepFlag>=2)) {for(j=0;j<3;j++)	{SphP[i].VelPred[j] += fewbody_kick_dv[j];}}
 #endif	    
             
 #if defined(TURB_DRIVING)
-            for(j = 0; j < 3; j++)
-                SphP[i].VelPred[j] += SphP[i].TurbAccel[j] * dt_gravkick;
+            for(j = 0; j < 3; j++) {SphP[i].VelPred[j] += SphP[i].TurbAccel[j] * dt_gravkick;}
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
-            for(j = 0; j < 3; j++)
-                SphP[i].VelPred[j] += SphP[i].Rad_Accel[j] * All.cf_atime * dt_hydrokick;
+            for(j = 0; j < 3; j++) {SphP[i].VelPred[j] += SphP[i].Rad_Accel[j] * All.cf_atime * dt_hydrokick;}
 #endif
             
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -462,7 +440,7 @@ double Get_DtB_FaceArea_Limiter(int i)
     return 1;
 #else
     /* define some variables */
-    double dt_entr = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+    double dt_entr = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
     int j; double dB[3],dBmag=0,Bmag=0;
     /* check the magnitude of the predicted change in B-fields, vs. B-magnitude */
     for(j=0;j<3;j++)

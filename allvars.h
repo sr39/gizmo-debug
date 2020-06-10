@@ -941,11 +941,17 @@ typedef  int integertime;
 static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #define  TIMEBINS        29
 #endif
+#define  TIMEBASE        (((integertime) 1)<<TIMEBINS)  /* The simulated timespan is mapped onto the integer interval [0,TIMESPAN], where TIMESPAN needs to be a power of 2. Note that (1<<28) corresponds to 2^29 */
+#define UNIT_INTEGERTIME_IN_PHYSICAL ((All.Timebase_interval/All.cf_hubble_a))
+#define GET_INTEGERTIME_FROM_TIMEBIN(bin) ((bin ? (((integertime) 1) << bin) : 0))
+#define GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(bin) ((GET_INTEGERTIME_FROM_TIMEBIN(bin) * UNIT_INTEGERTIME_IN_PHYSICAL))
+#ifndef WAKEUP
+#define GET_PARTICLE_INTEGERTIME(i) ((GET_INTEGERTIME_FROM_TIMEBIN(P[i].TimeBin)))
+#else
+#define GET_PARTICLE_INTEGERTIME(i) ((P[i].dt_step))
+#endif
+#define GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) ((GET_PARTICLE_INTEGERTIME(i) * UNIT_INTEGERTIME_IN_PHYSICAL))
 
-#define  TIMEBASE        (((integertime) 1)<<TIMEBINS)  /*!< The simulated timespan is mapped onto the integer interval [0,TIMESPAN],
-                                         *   where TIMESPAN needs to be a power of 2. Note that (1<<28) corresponds
-                                         *   to 2^29
-                                         */
 
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
 #define AGS_OUTPUTGRAVSOFT 1  /*! output softening to snapshots */
@@ -2231,7 +2237,8 @@ extern struct global_data_all_processes
 
 #endif // GALSF
 
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
+#if (defined(GALSF) && defined(METALS)) || defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
+#define INIT_STELLAR_METALS_AGES_DEFINED // convenience flag for later to know these variables exist
   double InitMetallicityinSolar;
   double InitStellarAgeinGyr;
 #endif
@@ -2644,7 +2651,7 @@ extern ALIGN(32) struct particle_data
 #endif
     
 #if defined(DM_SIDM)
-    integertime dt_step_sidm; /*!< timestep used if self-interaction probabilities greater than 0.2 are found */
+    double dtime_sidm; /*!< timestep used if self-interaction probabilities greater than 0.2 are found */
     long unsigned int NInteractions; /*!< Total number of interactions */
 #endif
 

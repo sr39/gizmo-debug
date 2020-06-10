@@ -1114,7 +1114,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
+#if defined(INIT_STELLAR_METALS_AGES_DEFINED)
         strcpy(tag[nt],"InitMetallicity");
         strcpy(alternate_tag[nt],"Initial_Metallicity");
         addr[nt] = &All.InitMetallicityinSolar;
@@ -2145,7 +2145,7 @@ void read_parameter_file(char *fname)
 #ifdef TURB_DIFFUSION
                 if(strcmp("TurbDiffusionCoefficient",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with turbulent diffusion, so will default to calculating the coefficients without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.TurbDiffusion_Coefficient); continue;}
 #endif
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
+#if defined(INIT_STELLAR_METALS_AGES_DEFINED)
                 if(strcmp("InitMetallicity",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to zero (Z=%g) \n",tag[i],alternate_tag[i],All.InitMetallicityinSolar); continue;}
                 if(strcmp("InitStellarAge",tag[i])==0) {*((double *)addr[i])=10.; printf("Tag %s (%s) not set in parameter file: defaulting to very old pre-existing stars [if any exist, otherwise this is irrelevant] (=%g Gyr) \n",tag[i],alternate_tag[i],All.InitStellarAgeinGyr); continue;}
 #endif
@@ -2581,41 +2581,28 @@ int read_outputlist(char *fname)
  */
 void readjust_timebase(double TimeMax_old, double TimeMax_new)
 {
-  int i;
-  long long ti_end;
+  int i; long long ti_end;
 
   if(sizeof(long long) != 8)
-    {
-      if(ThisTask == 0)
-	printf("\nType 'long long' is not 64 bit on this platform\n\n");
-      endrun(555);
-    }
+    {if(ThisTask == 0) {printf("\nType 'long long' is not 64 bit on this platform; this will produce segfaults: need to exit.\n\n");} endrun(555);}
 
   if(ThisTask == 0)
     {
-      printf("\nAll.TimeMax has been changed in the parameterfile\n");
-      printf("Need to adjust integer timeline\n\n");
+      printf("\n TimeMax (Time_at_End_of_Simulation) has been augmented to be larger in the parameterfile;\n");
+      printf("  We need to adjust integer timeline, which perturbs all the structure of particle timesteps. Usually this is ok, but with some config flags on, your run will suddently be extremely slow (because the code cannot correctly reorder the timeline). In those cases, restarting from a snapshot is recommended.\n\n");
     }
 
   if(TimeMax_new < TimeMax_old)
-    {
-      if(ThisTask == 0)
-	printf("\nIt is not allowed to reduce All.TimeMax\n\n");
-      endrun(556);
-    }
+    {if(ThisTask == 0) {printf("\n You cannot reduce TimeMax (Time_at_End_of_Simulation) in the parameterfile, in a restart [this breaks the integer timeline]. Simply stop the run when desired, instead. Quitting.\n");} endrun(556);}
 
-  if(All.ComovingIntegrationOn)
-    ti_end = (long long) (log(TimeMax_new / All.TimeBegin) / All.Timebase_interval);
-  else
-    ti_end = (long long) ((TimeMax_new - All.TimeBegin) / All.Timebase_interval);
+  if(All.ComovingIntegrationOn) {ti_end = (long long) (log(TimeMax_new / All.TimeBegin) / All.Timebase_interval);}
+    else {ti_end = (long long) ((TimeMax_new - All.TimeBegin) / All.Timebase_interval);}
 
   while(ti_end > TIMEBASE)
-    {
+  {
       All.Timebase_interval *= 2.0;
-
       ti_end /= 2;
       All.Ti_Current /= 2;
-
 #ifdef PMGRID
       All.PM_Ti_begstep /= 2;
       All.PM_Ti_endstep /= 2;
@@ -2624,24 +2611,17 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
       StTPrev /= 2;
 #endif
 
-      for(i = 0; i < NumPart; i++)
+    for(i = 0; i < NumPart; i++)
 	{
-	  P[i].Ti_begstep /= 2;
-	  P[i].Ti_current /= 2;
-
-	  if(P[i].TimeBin > 0)
+        P[i].Ti_begstep /= 2;
+        P[i].Ti_current /= 2;
+        if(P[i].TimeBin > 0)
 	    {
 	      P[i].TimeBin--;
-	      if(P[i].TimeBin <= 0)
-		{
-		  printf("Error in readjust_timebase(). Minimum Timebin for particle %d reached.\n", i);
-		  endrun(8765);
-		}
+	      if(P[i].TimeBin <= 0) {printf("Attempted to restructure integer timeline but ran into an error in readjust_timebase(). The minimum timebin for particle %d has been reached -- need smaller timesteps. Exiting.\n", i); endrun(8765);}
 	    }
 	}
-
-      All.Ti_nextlineofsight /= 2;
-    }
-
+    All.Ti_nextlineofsight /= 2;
+  }
   All.TimeMax = TimeMax_new;
 }

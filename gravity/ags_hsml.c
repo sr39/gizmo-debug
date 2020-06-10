@@ -761,7 +761,7 @@ struct INPUT_STRUCT_NAME
     double Vel[3];
     int NodeList[NODELISTLENGTH];
     int Type;
-    integertime dt_step;
+    double dtime;
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
     MyLongDouble NV_T[3][3];
     double V_i;
@@ -777,7 +777,7 @@ struct INPUT_STRUCT_NAME
     double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];
 #endif
 #if defined(DM_SIDM)
-    integertime dt_step_sidm;
+    double dtime_sidm;
     MyIDType ID;
 #ifdef GRAIN_COLLISIONS
     double Grain_CrossSection_PerUnitMass;
@@ -792,7 +792,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
     in->Mass = PPP[i].Mass;
     in->AGS_Hsml = PPP[i].AGS_Hsml;
     in->Type = P[i].Type;
-    in->dt_step = P[i].dt_step;
+    in->dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
     int k,k2; k=0; k2=0;
     for(k=0;k<3;k++) {in->Pos[k] = P[i].Pos[k];}
     for(k=0;k<3;k++) {in->Vel[k] = P[i].Vel[k];}
@@ -817,7 +817,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
     for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {in->CBE_basis_moments[k][k2] = P[i].CBE_basis_moments[k][k2];}}
 #endif
 #if defined(DM_SIDM)
-    in->dt_step_sidm = P[i].dt_step_sidm;
+    in->dtime_sidm = P[i].dtime_sidm;
     in->ID = P[i].ID;
 #ifdef GRAIN_COLLISIONS
     in->Grain_CrossSection_PerUnitMass = return_grain_cross_section_per_unit_mass(i);
@@ -830,9 +830,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 struct OUTPUT_STRUCT_NAME
 {
 #if defined(DM_SIDM)
-    double sidm_kick[3];
-    integertime dt_step_sidm;
-    int si_count;
+    double sidm_kick[3], dtime_sidm; int si_count;
 #endif
 #ifdef DM_FUZZY
     double acc[3], AGS_Dt_Numerical_QuantumPotential;
@@ -841,8 +839,7 @@ struct OUTPUT_STRUCT_NAME
 #endif
 #endif
 #if defined(CBE_INTEGRATOR)
-    double AGS_vsig;
-    double CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];
+    double AGS_vsig, CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];
 #endif
 }
 *DATARESULT_NAME, *DATAOUT_NAME;
@@ -857,7 +854,7 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
     int k,k2; k=0; k2=0;
 #if defined(DM_SIDM)
     for(k=0;k<3;k++) {P[i].Vel[k] += out->sidm_kick[k];}
-    MIN_ADD(P[i].dt_step_sidm, out->dt_step_sidm, mode);
+    MIN_ADD(P[i].dtime_sidm, out->dtime_sidm, mode);
     P[i].NInteractions += out->si_count;
 #endif
 #ifdef DM_FUZZY
@@ -903,7 +900,7 @@ int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecoun
     kernel.h_i = local.AGS_Hsml; kernel_hinv(kernel.h_i, &kernel.hinv_i, &kernel.hinv3_i, &kernel.hinv4_i);
     int AGS_kernel_shared_BITFLAG = ags_gravity_kernel_shared_BITFLAG(local.Type); // determine allowed particle types for search for adaptive gravitational softening terms
 #if defined(DM_SIDM)
-    out.dt_step_sidm = local.dt_step_sidm;
+    out.dtime_sidm = local.dtime_sidm;
 #endif
     /* Now start the actual neighbor computation for this particle */
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
@@ -970,7 +967,7 @@ void AGSForce_calc(void)
     PRINT_STATUS(" ..entering AGS-Force calculation [as hydro loop for non-gas elements]\n");
     /* before doing any operations, need to zero the appropriate memory so we can correctly do pair-wise operations */
 #if defined(DM_SIDM)
-    {int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {P[i].dt_step_sidm = 10*P[i].dt_step;}}
+    {int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {P[i].dtime_sidm = 10.*GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);}}
 #endif
 #ifdef CBE_INTEGRATOR
     /* need to zero values for active particles (which will be re-calculated) before they are added below */

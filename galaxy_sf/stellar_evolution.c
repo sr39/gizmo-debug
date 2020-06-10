@@ -351,7 +351,7 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
             double t=t_gyr, tmin=0.0037, tbrk=0.0065, tmax=0.044, Mmax=35., Mbrk=10., Mmin=6.; // numbers for interpolation of ejecta masses [must be careful here that this integrates to the correct -total- ejecta mass]
             if(t<=tbrk) {Msne=Mmax*pow(t/tmin, log(Mbrk/Mmax)/log(tbrk/tmin));} else {Msne=Mbrk*pow(t/tbrk, log(Mmin/Mbrk)/log(tmax/tbrk));} // power-law interpolation of ejecta mass from initial to final value over duration of CC phase
             //M_ejecta_model=Msne; /* these are defined identically in our updated [not IMF-averaged] yields */
-            double t0y=0.009, t1y=0.012, t2y=0.018, z_sol=P[i].Metallicity[k]/All.SolarAbundances[0]; // some reference timescales for the piecewise-constant NuGrid yields
+            double t0y=0.009, t1y=0.012, t2y=0.018, z_sol=P[i].Metallicity[0]/All.SolarAbundances[0]; // some reference timescales for the piecewise-constant NuGrid yields
             for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k];} // initialize to surface abundances //
             if(t<=t0y)      {yields[1]=0.43; yields[2]=1.2e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=4.5e-2; yields[5]=1.0e-2; yields[6]=6.e-3*pow(DMAX(z_sol,1.e-4),0.25); yields[7]=4.e-3*pow(DMAX(z_sol,1.e-4),0.2); yields[8]=1.0e-3; yields[9]=P[i].Metallicity[9]; yields[10]=P[i].Metallicity[10];}
             else if(t<=t1y) {yields[1]=0.39; yields[2]=1.2e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=1.0e-1; yields[5]=1.6e-2;            yields[6]=9.0e-3; yields[7]=9.0e-3; yields[8]=4.0e-3; yields[9]=8.0e-5; yields[10]=1.0e-3;}
@@ -420,14 +420,14 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         /* everything except He and CNO is well-approximated by surface abundances. and CNO is conserved to high accuracy in sum */
         double f_H_0=1.-(yields[0]+yields[1]), f_He_0=yields[1], f_CNO_0=yields[2]+yields[3]+yields[4]+MIN_REAL_NUMBER; // define initial H, He, CNO fraction
-        double t = evaluate_stellar_age_Gyr(P[i].StellarAge), z_sol = f_CNO_0 / (All.SolarAbundances[2]+All.SolarAbundances[3]+All.SolarAbundances[4]); // stellar population age in Gyr, and solar-scaled CNO abundance
+        double t = evaluate_stellar_age_Gyr(P[i].StellarAge), z_sol; z_sol = f_CNO_0 / (All.SolarAbundances[2]+All.SolarAbundances[3]+All.SolarAbundances[4]); // stellar population age in Gyr, and solar-scaled CNO abundance
         double f_He_burn = 0.076, f_C_f = 0.5, f_N_f = DMAX(0.,DMIN(1.-f_C_f, 0.37)), f_O_f = DMAX(0.,1.-(f_C_f+f_N_f)); // CNO must sum to unity, so only two degrees of freedom
         double t0=0.001, t1=0.0037, t2=0.037, t3=3., t4=14.; // set some variables for characteristic times to use below
         if(t <= t0) {f_He_burn=0; f_C_f=yields[2]/f_CNO_0; f_N_f=yields[3]/f_CNO_0; f_O_f=yields[4]/f_CNO_0;} // pure surface abundances at extremely early times
         else if(t <= t1) {f_He_burn=0.076;} // placeholders, for now use the constant yields above, but will replace this?????
         else if(t <= t2) {f_He_burn=0.076;}
         else if(t <= t3) {f_He_burn=0.076;}
-        else {f_He_burn=0.076;}
+        else {f_He_burn=0.076 + 0.*t4;}
         yields[1] = f_He_0 + f_He_burn*f_H_0; // final He fraction
         yields[2] = f_CNO_0 * f_C_f, yields[3] = f_CNO_0 * f_N_f, yields[4] = f_CNO_0 * f_O_f; // final C,N,O fractions
 #else

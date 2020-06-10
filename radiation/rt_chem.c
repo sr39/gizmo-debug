@@ -158,7 +158,7 @@ void rt_update_chemistry(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
         if(P[i].Type == 0)
         {
-            dtime = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
             rho = SphP[i].Density * All.cf_a3inv;
             nH = HYDROGEN_MASSFRAC * rho / PROTONMASS * UNIT_MASS_IN_CGS;
             temp = rt_photoion_chem_return_temperature(i,SphP[i].InternalEnergyPred);
@@ -270,7 +270,7 @@ void rt_update_chemistry(void)
 #endif
             }
             
-            dtime = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
             rho = SphP[i].Density * All.cf_a3inv;
             nH = HYDROGEN_MASSFRAC * rho / PROTONMASS * UNIT_MASS_IN_CGS;
             temp = rt_photoion_chem_return_temperature(i,SphP[i].InternalEnergyPred);

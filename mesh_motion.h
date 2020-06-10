@@ -104,7 +104,7 @@ void MeshMotion_CircularOrbitExternalGravity(int i)
     routine below can trivially be modified to halt, at a certain point, if things become too dense) */
 void MeshMotion_FreeFallExternalGravity(int i)
 {
-    double dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a; int k;
+    double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); int k;
     for(k=0;k<3;k++) {SphP[i].ParticleVel[k]+=P[i].GravAccel[k]*dt;}
 }
 

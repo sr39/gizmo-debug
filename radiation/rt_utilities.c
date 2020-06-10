@@ -1127,7 +1127,7 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, d
     double efinal_minus_einitial = egy_tot*xf - egy_therm; // change in energy if we went all the way to equilibrium
     double t_cooling_eff = fabs(efinal_minus_einitial) / Edot0; // effective cooling time at the initially-estimated rate here
     double sign_term=1.; if(efinal_minus_einitial < 0.) {sign_term=-1.;} // sign of the cooling/heating (to keep for below)
-    double dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; // timestep being taken [code units]
+    double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target); // timestep being taken [code units]
     double tau = dt/t_cooling_eff, xfac=(1.-exp(-tau))/tau; if(tau<0.05) {xfac=1.-0.5*tau+tau*tau/6.;} else {if(tau>20.) {xfac=1./tau;}} // correct rate to asymptote to equilibrium
     double lambda_eff = sign_term * L0_abs * xfac; // final effective cooling/heating rate
 

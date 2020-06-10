@@ -31,7 +31,7 @@ struct kernel_density /*! defines a number of useful variables we will use below
 int density_isactive(int n)
 {
     /* first check our 'marker' for particles which have finished iterating to an Hsml solution (if they have, dont do them again) */
-    if(P[n].TimeBin < 0) return 0;
+    if(P[n].TimeBin < 0) {return 0;}
     
 #if defined(GRAIN_FLUID)
     if((1 << P[n].Type) & (GRAIN_PTYPES)) {return 1;} /* any of the particle types flagged as a valid grain-type is active here */

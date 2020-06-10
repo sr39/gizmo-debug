@@ -72,11 +72,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 #if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
     in->BH_angle_weighted_kernel_sum = BlackholeTempInfo[j_tempinfo].BH_angle_weighted_kernel_sum;
 #endif
-#ifndef WAKEUP
-    in->Dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-    in->Dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif
+    in->Dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
 #if defined(BH_RETURN_ANGMOM_TO_GAS)
     for(k=0;k<3;k++) {in->BH_Specific_AngMom[k] = BPP(i).BH_Specific_AngMom[k];}
     in->angmom_norm_topass_in_swallowloop = BlackholeTempInfo[j_tempinfo].angmom_norm_topass_in_swallowloop;
@@ -699,7 +695,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         P[j] = P[dummy_sph_i_to_clone]; SphP[j] = SphP[dummy_sph_i_to_clone]; /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
 
         /* now we need to make sure everything is correctly placed in timebins for the tree */
-        P[j].TimeBin = bin; P[j].dt_step = bin ? (((integertime) 1) << bin) : 0; // put this particle into the appropriate timebin
+        P[j].TimeBin = bin; // get the timebin, and put this particle into the appropriate timebin
         NextActiveParticle[j] = FirstActiveParticle; FirstActiveParticle = j; NumForceUpdate++;
         TimeBinCount[bin]++; TimeBinCountSph[bin]++; PrevInTimeBin[j] = i0; /* likewise add it to the counters that register how many particles are in each timebin */
 #ifndef BH_DEBUG_SPAWN_JET_TEST
@@ -710,7 +706,8 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
             else {NextInTimeBin[j]=FirstInTimeBin[bin]; PrevInTimeBin[j]=-1; PrevInTimeBin[FirstInTimeBin[bin]]=j; FirstInTimeBin[bin]=j;} /* there is already at least one particle; add this one "to the front" of the list */
 #endif
         P[j].Ti_begstep = All.Ti_Current; P[j].Ti_current = All.Ti_Current;
-#ifdef WAKEUP
+#ifdef WAKEUP /* note - you basically MUST have this flag on for this routine to work at all -- */
+        P[j].dt_step = GET_INTEGERTIME_FROM_TIMEBIN(bin);
         PPPZ[j].wakeup = 1; NeedToWakeupParticles_local = 1;
 #endif
         /* this is a giant pile of variables to zero out. dont need everything here because we cloned a valid particle, but handy anyways */

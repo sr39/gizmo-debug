@@ -59,11 +59,7 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
     int active_check = rt_get_source_luminosity(i,0,lum);
     double dt = 1; // make this do nothing unless flags below are set:
 #if defined(RT_INJECT_PHOTONS_DISCRETELY)
-#ifndef WAKEUP
-    dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-    dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif
+    dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
 #if defined(RT_EVOLVE_FLUX)
     for(k=0; k<3; k++) {if(P[i].Type==0) {in->Vel[k] = SphP[i].VelPred[k];} else {in->Vel[k] = P[i].Vel[k];}}
 #endif
