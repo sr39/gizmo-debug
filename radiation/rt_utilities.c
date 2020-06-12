@@ -390,9 +390,9 @@ double rt_kappa(int i, int k_freq)
 #ifdef GALSF_FB_FIRE_RT_LONGRANGE
     /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return DMAX(0.02, DMAX(0.35*SphP[i].Ne, 1800.*(0.01 + Zfac))) * fac;} // floored at Thomson/neutral H opacities
-    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return DMAX(0.02, DMAX(0.35*SphP[i].Ne, 180.*Zfac)) * fac;} // floored at Thomson/neutral H opacities
-    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return DMAX(0.02, DMAX(0.35*SphP[i].Ne, 10.*Zfac)) * fac;} // floored at Thomson/neutral H opacities
+    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return DMAX(0.02, DMAX(0.35*SphP[i].Ne, 1800.*(1.e-2 + Zfac))) * fac;} // floored at Thomson/neutral H opacities
+    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return DMAX(0.02, DMAX(0.35*SphP[i].Ne, 180.*(1.e-3 + Zfac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]
+    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return DMAX(0.02, DMAX(0.35*SphP[i].Ne, 10.*(1.e-3 + Zfac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]
 #endif
     if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return (1800.) * fac;}
     if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return (180.)  * fac;}

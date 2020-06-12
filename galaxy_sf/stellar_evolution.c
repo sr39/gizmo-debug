@@ -473,7 +473,7 @@ double Z_for_stellar_evol(int i)
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(COOL_METAL_LINES_BY_SPECIES) // ??
     int i_Fe=10; Z_solar = P[i].Metallicity[i_Fe]/All.SolarAbundances[i_Fe]; // use Fe, specifically, for computing stellar properties, as its most relevant here. MAKE SURE this is set to the correct abundance in the list, to match Fe!!!
 #endif
-    return DMIN(DMAX(Z_solar,0.01),3.);
+    return DMIN(DMAX(Z_solar,0.01),3.); // stellar evolution tables here are not arbitrarily extrapolable, so this is bounded //
 }
 
 #endif // GALSF_FB_MECHANICAL+GALSF_FB_FIRE_STELLAREVOLUTION

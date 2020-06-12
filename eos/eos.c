@@ -304,7 +304,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     /* get metallicity */
     double Z_Zsol=1, urad_G0=1; // assumes spatially uniform Habing field for incident FUV radiation unless reset below //
 #ifdef METALS
-    Z_Zsol = DMAX( P[i].Metallicity[0]/All.SolarAbundances[0], 1.e-6 ); // metallicity in solar units [scale to total Z, since this mixes dust and C opacity], and enforce a low-Z floor to prevent totally unphysical behaviors at super-low Z [where there is still finite opacity in reality]
+    Z_Zsol = P[i].Metallicity[0]/All.SolarAbundances[0] + 1.e-3 ; // metallicity in solar units [scale to total Z, since this mixes dust and C opacity], and enforce a low-Z floor to prevent totally unphysical behaviors at super-low Z [where there is still finite opacity in reality; e.g. Kramer's type and other opacities enforce floor around ~1e-3]
 #endif
     /* get incident radiation field */
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
