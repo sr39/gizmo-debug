@@ -16,8 +16,8 @@
 void radiation_pressure_winds_consolidated(void)
 {
     double age_threshold_in_gyr = 0.15; // don't bother for older populations, they contribute negligibly here //
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-    age_threshold_in_gyr = 1.0e10; // for the single-star problems want to include everything, for completeness //
+#if defined(SINGLE_STAR_SINK_DYNAMICS) || (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+    age_threshold_in_gyr = 1.0e10; // for the single-star problems, or updated algorithm [where it adds little expense], we want to include everything, for completeness //
 #endif
     if(All.RP_Local_Momentum_Renormalization<=0) return;
     Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
