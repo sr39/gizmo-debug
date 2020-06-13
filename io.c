@@ -113,8 +113,7 @@ void savepositions(int num)
         
         
         ngroups = All.NumFilesPerSnapshot / All.NumFilesWrittenInParallel;
-        if((All.NumFilesPerSnapshot % All.NumFilesWrittenInParallel))
-            ngroups++;
+        if((All.NumFilesPerSnapshot % All.NumFilesWrittenInParallel)) {ngroups++;}
         
         for(gr = 0; gr < ngroups; gr++)
         {

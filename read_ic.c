@@ -63,8 +63,7 @@ void read_ic(char *fname)
         
         for(gr = 0; gr < ngroups; gr++)
         {
-            if(ThisTask == (groupMaster + gr))	/* ok, it's this processor's turn */
-                read_file(buf, ThisTask, ThisTask);
+            if(ThisTask == (groupMaster + gr)) {read_file(buf, ThisTask, ThisTask);}	/* ok, it's this processor's turn */
             MPI_Barrier(MPI_COMM_WORLD);
         }
         
@@ -95,8 +94,7 @@ void read_ic(char *fname)
         
         for(gr = 0; gr < ngroups; gr++)
         {
-            if((filenr / All.NumFilesWrittenInParallel) == gr)	/* ok, it's this processor's turn */
-                read_file(buf, masterTask, lastTask);
+            if((filenr / All.NumFilesWrittenInParallel) == gr) {read_file(buf, masterTask, lastTask);}	/* ok, it's this processor's turn */
             MPI_Barrier(MPI_COMM_WORLD);
         }
     }
@@ -175,14 +173,8 @@ void read_ic(char *fname)
     }
     
     for(i = 0; i < N_gas; i++) {SphP[i].InternalEnergyPred = SphP[i].InternalEnergy = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);}
-    
     MPI_Barrier(MPI_COMM_WORLD);
-    
-    if(ThisTask == 0)
-    {
-        printf("Reading done. Total number of particles :  %d%09d\n\n", (int) (All.TotNumPart / 1000000000), (int) (All.TotNumPart % 1000000000));
-        fflush(stdout);
-    }
+    if(ThisTask == 0) {printf("Reading done. Total number of particles :  %d%09d\n\n", (int) (All.TotNumPart / 1000000000), (int) (All.TotNumPart % 1000000000)); fflush(stdout);}
     
     CPU_Step[CPU_SNAPSHOT] += measure_time();
 }

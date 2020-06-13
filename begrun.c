@@ -561,109 +561,52 @@ void set_units(void)
 void open_outputfiles(void)
 {
   char mode[2], buf[200];
-
-  if(RestartFlag == 0)
-    strcpy(mode, "w");
-  else
-    strcpy(mode, "a");
-
-  if(ThisTask == 0)
-    mkdir(All.OutputDir, 02755);
+  if(RestartFlag == 0) {strcpy(mode, "w");} else {strcpy(mode, "a");}
+  if(ThisTask == 0) {mkdir(All.OutputDir, 02755);}
   MPI_Barrier(MPI_COMM_WORLD);
 
-#ifdef BLACK_HOLES
-  /* Note: This is done by everyone, even if it might be empty */
-  if(ThisTask == 0)
-    {
-      sprintf(buf, "%sblackhole_details", All.OutputDir);
-      mkdir(buf, 02755);
-    }
+#ifdef BLACK_HOLES /* Note: This is done by everyone [all tasks can write to these log-files], even if it might be empty */
+  if(ThisTask == 0) {sprintf(buf, "%sblackhole_details", All.OutputDir); mkdir(buf, 02755);}
   MPI_Barrier(MPI_COMM_WORLD);
 #if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
   sprintf(buf, "%sblackhole_details/blackhole_details_%d.txt", All.OutputDir, ThisTask);
-  if(!(FdBlackHolesDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif // no io-reduced, or more-info if
+  if(!(FdBlackHolesDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#endif
 #ifdef BH_OUTPUT_GASSWALLOW
   sprintf(buf, "%sblackhole_details/bhswallow_%d.txt", All.OutputDir, ThisTask); 
-  if(!(FdBhSwallowDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif // output-gas-swallow if
+  if(!(FdBhSwallowDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#endif
 #ifdef BH_OUTPUT_FORMATION_PROPERTIES
   sprintf(buf, "%sblackhole_details/bhformation_%d.txt", All.OutputDir, ThisTask); 
-  if(!(FdBhFormationDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif // output-gas-formation if
+  if(!(FdBhFormationDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#endif
 #ifdef BH_OUTPUT_MOREINFO
   sprintf(buf, "%sblackhole_details/bhmergers_%d.txt", All.OutputDir, ThisTask); 
-  if(!(FdBhMergerDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdBhMergerDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #ifdef BH_WIND_KICK
   sprintf(buf, "%sblackhole_details/bhwinds_%d.txt", All.OutputDir, ThisTask);
-  if(!(FdBhWindDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif // bh-wind-kick if
+  if(!(FdBhWindDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#endif
 #endif // bh-output-more-info if
 #endif // black-holes if
 
-  if(ThisTask != 0)		/* only the root processors writes to the log files */
-    return;
+    if(ThisTask != 0) {return;}	/* only the root processors writes to the log files listed below */
     
     sprintf(buf, "%s%s", All.OutputDir, "cpu.txt");
-    if(!(FdCPU = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdCPU = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
     
 #ifndef IO_REDUCED_MODE
     sprintf(buf, "%s%s", All.OutputDir, "timebin.txt");
-    if(!(FdTimebin = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
-    
+    if(!(FdTimebin = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
     sprintf(buf, "%s%s", All.OutputDir, "info.txt");
-    if(!(FdInfo = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
-    
+    if(!(FdInfo = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
     sprintf(buf, "%s%s", All.OutputDir, "energy.txt");
-    if(!(FdEnergy = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdEnergy = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
     sprintf(buf, "%s%s", All.OutputDir, "timings.txt");
-    if(!(FdTimings = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdTimings = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+    
     sprintf(buf, "%s%s", All.OutputDir, "balance.txt");
-    if(!(FdBalance = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdBalance = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
     fprintf(FdBalance, "\n");
     fprintf(FdBalance, "Treewalk1      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWALK1], CPU_SymbolImbalance[CPU_TREEWALK1]);
     fprintf(FdBalance, "Treewalk2      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWALK2], CPU_SymbolImbalance[CPU_TREEWALK2]);
@@ -714,90 +657,51 @@ void open_outputfiles(void)
     fprintf(FdBalance, "\n");
 #endif
 
-
 #ifdef GALSF
   sprintf(buf, "%s%s", All.OutputDir, "sfr.txt");
-  if(!(FdSfr = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdSfr = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
-    
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
     sprintf(buf, "%s%s", All.OutputDir, "MomWinds.txt");
-    if(!(FdMomWinds = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdMomWinds = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
+    
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
     sprintf(buf, "%s%s", All.OutputDir, "HIIheating.txt");
-    if(!(FdHIIHeating = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdHIIHeating = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
+    
 #ifdef GALSF_FB_MECHANICAL
     sprintf(buf, "%s%s", All.OutputDir, "SNeIIheating.txt");
-    if(!(FdSneIIHeating = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }  
+    if(!(FdSneIIHeating = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
 #if defined(RT_CHEM_PHOTOION) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "rt_photoion_chem.txt");
-  if(!(FdRad = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdRad = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
   sprintf(buf, "%s%s", All.OutputDir, "SN_details.txt");
-  if(!(FdBhSNDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdBhSNDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
 #ifdef BLACK_HOLES
   sprintf(buf, "%s%s", All.OutputDir, "blackholes.txt");
-  if(!(FdBlackHoles = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdBlackHoles = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
 #if defined(TURB_DRIVING) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "turb.txt");
-  if(!(FdTurb = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdTurb = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
-
 
 #if defined(GR_TABULATED_COSMOLOGY) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "darkenergy.txt");
-  if(!(FdDE = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-  else
-    {
-      if(RestartFlag == 0)
-	{
+  if(!(FdDE = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  else if(RestartFlag == 0)
+  {
 	  fprintf(FdDE, "nstep time H(a) ");
 #ifndef GR_TABULATED_COSMOLOGY_W
 	  fprintf(FdDE, "w0 Omega_L ");
@@ -807,10 +711,8 @@ void open_outputfiles(void)
 #ifdef GR_TABULATED_COSMOLOGY_G
 	  fprintf(FdDE, "dH dG ");
 #endif
-	  fprintf(FdDE, "\n");
-	  fflush(FdDE);
-	}
-    }
+      fprintf(FdDE, "\n"); fflush(FdDE);
+  }
 #endif
 
 }

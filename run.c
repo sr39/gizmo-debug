@@ -229,54 +229,40 @@ void calculate_non_standard_physics(void)
     apply_excision();
 #endif
     
-#ifdef GALSF
-    /* PFH set of feedback routines */
+#ifdef GALSF /* PFH set of feedback routines */
     compute_stellar_feedback();
 #endif
     
-#if defined(TURB_DRIVING)
-#if defined(TURB_DRIVING_SPECTRUMGRID)
-    if(All.Time >= All.TimeNextTurbSpectrum)
-    {
-        powerspec_turb(All.FileNumberTurbSpectrum++);
-        All.TimeNextTurbSpectrum += All.TimeBetTurbSpectrum;
-    }
-#endif
+#if defined(TURB_DRIVING) && defined(TURB_DRIVING_SPECTRUMGRID)
+    if(All.Time >= All.TimeNextTurbSpectrum) {powerspec_turb(All.FileNumberTurbSpectrum++); All.TimeNextTurbSpectrum += All.TimeBetTurbSpectrum;}
 #endif
     
     
 #ifdef RADTRANSFER
     CPU_Step[CPU_MISC] += measure_time();
-
 #if defined(RT_SOURCE_INJECTION)
+    int flag; flag=1;
 #if !defined(RT_INJECT_PHOTONS_DISCRETELY)
-    if(Flag_FullStep) /* for continous injection, requires all sources and gas be active synchronously or else 2x-counts */
+    flag = Flag_FullStep; /* for continous injection, requires all sources and gas be active synchronously or else 2x-counts */
 #endif
-        {rt_source_injection();} /* source injection into neighbor gas particles (only on full timesteps) */
+    if(flag) {rt_source_injection();} /* source injection into neighbor gas particles (only on full timesteps) */
 #endif
-    
-#if defined(RT_DIFFUSION_CG)
-    /* use the CG method to solve the RT diffusion equation implicitly for all particles */
-    if(Flag_FullStep) /* only on full timesteps, requires synchronous timestepping right now */
-        {All.Radiation_Ti_endstep = All.Ti_Current; rt_diffusion_cg_solve(); All.Radiation_Ti_begstep = All.Radiation_Ti_endstep;}
+#if defined(RT_DIFFUSION_CG) /* use the CG method to solve the RT diffusion equation implicitly for all particles; do only on full timesteps, requires synchronous timestepping right now */
+    if(Flag_FullStep) {All.Radiation_Ti_endstep = All.Ti_Current; rt_diffusion_cg_solve(); All.Radiation_Ti_begstep = All.Radiation_Ti_endstep;}
 #endif
-
 #if defined(RT_CHEM_PHOTOION) && (!defined(COOLING) || defined(RT_COOLING_PHOTOHEATING_OLDFORMAT))
     rt_update_chemistry(); /* chemistry updated at sub-stepping as well */
 #ifndef IO_REDUCED_MODE
     if(Flag_FullStep) {rt_write_chemistry_stats();}
 #endif
 #endif
-    
-    CPU_Step[CPU_RTNONFLUXOPS] += measure_time();
+    MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_RTNONFLUXOPS] += measure_time();
 #endif // RADTRANSFER block
     
     
-#ifdef BLACK_HOLES
-    /***** black hole accretion and feedback *****/
+#ifdef BLACK_HOLES /***** black hole accretion and feedback *****/
     CPU_Step[CPU_MISC] += measure_time();
     blackhole_accretion();
-    
 #ifdef BH_WIND_SPAWN
     double MaxUnSpanMassBH_global;
     MPI_Allreduce(&MaxUnSpanMassBH, &MaxUnSpanMassBH_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
@@ -284,28 +270,28 @@ void calculate_non_standard_physics(void)
     {
         spawn_bh_wind_feedback();
         rearrange_particle_sequence();
-
         MaxUnSpanMassBH=MaxUnSpanMassBH_global=0.;
     }
 #endif    
-    CPU_Step[CPU_BLACKHOLES] += measure_time();    
+    MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_BLACKHOLES] += measure_time();
 #endif
     
     
 #if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
-    if(All.Time >= All.TimeNextOnTheFlyFoF) {
-        fof_fof(-1); /* this will find new black hole seed halos and/or assign host halo masses for the variable wind model */
+    if(All.Time >= All.TimeNextOnTheFlyFoF) {fof_fof(-1); /* this will find new black hole seed halos and/or assign host halo masses for the variable wind model */
         if(All.ComovingIntegrationOn) {All.TimeNextOnTheFlyFoF *= All.TimeBetOnTheFlyFoF;} else {All.TimeNextOnTheFlyFoF += All.TimeBetOnTheFlyFoF;}}
 #endif
     
     
-#ifdef COOLING	/**** radiative cooling and star formation *****/
+#ifdef COOLING	/**** radiative cooling and chemistry  *****/
     cooling_parent_routine(); // master cooling and chemistry subroutine //
-    CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
+    MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
 #endif
-#ifdef GALSF
+    
+    
+#ifdef GALSF /**** star/sink particle formation *****/
     star_formation_parent_routine(); // master star formation routine (because this involves common particle conversions, want to keep this at end of this subroutine) //
-    CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
+    MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
 #endif
         
 }
@@ -861,10 +847,10 @@ void write_cpu_log(void)
 	      "kicks         %10.2f  %5.1f%%\n"
 	      "i/o           %10.2f  %5.1f%%\n"
 #ifdef COOLING
-	      "cooling+sfr   %10.2f  %5.1f%%\n"
+	      "cooling+chem  %10.2f  %5.1f%%\n"
 #endif
 #ifdef CHIMES 
-	      " sfrcoolimbal %10.2f  %5.1f%%\n"
+	      " coolchmimbal %10.2f  %5.1f%%\n"
 #endif 
 #ifdef BLACK_HOLES
 	      "blackholes    %10.2f  %5.1f%%\n"

@@ -312,7 +312,7 @@ void init(void)
 #endif
         }
        
-#if defined(INIT_STELLAR_METALS_AGES_DEFINED)
+#if defined(INIT_STELLAR_METALS_AGES_DEFINED) && defined(GALSF)
         if(RestartFlag == 0) {P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (UNIT_TIME_IN_GYR) * get_random_number(P[i].ID + 3);}
 #endif
         
