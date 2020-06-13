@@ -19,12 +19,11 @@
 
 #ifdef COOLING
 
-#define NH_SS 0.0123 /* CAFG: H number density above which we assume no ionizing bkg (proper cm^-3) */
-
 /* these are variables of the cooling tables. they are static but this shouldnt be a problem for shared-memory structure because
     they are only defined once in a global operation, then locked for particle-by-particle operations */
 /* requires the cooling table TREECOOL, which is included in the GIZMO source in the cooling directory */
 #define NCOOLTAB  2000 /* defines size of cooling table */
+#define NH_SS 0.0123 /* CAFG: H number density above which we assume no ionizing bkg (proper cm^-3) */
 
 #if !defined(CHIMES)
 static double Tmin = -1.0, Tmax = 9.0, deltaT; /* minimum/maximum temp, in log10(T/K) and temperature gridding: will be appropriately set in make_cooling_tables subroutine below */
@@ -36,9 +35,7 @@ static float *SpCoolTable0, *SpCoolTable1;
 #endif
 /* these are constants of the UV background at a given redshift: they are interpolated from TREECOOL but then not modified particle-by-particle */
 static double J_UV = 0, gJH0 = 0, gJHep = 0, gJHe0 = 0, epsH0 = 0, epsHep = 0, epsHe0 = 0;
-#endif
-
-#ifdef CHIMES
+#else // CHIMES
 int ChimesEqmMode, ChimesUVBMode, ChimesInitIonState, N_chimes_full_output_freq, Chimes_incl_full_output = 1;
 double chimes_rad_field_norm_factor, shielding_length_factor, cr_rate;
 char ChimesDataPath[256], ChimesEqAbundanceTable[196], ChimesPhotoIonTable[196];
@@ -47,104 +44,52 @@ struct globalVariables ChimesGlobalVars;
 #ifdef CHIMES_METAL_DEPLETION
 struct Chimes_depletion_data_structure *ChimesDepletionData; 
 #endif 
-#endif 
+#endif
 
 
-#ifndef CHIMES 
-/* this is just a simple loop to do the particle cooling. this is now openmp-parallelized, since the cooling iteration can be a non-negligible cost */
+
+/* this is the 'master' loop to do the cell cooling+chemistry. this is now openmp-parallelized, since the semi-implicit iteration can be a non-negligible cost */
 void cooling_parent_routine(void)
 {
-    NextParticle = FirstActiveParticle;
-/*
-#ifdef _OPENMP
-#pragma omp parallel // static variables above causing problems with openmp shared memory (getting swapped) on some compilers: demote for now
-#endif
-*/
+    PRINT_STATUS("Cooling and Chemistry update");
+    /* Determine indices of active particles. */
+    int N_active=0, i, j, *active_indices; active_indices = (int *) malloc(N_gas * sizeof(int));
+    for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        while(1)
-        {
-            int i, exitFlag = 0;
-/*
-#ifdef _OPENMP
-#pragma omp critical(_nexport_)
-#endif
-*/
-            {
-                if(NextParticle<0) {exitFlag = 1;} else {i=NextParticle; NextParticle=NextActiveParticle[NextParticle];}
-            }
-            if(exitFlag) {break;}
-
-            /* here apply any conditional statements about whether we should or should not enter the cooling loop */
-            if(P[i].Type != 0) {continue;} /* only gas cools */
-            if(P[i].Mass <= 0) {continue;} /* only non-zero mass particles cool */
+        if(P[i].Type != 0) {continue;}
+        if(P[i].Mass <= 0) {continue;}
 #ifdef GALSF_EFFECTIVE_EQS
-            if((SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) && ((All.ComovingIntegrationOn==0) || (SphP[i].Density>=All.OverDensThresh))) {continue;} /* no cooling for effective-eos star-forming particles */
+        if((SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) && ((All.ComovingIntegrationOn==0) || (SphP[i].Density>=All.OverDensThresh))) {continue;} /* no cooling for effective-eos star-forming particles */
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING
-            if(SphP[i].DelayTimeCoolingSNe > 0) {continue;} /* no cooling for particles marked in delayed cooling */
+        if(SphP[i].DelayTimeCoolingSNe > 0) {continue;} /* no cooling for particles marked in delayed cooling */
 #endif
-            do_the_cooling_for_particle(i);
-        } /* while bracket */
-    } /* omp bracket */
-}
-#else // !(CHIMES) 
-/* As cooling_parent_routine, but used when CHIMES is switched on. This version has 
- * been set up to use OPENMP, which greatly reduces work-load imbalances associated 
- * with the chemistry and cooling routines with CHIMES. */ 
-void chimes_cooling_parent_routine(void)
-{
-  int i;
-
-  if (ThisTask == 0) 
-    printf("Doing chemistry and cooling with CHIMES. \n"); 
+        active_indices[N_active] = i;
+        N_active++;
+	}
 
 #ifdef _OPENMP
-  /* Determine indices of active particles. */
-  int N_active = 0; 
-  int j; 
-  int *active_indices; 
-  active_indices = (int *) malloc(N_gas * sizeof(int)); 
-  for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    {
-      if(P[i].Type == 0 && P[i].Mass > 0) 
-	{
-	  active_indices[N_active] = i; 
-	  N_active++; 
-	}
-    }
-
 #pragma omp parallel private(i, j) 
-  {
-
-#pragma omp for schedule(dynamic) 
-  for(j = 0; j < N_active; j++)
+#endif
+    { /* open parallel block */
+#ifdef _OPENMP
+#pragma omp for schedule(dynamic)
+#endif
+    for(j=0;j<N_active;j++)
     {
-      i = active_indices[j]; 
-      do_the_cooling_for_particle(i);
+        i=active_indices[j]; /* actual particle index */
+        do_the_cooling_for_particle(i); /* do the actual cooling */
     }
-  } // End of parallel block 
-  free(active_indices); 
-#else // OPENMP  
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    {
-        if(P[i].Type == 0 && P[i].Mass > 0)
-        {
-            do_the_cooling_for_particle(i);
-        } // if(P[i].Type == 0 && P[i].Mass > 0)
-    } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-#endif // CHIMES && OPENMP
+    } /* close parallel block */
+    free(active_indices); /* free memory */
 
-  /* There may be large work-load imbalances when the chemistry is 
-   * being integrated, so we want to record the time spent by tasks 
-   * waiting for the remaining tasks to finish. */ 
-  CPU_Step[CPU_COOLINGSFR] += measure_time(); 
-  MPI_Barrier(MPI_COMM_WORLD); 
-  CPU_Step[CPU_COOLSFRIMBAL] += measure_time();
-
-  if (ThisTask == 0) 
-    printf("Chemistry and cooling finished. \n"); 
+#ifdef CHIMES /* CHIMES records some extra timing information here owing to large possible imbalances */
+  CPU_Step[CPU_COOLINGSFR] += measure_time(); MPI_Barrier(MPI_COMM_WORLD);
+  CPU_Step[CPU_COOLSFRIMBAL] += measure_time(); PRINT_STATUS("CHIMES chemistry and cooling finished");
+#endif
 }
-#endif // !(CHIMES) 
+
+
 
 
 /* subroutine which actually sends the particle data to the cooling routine and updates the entropies */

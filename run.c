@@ -300,12 +300,8 @@ void calculate_non_standard_physics(void)
     
     
 #ifdef COOLING	/**** radiative cooling and star formation *****/
-#ifdef CHIMES 
-    chimes_cooling_parent_routine(); // master cooling and chemistry subroutine //
-#else 
-    cooling_parent_routine(); // master cooling subroutine //
+    cooling_parent_routine(); // master cooling and chemistry subroutine //
     CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
-#endif 
 #endif
 #ifdef GALSF
     star_formation_parent_routine(); // master star formation routine (because this involves common particle conversions, want to keep this at end of this subroutine) //

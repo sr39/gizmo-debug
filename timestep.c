@@ -892,8 +892,13 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_stellar_evol = star_age/10.;
         }
         // PFH: temporarily modifying the terms above while Marcel studies them: turns out not to be necessary to use as strict a mass-dependent timestep, so faster to comment out //
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+        double mcorr = 1.e-4 * (P[p].Mass*UNIT_MASS_IN_SOLAR);
+        if(mcorr > 1) {dt_stellar_evol /= mcorr;}
+#else
         double mcorr = 1.e-5 * (P[p].Mass*UNIT_MASS_IN_SOLAR);
         if(mcorr < 1 && mcorr > 0) {dt_stellar_evol /= mcorr;}
+#endif
         if(dt_stellar_evol < 1.e-6) {dt_stellar_evol = 1.e-6;}
         dt_stellar_evol /= (UNIT_TIME_IN_GYR); // convert to code units //
         if(dt_stellar_evol>0) {if(dt_stellar_evol<dt) {dt = dt_stellar_evol;}}

@@ -113,9 +113,7 @@ void chimes_print_gas_vars(FILE *log_file, struct gasVariables *myGasVars, struc
   fprintf(log_file, "InitIonState = %d \n", myGasVars->InitIonState); 
   fprintf(log_file, "constant_heating_rate = %.6e \n", myGasVars->constant_heating_rate); 
 
-  for (i = 0; i < myGlobalVars->totalNumberOfSpecies; i++) 
-    fprintf(log_file, "abundances[%d] = %.6e \n", i, myGasVars->abundances[i]); 
-
+  for (i = 0; i < myGlobalVars->totalNumberOfSpecies; i++) {fprintf(log_file, "abundances[%d] = %.6e \n", i, myGasVars->abundances[i]);}
   fprintf(log_file, "++++++++++++++\n"); 
 }
 

@@ -933,17 +933,14 @@ static void print_matrix(const int n, const double *matrix, const int *rowstart,
 	  else
 	    fprintf(out, "%g ", 0.);
 	}
-      for(; j < n; j++)
-	fprintf(out, "%g ", 0.);
+      for(; j < n; j++) {fprintf(out, "%g ", 0.);}
       fprintf(out, "; ");
     }
   assert(col == columns + rowstart[i] - offset);
   assert(a == matrix + rowstart[i] - offset);
   fprintf(out, "]\n");
-
   fprintf(out, "b = [ ");
-  for(i = 0; i < n; i++)
-    fprintf(out, "%g; ", rhs[i]);
+  for(i = 0; i < n; i++) {fprintf(out, "%g; ", rhs[i]);}
   fprintf(out, "]\n");
   fclose(out);
 }

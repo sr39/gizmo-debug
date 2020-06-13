@@ -644,8 +644,7 @@ void disp_density(void);
 
 
 #ifdef CHIMES 
-void chimes_cooling_parent_routine(void); 
-double chimes_convert_u_to_temp(double u, double rho, int target); 
+double chimes_convert_u_to_temp(double u, double rho, int target);
 void chimes_update_gas_vars(int target); 
 void chimes_gizmo_exit(void); 
 #ifdef COOL_METAL_LINES_BY_SPECIES 
@@ -660,8 +659,8 @@ double chimes_jenkins_linear_fit(double nH, double T, double Ax, double Bx, doub
 void chimes_compute_depletions(double nH, double T, int thread_id); 
 #endif 
 #else 
+#endif
 void cooling_parent_routine(void);
-#endif 
 void count_hot_phase(void);
 void delete_node(int i);
 void density(void);

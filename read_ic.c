@@ -40,11 +40,7 @@ void read_ic(char *fname)
     CPU_Step[CPU_MISC] += measure_time();
     
 #ifdef RESCALEVINI
-    if(ThisTask == 0 && RestartFlag == 0)
-    {
-        fprintf(stdout, "Rescaling v_ini !\n");
-        fflush(stdout);
-    }
+    if(ThisTask == 0 && RestartFlag == 0) {fprintf(stdout, "Rescaling v_ini !\n"); fflush(stdout);}
 #endif
     
     NumPart = 0;

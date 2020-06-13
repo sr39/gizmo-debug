@@ -204,7 +204,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                                     printf(" ..ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, local.ID, P[j].ID, vrel, vesc);
 #else
 #ifndef IO_REDUCED_MODE
-                                    fprintf(FdBlackHolesDetails, "ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, local.ID, P[j].ID, vrel, vesc);
+                                    fprintf(FdBlackHolesDetails, "ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, local.ID, P[j].ID, vrel, vesc); fflush(FdBlackHolesDetails);
 #endif
 #endif
                                 }
