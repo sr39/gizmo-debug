@@ -119,9 +119,11 @@ void do_the_cooling_for_particle(int i)
         }
 #endif
         /* limit the magnitude of the hydro dtinternalenergy */
-        double du = SphP[i].DtInternalEnergy * dtime;
-        if(du < -0.5*SphP[i].InternalEnergy) {SphP[i].DtInternalEnergy = -0.5*SphP[i].InternalEnergy / dtime;}
-        if(du >  50.*SphP[i].InternalEnergy) {SphP[i].DtInternalEnergy =  50.*SphP[i].InternalEnergy / dtime;}
+        if(dtime>0)
+        {
+            SphP[i].DtInternalEnergy = DMAX(SphP[i].DtInternalEnergy , -0.99*SphP[i].InternalEnergy/dtime ); // equivalent to saying this wouldn't lower internal energy to below 1% in one timestep
+            SphP[i].DtInternalEnergy = DMIN(SphP[i].DtInternalEnergy ,  1.e8*SphP[i].InternalEnergy/dtime ); // equivalent to saying we cant massively enhance internal energy in a single timestep from the hydro work terms: should be big, since just numerical [shocks are real!]
+        }
         /* and convert to cgs before use in the cooling sub-routine */
         SphP[i].DtInternalEnergy *= (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS/HYDROGEN_MASSFRAC);
 #endif
@@ -1125,7 +1127,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     /* add the hydro energy change directly: this represents an additional heating/cooling term, to be accounted for in the semi-implicit solution determined here. this is more accurate when tcool << tdynamical */
     if(target >= 0) {Q += SphP[target].DtInternalEnergy / nHcgs;}
 #if defined(OUTPUT_COOLRATE_DETAIL)
-    if (target>=0){SphP[target].HydroHeatingRate = SphP[target].DtInternalEnergy / nHcgs;}
+    if(target >= 0) {SphP[target].HydroHeatingRate = SphP[target].DtInternalEnergy / nHcgs;}
 #endif
 #endif
     
