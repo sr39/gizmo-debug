@@ -852,8 +852,7 @@ integertime get_timestep(int p,		/*!< particle index */
         }
         // PFH: temporarily modifying the terms above while Marcel studies them: turns out not to be necessary to use as strict a mass-dependent timestep, so faster to comment out //
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-        double mcorr = 1.e-4 * (P[p].Mass*UNIT_MASS_IN_SOLAR);
-        if(mcorr > 1) {dt_stellar_evol /= mcorr;}
+        // double mcorr = 1.e-4 * (P[p].Mass*UNIT_MASS_IN_SOLAR); if(mcorr > 1) {dt_stellar_evol /= mcorr;} // don't use - ok to have multiple at low-res, but don't want too-big a jump or miss key stellar evolution
 #else
         double mcorr = 1.e-5 * (P[p].Mass*UNIT_MASS_IN_SOLAR);
         if(mcorr < 1 && mcorr > 0) {dt_stellar_evol /= mcorr;}
