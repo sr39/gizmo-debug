@@ -269,10 +269,12 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                 already_ionized = 0; rho_j = Get_Gas_density_for_energy_i(j);
                                 if(SphP[j].InternalEnergy<SphP[j].InternalEnergyPred) {u=SphP[j].InternalEnergy;} else {u=SphP[j].InternalEnergyPred;}
                                 if(SphP[j].DelayTimeHII > 0) {already_ionized=1;}
+#if !defined(CHIMES_HII_REGIONS)
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
                                 if((SphP[i].Ne>0.8) || (u>5.*uion)) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
 #else
                                 if(u>uion) {already_ionized=1;}
+#endif
 #endif
                                 /* now, if inside RHII and mionized<mionizeable and not already ionized, can be ionized! */
                                 do_ionize=0; prob=0;
@@ -374,9 +376,8 @@ int do_the_local_ionization(int target, double dt, int source)
     double eps_cgs=All.SofteningTable[P[source].Type]*All.cf_atime*UNIT_LENGTH_IN_CGS; r2+=eps_cgs*eps_cgs; // gravitational Softening (cgs units)
     SphP[target].Chimes_fluxPhotIon_HII[age_bin] = (1.0 - All.Chimes_f_esc_ion) * chimes_ion_luminosity(stellar_age_myr, stellar_mass) / r2; // cgs flux of H-ionising photons per second seen by the star particle
     SphP[target].Chimes_G0_HII[age_bin] = (1.0 - All.Chimes_f_esc_G0) * chimes_G0_luminosity(stellar_age_myr, stellar_mass) / r2; // cgs flux in the 6-13.6 eV band
-    SphP[target].DelayTimeHII = DMIN(dt, 10./UNIT_TIME_IN_MYR); /* tell the code to flag this in the cooling subroutine */
-    return 1; // exit
-#endif
+
+#else
     
 #if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
     SphP[target].InternalEnergy = DMAX(SphP[target].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
@@ -394,6 +395,9 @@ int do_the_local_ionization(int target, double dt, int source)
     SphP[target].InternalEnergy = u_final; SphP[target].InternalEnergyPred = DMAX(SphP[target].InternalEnergyPred + du , 1.e-3*SphP[target].InternalEnergyPred); /* add it */
 #endif
     SphP[target].Ne = 1.0 + 2.0*yhelium(target); /* set the cell to fully ionized */
+
+#endif
+
     SphP[target].DelayTimeHII = DMIN(dt, 10./UNIT_TIME_IN_MYR); /* tell the code to flag this in the cooling subroutine */
     return 1;
 }
