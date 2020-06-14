@@ -59,9 +59,6 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     double ne=1, f_ion=1, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, rho_cgs=rho*UNIT_DENSITY_IN_CGS;
 #ifdef COOLING 
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
-    if(SphP[i].DelayTimeHII>0) {nh0=0;} // account for our effective ionization model here [unless using newer model]
-#endif
     f_ion = DMIN(DMAX(DMAX(DMAX(1-nh0, nhp), ne/1.2), 1.e-8), 1.); // account for different measures above (assuming primordial composition)
 #endif
     for(k=0;k<3;k++) {if(mode==0) {bhat[k]=SphP[i].B[k];} else {bhat[k]=SphP[i].BPred[k];}} // grab whichever B field we need for our mode

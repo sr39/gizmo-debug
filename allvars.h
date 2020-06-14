@@ -429,7 +429,12 @@ extern int ChimesEqmMode;
 extern int ChimesUVBMode; 
 extern int ChimesInitIonState; 
 extern int Chimes_incl_full_output; 
-extern int N_chimes_full_output_freq; 
+extern int N_chimes_full_output_freq;
+#ifdef CHIMES_HII_REGIONS
+#ifndef GALSF_FB_FIRE_RT_HIIHEATING
+#define GALSF_FB_FIRE_RT_HIIHEATING // must be on, this module uses the same code
+#endif
+#endif
 #ifdef CHIMES_STELLAR_FLUXES 
 // The following defines the stellar age bins 
 // that we will use to define the UV spectra 
@@ -2926,7 +2931,7 @@ extern struct sph_particle_data
 #endif
 #endif
     
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) 
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING)
   MyFloat DelayTimeHII;             /*!< flag indicating particle is ionized by nearby star */
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING

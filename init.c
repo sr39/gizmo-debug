@@ -618,7 +618,7 @@ void init(void)
         SphP[i].HostHaloMass = 0;
 #endif
 #endif
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) 
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING)
         SphP[i].DelayTimeHII = 0;
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING
