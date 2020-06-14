@@ -436,9 +436,7 @@ extern int N_chimes_full_output_freq;
 #endif
 #endif
 #ifdef CHIMES_STELLAR_FLUXES 
-// The following defines the stellar age bins 
-// that we will use to define the UV spectra 
-// from stars used in CHIMES. 
+// The following defines the stellar age bins that we will use to define the UV spectra from stars used in CHIMES. 
 #define CHIMES_LOCAL_UV_NBINS 8 
 #define CHIMES_LOCAL_UV_AGE_LOW 0.0 
 #define CHIMES_LOCAL_UV_DELTA_AGE_LOW 0.2 

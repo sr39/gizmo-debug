@@ -795,7 +795,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #if defined(COOL_LOW_TEMPERATURES)
     double Tdust = 30., LambdaDust = 0.; /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS)  // ??
-    Tdust = get_equilibrium_dust_temperature_estimate(target);
+    Tdust = get_equilibrium_dust_temperature_estimate(target, shieldfac);
 #endif
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(BH_COMPTON_HEATING) // ??
     Tdust = DMIN(DMAX(10., 2.73/All.cf_atime),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
@@ -1640,7 +1640,8 @@ void selfshield_local_incident_uv_flux(void)
 
 
 
-double get_equilibrium_dust_temperature_estimate(int i)
+/* simple subroutine to estimate the dust temperatures in our runs without detailed tracking of these individually [more detailed chemistry models do this] */
+double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_for_exgalbg)
 {   /* simple three-component model [can do fancier] with cmb, dust, high-energy photons */
     double e_CMB=0.262*All.cf_a3inv/All.cf_atime, T_cmb=2.73/All.cf_atime; // CMB [energy in eV/cm^3, T in K]
     double e_IR=0.31, Tdust_ext=DMAX(30.,T_cmb); // Milky way ISRF from Draine (2011), assume peak of dust emission at ~100 microns
@@ -1660,6 +1661,7 @@ double get_equilibrium_dust_temperature_estimate(int i)
         e_IR *= E_tot_to_evol_eVcgs; e_HiEgy *= E_tot_to_evol_eVcgs;
 #endif
     }
+    e_HiEgy += shielding_factor_for_exgalbg * 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // this comes from the cosmic optical+UV backgrounds. small correction, so treat simply, and ignore when self-shielded.
     double Tdust_eqm = 2.92 * pow(Tdust_ext*e_IR + T_cmb*e_CMB + T_hiegy*e_HiEgy, 1./5.); // approximate equilibrium temp assuming Q~1/lambda
     return DMAX(DMIN(Tdust_eqm , 2000.) , 1.); // limit at sublimation temperature or some very low temp //
 }
