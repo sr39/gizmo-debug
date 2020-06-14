@@ -355,7 +355,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif
 
 #ifdef CHIMES_TURB_DIFF_IONS
-#include "chimes_turbulent_ion_diffusion.h" 
+#include "../turb/chimes_turbulent_ion_diffusion.h" 
 #endif 
                 
 #ifdef COSMIC_RAYS
