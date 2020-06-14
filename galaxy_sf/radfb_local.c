@@ -194,7 +194,7 @@ void radiation_pressure_winds_consolidated(void)
     
     
 /* Routines for simple FIRE local photo-ionization heating feedback model. This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO. */
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS)
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING)
 void HII_heating_singledomain(void)    /* this version of the HII routine only communicates with particles on the same processor */
 {
 #ifdef RT_CHEM_PHOTOION
@@ -218,27 +218,29 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 #endif
         {
             dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
-            if(dt<=0) continue; // don't keep going with this loop
+            if(dt<=0) {continue;} // don't keep going with this loop
             
-            stellum = All.HIIRegion_fLum_Coupled * particle_ionizing_luminosity_in_cgs(i);
-            if(stellum <= 0) continue;
+            stellum = All.HIIRegion_fLum_Coupled * particle_ionizing_luminosity_in_cgs(i); // ionizing luminosity in cgs [will be appropriately weighted for assumed spectral shape]
+#ifdef CHIMES_HII_REGIONS
+            stellum = chimes_ion_luminosity(evaluate_stellar_age_Gyr(P[i].StellarAge)*1000.,P[i].Mass*UNIT_MASS_IN_SOLAR) * 4.68e-11; // chimes ionizing photon flux rescaled to mean spectrum here appropriately (~29eV per photon)
+#endif
+            if(stellum <= 0) {continue;}
             pos = P[i].Pos; rho = P[i].DensAroundStar; h_i = PPP[i].Hsml; total_m_ionizing += 1; total_l_ionizing += stellum;
-            
-            RHII = 4.67e-9*pow(stellum,0.333)*pow(rho*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667);
-            RHII /= All.cf_atime*UNIT_LENGTH_IN_CGS;
-            RHIIMAX=240.0*pow(stellum,0.5)/(All.cf_atime*UNIT_LENGTH_IN_CGS); // crude estimate of where flux falls below cosmic background
-            if(RHIIMAX < h_i) {RHIIMAX=h_i;}
-            if(RHIIMAX > 5.0*h_i) {RHIIMAX=5.*h_i;}
-            mionizable=NORM_COEFF*rho*RHII*RHII*RHII;
-            double M_ionizing_emitted = (3.05e10 * PROTONMASS) * stellum * (dt * UNIT_TIME_IN_CGS) ; // number of ionizing photons times proton mass, gives max mass ionized
+            RHII = 4.78e-9*pow(stellum,0.333)*pow(rho*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667); // Stromgren radius, RHII, computed using a case B recombination coefficient at 10^4 K of 2.59e-13 cm^3 s^-1, and assuming a Hydrogen mass fraction ~0.74.
+            RHII /= All.cf_atime*UNIT_LENGTH_IN_CGS; // convert to code units
+            RHIIMAX = 2. * 240.0*pow(stellum,0.5) / (All.cf_atime*UNIT_LENGTH_IN_CGS); // crude estimate of where flux falls below cosmic background, x2 safety factor
+            if(RHIIMAX < 2.0*h_i) {RHIIMAX=2.0*h_i;} // limit max search radius: can't be below 2x kernel size
+            if(RHIIMAX > 10.0*h_i) {RHIIMAX=10.*h_i;} // limit search radius to 10x kernel size
+            mionizable = NORM_COEFF*rho*RHII*RHII*RHII; // estimated ionizable gas mass in code units, based on the gas density at star location [will be rescaled]
+            double M_ionizing_emitted = (3.05e10 * PROTONMASS) * stellum * (dt * UNIT_TIME_IN_CGS) ; // number of ionizing photons times proton mass, gives max mass ionized [in cgs]
             mionizable = DMIN( mionizable , M_ionizing_emitted/UNIT_MASS_IN_CGS ); // in code units
-            if(RHII>RHIIMAX) {RHII=RHIIMAX;}
-            if(RHII<0.5*h_i) {RHII=0.5*h_i;}
+            if(RHII > RHIIMAX) {RHII = RHIIMAX;} // limit initial guess to max
+            if(RHII < 0.5*h_i) {RHII=0.5*h_i;} // limit initial guess to above 1/2 kernel, so can find neighbors
             RHII_initial=RHII;
             
             prandom = get_random_number(P[i].ID + 7); // pre-calc the (eventually) needed random number
             // guesstimate if this is even close to being interesting for the particle masses of interest
-            if(prandom < 2.0*mionizable/P[i].Mass) // prandom > this, won't be able to ionize anything interesting
+            if(prandom < 10.0*mionizable/P[i].Mass) // prandom > this, won't be able to ionize anything interesting
             {
                 mionized=0.0; total_m_ionizable += mionizable; h_i2=h_i*h_i;
                 u_to_temp_fac = 0.59 * (5./3.-1.) * U_TO_TEMP_UNITS; /* assume fully-ionized gas with gamma=5/3 */
@@ -247,7 +249,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                 
                 do {
                     jnearest=-1; rnearest=MAX_REAL_NUMBER;
-                    R_search = RHII; if(h_i>R_search) R_search=h_i;
+                    R_search = RHII; if(h_i>R_search) {R_search=h_i;}
                     numngb = ngb_treefind_variable_threads(pos, R_search, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist);
                     if(numngb>0)
                     {
@@ -266,10 +268,11 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                 /* check whether the particle is already ionized */
                                 already_ionized = 0; rho_j = Get_Gas_density_for_energy_i(j);
                                 if(SphP[j].InternalEnergy<SphP[j].InternalEnergyPred) {u=SphP[j].InternalEnergy;} else {u=SphP[j].InternalEnergyPred;}
+                                if(SphP[j].DelayTimeHII > 0) {already_ionized=1;}
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
-                                if((SphP[j].DelayTimeHII>0) || (SphP[i].Ne>0.8) || (u>5.*uion)) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
+                                if((SphP[i].Ne>0.8) || (u>5.*uion)) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
 #else
-                                if((SphP[j].DelayTimeHII > 0)||(u>uion)) {already_ionized=1;}
+                                if(u>uion) {already_ionized=1;}
 #endif
                                 /* now, if inside RHII and mionized<mionizeable and not already ionized, can be ionized! */
                                 do_ionize=0; prob=0;
@@ -279,9 +282,9 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                     // weight by density b/c of how the recombination rate in each particle scales
                                     m_available = mionizable-mionized;
                                     if(m_effective<=m_available) {
-                                        do_ionize=1; prob = 1.001;
+                                        do_ionize=1; prob = 1.001; // we can ionize the entire cell
                                     } else {
-                                        prob = m_available/m_effective; // determine randomly if ionized
+                                        prob = m_available/m_effective; // partial ionization. determine randomly if ionized
                                         if(prandom < prob) do_ionize=1;
                                     } // if(m_effective<=m_available) {
                                     if(do_ionize==1) {already_ionized=do_the_local_ionization(j,dt,i);}
@@ -312,7 +315,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                     if(mionized < 0.95*mionizable)
                     {
                         /* ok, this guy did not find enough gas to ionize, it needs to expand its search */
-                        if((RHII >= 30.0*RHII_initial)||(RHII>=RHIIMAX)||(NITER_HIIFB >= MAX_N_ITERATIONS_HIIFB))
+                        if((RHII >= DMAX(30.0*RHII_initial, RHIIMAX)) || (NITER_HIIFB >= MAX_N_ITERATIONS_HIIFB))
                         {
                             /* we're done looping, this is just too big an HII region */
                             mionized = 1.001*mionizable;
@@ -359,6 +362,22 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 
 int do_the_local_ionization(int target, double dt, int source)
 {
+#if defined(CHIMES_HII_REGIONS) // set a number of chimes-specific quantities here //
+    int k,age_bin=0; double stellar_age_myr=1000.*evaluate_stellar_age_Gyr(P[source].StellarAge), log_age_Myr=log10(stellar_age_myr); // determine stellar age bin
+    if(log_age_Myr<CHIMES_LOCAL_UV_AGE_LOW) {age_bin=0;} else if(log_age_Myr < CHIMES_LOCAL_UV_AGE_MID) {age_bin = (int) floor(((log_age_Myr - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW) + 1);}
+    else {age_bin = (int) floor((((log_age_Myr - CHIMES_LOCAL_UV_AGE_MID) / CHIMES_LOCAL_UV_DELTA_AGE_HI) + ((CHIMES_LOCAL_UV_AGE_MID - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW)) + 1); if(age_bin > CHIMES_LOCAL_UV_NBINS - 1) {age_bin = CHIMES_LOCAL_UV_NBINS - 1;}}
+    // reset all of the HII-region chimes quantities to null
+    for(k=0;k<CHIMES_LOCAL_UV_NBINS;k++) {SphP[target].Chimes_fluxPhotIon_HII[k]=0; SphP[target].Chimes_G0_HII[k]=0;}
+    // set the quantities desired for this age bin specifically: need a softened radius, for use here //
+    double dp[3],r2=0,stellar_mass=P[source].Mass*UNIT_MASS_IN_SOLAR; for(k=0;k<3;k++) {dp[k]=P[source].Pos[k]-P[target].Pos[k];}
+    NEAREST_XYZ(dp[0],dp[1],dp[2],1); for(k=0;k<3;k++) {dp[k]*=All.cf_atime*UNIT_LENGTH_IN_CGS; r2+=dp[k]*dp[k];} // separation in cgs
+    double eps_cgs=All.SofteningTable[P[source].Type]*All.cf_atime*UNIT_LENGTH_IN_CGS; r2+=eps_cgs*eps_cgs; // gravitational Softening (cgs units)
+    SphP[target].Chimes_fluxPhotIon_HII[age_bin] = (1.0 - All.Chimes_f_esc_ion) * chimes_ion_luminosity(stellar_age_myr, stellar_mass) / r2; // cgs flux of H-ionising photons per second seen by the star particle
+    SphP[target].Chimes_G0_HII[age_bin] = (1.0 - All.Chimes_f_esc_G0) * chimes_G0_luminosity(stellar_age_myr, stellar_mass) / r2; // cgs flux in the 6-13.6 eV band
+    SphP[target].DelayTimeHII = DMIN(dt, 10./UNIT_TIME_IN_MYR); /* tell the code to flag this in the cooling subroutine */
+    return 1; // exit
+#endif
+    
 #if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
     SphP[target].InternalEnergy = DMAX(SphP[target].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
     SphP[target].InternalEnergyPred = SphP[target].InternalEnergy; /* full reset of the internal energy */
@@ -374,227 +393,9 @@ int do_the_local_ionization(int target, double dt, int source)
     double u_final = DMIN( u_post_ion_no_cooling , u_eqm ), du = u_final-SphP[target].InternalEnergy; // don't heat to higher temperature than intial energy of ionization allows
     SphP[target].InternalEnergy = u_final; SphP[target].InternalEnergyPred = DMAX(SphP[target].InternalEnergyPred + du , 1.e-3*SphP[target].InternalEnergyPred); /* add it */
 #endif
-    SphP[target].DelayTimeHII = DMIN(dt, 10./UNIT_TIME_IN_MYR); /* tell the code to flag this in the cooling subroutine */
     SphP[target].Ne = 1.0 + 2.0*yhelium(target); /* set the cell to fully ionized */
+    SphP[target].DelayTimeHII = DMIN(dt, 10./UNIT_TIME_IN_MYR); /* tell the code to flag this in the cooling subroutine */
     return 1;
 }
 
-#endif // GALSF_FB_FIRE_RT_HIIHEATING
-
-
-
-#ifdef CHIMES_HII_REGIONS 
-/* This routine is based heavily on the HII_heating_singledomain() routine 
- * used in FIRE for HII heating. I have modified this to make use of the 
- * stellar luminosities used with the CHIMES routines, and it now only flags 
- * gas particles deemed to be within HII regions so that shielding in the CHIMES 
- * routines can be disabled for this particles. This routine does not actually 
- * heat and ionise these particles explicitly. */
-void chimes_HII_regions_singledomain(void)
-{
-  if(All.Time<=0) 
-    return;
-
-  MyDouble *pos;
-  int startnode, numngb, j, n, i, k;
-  int do_ionize,dummy, n_iter_HII, age_bin;
-  MyFloat h_i, dt, rho;
-  double dx, dy, dz, r2, r, eps_cgs, prandom;
-  double mionizable, mionized, RHII, RHIImax, RHIImin, R_search;
-  double stellum, stellum_G0, prob, M_ionizing_emitted;
-  double m_available, m_effective, RHIImultiplier;
-  double stellar_age, stellar_mass, log_age_Myr;
-  
-  int max_n_iterations_HII = 5; 
-
-  Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
-    
-  for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    {
-      if((P[i].Type == 4) || ((All.ComovingIntegrationOn==0) && ((P[i].Type == 2) || (P[i].Type==3))))
-	{
-        dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
-        if(dt<=0) continue; // don't keep going with this loop
-
-	  stellar_age = evaluate_stellar_age_Gyr(P[i].StellarAge); 
-	  stellar_mass = P[i].Mass * UNIT_MASS_IN_SOLAR; 
-	  
-	  // stellum is the number of H-ionising photons per second 
-	  // produced by the star particle 
-	  stellum = chimes_ion_luminosity(stellar_age * 1000.0, stellar_mass); 
-	  if(stellum <= 0) 
-	    continue;
-	  
-	  // Luminosity in the 6-13.6 eV band. 
-	  stellum_G0 = chimes_G0_luminosity(stellar_age * 1000.0, stellar_mass); 
-
-	  // Gravitational Softening (cgs units) 
-	  eps_cgs = All.SofteningTable[P[i].Type] * All.cf_atime * UNIT_LENGTH_IN_CGS;
-	  
-	  // Determine stellar age bin 
-	  log_age_Myr = log10(stellar_age * 1000.0); 	  
-	  if (log_age_Myr < CHIMES_LOCAL_UV_AGE_LOW) 
-	    age_bin = 0; 
-	  else if (log_age_Myr < CHIMES_LOCAL_UV_AGE_MID) 
-	    age_bin = (int) floor(((log_age_Myr - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW) + 1); 
-	  else 
-	    { 
-	      age_bin = (int) floor((((log_age_Myr - CHIMES_LOCAL_UV_AGE_MID) / CHIMES_LOCAL_UV_DELTA_AGE_HI) + ((CHIMES_LOCAL_UV_AGE_MID - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW)) + 1); 
-	      if (age_bin > CHIMES_LOCAL_UV_NBINS - 1) 
-		age_bin = CHIMES_LOCAL_UV_NBINS - 1; 
-	    }
-	  
-	  pos = P[i].Pos;
-	  rho = P[i].DensAroundStar;
-	  h_i = PPP[i].Hsml;
-	  
-	  // Stromgren radius, RHII, computed using a case B recombination coefficient 
-	  // at 10^4 K of 2.59e-13 cm^3 s^-1, as used in CHIMES, and assuming a 
-	  // Hydrogen mass fraction XH = 0.7. 
-	  RHII = 1.7376e-12 * pow(stellum, 0.33333) * pow(rho * All.cf_a3inv * UNIT_DENSITY_IN_CGS, -0.66667);
-	  
-	  // Convert RHII from cm to code units 
-	  RHII /= All.cf_atime*UNIT_LENGTH_IN_CGS;
-	  
-	  /* Impose a maximum RHII, to prevent the code trying to search 
-	   * for neighbours too far away. Unlike the standard FIRE routines, 
-	   * I do not base this on an estimate for where the flux falls below 
-	   * the cosmic background. Instead, note that, for the maximum ionising 
-	   * flux per Msol that we get from the Starburst99 models (which occurs 
-	   * at a stellar age of 3.71 Myr), the ratio of ionisable gas mass to 
-	   * stellar mass is 286 / nH. In other words, at nH = 1 cm^-3, a single 
-	   * star particle can ionise 286 gas particles (assuming equal-mass 
-	   * particles). The star particle's smoothing length h_i should contain
-	   * DesNumNgb gas particles (typically 32). So if we set RHIImax to 
-	   * 10 * h_i, this should be enough to handle HII regions down to 
-	   * nH ~ 1 cm^-3. */ 
-	  RHIImax = 10.0 * h_i; 
-	  RHIImin = 0.5 * h_i; 
-	  
-	  // Ionizable gas mass in code units, based on the gas density 
-	  // evaluated at the position of the star. Prefactor is 4pi/3. 
-	  mionizable = 4.18879 * rho * pow(RHII, 3.0);  
-
-	  // number of ionizing photons times proton mass, gives max mass ionized 
-	  M_ionizing_emitted = PROTONMASS * stellum * (dt * UNIT_TIME_IN_CGS); // in cgs
-	  mionizable = DMIN(mionizable , M_ionizing_emitted/UNIT_MASS_IN_CGS); // in code units
-	  
-	  // Now limit RHII to be between the min and max defined above. 
-	  if(RHII > RHIImax) 
-	    RHII = RHIImax;
-
-	  if(RHII < RHIImin) 
-	    RHII = RHIImin;
-
-	  /* Skip star particles that can ionise <10% of its own mass (this is  
-	   * lower than 50% here, because there can be some variation between 
-	   * particle masses, and in gas densities). */ 
-	  if(mionizable / P[i].Mass > 0.1) 
-	    {	      
-	      prandom = get_random_number(P[i].ID + 7); 
-	      mionized = 0.0;
-	      startnode = All.MaxPart;     /* root node */
-	      dummy = 0; 
-	      n_iter_HII = 0;
-	     
-	      do {
-		R_search = RHII;
-		if(h_i > R_search) 
-		  R_search = h_i;
-		numngb = ngb_treefind_variable_threads(pos, R_search, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist);
-		if(numngb>0)
-		  {
-		    for(n = 0; n < numngb; n++)
-		      {
-			j = Ngblist[n];
-			if(P[j].Type == 0 && P[j].Mass > 0)
-			  {
-			    dx = pos[0] - P[j].Pos[0];
-			    dy = pos[1] - P[j].Pos[1];
-			    dz = pos[2] - P[j].Pos[2];
-			    NEAREST_XYZ(dx, dy, dz, 1); /*  now find the closest image in the given box size  */
-			    r2 = dx * dx + dy * dy + dz * dz;
-			    r = sqrt(r2);
-			   
-			    /* If inside RHII and mionized<mionizeable and not already ionized, can be ionized! */
-			    do_ionize=0; 
-			    if((r <= RHII) && (SphP[j].DelayTimeHII <= 0) && (mionized < mionizable)) 
-			      {
-				m_effective = P[j].Mass * (SphP[j].Density / rho);
-				// weight by density b/c of how the recomination rate in each particle scales 
-
-				m_available = mionizable - mionized;
-				if(m_effective <= m_available) 
-				  {
-				    // Enough photons to ionise the whole particle. 
-				    do_ionize = 1;
-				    mionized += m_effective; 
-				  }
-				else 
-				  {
-				    // Not enough to ionise a whole particle. 
-				    // Use random number to determine whether 
-				    // to ionise. 
-				    prob = m_available/m_effective; 
-				   
-				    if(prandom < prob) 
-				      do_ionize = 1;
-
-				    mionized += prob * m_effective; 
-				  } // if(m_effective<=m_available) 
-			       
-				if(do_ionize==1) 
-				  {
-				    SphP[j].DelayTimeHII = dt;
-				   
-				    for(k = 0; k < CHIMES_LOCAL_UV_NBINS; k++)  {SphP[j].Chimes_fluxPhotIon_HII[k] = 0; SphP[j].Chimes_G0_HII[k] = 0;}
-				    
-				    SphP[j].Chimes_fluxPhotIon_HII[age_bin] = (1.0 - All.Chimes_f_esc_ion) * stellum / (pow(r * All.cf_atime * UNIT_LENGTH_IN_CGS, 2.0) + pow(eps_cgs, 2.0)) ;
-				    SphP[j].Chimes_G0_HII[age_bin] = (1.0 - All.Chimes_f_esc_G0) * stellum_G0 / (pow(r * All.cf_atime * UNIT_LENGTH_IN_CGS, 2.0) + pow(eps_cgs, 2.0));
-				  }
-			      } // if((r <= RHII) && (SphP[j].DelayTimeHII <= 0) && (mionized<mionizable)) 
-			  } // if(P[j].Type == 0 && P[j].Mass > 0)
-		      } // for(n = 0; n < numngb; n++)
-		  } // if(numngb>0)
-
-		/* now check if we have ionized sufficient material, and if not, 
-		   iterate with larger regions until we do */
-		RHIImultiplier=1.10;
-		if(mionized < 0.95 * mionizable) 
-		  {
-		    /* ok, this guy did not find enough gas to ionize, it needs to expand its search */
-		    if((RHII >= RHIImax) || (n_iter_HII >= max_n_iterations_HII))
-		      {
-			/* we're done looping, this is just too big an HII region */
-			mionized = 1.001*mionizable;
-		      } 
-		    else 
-		      {
-			/* in this case we're allowed to keep expanding RHII */
-			if(mionized <= 0) 
-			  RHIImultiplier = 2.0;
-			else 
-			  {
-			    RHIImultiplier = pow(mionized / mionizable, -0.333);
-			    if(RHIImultiplier > 5.0) 
-			      RHIImultiplier=5.0;
-			    if(RHIImultiplier < 1.26) 
-			      RHIImultiplier=1.26;
-			  } // if(mionized <= 0) 
-		       
-			RHII *= RHIImultiplier;
-			if(RHII > 1.26*RHIImax) 
-			  RHII=1.26*RHIImax;
-
-			startnode=All.MaxPart; // this will trigger the while loop to continue
-		      } // if((RHII>=RHIImax) || (n_iter_HII >= max_n_iterations_HII))
-		  } // if(mionized < 0.95*mionizable) 
-		n_iter_HII++;
-	      } while(startnode >= 0);
-	    } // if(mionizable / P[i].Mass > 0.1)
-	} // if((P[i].Type == 4)||(P[i].Type == 2)||(P[i].Type == 3))
-    } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-  myfree(Ngblist);
-  CPU_Step[CPU_HIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */
-}
-#endif // CHIMES_HII_REGIONS 
+#endif

@@ -337,9 +337,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #else
                     double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp; u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy); // needs to be in code units
                     temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
-                    if(SphP[pindex].DelayTimeHII>0) {nh0=0;}
-#endif
                     *fp++ = (MyOutputFloat) nh0;
 #endif
                     n++;
@@ -651,7 +648,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_DELAY_TIME_HII: 
-#if (defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS)) && defined(OUTPUT_DELAY_TIME_HII)
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && defined(OUTPUT_DELAY_TIME_HII)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -2453,7 +2450,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_DELAY_TIME_HII:
-#if (defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS)) && defined(OUTPUT_DELAY_TIME_HII)
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && defined(OUTPUT_DELAY_TIME_HII)
             return 1;
 #endif
             break;
