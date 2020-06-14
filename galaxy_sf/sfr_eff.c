@@ -302,7 +302,7 @@ double get_starformation_rate(int i)
 #endif
 
 #if (SINGLE_STAR_SINK_FORMATION & 64) || (GALSF_SFR_VIRIAL_SF_CRITERION >= 3) /* check if Jeans mass is low enough for conceivable formation of 'stars' */
-    double cs_touse=cs_eff, MJ_crit=DMAX(DMIN(1.e4, 10.*P[i].Mass*UNIT_MASS_IN_SOLAR), 100.); /* for galaxy-scale SF, default to large ~1000 Msun threshold */
+    double cs_touse=cs_eff, MJ_crit=DMAX(DMIN(1.e3, 1.*P[i].Mass*UNIT_MASS_IN_SOLAR), 100.); /* for galaxy-scale SF, default to large ~1000 Msun threshold */
 #ifdef SINGLE_STAR_SINK_FORMATION
     cs_touse=v_fast; MJ_crit=DMIN(1.e4, DMAX(1.e-3 , 100.*P[i].Mass*UNIT_MASS_IN_SOLAR)); /* for single-star formation use un-resolved Jeans mass criterion, with B+thermal pressure */
 #endif
