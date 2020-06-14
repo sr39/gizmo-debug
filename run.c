@@ -369,30 +369,25 @@ void find_next_sync_point_and_drift(void)
 
   while(ti_next_kick_global >= All.Ti_nextoutput && All.Ti_nextoutput >= 0)
     {
-      All.Ti_Current = All.Ti_nextoutput;
+        All.Ti_Current = All.Ti_nextoutput;
 
-      if(All.ComovingIntegrationOn) {All.Time = All.TimeBegin * exp(All.Ti_Current * All.Timebase_interval);}
-        else {All.Time = All.TimeBegin + All.Ti_Current * All.Timebase_interval;}
+        if(All.ComovingIntegrationOn) {All.Time = All.TimeBegin * exp(All.Ti_Current * All.Timebase_interval);}
+            else {All.Time = All.TimeBegin + All.Ti_Current * All.Timebase_interval;}
 
-      set_cosmo_factors_for_current_time();
-        
-#ifdef GR_TABULATED_COSMOLOGY_G
-      All.G = All.Gini * dGfak(All.Time);
-#endif
+        set_cosmo_factors_for_current_time();
 
-      move_particles(All.Ti_nextoutput);
-
-      CPU_Step[CPU_DRIFT] += measure_time();
+        move_particles(All.Ti_nextoutput);
+        MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_DRIFT] += measure_time();
 
 #ifdef OUTPUT_POTENTIAL
 #if !defined(EVALPOTENTIAL) || (defined(EVALPOTENTIAL) && defined(OUTPUT_RECOMPUTE_POTENTIAL))
-      domain_Decomposition(0, 0, 0);
-      compute_potential();
+        domain_Decomposition(0, 0, 0);
+        compute_potential();
 #endif
 #endif
 
         savepositions(All.SnapshotFileCount++);	/* write snapshot file */
-      All.Ti_nextoutput = find_next_outputtime(All.Ti_nextoutput + 1);
+        All.Ti_nextoutput = find_next_outputtime(All.Ti_nextoutput + 1);
     }
 
 
@@ -446,20 +441,10 @@ void find_next_sync_point_and_drift(void)
 
 
 
-  /* move the new set of active/synchronized particles */
-  /* Note: We do not yet call make_list_of_active_particles(), since we
-   * may still need to old list in the dynamic tree update
-   */
+  /* move the new set of active/synchronized particles. Note: We do not yet call make_list_of_active_particles(), since we
+   * may still need to old list in the dynamic tree update */
   for(n = 0, prev = -1; n < TIMEBINS; n++)
-    {
-      if(TimeBinActive[n])
-	{
-	  for(i = FirstInTimeBin[n]; i >= 0; i = NextInTimeBin[i])
-	    {
-	      drift_particle(i, All.Ti_Current);
-	    }
-	}
-    }
+    {if(TimeBinActive[n]) {for(i = FirstInTimeBin[n]; i >= 0; i = NextInTimeBin[i]) {drift_particle(i, All.Ti_Current);}}}
 
 }
 
@@ -843,9 +828,9 @@ void write_cpu_log(void)
 #ifdef FOF
           "fof/subfind   %10.2f  %5.1f%%\n"
 #endif
-          "predict       %10.2f  %5.1f%%\n"
+          "drift/splitmg %10.2f  %5.1f%%\n"
 	      "kicks         %10.2f  %5.1f%%\n"
-	      "i/o           %10.2f  %5.1f%%\n"
+	      "io/snapshots  %10.2f  %5.1f%%\n"
 #ifdef COOLING
 	      "cooling+chem  %10.2f  %5.1f%%\n"
 #endif

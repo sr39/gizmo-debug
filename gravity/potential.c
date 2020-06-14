@@ -42,18 +42,17 @@ void compute_potential(void)
   PRINT_STATUS("Start computation of potential for all particles...");
   CPU_Step[CPU_MISC] += measure_time();
 
-
   if(TreeReconstructFlag)
     {
       PRINT_STATUS("Tree construction");
       CPU_Step[CPU_MISC] += measure_time();
       rearrange_particle_sequence();
+      MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_DRIFT] += measure_time();
       force_treebuild(NumPart, NULL);
-      CPU_Step[CPU_TREEBUILD] += measure_time();
+      MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_TREEBUILD] += measure_time();
       TreeReconstructFlag = 0;
       PRINT_STATUS(" ..Tree construction done");
     }
-
 
   /* allocate buffers to arrange communication */
     size_t MyBufferSize = All.BufferSize;
@@ -106,10 +105,7 @@ void compute_potential(void)
 	{
 	  place = DataIndexTable[j].Index;
 
-        for(k = 0; k < 3; k++)
-        {
-            GravDataIn[j].Pos[k] = P[place].Pos[k];
-        }
+        for(k = 0; k < 3; k++) {GravDataIn[j].Pos[k] = P[place].Pos[k];}
 
         GravDataIn[j].Type = P[place].Type;
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
@@ -120,27 +116,14 @@ void compute_potential(void)
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
         h_place = PPP[place].AGS_Hsml;
 #endif
-        if(h_place > All.ForceSoftening[P[place].Type])
-        {
-            GravDataIn[j].Soft = h_place;
-        } else {
-            GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];
-        }
+        if(h_place > All.ForceSoftening[P[place].Type]) {GravDataIn[j].Soft = h_place;} else {GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(RT_USE_GRAVTREE)
         if((P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]))
-        {
-            GravDataIn[j].Soft = PPP[place].Hsml;
-        } else {
-            GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];
-        }
+            {GravDataIn[j].Soft = PPP[place].Hsml;} else {GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];}
 #endif
         GravDataIn[j].OldAcc = P[place].OldAcc;
-        
-        for(k = 0; k < NODELISTLENGTH; k++)
-        {
-            GravDataIn[j].NodeList[k] = DataNodeList[DataIndexTable[j].IndexGet].NodeList[k];
-        }
+        for(k = 0; k < NODELISTLENGTH; k++) {GravDataIn[j].NodeList[k] = DataNodeList[DataIndexTable[j].IndexGet].NodeList[k];}
 	}
 
 
@@ -176,10 +159,7 @@ void compute_potential(void)
 	  force_treeevaluate_potential(j, 1, &dummy, &dummy);
 	}
 
-      if(i >= NumPart)
-	ndone_flag = 1;
-      else
-	ndone_flag = 0;
+      if(i >= NumPart) {ndone_flag = 1;} else {ndone_flag = 0;}
 
       MPI_Allreduce(&ndone_flag, &ndone, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
@@ -207,7 +187,6 @@ void compute_potential(void)
       for(j = 0; j < nexport; j++)
 	{
 	  place = DataIndexTable[j].Index;
-
 	  P[place].Potential += PotDataOut[j].Potential;
 	}
 
@@ -246,8 +225,7 @@ void compute_potential(void)
       pm_setup_nonperiodic_kernel();
       i = pmpotential_nonperiodic(1);	/* try again */
     }
-  if(i == 1)
-    endrun(88686);
+  if(i == 1) {endrun(88686);}
 #endif
 #else
   i = pmpotential_nonperiodic(0);
@@ -257,14 +235,12 @@ void compute_potential(void)
       pm_setup_nonperiodic_kernel();
       i = pmpotential_nonperiodic(0);	/* try again */
     }
-  if(i == 1)
-    endrun(88687);
+  if(i == 1) {endrun(88687);}
 #ifdef PM_PLACEHIGHRESREGION
   i = pmpotential_nonperiodic(1);
   if(i == 1)			/* this is returned if a particle lied outside allowed range */
     {
       pm_init_regionsize();
-
       i = pmpotential_nonperiodic(1);
     }
   if(i != 0)
@@ -283,9 +259,7 @@ void compute_potential(void)
 
       for(i = 0; i < NumPart; i++)
 	{
-	  for(k = 0, r2 = 0; k < 3; k++)
-	    r2 += P[i].Pos[k] * P[i].Pos[k];
-
+	  for(k = 0, r2 = 0; k < 3; k++) {r2 += P[i].Pos[k] * P[i].Pos[k];}
 	  P[i].Potential += fac * r2;
 	}
 #endif
@@ -297,9 +271,7 @@ void compute_potential(void)
 	{
 	  for(i = 0; i < NumPart; i++)
 	    {
-	      for(k = 0, r2 = 0; k < 3; k++)
-		r2 += P[i].Pos[k] * P[i].Pos[k];
-
+	      for(k = 0, r2 = 0; k < 3; k++) {r2 += P[i].Pos[k] * P[i].Pos[k];}
 	      P[i].Potential += fac * r2;
 	    }
 	}
@@ -307,11 +279,10 @@ void compute_potential(void)
 
       PRINT_STATUS("potential done");
 #else
-  for(i = 0; i < NumPart; i++)
-    P[i].Potential = 0;
+  for(i = 0; i < NumPart; i++) {P[i].Potential = 0;}
 #endif
 
-  CPU_Step[CPU_POTENTIAL] += measure_time();
+    MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_POTENTIAL] += measure_time();
 }
 
 
