@@ -517,7 +517,6 @@ void set_units(void)
     set_units_sfr();
 #endif
 
-
     
 #ifdef DM_FUZZY
     /* For Schroedinger equation: this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass. This is the key variable used throughout */

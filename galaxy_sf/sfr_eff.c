@@ -160,11 +160,9 @@ void set_units_sfr(void)
     All.OverDensThresh = All.CritOverDensity * All.OmegaBaryon * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
     All.PhysDensThresh = All.CritPhysDensity / (HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_NHCGS);
 #ifdef GALSF_EFFECTIVE_EQS
-    double meanweight = 4 / (1 + 3 * HYDROGEN_MASSFRAC);	/* note: assuming NEUTRAL GAS */
-    All.EgySpecCold = All.TempClouds / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
-    meanweight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));	/* note: assuming FULL ionization */
-    All.EgySpecSN = All.TempSupernova / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
-#endif // GALSF_EFFECTIVE_EQS
+    All.EgySpecCold = All.TempClouds / ((4 / (1 + 3 * HYDROGEN_MASSFRAC)) * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS); /* note: assuming fully-neutral atomic H+He primordial mixture */
+    All.EgySpecSN = All.TempSupernova / ((4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC))) * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS); /* note: assuming fully-ionized H+He primordial mixture */
+#endif
 }
 
 
@@ -223,7 +221,7 @@ double get_starformation_rate(int i)
 #endif
     tsfr = sqrt(All.PhysDensThresh / (SphP[i].Density * All.cf_a3inv)) * All.MaxSfrTimescale; /* set default SFR timescale to scale appropriately with the gas dynamical time */
     rateOfSF = P[i].Mass / tsfr; /* 'normal' sfr from density law above */
-    if(tsfr<=0 || rateOfSF <= 0) {return 0;} /* nonsense here, return 0 */
+    if(tsfr<=0 || rateOfSF<=0 || flag==0) {return 0;} /* nonsense here, return 0 */
     
 #ifdef GALSF_EFFECTIVE_EQS /* do the SFR calc for the Springel-Hernquist EOS, before any 'fancy' sf criteria, when above-threshold, or else risk incorrect entropies */
     double factorEVP = pow(SphP[i].Density * All.cf_a3inv / All.PhysDensThresh, -0.8) * All.FactorEVP; /* evaporation factor */
@@ -392,16 +390,15 @@ void star_formation_parent_routine(void)
         
         /* check whether an initial (not fully-complete!) conditions for star formation are fulfilled for a given particle */
         if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh) {flag = 0;} // if sufficiently dense, go forward into SF routine //
-        if(All.ComovingIntegrationOn) {if(SphP[i].Density < All.OverDensThresh) flag = 1;} // (additional density check for cosmological runs) //
+        if(All.ComovingIntegrationOn) {if(SphP[i].Density < All.OverDensThresh) {flag = 1;}} // (additional density check for cosmological runs) //
 
 #ifdef GALSF_SUBGRID_WINDS
         if(SphP[i].DelayTime > 0) {flag=1; SphP[i].DelayTime -= dtime;} /* no star formation for particles in the wind; update our wind delay-time calculations */
-        if((SphP[i].DelayTime<0) || (SphP[i].Density*All.cf_a3inv < All.WindFreeTravelDensFac*All.PhysDensThresh)) {SphP[i].DelayTime=0;}
+        if((SphP[i].DelayTime < 0) || (SphP[i].Density*All.cf_a3inv < All.WindFreeTravelDensFac*All.PhysDensThresh)) {SphP[i].DelayTime=0;}
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING
         if(SphP[i].DelayTimeCoolingSNe > 0) {flag=1; SphP[i].DelayTimeCoolingSNe -= dtime;} /* no star formation for particles in the wind; update our wind delay-time calculations */
 #endif
-        
         
         if((flag == 0)&&(dtime>0))		/* active star formation (upon start-up, we need to protect against dt==0) */
 	    {
