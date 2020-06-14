@@ -365,8 +365,7 @@ void restart(int modus)
 
   if(modus != 0 && nmulti != MULTIPLEDOMAINS)	/* in this case we must force a domain decomposition */
     {
-      if(ThisTask == 0)
-	printf("Doing extra domain decomposition because you changed MULTIPLEDOMAINS\n");
+        if(ThisTask == 0) {printf("Doing extra domain decomposition because you changed MULTIPLEDOMAINS\n"); fflush(stdout);}
 
       domain_Decomposition(0, 0, 0);
     }

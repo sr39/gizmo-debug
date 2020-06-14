@@ -160,13 +160,13 @@
         /* advance the faces a half-step forward in time (given our leapfrog scheme, this actually has
             very, very weak effects on the errors. nonetheless it does help a small amount in reducing
             certain types of noise and oscillations (but not always!) */
-        s_i += 0.5 * dt_hydrostep * (local.Vel[0]*kernel.dp[0] + local.Vel[1]*kernel.dp[1] + local.Vel[2]*kernel.dp[2]) * rinv;
-        s_j += 0.5 * dt_hydrostep * (VelPred_j[0]*kernel.dp[0] + VelPred_j[1]*kernel.dp[1] + VelPred_j[2]*kernel.dp[2]) * rinv;
+        s_i += 0.5 * DMIN(dt_hydrostep_i,dt_hydrostep_j) * (local.Vel[0]*kernel.dp[0] + local.Vel[1]*kernel.dp[1] + local.Vel[2]*kernel.dp[2]) * rinv;
+        s_j += 0.5 * DMIN(dt_hydrostep_i,dt_hydrostep_j) * (VelPred_j[0]*kernel.dp[0] + VelPred_j[1]*kernel.dp[1] + VelPred_j[2]*kernel.dp[2]) * rinv;
 #endif
 #ifdef DO_UPWIND_TIME_CENTERING
         //(simple up-winding formulation: use if desired instead of time-centered fluxes)//
-        double delta_halfstep_i = kernel.sound_i*0.5*dt_hydrostep*(All.cf_afac3/All.cf_atime); if(delta_halfstep_i>s_i) {delta_halfstep_i=s_i;}
-        double delta_halfstep_j = kernel.sound_j*0.5*dt_hydrostep*(All.cf_afac3/All.cf_atime); if(delta_halfstep_j>-s_j) {delta_halfstep_j=-s_j;}
+        double delta_halfstep_i = kernel.sound_i*0.5*dt_hydrostep_i*(All.cf_afac3/All.cf_atime); if(delta_halfstep_i>s_i) {delta_halfstep_i=s_i;}
+        double delta_halfstep_j = kernel.sound_j*0.5*dt_hydrostep_j*(All.cf_afac3/All.cf_atime); if(delta_halfstep_j>-s_j) {delta_halfstep_j=-s_j;}
         s_i = s_star_ij - s_i + delta_halfstep_i; /* projection element for gradients */
         s_j = s_star_ij - s_j - delta_halfstep_j;
 #else
@@ -243,7 +243,7 @@
         /* advance the faces a half-step forward in time (given our leapfrog scheme, this actually has
             very, very weak effects on the errors. nonetheless it does help a small amount in reducing 
             certain types of noise and oscillations */
-        double dt_half = 0.5*dt_hydrostep;
+        double dt_half = 0.5*DMIN(dt_hydrostep_i,dt_hydrostep_j);
         for(k=0;k<3;k++)
         {
             Riemann_vec.R.rho -= dt_half * local.Density * local.Gradients.Velocity[k][k];

@@ -60,11 +60,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 #ifdef BH_ALPHADISK_ACCRETION
     in->BH_Mass_AlphaDisk = BPP(i).BH_Mass_AlphaDisk;
 #endif
-#ifndef WAKEUP
-    in->Dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-    in->Dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif
+    in->Dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
 #ifdef BH_ACCRETE_NEARESTFIRST
     in->BH_dr_to_NearestGasNeighbor = P[i].BH_dr_to_NearestGasNeighbor;
 #endif
@@ -136,9 +132,6 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
     bh_mass_withdisk += local.BH_Mass_AlphaDisk;
 #endif
 #endif
-#if defined(BH_SWALLOW_SMALLTIMESTEPS)
-    double dt_min_to_accrete = DMAX(0.001 * sqrt(pow(All.SofteningTable[5],3.0)/(All.G * local.Mass)), 20.0*DMAX(All.MinSizeTimestep,All.Timebase_interval) ); //0.001 = tolerance factor for dt_min, defined in part (ii) of 2.3.5 in Hubber 2013.
-#endif
 #if defined(BH_WIND_KICK) && !defined(BH_GRAVCAPTURE_GAS) /* DAA: increase the effective mass-loading of BAL winds to reach the desired momentum flux given the outflow velocity "All.BAL_v_outflow" chosen --> appropriate for cosmological simulations where particles are effectively kicked from ~kpc scales (i.e. we need lower velocity and higher mass outflow rates compared to accretion disk scales) - */
     f_accreted = All.BAL_f_accretion; if((All.BlackHoleFeedbackFactor > 0) && (All.BlackHoleFeedbackFactor != 1.)) {f_accreted /= All.BlackHoleFeedbackFactor;} else {if(All.BAL_v_outflow > 0) {f_accreted = 1./(1. + fabs(1.*BH_WIND_KICK)*All.BlackHoleRadiativeEfficiency*C_LIGHT_CODE/(All.BAL_v_outflow));}}
 #endif
@@ -168,9 +161,6 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                         vrel=0; for(k=0;k<3;k++) {vrel += dvel[k]*dvel[k];}
                         r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime;  /* do this once and use below */
                         vesc=bh_vesc(j,local.Mass,r, ags_h_i);
-#if defined(BH_SWALLOW_SMALLTIMESTEPS)
-                        if(P[j].Type != 5) {if(vrel<vesc) {if(P[j].dt_step*All.Timebase_interval/All.cf_hubble_a<dt_min_to_accrete) {if(P[j].SwallowID<local.ID) {P[j].SwallowID = local.ID;}}}} /* Bound particles with very small timestep get eaten to avoid issues. */
-#endif
 #ifdef BH_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
                         double boundedness_function, potential_function; boundedness_function = P[j].Potential + 0.5 * vrel*vrel * All.cf_atime; potential_function = P[j].Potential;
@@ -214,7 +204,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                                     printf(" ..ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, local.ID, P[j].ID, vrel, vesc);
 #else
 #ifndef IO_REDUCED_MODE
-                                    fprintf(FdBlackHolesDetails, "ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, local.ID, P[j].ID, vrel, vesc);
+                                    fprintf(FdBlackHolesDetails, "ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, local.ID, P[j].ID, vrel, vesc); fflush(FdBlackHolesDetails);
 #endif
 #endif
                                 }

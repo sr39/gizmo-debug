@@ -25,11 +25,9 @@
  */ 
 void init(void)
 {
-    int i, j;
-    double a3, atime;
+    int i, j; double a3, atime, a2_fac;
     
 #ifdef MAGNETIC
-    double a2_fac;
     double gauss2gizmo = All.UnitMagneticField_in_gauss / UNIT_B_IN_GAUSS;
     /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here;
         [much simpler, but be sure of your conversions!] */
@@ -117,25 +115,16 @@ void init(void)
     IonizeParams();
 #endif
     
+    All.Ti_Current = 0;
     if(All.ComovingIntegrationOn)
     {
         All.Timebase_interval = (log(All.TimeMax) - log(All.TimeBegin)) / TIMEBASE;
-        All.Ti_Current = 0;
-        a3 = All.Time * All.Time * All.Time;
-        atime = All.Time;
-#ifdef MAGNETIC
-        a2_fac = (All.Time * All.Time);
-#endif
+        a3 = All.Time * All.Time * All.Time; atime = All.Time; a2_fac = (All.Time * All.Time);
     }
     else
     {
         All.Timebase_interval = (All.TimeMax - All.TimeBegin) / TIMEBASE;
-        All.Ti_Current = 0;
-        a3 = 1;
-        atime = 1;
-#ifdef MAGNETIC
-        a2_fac = 1;
-#endif
+        a3 = atime = a2_fac = 1;
     }
         
     set_softenings();
@@ -163,8 +152,7 @@ void init(void)
     
 #ifdef OUTPUT_LINEOFSIGHT
     All.Ti_nextlineofsight = (int) (log(All.TimeFirstLineOfSight / All.TimeBegin) / All.Timebase_interval);
-    if(RestartFlag == 2)
-        endrun(78787);
+    if(RestartFlag == 2) {endrun(78787);}
 #endif
     
     All.TotNumOfForces = 0;
@@ -271,15 +259,13 @@ void init(void)
 #endif
         
 #ifdef PMGRID
-        for(j = 0; j < 3; j++)
-            P[i].GravPM[j] = 0;
+        for(j = 0; j < 3; j++) {P[i].GravPM[j] = 0;}
 #endif
         P[i].Ti_begstep = 0;
         P[i].Ti_current = (integertime)0;
         P[i].TimeBin = 0;
         
-        if(header.flag_ic_info != FLAG_SECOND_ORDER_ICS)
-            P[i].OldAcc = 0;	/* Do not zero in 2lpt case as masses are stored here */
+        if(header.flag_ic_info != FLAG_SECOND_ORDER_ICS) {P[i].OldAcc = 0;}	/* Do not zero in 2lpt case as masses are stored here */
         
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY)    
         P[i].Potential = 0;
@@ -305,7 +291,7 @@ void init(void)
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
 #endif
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 #if defined(SINGLE_STAR_FB_SNE)
             P[i].Mass_final = P[i].Mass; //best guess, only matters if we restart in the middle of spawning an SN 
 #endif
@@ -326,11 +312,8 @@ void init(void)
 #endif
         }
        
-#if defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
-        if(RestartFlag == 0)
-        {
-	        P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (UNIT_TIME_IN_GYR) * get_random_number(P[i].ID + 3);
-        }
+#if defined(INIT_STELLAR_METALS_AGES_DEFINED) && defined(GALSF)
+        if(RestartFlag == 0) {P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (UNIT_TIME_IN_GYR) * get_random_number(P[i].ID + 3);}
 #endif
         
 #ifdef GRAIN_FLUID
@@ -416,7 +399,7 @@ void init(void)
 #endif
         
         if(RestartFlag == 0) {
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)  
+#if defined(INIT_STELLAR_METALS_AGES_DEFINED)
             P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
 #else
             P[i].Metallicity[0] = 0;
@@ -492,9 +475,9 @@ void init(void)
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                 BPP(i).BH_Mass = P[i].Mass;
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION // properly initialize luminosity
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION // properly initialize luminosity
                 singlestar_subgrid_protostellar_evolution_update_track(i,0,0);             
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2)
+#if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
                 calculate_individual_stellar_luminosity(BPP(i).BH_Mdot, BPP(i).BH_Mass, i);
 #endif        
 #endif

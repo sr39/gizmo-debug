@@ -175,7 +175,7 @@ void merge_and_split_particles(void)
             }
         }
 #endif
-#if defined(GALSF) && !defined(TO_GAL)
+#if defined(GALSF)
         if(((P[i].Type==0)||(P[i].Type==4))&&(TimeBinActive[P[i].TimeBin])) /* if SF active, allow star particles to merge if they get too small */
 #else
         if((P[i].Type==0)&&(TimeBinActive[P[i].TimeBin])) /* default mode, only gas particles merged */
@@ -943,9 +943,7 @@ void rearrange_particle_sequence(void)
         {
             P[i].Mass = 0;
             TimeBinCount[P[i].TimeBin]--;
-            
-            if(TimeBinActive[P[i].TimeBin])
-                NumForceUpdate--;
+            if(TimeBinActive[P[i].TimeBin]) {NumForceUpdate--;}
             
             if(P[i].Type == 0)
             {
@@ -957,9 +955,8 @@ void rearrange_particle_sequence(void)
                 swap_treewalk_pointers(i, N_gas-1);
 #endif		
                 /* swap with properties of last gas particle (i-- below will force a check of this so its ok) */
-                
 #ifdef CHIMES
-		free_gas_abundances_memory(&(ChimesGasVars[i]), &ChimesGlobalVars); 
+                free_gas_abundances_memory(&(ChimesGasVars[i]), &ChimesGlobalVars);
                 ChimesGasVars[i] = ChimesGasVars[N_gas - 1];
                 ChimesGasVars[N_gas - 1].abundances = NULL; ChimesGasVars[N_gas - 1].isotropic_photon_density = NULL; ChimesGasVars[N_gas - 1].G0_parameter = NULL; ChimesGasVars[N_gas - 1].H2_dissocJ = NULL;
 #endif

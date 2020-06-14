@@ -160,11 +160,9 @@ void set_units_sfr(void)
     All.OverDensThresh = All.CritOverDensity * All.OmegaBaryon * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
     All.PhysDensThresh = All.CritPhysDensity / (HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_NHCGS);
 #ifdef GALSF_EFFECTIVE_EQS
-    double meanweight = 4 / (1 + 3 * HYDROGEN_MASSFRAC);	/* note: assuming NEUTRAL GAS */
-    All.EgySpecCold = All.TempClouds / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
-    meanweight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));	/* note: assuming FULL ionization */
-    All.EgySpecSN = All.TempSupernova / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
-#endif // GALSF_EFFECTIVE_EQS
+    All.EgySpecCold = All.TempClouds / ((4 / (1 + 3 * HYDROGEN_MASSFRAC)) * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS); /* note: assuming fully-neutral atomic H+He primordial mixture */
+    All.EgySpecSN = All.TempSupernova / ((4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC))) * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS); /* note: assuming fully-ionized H+He primordial mixture */
+#endif
 }
 
 
@@ -223,7 +221,7 @@ double get_starformation_rate(int i)
 #endif
     tsfr = sqrt(All.PhysDensThresh / (SphP[i].Density * All.cf_a3inv)) * All.MaxSfrTimescale; /* set default SFR timescale to scale appropriately with the gas dynamical time */
     rateOfSF = P[i].Mass / tsfr; /* 'normal' sfr from density law above */
-    if(tsfr<=0 || rateOfSF <= 0) {return 0;} /* nonsense here, return 0 */
+    if(tsfr<=0 || rateOfSF<=0 || flag==0) {return 0;} /* nonsense here, return 0 */
     
 #ifdef GALSF_EFFECTIVE_EQS /* do the SFR calc for the Springel-Hernquist EOS, before any 'fancy' sf criteria, when above-threshold, or else risk incorrect entropies */
     double factorEVP = pow(SphP[i].Density * All.cf_a3inv / All.PhysDensThresh, -0.8) * All.FactorEVP; /* evaporation factor */
@@ -260,7 +258,7 @@ double get_starformation_rate(int i)
     double Mach_eff_2=0, cs2_contrib=2.*k_cs*k_cs; Mach_eff_2=dv2abs/cs2_contrib; dv2abs+=2.*k_cs*k_cs; // account for thermal+magnetic pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
     double alpha_vir = dv2abs / (8.*M_PI * All.G * SphP[i].Density * All.cf_a3inv); // coefficient comes from different density profiles, assuming a constant velocity gradient tensor: 22.6=constant-density cube, 8pi[approximate]=constant-density sphere, e.g. rho~exp(-r^n) n={4,8,16,32,64}->{17.1,22.1,24.1,24.9,25.1,25.15} [approaches uniform-density sphere as n->infinity]
 #if defined(GALSF_SFR_VIRIAL_CRITERION_TIMEAVERAGED) /* compute and prepare to use our time-rolling average virial criterion */
-    double dtime = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; /* the physical time-step */
+    double dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); /* the physical time-step */
     double alpha_0=1./(1.+alpha_vir), dtau=DMIN(1.,DMAX(0.,exp(-(DMIN(DMAX(8.*dtime/tsfr,0.),20.))))); /* dimensionless units for below */
     SphP[i].AlphaVirial_SF_TimeSmoothed = DMIN(DMAX(SphP[i].AlphaVirial_SF_TimeSmoothed * dtau + alpha_0 * (1.-dtau) , 1.e-10), 1.); /* update rolling time-averaged virial parameter */
     alpha_vir = 1./SphP[i].AlphaVirial_SF_TimeSmoothed - 1.; /* use the rolling average below */
@@ -339,7 +337,7 @@ double get_starformation_rate(int i)
 /* compute the 'effective eos' cooling/heating, including thermal feedback sources, here */
 void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double cloudmass_fraction, double rateOfSF)
 {
-    double dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval, dtime = dt / All.cf_hubble_a; /*  the actual time-step */
+    double dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); /*  the actual time-step */
     double x = cloudmass_fraction, factorEVP = pow(SphP[i].Density * All.cf_a3inv / All.PhysDensThresh, -0.8) * All.FactorEVP, trelax = tsfr * (1 - x) / x / (All.FactorSN * (1 + factorEVP));
     double egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold, egyeff = egyhot * (1 - x) + All.EgySpecCold * x, egycurrent = SphP[i].InternalEnergy, ne;
     ne=1.0;
@@ -388,22 +386,21 @@ void star_formation_parent_routine(void)
       if((P[i].Type == 0)&&(P[i].Mass>0))
       {
         SphP[i].Sfr = 0; flag = 1; /* will be reset below if flag==0, but default to flag = 1 (non-eligible) */
-        dtime = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; /*  the actual time-step */
+        dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); /*  the actual time-step */
         
         /* check whether an initial (not fully-complete!) conditions for star formation are fulfilled for a given particle */
         if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh) {flag = 0;} // if sufficiently dense, go forward into SF routine //
-        if(All.ComovingIntegrationOn) {if(SphP[i].Density < All.OverDensThresh) flag = 1;} // (additional density check for cosmological runs) //
+        if(All.ComovingIntegrationOn) {if(SphP[i].Density < All.OverDensThresh) {flag = 1;}} // (additional density check for cosmological runs) //
 
 #ifdef GALSF_SUBGRID_WINDS
         if(SphP[i].DelayTime > 0) {flag=1; SphP[i].DelayTime -= dtime;} /* no star formation for particles in the wind; update our wind delay-time calculations */
-        if((SphP[i].DelayTime<0) || (SphP[i].Density*All.cf_a3inv < All.WindFreeTravelDensFac*All.PhysDensThresh)) {SphP[i].DelayTime=0;}
+        if((SphP[i].DelayTime < 0) || (SphP[i].Density*All.cf_a3inv < All.WindFreeTravelDensFac*All.PhysDensThresh)) {SphP[i].DelayTime=0;}
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING
         if(SphP[i].DelayTimeCoolingSNe > 0) {flag=1; SphP[i].DelayTimeCoolingSNe -= dtime;} /* no star formation for particles in the wind; update our wind delay-time calculations */
 #endif
         
-        
-        if((flag == 0)&&(dtime>0)&&(P[i].TimeBin))		/* active star formation (upon start-up, we need to protect against dt==0) */
+        if((flag == 0)&&(dtime>0))		/* active star formation (upon start-up, we need to protect against dt==0) */
 	    {
           sm = get_starformation_rate(i) * dtime; // expected stellar mass formed this timestep
             // (this also updates entropies for the effective equation-of-state model) //
@@ -423,7 +420,7 @@ void star_formation_parent_routine(void)
           if(number_of_stars_generated >= GALSF_GENERATIONS-1) mass_of_star=P[i].Mass;
 
           SphP[i].Sfr = sm / dtime * UNIT_MASS_IN_SOLAR / UNIT_TIME_IN_YR;
-	      if(dtime>0) TimeBinSfr[P[i].TimeBin] += SphP[i].Sfr;
+	      if(dtime>0) {TimeBinSfr[P[i].TimeBin] += SphP[i].Sfr;}
 
           prob = P[i].Mass / mass_of_star * (1 - exp(-p));
         
@@ -552,7 +549,7 @@ void star_formation_parent_routine(void)
 #endif
                 P[i].BH_Mdot = 0;
                 P[i].DensAroundStar = SphP[i].Density;
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION 
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION 
                 P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age
                 P[i].StellarAge = All.Time; // record the time at which point the sink entered the current stage of stellar evolution (will become actual stellar age when reaching MS)
                 P[i].ProtoStellarStage = 0;
@@ -572,7 +569,7 @@ void star_formation_parent_routine(void)
                             + (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2])*(SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) + (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])*(SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])) +
                             (2./3.)*((SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[0][0] + SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[1][1] + SphP[i].Gradients.Velocity[2][2]*SphP[i].Gradients.Velocity[2][2]) - (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] + SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] + SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
                         //Saves at formation sink properties in a table: 0:Time 1:ID 2:Mass 3-5:Position 6-8:Velocity 9-11:Magnetic field 12:Internal energy 13:Density 14:cs_effective 15:particle size 16:local surface density 17:local velocity dispersion 18: distance to closest BH
-                        fprintf(FdBhFormationDetails,"%g %u %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g \n", All.Time, P[i].ID, P[i].Mass, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],  P[i].Vel[0], P[i].Vel[1],P[i].Vel[2], tempB[0], tempB[1], tempB[2], SphP[i].InternalEnergyPred, SphP[i].Density * All.cf_a3inv, Get_Gas_effective_soundspeed_i(i) * All.cf_afac3, Get_Particle_Size(i) * All.cf_atime, NH, dv2_abs, P[i].min_dist_to_bh );
+                        fprintf(FdBhFormationDetails,"%g %u %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g \n", All.Time, P[i].ID, P[i].Mass, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],  P[i].Vel[0], P[i].Vel[1],P[i].Vel[2], tempB[0], tempB[1], tempB[2], SphP[i].InternalEnergyPred, SphP[i].Density * All.cf_a3inv, Get_Gas_effective_soundspeed_i(i) * All.cf_afac3, Get_Particle_Size(i) * All.cf_atime, NH, dv2_abs, P[i].min_dist_to_bh ); fflush(FdBhFormationDetails);
 #endif
 
 #endif // SINGLE_STAR_SINK_DYNAMICS
@@ -792,7 +789,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
             P[i].Vel[j] += v * All.cf_atime * dir[j]/norm;
             SphP[i].VelPred[j] += v * All.cf_atime * dir[j]/norm;
         }
-            SphP[i].DelayTime = All.WindFreeTravelMaxTimeFactor / All.cf_hubble_a;
+        SphP[i].DelayTime = All.WindFreeTravelMaxTimeFactor / All.cf_hubble_a;
     } /* if(get_random_number(P[i].ID + 2) < prob) */
 }
 #endif // defined(GALSF_SUBGRID_WINDS)

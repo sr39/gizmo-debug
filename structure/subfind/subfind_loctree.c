@@ -218,10 +218,6 @@ int subfind_loctree_treebuild(int npart, struct unbind_data *mp)
   else
     Nextnode[last] = -1;
 
-  /*
-     fprintf(Logfile,"Have put %d particles into tree.\n", num);
-   */
-
   return numnodes;
 }
 
@@ -459,9 +455,6 @@ double subfind_locngb_treefind(MyDouble xyz[3], int desngb, double hguess)
 
   do
     {
-      /*
-         fprintf(Logfile,"hguess= %g\n", hguess);
-       */
       numngb = subfind_locngb_treefind_variable(xyz, hguess);
 
       if(numngb < desngb)

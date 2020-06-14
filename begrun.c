@@ -439,7 +439,7 @@ void begrun(void)
 #endif
 #endif
 
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     single_star_SN_init_directions();
 #endif
 #ifdef RADTRANSFER
@@ -517,7 +517,6 @@ void set_units(void)
     set_units_sfr();
 #endif
 
-
     
 #ifdef DM_FUZZY
     /* For Schroedinger equation: this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass. This is the key variable used throughout */
@@ -542,8 +541,7 @@ void set_units(void)
 #endif
     /* factor used for determining saturation */
     All.ElectronFreePathFactor = 8 * pow(3.0, 1.5) * pow((GAMMA_DEFAULT-1), 2) / pow(3 + 5 * HYDROGEN_MASSFRAC, 2)
-        / (1 + HYDROGEN_MASSFRAC) / sqrt(M_PI) / coulomb_log * pow(PROTONMASS, 3) / pow(ELECTRONCHARGE, 4)
-        / (UNIT_DENSITY_IN_CGS) * pow(UNIT_SPECEGY_IN_CGS, 2);
+        / (1 + HYDROGEN_MASSFRAC) / sqrt(M_PI) / coulomb_log * pow(PROTONMASS, 3) / pow(ELECTRONCHARGE, 4) / (UNIT_DENSITY_IN_CGS) * pow(UNIT_SPECEGY_IN_CGS, 2);
 
   /* If the above value is multiplied with u^2/rho in code units (with rho being the physical density), then
    * one gets the electron mean free path in centimeters. Since we want to compare this with another length
@@ -557,116 +555,57 @@ void set_units(void)
 
 
 
-/*!  This function opens various log-files that report on the status and
- *   performance of the simulstion. On restart from restart-files
- *   (start-option 1), the code will append to these files.
- */
+/*!  This function opens various log-files that report on the status and performance of the simulation.
+        On restart from restart-files, (start-option 1), the code will append to these files. */
 void open_outputfiles(void)
 {
   char mode[2], buf[200];
-
-  if(RestartFlag == 0)
-    strcpy(mode, "w");
-  else
-    strcpy(mode, "a");
-
-  if(ThisTask == 0)
-    mkdir(All.OutputDir, 02755);
+  if(RestartFlag == 0) {strcpy(mode, "w");} else {strcpy(mode, "a");}
+  if(ThisTask == 0) {mkdir(All.OutputDir, 02755);}
   MPI_Barrier(MPI_COMM_WORLD);
 
-#ifdef BLACK_HOLES
-  /* Note: This is done by everyone, even if it might be empty */
-  if(ThisTask == 0)
-    {
-      sprintf(buf, "%sblackhole_details", All.OutputDir);
-      mkdir(buf, 02755);
-    }
+#ifdef BLACK_HOLES /* Note: This is done by everyone [all tasks can write to these log-files], even if it might be empty */
+  if(ThisTask == 0) {sprintf(buf, "%sblackhole_details", All.OutputDir); mkdir(buf, 02755);}
   MPI_Barrier(MPI_COMM_WORLD);
 #if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
   sprintf(buf, "%sblackhole_details/blackhole_details_%d.txt", All.OutputDir, ThisTask);
-  if(!(FdBlackHolesDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif // no io-reduced, or more-info if
+  if(!(FdBlackHolesDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#endif
 #ifdef BH_OUTPUT_GASSWALLOW
   sprintf(buf, "%sblackhole_details/bhswallow_%d.txt", All.OutputDir, ThisTask); 
-  if(!(FdBhSwallowDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif // output-gas-swallow if
+  if(!(FdBhSwallowDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#endif
 #ifdef BH_OUTPUT_FORMATION_PROPERTIES
   sprintf(buf, "%sblackhole_details/bhformation_%d.txt", All.OutputDir, ThisTask); 
-  if(!(FdBhFormationDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif // output-gas-formation if
+  if(!(FdBhFormationDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#endif
 #ifdef BH_OUTPUT_MOREINFO
   sprintf(buf, "%sblackhole_details/bhmergers_%d.txt", All.OutputDir, ThisTask); 
-  if(!(FdBhMergerDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdBhMergerDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #ifdef BH_WIND_KICK
   sprintf(buf, "%sblackhole_details/bhwinds_%d.txt", All.OutputDir, ThisTask);
-  if(!(FdBhWindDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif // bh-wind-kick if
+  if(!(FdBhWindDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#endif
 #endif // bh-output-more-info if
 #endif // black-holes if
 
-  if(ThisTask != 0)		/* only the root processors writes to the log files */
-    return;
+    if(ThisTask != 0) {return;}	/* only the root processors writes to the log files listed below */
     
     sprintf(buf, "%s%s", All.OutputDir, "cpu.txt");
-    if(!(FdCPU = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdCPU = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
     
 #ifndef IO_REDUCED_MODE
     sprintf(buf, "%s%s", All.OutputDir, "timebin.txt");
-    if(!(FdTimebin = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
-    
+    if(!(FdTimebin = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
     sprintf(buf, "%s%s", All.OutputDir, "info.txt");
-    if(!(FdInfo = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
-    
+    if(!(FdInfo = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
     sprintf(buf, "%s%s", All.OutputDir, "energy.txt");
-    if(!(FdEnergy = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdEnergy = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
     sprintf(buf, "%s%s", All.OutputDir, "timings.txt");
-    if(!(FdTimings = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdTimings = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+    
     sprintf(buf, "%s%s", All.OutputDir, "balance.txt");
-    if(!(FdBalance = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdBalance = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
     fprintf(FdBalance, "\n");
     fprintf(FdBalance, "Treewalk1      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWALK1], CPU_SymbolImbalance[CPU_TREEWALK1]);
     fprintf(FdBalance, "Treewalk2      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWALK2], CPU_SymbolImbalance[CPU_TREEWALK2]);
@@ -717,90 +656,51 @@ void open_outputfiles(void)
     fprintf(FdBalance, "\n");
 #endif
 
-
 #ifdef GALSF
   sprintf(buf, "%s%s", All.OutputDir, "sfr.txt");
-  if(!(FdSfr = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdSfr = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
-    
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
     sprintf(buf, "%s%s", All.OutputDir, "MomWinds.txt");
-    if(!(FdMomWinds = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdMomWinds = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
+    
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
     sprintf(buf, "%s%s", All.OutputDir, "HIIheating.txt");
-    if(!(FdHIIHeating = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdHIIHeating = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
+    
 #ifdef GALSF_FB_MECHANICAL
     sprintf(buf, "%s%s", All.OutputDir, "SNeIIheating.txt");
-    if(!(FdSneIIHeating = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }  
+    if(!(FdSneIIHeating = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
 #if defined(RT_CHEM_PHOTOION) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "rt_photoion_chem.txt");
-  if(!(FdRad = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdRad = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
   sprintf(buf, "%s%s", All.OutputDir, "SN_details.txt");
-  if(!(FdBhSNDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdBhSNDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
 #ifdef BLACK_HOLES
   sprintf(buf, "%s%s", All.OutputDir, "blackholes.txt");
-  if(!(FdBlackHoles = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdBlackHoles = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
 #if defined(TURB_DRIVING) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "turb.txt");
-  if(!(FdTurb = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdTurb = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
-
 
 #if defined(GR_TABULATED_COSMOLOGY) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "darkenergy.txt");
-  if(!(FdDE = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-  else
-    {
-      if(RestartFlag == 0)
-	{
+  if(!(FdDE = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  else if(RestartFlag == 0)
+  {
 	  fprintf(FdDE, "nstep time H(a) ");
 #ifndef GR_TABULATED_COSMOLOGY_W
 	  fprintf(FdDE, "w0 Omega_L ");
@@ -810,10 +710,8 @@ void open_outputfiles(void)
 #ifdef GR_TABULATED_COSMOLOGY_G
 	  fprintf(FdDE, "dH dG ");
 #endif
-	  fprintf(FdDE, "\n");
-	  fflush(FdDE);
-	}
-    }
+      fprintf(FdDE, "\n"); fflush(FdDE);
+  }
 #endif
 
 }
@@ -1117,7 +1015,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
+#if defined(INIT_STELLAR_METALS_AGES_DEFINED)
         strcpy(tag[nt],"InitMetallicity");
         strcpy(alternate_tag[nt],"Initial_Metallicity");
         addr[nt] = &All.InitMetallicityinSolar;
@@ -2135,7 +2033,7 @@ void read_parameter_file(char *fname)
                 if(strcmp("UnitMagneticField_in_gauss",tag[i])==0) {*((double *)addr[i])=3.5449077018110318; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitMagneticField_in_gauss); continue;}
 #endif
 #endif
-#if defined(SINGLE_STAR_FB_JETS) && defined(SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE)
+#if defined(SINGLE_STAR_FB_JETS) && defined(SINGLE_STAR_STARFORGE_DEFAULTS)
                 if(strcmp("BAL_f_launch_v",tag[i])==0) {*((double *)addr[i])=0.3; printf("Tag %s (%s) not set in parameter file: will default to %g \n",tag[i],alternate_tag[i],All.BAL_f_launch_v); continue;}
 #endif
 #ifdef CONDUCTION_SPITZER
@@ -2148,7 +2046,7 @@ void read_parameter_file(char *fname)
 #ifdef TURB_DIFFUSION
                 if(strcmp("TurbDiffusionCoefficient",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with turbulent diffusion, so will default to calculating the coefficients without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.TurbDiffusion_Coefficient); continue;}
 #endif
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
+#if defined(INIT_STELLAR_METALS_AGES_DEFINED)
                 if(strcmp("InitMetallicity",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to zero (Z=%g) \n",tag[i],alternate_tag[i],All.InitMetallicityinSolar); continue;}
                 if(strcmp("InitStellarAge",tag[i])==0) {*((double *)addr[i])=10.; printf("Tag %s (%s) not set in parameter file: defaulting to very old pre-existing stars [if any exist, otherwise this is irrelevant] (=%g Gyr) \n",tag[i],alternate_tag[i],All.InitStellarAgeinGyr); continue;}
 #endif
@@ -2584,41 +2482,28 @@ int read_outputlist(char *fname)
  */
 void readjust_timebase(double TimeMax_old, double TimeMax_new)
 {
-  int i;
-  long long ti_end;
+  int i; long long ti_end;
 
   if(sizeof(long long) != 8)
-    {
-      if(ThisTask == 0)
-	printf("\nType 'long long' is not 64 bit on this platform\n\n");
-      endrun(555);
-    }
+    {if(ThisTask == 0) {printf("\nType 'long long' is not 64 bit on this platform; this will produce segfaults: need to exit.\n\n");} endrun(555);}
 
   if(ThisTask == 0)
     {
-      printf("\nAll.TimeMax has been changed in the parameterfile\n");
-      printf("Need to adjust integer timeline\n\n");
+      printf("\n TimeMax (Time_at_End_of_Simulation) has been augmented to be larger in the parameterfile;\n");
+      printf("  We need to adjust integer timeline, which perturbs all the structure of particle timesteps. Usually this is ok, but with some config flags on, your run will suddently be extremely slow (because the code cannot correctly reorder the timeline). In those cases, restarting from a snapshot is recommended.\n\n");
     }
 
   if(TimeMax_new < TimeMax_old)
-    {
-      if(ThisTask == 0)
-	printf("\nIt is not allowed to reduce All.TimeMax\n\n");
-      endrun(556);
-    }
+    {if(ThisTask == 0) {printf("\n You cannot reduce TimeMax (Time_at_End_of_Simulation) in the parameterfile, in a restart [this breaks the integer timeline]. Simply stop the run when desired, instead. Quitting.\n");} endrun(556);}
 
-  if(All.ComovingIntegrationOn)
-    ti_end = (long long) (log(TimeMax_new / All.TimeBegin) / All.Timebase_interval);
-  else
-    ti_end = (long long) ((TimeMax_new - All.TimeBegin) / All.Timebase_interval);
+  if(All.ComovingIntegrationOn) {ti_end = (long long) (log(TimeMax_new / All.TimeBegin) / All.Timebase_interval);}
+    else {ti_end = (long long) ((TimeMax_new - All.TimeBegin) / All.Timebase_interval);}
 
   while(ti_end > TIMEBASE)
-    {
+  {
       All.Timebase_interval *= 2.0;
-
       ti_end /= 2;
       All.Ti_Current /= 2;
-
 #ifdef PMGRID
       All.PM_Ti_begstep /= 2;
       All.PM_Ti_endstep /= 2;
@@ -2627,24 +2512,17 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
       StTPrev /= 2;
 #endif
 
-      for(i = 0; i < NumPart; i++)
+    for(i = 0; i < NumPart; i++)
 	{
-	  P[i].Ti_begstep /= 2;
-	  P[i].Ti_current /= 2;
-
-	  if(P[i].TimeBin > 0)
+        P[i].Ti_begstep /= 2;
+        P[i].Ti_current /= 2;
+        if(P[i].TimeBin > 0)
 	    {
 	      P[i].TimeBin--;
-	      if(P[i].TimeBin <= 0)
-		{
-		  printf("Error in readjust_timebase(). Minimum Timebin for particle %d reached.\n", i);
-		  endrun(8765);
-		}
+	      if(P[i].TimeBin <= 0) {printf("Attempted to restructure integer timeline but ran into an error in readjust_timebase(). The minimum timebin for particle %d has been reached -- need smaller timesteps. Exiting.\n", i); endrun(8765);}
 	    }
 	}
-
-      All.Ti_nextlineofsight /= 2;
-    }
-
+    All.Ti_nextlineofsight /= 2;
+  }
   All.TimeMax = TimeMax_new;
 }

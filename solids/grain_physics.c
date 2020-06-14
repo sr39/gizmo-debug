@@ -46,7 +46,7 @@ void apply_grain_dragforce(void)
 #if defined(GRAIN_BACKREACTION)
             for(k=0;k<3;k++) {P[i].Grain_DeltaMomentum[k]=0;} /* reset momentum to couple back to gas (or else would diverge) */
 #endif
-            double dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
             double vgas_mag = 0.0; for(k=0;k<3;k++) {vgas_mag+=(P[i].Gas_Velocity[k]-P[i].Vel[k])*(P[i].Gas_Velocity[k]-P[i].Vel[k]);}
             vgas_mag = sqrt(vgas_mag) / All.cf_atime; /* convert to physical units */
             int grain_subtype = 1; /* default assumption about particulate sub-type for operations below */
@@ -345,10 +345,9 @@ double return_grain_cross_section_per_unit_mass(int i)
     where here 'All.DM_InteractionCrossSection' is the cross-section read in from the params file, and other params like DM_InteractionVelocityScale
     allow the user to control the collision velocity dependence. This function should be appropriately modified to the actual grain physics being represented.
     Here, the default assumption is simple hard-sphere scattering with a constant cross section per unit grain mass, set by the grain size */
-double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, double h_si, double dV[3], integertime dt_step, int j_ngb)
+double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, double h_si, double dV[3], double dt, int j_ngb)
 {
     double dVmag = sqrt(dV[0]*dV[0]+dV[1]*dV[1]+dV[2]*dV[2]) / All.cf_atime; // velocity in physical
-    double dt = dt_step * All.Timebase_interval / All.cf_hubble_a; // time in physical
     double rho_eff = 0.5*(mass + P[j_ngb].Mass) / (h_si*h_si*h_si) * All.cf_a3inv; // density in physical
     double cx_eff = g_geo(r/h_si) * (mass*cx_per_unitmass + P[j_ngb].Mass*return_grain_cross_section_per_unit_mass(j_ngb)) / (mass + P[j_ngb].Mass); // mass-weighted effective cross section (physical) scaled to cgs
     double units = UNIT_SURFDEN_IN_CGS; // needed to convert everything to cgs

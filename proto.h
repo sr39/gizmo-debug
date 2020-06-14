@@ -112,8 +112,6 @@ static inline double DMAX(double a, double b) { return (a > b) ? a : b; }
 static inline double DMIN(double a, double b) { return (a < b) ? a : b; }
 static inline int IMAX(int a, int b) { return (a > b) ? a : b; } 
 static inline int IMIN(int a, int b) { return (a < b) ? a : b; }
-static inline integertime TIMAX(integertime a, integertime b) { return (a > b) ? a : b; }
-static inline integertime TIMIN(integertime a, integertime b) { return (a < b) ? a : b; }
 static inline double MINMOD(double a, double b) {return (a>0) ? ((b<0) ? 0 : DMIN(a,b)) : ((b>=0) ? 0 : DMAX(a,b));}
 /* special version of MINMOD below: a is always the "preferred" choice, b the stability-required one. here we allow overshoot, just not opposite signage */
 static inline double MINMOD_G(double a, double b) {return a;}
@@ -223,22 +221,14 @@ void parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (co
 int compare_IDs(const void *a, const void *b);
 void test_id_uniqueness(void);
 int compare_densities_for_sort(const void *a, const void *b);
-
-
 int io_compare_P_ID(const void *a, const void *b);
 int io_compare_P_GrNr_SubNr(const void *a, const void *b);
-
-
 void drift_particle(int i, integertime time1);
 int ShouldWeDoDynamicUpdate(void);
-
 void put_symbol(double t0, double t1, char c);
 void write_cpu_log(void);
-
 int get_timestep_bin(integertime ti_step);
-
 const char* svn_version(void);
-
 void find_particles_and_save_them(int num);
 void lineofsight_output(void);
 void sum_over_processors_and_normalize(void);
@@ -248,8 +238,6 @@ integertime find_next_lineofsighttime(integertime time0);
 integertime find_next_gridoutputtime(integertime ti_curr);
 void add_along_lines_of_sight(void);
 void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurrent, int mode);
-
-
 void x86_fix(void) ;
 
 void *mymalloc_fullinfo(const char *varname, size_t n, const char *func, const char *file, int linenr);
@@ -463,28 +451,19 @@ void catch_fatal(int sig);
 void terminate_processes(void);
 void enable_core_dumps_and_fpu_exceptions(void);
 void write_pid_file(void);
-
 #ifdef PAUSE_RUN_TO_ATTACH_DEBUGGER
 void pause_run_to_attach_debugger();
 #endif
-
 void pm_init_periodic_allocate(void);
-
 void pm_init_periodic_free(void);
-
 void move_particles(integertime time1);
-
-
 void find_next_sync_point_and_drift(void);
 void find_dt_displacement_constraint(double hfac);
 #ifdef WAKEUP
 void process_wake_ups(void);
 #endif
-
 void set_units_sfr(void);
-
 void gravity_forcetest(void);
-
 void allocate_commbuffers(void);
 void allocate_memory(void);
 void begrun(void);
@@ -494,12 +473,10 @@ void compute_global_quantities_of_system(void);
 void compute_potential(void);
 void construct_timetree(void);
 void star_formation_parent_routine(void);
-
 #if defined(TURB_DRIVING)
 void do_turb_driving_step_first_half(void);
 void do_turb_driving_step_second_half(void);
 #endif
-
 double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h, int target);
 
 
@@ -541,9 +518,9 @@ double Z_for_stellar_evol(int i);
 #ifdef SINGLE_STAR_FB_JETS
 double single_star_jet_velocity(int n);
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
 void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt);
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2)
+#if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
 double ps_adiabatic_index(int stage, double mdot);
 double ps_rhoc(double m, double n_ad, double r);
 double ps_Pc(double m, double n_ad, double r);
@@ -646,8 +623,7 @@ void disp_density(void);
 
 
 #ifdef CHIMES 
-void chimes_cooling_parent_routine(void); 
-double chimes_convert_u_to_temp(double u, double rho, int target); 
+double chimes_convert_u_to_temp(double u, double rho, int target);
 void chimes_update_gas_vars(int target); 
 void chimes_gizmo_exit(void); 
 #ifdef COOL_METAL_LINES_BY_SPECIES 
@@ -662,8 +638,8 @@ double chimes_jenkins_linear_fit(double nH, double T, double Ax, double Bx, doub
 void chimes_compute_depletions(double nH, double T, int thread_id); 
 #endif 
 #else 
+#endif
 void cooling_parent_routine(void);
-#endif 
 void count_hot_phase(void);
 void delete_node(int i);
 void density(void);
@@ -818,8 +794,8 @@ void rt_update_chemistry(void);
 void rt_get_sigma(void);
 double rt_GetCoolingTime(int i, double u, double rho);
 double rt_cooling_photoheating(int i, double dt);
-double rt_DoCooling(int i, double dt_internal);
-double rt_DoHeating(int i, double dt_internal);
+double rt_DoCooling(int i, double dt);
+double rt_DoHeating(int i, double dt);
 double rt_get_cooling_rate(int i, double internal_energy);
 void rt_write_chemistry_stats(void);
 #endif
@@ -909,7 +885,7 @@ void apply_excision();
 #endif
 
 #ifdef DM_SIDM
-double prob_of_interaction(double mass, double r, double h_si, double dV[3], integertime dt_step);
+double prob_of_interaction(double mass, double r, double h_si, double dV[3], double dt);
 double g_geo(double r);
 void calculate_interact_kick(double dV[3], double kick[3], double m);
 void init_geofactor_table(void);
@@ -918,7 +894,7 @@ double geofactor_angle_integ(double u, void * params);
 void init_self_interactions();
 #ifdef GRAIN_COLLISIONS
 double return_grain_cross_section_per_unit_mass(int i);
-double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, double h_si, double dV[3], integertime dt_step, int j_ngb);
+double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, double h_si, double dV[3], double dt, int j_ngb);
 #endif
 #endif
 

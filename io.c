@@ -113,8 +113,7 @@ void savepositions(int num)
         
         
         ngroups = All.NumFilesPerSnapshot / All.NumFilesWrittenInParallel;
-        if((All.NumFilesPerSnapshot % All.NumFilesWrittenInParallel))
-            ngroups++;
+        if((All.NumFilesPerSnapshot % All.NumFilesWrittenInParallel)) {ngroups++;}
         
         for(gr = 0; gr < ngroups; gr++)
         {
@@ -180,7 +179,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     MyIDType *ip;
     int *ip_int;
     float *fp_single;
-    integertime dt_step;
     double dt_gravkick, dt_hydrokick;
 #ifdef OUTPUT_COOLRATE
     double tcool, u;
@@ -236,17 +234,10 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    dt_step = (P[pindex].TimeBin ? (((integertime) 1) << P[pindex].TimeBin) : 0);
-                    
-                    if(All.ComovingIntegrationOn)
-                    {
-                        dt_gravkick = get_gravkick_factor(P[pindex].Ti_begstep, All.Ti_Current) - get_gravkick_factor(P[pindex].Ti_begstep, P[pindex].Ti_begstep + dt_step / 2);
-                        dt_hydrokick = (All.Ti_Current - (P[pindex].Ti_begstep + dt_step / 2)) * All.Timebase_interval / All.cf_hubble_a;
-                    }
-                    else
-                    {
-                        dt_gravkick = dt_hydrokick = (All.Ti_Current - (P[pindex].Ti_begstep + dt_step / 2)) * All.Timebase_interval;
-                    }
+                    integertime dt_integerstep = GET_PARTICLE_INTEGERTIME(pindex);
+                    dt_hydrokick = (All.Ti_Current - (P[pindex].Ti_begstep + dt_integerstep / 2)) * UNIT_INTEGERTIME_IN_PHYSICAL;
+                    if(All.ComovingIntegrationOn) {dt_gravkick = get_gravkick_factor(P[pindex].Ti_begstep, All.Ti_Current) - get_gravkick_factor(P[pindex].Ti_begstep, P[pindex].Ti_begstep + dt_integerstep / 2);}
+                        else {dt_gravkick = dt_hydrokick;}
                     
                     for(k = 0; k < 3; k++)
                     {
@@ -660,7 +651,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_DELAY_TIME_HII: 
-#ifdef OUTPUT_DELAY_TIME_HII
+#if (defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS)) && defined(OUTPUT_DELAY_TIME_HII)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -745,11 +736,10 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
    
         case IO_TSTP:		/* timestep  */
 #ifdef OUTPUT_TIMESTEP
-            
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = (P[pindex].TimeBin ? (((integertime) 1) << P[pindex].TimeBin) : 0) * All.Timebase_interval;
+                    *fp++ = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(pindex);
                     n++;
                 }
 #endif
@@ -971,7 +961,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_R_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -982,7 +972,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_MASS_D_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -993,7 +983,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_ZAMS_MASS:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1004,7 +994,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_STAGE_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1015,7 +1005,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_LUM_SINGLESTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -2463,7 +2453,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_DELAY_TIME_HII:
-#ifdef OUTPUT_DELAY_TIME_HII
+#if (defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS)) && defined(OUTPUT_DELAY_TIME_HII)
             return 1;
 #endif
             break;
@@ -2643,31 +2633,31 @@ int blockpresent(enum iofields blocknr)
             break;
             
         case IO_R_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             return 1;
 #endif
             break;
             
         case IO_MASS_D_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             return 1;
 #endif
             break;
             
         case IO_ZAMS_MASS:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             return 1;
 #endif
             break;
             
         case IO_STAGE_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             return 1;
 #endif
             break;
             
         case IO_LUM_SINGLESTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             return 1;
 #endif
             break;

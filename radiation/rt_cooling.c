@@ -22,7 +22,7 @@
 /* these routines should get combined into our standard cooling routine -- all the analogues are there, it just needs to be moved over */
 
 #ifndef RT_PHOTOION_MULTIFREQUENCY
-double rt_DoHeating(int i, double dt_internal)
+double rt_DoHeating(int i, double dt)
 {
     double sigma, nH, rate, du, de, e_gamma, nHI;
     nH = HYDROGEN_MASSFRAC * SphP[i].Density * All.cf_a3inv / PROTONMASS * UNIT_MASS_IN_CGS;
@@ -30,12 +30,12 @@ double rt_DoHeating(int i, double dt_internal)
     sigma = 1.63e-18 / (UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS);
     e_gamma = SphP[i].Rad_E_gamma[0] * (SphP[i].Density*All.cf_a3inv/P[i].Mass);  // want the photon energy density //
     rate = nHI * C_LIGHT_CODE * sigma * e_gamma;
-    return rate / (All.cf_hubble_a * (SphP[i].Density * All.cf_a3inv));
+    return rate / (SphP[i].Density * All.cf_a3inv);
 }
 
 #else
 
-double rt_DoHeating(int i, double dt_internal)
+double rt_DoHeating(int i, double dt)
 {
     int j; double nH, rate, du, de, nHI, n_photons_vol, c_light = C_LIGHT_CODE;
 #ifdef RT_CHEM_PHOTOION_HE
@@ -64,25 +64,24 @@ double rt_DoHeating(int i, double dt_internal)
             rate += nHeII * c_light * rt_sigma_HeII[j] * G_HeII[j] * n_photons_vol;
 #endif
     }
-    return rate / (All.cf_hubble_a * (SphP[i].Density * All.cf_a3inv));
+    return rate / (SphP[i].Density * All.cf_a3inv);
 }
 
 #endif
 
-double rt_DoCooling(int i, double dt_internal)
+double rt_DoCooling(int i, double dt)
 {
     double iter, u_old, u_lower, u_upper, ratefact, u;
-    double dtime = dt_internal / All.cf_hubble_a;
     double internal_energy = SphP[i].InternalEnergyPred;
     
     /* do the cooling */
     double lambda = rt_get_cooling_rate(i, internal_energy);
-    double de = lambda * dtime / (SphP[i].Density * All.cf_a3inv);
+    double de = lambda * dt / (SphP[i].Density * All.cf_a3inv);
     
     if(fabs(de) < 0.2 * internal_energy)
     {
         /* cooling is slow, we can do it explicitly */
-        return de / dt_internal;
+        return de / dt;
     }
     else
     {
@@ -90,7 +89,7 @@ double rt_DoCooling(int i, double dt_internal)
         u_old = internal_energy;
         u_lower = u_old / sqrt(1.1);
         u_upper = u_old * sqrt(1.1);
-        ratefact = dtime / (SphP[i].Density * All.cf_a3inv);
+        ratefact = dt / (SphP[i].Density * All.cf_a3inv);
         iter = 0;
         
         /* bracketing */
@@ -123,7 +122,7 @@ double rt_DoCooling(int i, double dt_internal)
         }
         while(fabs(du / u) > 1.0e-6);
         du = u - u_old;
-        return du / dt_internal;
+        return du / dt;
         
     }
     

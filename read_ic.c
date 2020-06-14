@@ -40,11 +40,7 @@ void read_ic(char *fname)
     CPU_Step[CPU_MISC] += measure_time();
     
 #ifdef RESCALEVINI
-    if(ThisTask == 0 && RestartFlag == 0)
-    {
-        fprintf(stdout, "Rescaling v_ini !\n");
-        fflush(stdout);
-    }
+    if(ThisTask == 0 && RestartFlag == 0) {fprintf(stdout, "Rescaling v_ini !\n"); fflush(stdout);}
 #endif
     
     NumPart = 0;
@@ -67,8 +63,7 @@ void read_ic(char *fname)
         
         for(gr = 0; gr < ngroups; gr++)
         {
-            if(ThisTask == (groupMaster + gr))	/* ok, it's this processor's turn */
-                read_file(buf, ThisTask, ThisTask);
+            if(ThisTask == (groupMaster + gr)) {read_file(buf, ThisTask, ThisTask);}	/* ok, it's this processor's turn */
             MPI_Barrier(MPI_COMM_WORLD);
         }
         
@@ -99,8 +94,7 @@ void read_ic(char *fname)
         
         for(gr = 0; gr < ngroups; gr++)
         {
-            if((filenr / All.NumFilesWrittenInParallel) == gr)	/* ok, it's this processor's turn */
-                read_file(buf, masterTask, lastTask);
+            if((filenr / All.NumFilesWrittenInParallel) == gr) {read_file(buf, masterTask, lastTask);}	/* ok, it's this processor's turn */
             MPI_Barrier(MPI_COMM_WORLD);
         }
     }
@@ -179,14 +173,8 @@ void read_ic(char *fname)
     }
     
     for(i = 0; i < N_gas; i++) {SphP[i].InternalEnergyPred = SphP[i].InternalEnergy = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);}
-    
     MPI_Barrier(MPI_COMM_WORLD);
-    
-    if(ThisTask == 0)
-    {
-        printf("Reading done. Total number of particles :  %d%09d\n\n", (int) (All.TotNumPart / 1000000000), (int) (All.TotNumPart % 1000000000));
-        fflush(stdout);
-    }
+    if(ThisTask == 0) {printf("Reading done. Total number of particles :  %d%09d\n\n", (int) (All.TotNumPart / 1000000000), (int) (All.TotNumPart % 1000000000)); fflush(stdout);}
     
     CPU_Step[CPU_SNAPSHOT] += measure_time();
 }
@@ -393,31 +381,31 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++) {P[offset + n].BH_Mdot = *fp++;}
 #endif
         case IO_R_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].ProtoStellarRadius_inSolar = *fp++;}
 #endif
             break;
             
         case IO_MASS_D_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].Mass_D = *fp++;}
 #endif
             break;
             
         case IO_ZAMS_MASS:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].ZAMS_Mass = *fp++;}
 #endif
             break;
             
         case IO_STAGE_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].ProtoStellarStage = *ip_int++;}
 #endif
             break;
             
         case IO_LUM_SINGLESTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].StarLuminosity_Solar = *fp++;}
 
 #endif
@@ -872,7 +860,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #ifdef PIC_MHD
                    && blocknr != IO_GRAINTYPE
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
                    && blocknr != IO_R_PROTOSTAR
                    && blocknr != IO_MASS_D_PROTOSTAR
                    && blocknr != IO_ZAMS_MASS

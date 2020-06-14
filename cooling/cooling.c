@@ -3,10 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-
 #include "../allvars.h"
 #include "../proto.h"
-
 #include "./cooling.h"
 
 /*
@@ -21,15 +19,14 @@
 
 #ifdef COOLING
 
-#define NH_SS 0.0123 /* CAFG: H number density above which we assume no ionizing bkg (proper cm^-3) */
-
 /* these are variables of the cooling tables. they are static but this shouldnt be a problem for shared-memory structure because
     they are only defined once in a global operation, then locked for particle-by-particle operations */
 /* requires the cooling table TREECOOL, which is included in the GIZMO source in the cooling directory */
 #define NCOOLTAB  2000 /* defines size of cooling table */
+#define NH_SS 0.0123 /* CAFG: H number density above which we assume no ionizing bkg (proper cm^-3) */
 
 #if !defined(CHIMES)
-static double Tmin = 0.0, Tmax = 9.0, deltaT; /* minimum/maximum temp, in log10(T/K) and temperature gridding: will be appropriately set in make_cooling_tables subroutine below */
+static double Tmin = -1.0, Tmax = 9.0, deltaT; /* minimum/maximum temp, in log10(T/K) and temperature gridding: will be appropriately set in make_cooling_tables subroutine below */
 static double *BetaH0, *BetaHep, *Betaff, *AlphaHp, *AlphaHep, *Alphad, *AlphaHepp, *GammaeH0, *GammaeHe0, *GammaeHep; // UV background parameters
 #ifdef COOL_METAL_LINES_BY_SPECIES
 /* if this is enabled, the cooling table files should be in a folder named 'spcool_tables' in the run directory.
@@ -38,9 +35,7 @@ static float *SpCoolTable0, *SpCoolTable1;
 #endif
 /* these are constants of the UV background at a given redshift: they are interpolated from TREECOOL but then not modified particle-by-particle */
 static double J_UV = 0, gJH0 = 0, gJHep = 0, gJHe0 = 0, epsH0 = 0, epsHep = 0, epsHe0 = 0;
-#endif
-
-#ifdef CHIMES
+#else // CHIMES
 int ChimesEqmMode, ChimesUVBMode, ChimesInitIonState, N_chimes_full_output_freq, Chimes_incl_full_output = 1;
 double chimes_rad_field_norm_factor, shielding_length_factor, cr_rate;
 char ChimesDataPath[256], ChimesEqAbundanceTable[196], ChimesPhotoIonTable[196];
@@ -49,117 +44,63 @@ struct globalVariables ChimesGlobalVars;
 #ifdef CHIMES_METAL_DEPLETION
 struct Chimes_depletion_data_structure *ChimesDepletionData; 
 #endif 
-#endif 
+#endif
 
 
-#ifndef CHIMES 
-/* this is just a simple loop to do the particle cooling. this is now openmp-parallelized, since the cooling iteration can be a non-negligible cost */
+
+/* this is the 'master' loop to do the cell cooling+chemistry. this is now openmp-parallelized, since the semi-implicit iteration can be a non-negligible cost */
 void cooling_parent_routine(void)
 {
-    NextParticle = FirstActiveParticle;
-/*
-#ifdef _OPENMP
-#pragma omp parallel // static variables above causing problems with openmp shared memory (getting swapped) on some compilers: demote for now
-#endif
-*/
+    PRINT_STATUS("Cooling and Chemistry update");
+    /* Determine indices of active particles. */
+    int N_active=0, i, j, *active_indices; active_indices = (int *) malloc(N_gas * sizeof(int));
+    for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        while(1)
-        {
-            int i, exitFlag = 0;
-/*
-#ifdef _OPENMP
-#pragma omp critical(_nexport_)
-#endif
-*/
-            {
-                if(NextParticle<0) {exitFlag = 1;} else {i=NextParticle; NextParticle=NextActiveParticle[NextParticle];}
-            }
-            if(exitFlag) {break;}
-
-            /* here apply any conditional statements about whether we should or should not enter the cooling loop */
-            if(P[i].Type != 0) {continue;} /* only gas cools */
-            if(P[i].Mass <= 0) {continue;} /* only non-zero mass particles cool */
+        if(P[i].Type != 0) {continue;}
+        if(P[i].Mass <= 0) {continue;}
 #ifdef GALSF_EFFECTIVE_EQS
-            if((SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) && ((All.ComovingIntegrationOn==0) || (SphP[i].Density>=All.OverDensThresh))) {continue;} /* no cooling for effective-eos star-forming particles */
+        if((SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) && ((All.ComovingIntegrationOn==0) || (SphP[i].Density>=All.OverDensThresh))) {continue;} /* no cooling for effective-eos star-forming particles */
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING
-            if(SphP[i].DelayTimeCoolingSNe > 0) {continue;} /* no cooling for particles marked in delayed cooling */
+        if(SphP[i].DelayTimeCoolingSNe > 0) {continue;} /* no cooling for particles marked in delayed cooling */
 #endif
-            do_the_cooling_for_particle(i);
-        } /* while bracket */
-    } /* omp bracket */
-}
-#else // !(CHIMES) 
-/* As cooling_parent_routine, but used when CHIMES is switched on. This version has 
- * been set up to use OPENMP, which greatly reduces work-load imbalances associated 
- * with the chemistry and cooling routines with CHIMES. */ 
-void chimes_cooling_parent_routine(void)
-{
-  int i;
-
-  if (ThisTask == 0) 
-    printf("Doing chemistry and cooling with CHIMES. \n"); 
+        active_indices[N_active] = i;
+        N_active++;
+	}
 
 #ifdef _OPENMP
-  /* Determine indices of active particles. */
-  int N_active = 0; 
-  int j; 
-  int *active_indices; 
-  active_indices = (int *) malloc(N_gas * sizeof(int)); 
-  for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    {
-      if(P[i].Type == 0 && P[i].Mass > 0) 
-	{
-	  active_indices[N_active] = i; 
-	  N_active++; 
-	}
-    }
-
 #pragma omp parallel private(i, j) 
-  {
-
-#pragma omp for schedule(dynamic) 
-  for(j = 0; j < N_active; j++)
+#endif
+    { /* open parallel block */
+#ifdef _OPENMP
+#pragma omp for schedule(dynamic)
+#endif
+    for(j=0;j<N_active;j++)
     {
-      i = active_indices[j]; 
-      do_the_cooling_for_particle(i);
+        i=active_indices[j]; /* actual particle index */
+        do_the_cooling_for_particle(i); /* do the actual cooling */
     }
-  } // End of parallel block 
-  free(active_indices); 
-#else // OPENMP  
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    {
-        if(P[i].Type == 0 && P[i].Mass > 0)
-        {
-            do_the_cooling_for_particle(i);
-        } // if(P[i].Type == 0 && P[i].Mass > 0)
-    } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-#endif // CHIMES && OPENMP
+    } /* close parallel block */
+    free(active_indices); /* free memory */
 
-  /* There may be large work-load imbalances when the chemistry is 
-   * being integrated, so we want to record the time spent by tasks 
-   * waiting for the remaining tasks to finish. */ 
-  CPU_Step[CPU_COOLINGSFR] += measure_time(); 
-  MPI_Barrier(MPI_COMM_WORLD); 
-  CPU_Step[CPU_COOLSFRIMBAL] += measure_time();
-
-  if (ThisTask == 0) 
-    printf("Chemistry and cooling finished. \n"); 
+#ifdef CHIMES /* CHIMES records some extra timing information here owing to large possible imbalances */
+  CPU_Step[CPU_COOLINGSFR] += measure_time(); MPI_Barrier(MPI_COMM_WORLD);
+  CPU_Step[CPU_COOLSFRIMBAL] += measure_time(); PRINT_STATUS("CHIMES chemistry and cooling finished");
+#endif
 }
-#endif // !(CHIMES) 
+
+
 
 
 /* subroutine which actually sends the particle data to the cooling routine and updates the entropies */
 void do_the_cooling_for_particle(int i)
 {
-    double unew;
-    double dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval;
-    double dtime = dt / All.cf_hubble_a; /*  the actual time-step */
+    double unew, dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
 
-    if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
+    if((dtime>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
     {
         double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ??
         double uion=HIIRegion_Temp/(0.59*(5./3.-1.)*U_TO_TEMP_UNITS); if(SphP[i].DelayTimeHII>0) {if(uold<uion) {uold=uion;}} /* u_old should be >= ionized temp if used here [unless using newer model] */
 #endif
         
@@ -178,9 +119,11 @@ void do_the_cooling_for_particle(int i)
         }
 #endif
         /* limit the magnitude of the hydro dtinternalenergy */
-        double du = SphP[i].DtInternalEnergy * dtime;
-        if(du < -0.5*SphP[i].InternalEnergy) {SphP[i].DtInternalEnergy = -0.5*SphP[i].InternalEnergy / dtime;}
-        if(du >  50.*SphP[i].InternalEnergy) {SphP[i].DtInternalEnergy =  50.*SphP[i].InternalEnergy / dtime;}
+        if(dtime>0)
+        {
+            SphP[i].DtInternalEnergy = DMAX(SphP[i].DtInternalEnergy , -0.99*SphP[i].InternalEnergy/dtime ); // equivalent to saying this wouldn't lower internal energy to below 1% in one timestep
+            SphP[i].DtInternalEnergy = DMIN(SphP[i].DtInternalEnergy ,  1.e8*SphP[i].InternalEnergy/dtime ); // equivalent to saying we cant massively enhance internal energy in a single timestep from the hydro work terms: should be big, since just numerical [shocks are real!]
+        }
         /* and convert to cgs before use in the cooling sub-routine */
         SphP[i].DtInternalEnergy *= (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS/HYDROGEN_MASSFRAC);
 #endif
@@ -195,11 +138,11 @@ void do_the_cooling_for_particle(int i)
         unew = DoCooling(uold, SphP[i].Density * All.cf_a3inv, dtime, SphP[i].Ne, i);
 #endif 
 #else
-        unew = uold + dt * (rt_DoHeating(i, dt) + rt_DoCooling(i, dt));
+        unew = uold + dtime * (rt_DoHeating(i, dtime) + rt_DoCooling(i, dtime));
 #endif
         
        
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ?? /* for older model, set internal energy to minimum level if marked as ionized by stars */
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ?? /* for older model, set internal energy to minimum level if marked as ionized by stars */
         if(SphP[i].DelayTimeHII > 0)
         {
             if(unew<uion) {unew=uion; if(SphP[i].DtInternalEnergy<0) SphP[i].DtInternalEnergy=0;}
@@ -207,7 +150,7 @@ void do_the_cooling_for_particle(int i)
             SphP[i].Ne = 1.0 + 2.0*yhelium(i); /* fully ionized */
 #endif 
         }
-#endif // GALSF_FB_FIRE_RT_HIIHEATING
+#endif
         
         
 #if defined(BH_THERMALFEEDBACK)
@@ -252,7 +195,7 @@ void do_the_cooling_for_particle(int i)
         if(SphP[i].DelayTimeHII < 0) {SphP[i].DelayTimeHII = 0;}
 #endif
         
-    } // closes if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0)) check
+    } // closes if((dt>0)&&(P[i].Mass>0)&&(P[i].Type==0)) check
 }
 
 
@@ -507,8 +450,8 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     double bH0, bHep, bff, aHp, aHep, aHepp, ad, geH0, geHe0, geHep, EPSILON_SMALL=1.e-40;
     double n_elec, nH0, nHe0, nHp, nHep, nHepp; /* ionization states */
     logT_input = logT; rho_input = rho; ne_input = *ne_guess; /* save inputs (in case of failed convergence below) */
-    if(!isfinite(logT)) logT=Tmin;    /* nan trap (just in case) */
-    if(!isfinite(rho)) logT=Tmin;
+    if(!isfinite(logT)) {logT=Tmin;}    /* nan trap (just in case) */
+    if(!isfinite(rho)) {logT=Tmin;}
 
     if(logT <= Tmin)		/* everything neutral */
     {
@@ -551,6 +494,8 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     {
         local_gammamultiplier = SphP[target].Rad_Flux_EUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
         local_gammamultiplier = 1 + local_gammamultiplier/gJH0;
+        if(!isfinite(local_gammamultiplier)) {local_gammamultiplier=1;}
+        local_gammamultiplier=DMAX(1.,DMIN(1.e20, local_gammamultiplier));
     }
 #endif
     /* CAFG: this is the density that we should use for UV background threshold */
@@ -567,14 +512,14 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #ifdef GALSF_EFFECTIVE_EQS
         shieldfac = 1; // self-shielding is implicit in the sub-grid model already //
 #endif
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ??
         if(target>=0) {if(SphP[target].DelayTimeHII > 0) {shieldfac = 1;}} // newer HII region model irradiates and removes shielding for regions, but allows cooling function to evolve //
 #endif
     }
     n_elec = *ne_guess; if(!isfinite(n_elec)) {n_elec=1;}
     neold = n_elec; niter = 0;
     double dt = 0, fac_noneq_cgs = 0, necgs = n_elec * nHcgs; /* more initialized quantities */
-    if(target >= 0) {dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;} // dtime [code units]
+    if(target >= 0) {dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target);} // dtime [code units]
     fac_noneq_cgs = (dt * UNIT_TIME_IN_CGS) * necgs; // factor needed below to asses whether timestep is larger/smaller than recombination time
     
 #if defined(RT_CHEM_PHOTOION)
@@ -822,6 +767,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     {
         local_gammamultiplier = SphP[target].Rad_Flux_EUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
         local_gammamultiplier = 1 + local_gammamultiplier/gJH0;
+        if(!isfinite(local_gammamultiplier)) {local_gammamultiplier=1;}
+        local_gammamultiplier=DMAX(1.,DMIN(1.e20, local_gammamultiplier));
     }
 #endif
     
@@ -836,7 +783,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #ifdef GALSF_EFFECTIVE_EQS
     shieldfac = 1; // self-shielding is implicit in the sub-grid model already //
 #endif
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ??
     if(target>=0) {if(SphP[target].DelayTimeHII > 0) {shieldfac = 1;}} // newer HII region model irradiates and removes shielding for regions, but allows cooling function to evolve //
 #endif
 
@@ -847,9 +794,11 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     
 #if defined(COOL_LOW_TEMPERATURES)
     double Tdust = 30., LambdaDust = 0.; /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
-#if defined(SINGLE_STAR_SINK_DYNAMICS) || (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
-    Tdust = DMIN(DMAX(10., 2.73/All.cf_atime),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
+#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS)  // ??
     Tdust = get_equilibrium_dust_temperature_estimate(target);
+#endif
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(BH_COMPTON_HEATING) // ??
+    Tdust = DMIN(DMAX(10., 2.73/All.cf_atime),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
 #endif
 #endif
 
@@ -859,7 +808,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     if(target >= 0)
     {
         double L_particle = Get_Particle_Size(target)*All.cf_atime; // particle effective size/slab thickness
-        double dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; // dtime [code units]
+        double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target); // dtime [code units]
         Sigma_particle = P[target].Mass / (M_PI*L_particle*L_particle); // effective surface density through particle
         abs_per_kappa_dt = C_LIGHT_CODE_REDUCED * (SphP[target].Density*All.cf_a3inv) * dt; // fractional absorption over timestep
         cx_to_kappa = HYDROGEN_MASSFRAC / PROTONMASS * UNIT_MASS_IN_CGS; // pre-factor for converting cross sections into opacities
@@ -873,10 +822,10 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         
 #ifdef COOL_METAL_LINES_BY_SPECIES
         /* can restrict to low-densities where not self-shielded, but let shieldfac (in ne) take care of this self-consistently */
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
-        if((J_UV != 0)&&(logT > Tmin+0.5*deltaT))
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+        if(J_UV != 0)
 #else
-        if((J_UV != 0)&&(logT > Tmin+0.5*deltaT)&&(logT > 4.00))
+        if((J_UV != 0)&&(logT > 4.00))
 #endif
         {
             /* cooling rates tabulated for each species from Wiersma, Schaye, & Smith tables (2008) */
@@ -885,7 +834,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             /* (sorry, -- dont -- multiply by nH^2 here b/c that's how everything is normalized in this function) */
             LambdaMetal *= n_elec;
             /* (modified now to correct out tabulated ne so that calculated ne can be inserted; ni not used b/c it should vary species-to-species */
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
             if(logT<2) {LambdaMetal *= exp(-DMIN((2.-logT)*(2.-logT)/0.1,40.));}
             if(LambdaMetal > 0) {Lambda += LambdaMetal;}
 #else
@@ -898,7 +847,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
         
 #ifdef COOL_LOW_TEMPERATURES
-        if((logT <= 5.3) && (logT > Tmin+0.5*deltaT))
+        if(logT <= 5.3)
         {
             /* approx to cooling function for solar metallicity and nH=1 cm^(-3) -- want to do something
              much better, definitely, but for now use this just to get some idea of system with cooling to very low-temp */
@@ -910,9 +859,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             Z_sol = Z[0] / All.SolarAbundances[0]; /* use actual metallicity for this */
 #endif
             LambdaMol *= (1+Z_sol)*(0.001 + 0.1*nHcgs/(1.+nHcgs) + 0.09*nHcgs/(1.+0.1*nHcgs) + Z_sol*Z_sol/(1.0+nHcgs)); // gives very crude estimate of metal-dependent terms //
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
             double column = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs
-            double Z_C = DMAX(1.e-10, Z[2]/All.SolarAbundances[2]), sqrt_T=sqrt(T), ncrit_CO=1.9e4*sqrt_T, Sigma_crit_CO=3.0e-5*T/Z_C, T3=T/1.e3, EXPmax=90.; // carbon abundance (relative to solar), critical density and column
+            double Z_C = DMAX(1.e-6, Z[2]/All.SolarAbundances[2]), sqrt_T=sqrt(T), ncrit_CO=1.9e4*sqrt_T, Sigma_crit_CO=3.0e-5*T/Z_C, T3=T/1.e3, EXPmax=90.; // carbon abundance (relative to solar), critical density and column
             double Lambda_Metals = Z_C * T*sqrt_T * 2.73e-31 / (1. + (nHcgs/ncrit_CO)*(1.+0*DMAX(column,0.017)/Sigma_crit_CO)); // fit from Hollenbach & McKee 1979 for CO (+CH/OH/HCN/OH/HCl/H20/etc., but those don't matter), with slight re-calibration of normalization (factor ~1.4 or so) to better fit the results from the full Glover+Clark network. As Glover+Clark show, if you shift gas out of CO into C+ and O, you have almost no effect on the integrated cooling rate, so this is a surprisingly good approximation without knowing anything about the detailed chemical/molecular state of the gas. uncertainties in e.g. ambient radiation are -much- larger. also note this rate is really carbon-dominated as the limiting abundance, so should probably use that.
             /* in the above Lambda_Metals expression, the column density expression attempts to account for the optically-thick correction in a slab. this is largely redundant (not exactly, b/c this is specific for CO-type molecules) with our optically-thick cooling module already included below, so we will not double-count it here [coefficient set to zero]. But it's included so you can easily turn it back on, if desired, instead of using the module below. */
             double Lambda_H2_thin = pow(10., DMAX(-103. + 97.59*logT - 48.05*logT*logT + 10.8*logT*logT*logT - 0.9032*logT*logT*logT*logT , -50.)); // sub-critical H2 cooling rate from H2-H collisions, H2-H2 is similar, but for most conditions, this should give us roughly the correct number here [per H2 molecule]
@@ -1019,7 +968,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
                 double rhofac = rho / (1000.*COSMIC_BARYON_DENSITY_CGS);
                 if(rhofac < 0.2) {prefac_CR=0;} else {if(rhofac > 200.) {prefac_CR=1;} else {prefac_CR=exp(-1./(rhofac*rhofac));}}} // in cosmological runs, turn off CR heating for any gas with density unless it's >1000 times the cosmic mean density
             double cr_zeta=1.e-16, e_per_cr_ioniz=8.8e-12; // either high background (zeta=1e-16), with softer spectrum (5.5eV per ionization), following e.g. van Dishoeck & Black (1986); or equivalently lower rate with higher ~20eV per ionization per Goldsmith & Langer (1978); this is formally degenerate here. however both produce ~3-10x higher rates than more modern estimates (basically in both cases, assuming a CR energy density of ~2-5 eV/cm^3, instead of more modern ~0.5-2 eV/cm^3
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
             cr_zeta=1.e-17; e_per_cr_ioniz=3.0e-11; // follow e.g. Glover+Jappsen 2007, Le Teuff et al. 2000, gives about a 3x lower CR heating rate compared to older numbers above
 #endif
             Heat += prefac_CR * cr_zeta * (1. + 1.68*n_elec*HYDROGEN_MASSFRAC) / (1.e-2 + nHcgs) * e_per_cr_ioniz; // final result
@@ -1041,7 +990,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         
 #if defined(COOL_LOW_TEMPERATURES)
         if(LambdaDust>0) {Heat += LambdaDust;} /* Dust collisional heating (Tdust > Tgas) */
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
         if(LambdaMetal<0) {Heat -= LambdaMetal;} // potential net heating from low-temperature gas-phase metal line absorption //
 #endif
 #endif
@@ -1178,7 +1127,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     /* add the hydro energy change directly: this represents an additional heating/cooling term, to be accounted for in the semi-implicit solution determined here. this is more accurate when tcool << tdynamical */
     if(target >= 0) {Q += SphP[target].DtInternalEnergy / nHcgs;}
 #if defined(OUTPUT_COOLRATE_DETAIL)
-    if (target>=0){SphP[target].HydroHeatingRate = SphP[target].DtInternalEnergy / nHcgs;}
+    if(target >= 0) {SphP[target].HydroHeatingRate = SphP[target].DtInternalEnergy / nHcgs;}
 #endif
 #endif
     
@@ -1205,12 +1154,10 @@ void InitCoolMemory(void)
 #ifdef COOL_METAL_LINES_BY_SPECIES
     long i_nH=41; long i_T=176; long kspecies=(long)NUM_METAL_SPECIES-1;
 #ifdef GALSF_FB_FIRE_RPROCESS
-    //kspecies -= 1;
     kspecies -= NUM_RPROCESS_SPECIES;
 #endif
     SpCoolTable0 = (float *) mymalloc("SpCoolTable0",(kspecies*i_nH*i_T)*sizeof(float));
-    if(All.ComovingIntegrationOn)
-        SpCoolTable1 = (float *) mymalloc("SpCoolTable1",(kspecies*i_nH*i_T)*sizeof(float));
+    if(All.ComovingIntegrationOn) {SpCoolTable1 = (float *) mymalloc("SpCoolTable1",(kspecies*i_nH*i_T)*sizeof(float));}
 #endif
 }
 
@@ -1220,21 +1167,17 @@ void MakeCoolingTable(void)
      /* Set up interpolation tables in T for cooling rates given in KWH, ApJS, 105, 19 
         Hydrogen, Helium III recombination rates and collisional ionization cross-sections are updated */
 {
-    int i;
-    double T,Tfact;
-
-    if(All.MinGasTemp > 0.0) {Tmin = log10(All.MinGasTemp);} else {Tmin=1.0;} 
+    int i; double T,Tfact;
+    if(All.MinGasTemp > 0.0) {Tmin = log10(All.MinGasTemp);} else {Tmin=-1.0;} // set minimum temperature in this table to some very low value if zero, where none of the cooling approximations above make sense
     deltaT = (Tmax - Tmin) / NCOOLTAB;
-    
     /* minimum internal energy for neutral gas */
     for(i = 0; i <= NCOOLTAB; i++)
     {
         BetaH0[i] = BetaHep[i] = Betaff[i] = AlphaHp[i] = AlphaHep[i] = AlphaHepp[i] = Alphad[i] = GammaeH0[i] = GammaeHe0[i] = GammaeHep[i] = 0;
         T = pow(10.0, Tmin + deltaT * i);
         Tfact = 1.0 / (1 + sqrt(T / 1.0e5));
-        
-        if(118348 / T < 70) BetaH0[i] = 7.5e-19 * exp(-118348 / T) * Tfact;
-        if(473638 / T < 70) BetaHep[i] = 5.54e-17 * pow(T, -0.397) * exp(-473638 / T) * Tfact;
+        if(118348. / T < 70.) {BetaH0[i] = 7.5e-19 * exp(-118348 / T) * Tfact;}
+        if(473638. / T < 70.) {BetaHep[i] = 5.54e-17 * pow(T, -0.397) * exp(-473638 / T) * Tfact;}
         
         Betaff[i] = 1.43e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - log10(T)) * (5.5 - log10(T)) / 3));
         //AlphaHp[i] = 8.4e-11 * pow(T / 1000, -0.2) / (1. + pow(T / 1.0e6, 0.7)) / sqrt(T);	/* old Cen92 fit */
@@ -1244,11 +1187,10 @@ void MakeCoolingTable(void)
         AlphaHep[i]= 9.356e-10 / ( sqrt(T/4.266e-2) * pow((1.0+sqrt(T/4.266e-2)), 0.2108) * pow((1.0+sqrt(T/3.676e7)), 1.7892) ); /* Verner & Ferland (1996) [more accurate than Cen92] */
         AlphaHepp[i] = 2. * 7.982e-11 / ( sqrt(T/(4.*3.148)) * pow((1.0+sqrt(T/(4.*3.148))), 0.252) * pow((1.0+sqrt(T/(4.*7.036e5))), 1.748) ); /* Verner & Ferland (1996) : ~ Z*alphaHp[1,T/Z^2] */
         
-        if(470000 / T < 70) Alphad[i] = 1.9e-3 * pow(T, -1.5) * exp(-470000 / T) * (1. + 0.3 * exp(-94000 / T));
-        if(157809.1 / T < 70) GammaeH0[i] = 5.85e-11 * sqrt(T) * exp(-157809.1 / T) * Tfact;
-        if(285335.4 / T < 70) GammaeHe0[i] = 2.38e-11 * sqrt(T) * exp(-285335.4 / T) * Tfact;
-        if(631515.0 / T < 70) GammaeHep[i] = 5.68e-12 * sqrt(T) * exp(-631515.0 / T) * Tfact;
-        
+        if(470000.0 / T < 70) {Alphad[i] = 1.9e-3 * pow(T, -1.5) * exp(-470000 / T) * (1. + 0.3 * exp(-94000 / T));}
+        if(157809.1 / T < 70) {GammaeH0[i] = 5.85e-11 * sqrt(T) * exp(-157809.1 / T) * Tfact;}
+        if(285335.4 / T < 70) {GammaeHe0[i] = 2.38e-11 * sqrt(T) * exp(-285335.4 / T) * Tfact;}
+        if(631515.0 / T < 70) {GammaeHep[i] = 5.68e-12 * sqrt(T) * exp(-631515.0 / T) * Tfact;}
     }
 }
 
@@ -1357,8 +1299,8 @@ char *GetMultiSpeciesFilename(int i, int hk)
 #define JAMPL	1.0		/* amplitude factor relative to input table */
 #define TABLESIZE 250		/* Max # of lines in TREECOOL */
 static float inlogz[TABLESIZE];
-static float gH0[TABLESIZE], gHe[TABLESIZE], gHep[TABLESIZE];
-static float eH0[TABLESIZE], eHe[TABLESIZE], eHep[TABLESIZE];
+static double gH0[TABLESIZE], gHe[TABLESIZE], gHep[TABLESIZE]; // upgrade from float to double, should read fine
+static double eH0[TABLESIZE], eHe[TABLESIZE], eHep[TABLESIZE]; // upgrade from float to double, should read fine
 static int nheattab;		/* length of table */
 
 
@@ -1367,10 +1309,10 @@ void ReadIonizeParams(char *fname)
     int i; FILE *fdcool;
     if(!(fdcool = fopen(fname, "r"))) {printf(" Cannot read ionization table in file `%s'. Make sure the correct TREECOOL file is placed in the code run-time directory, and that any leading comments (e.g. lines preceded by ##) are deleted from the file.\n", fname); endrun(456);}
     for(i=0; i<TABLESIZE; i++) {gH0[i]=0;}
-    for(i=0; i<TABLESIZE; i++) {if(fscanf(fdcool, "%g %g %g %g %g %g %g", &inlogz[i], &gH0[i], &gHe[i], &gHep[i], &eH0[i], &eHe[i], &eHep[i]) == EOF) {break;}}
+    for(i=0; i<TABLESIZE; i++) {if(fscanf(fdcool, "%g %lg %lg %lg %lg %lg %lg", &inlogz[i], &gH0[i], &gHe[i], &gHep[i], &eH0[i], &eHe[i], &eHep[i]) == EOF) {break;}}
     fclose(fdcool);
     for(i=0, nheattab=0; i<TABLESIZE; i++) {if(gH0[i] != 0.0) {nheattab++;} else {break;}} /*  nheattab is the number of entries in the table */
-    if(ThisTask == 0) printf(" ..read ionization table [TREECOOL] with %d entries in file `%s'. Make sure to cite the authors from which the UV background was compiled! (See user guide for the correct references).\n", nheattab, fname);
+    if(ThisTask == 0) printf(" ..read ionization table [TREECOOL] with %d non-zero UVB entries in file `%s'. Make sure to cite the authors from which the UV background was compiled! (See user guide for the correct references).\n", nheattab, fname);
 }
 
 
@@ -1675,13 +1617,16 @@ void selfshield_local_incident_uv_flux(void)
             if((SphP[i].Rad_Flux_UV>0) && (PPP[i].Hsml>0) && (SphP[i].Density>0) && (P[i].Mass>0) && (All.Time>0))
             {
                 SphP[i].Rad_Flux_UV *= UNIT_FLUX_IN_CGS * 1276.19; SphP[i].Rad_Flux_EUV *= UNIT_FLUX_IN_CGS * 1276.19; // convert to Habing units (normalize strength to local MW field in this [narrow] band, so not the 'full' Habing flux)
-                double surfdensity = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS; // in CGS
-                double tau_nuv = KAPPA_UV * surfdensity * (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // optical depth: this part is attenuated by dust //
-                double tau_euv = 3.7e6 * surfdensity; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas //
+                double surfdensity = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); // in CGS
+                double tau_nuv = rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * surfdensity; // optical depth: this part is attenuated by dust //
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
+                tau_nuv *= (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // if using older FIRE defaults, this was manually added instead of rolled into rt_kappa -- annoying but here for completeness //
+#endif
+                double tau_euv = 3.7e6 * surfdensity * UNIT_SURFDEN_IN_CGS; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas //
                 SphP[i].Rad_Flux_UV *= exp(-tau_nuv); // attenuate
                 SphP[i].Rad_Flux_EUV *= 0.01 + 0.99/(1.0 + 0.8*tau_euv + 0.85*tau_euv*tau_euv); // attenuate (for clumpy medium with 1% scattering) //
             } else {SphP[i].Rad_Flux_UV = SphP[i].Rad_Flux_EUV = 0;}
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ??
             if(SphP[i].DelayTimeHII > 0)
             {   /* assign typical strong HII region flux + enough flux to maintain cell fully-ionized, regardless (x'safety-factor') */
                 double flux_compactHII = 1.e4 + 3. * 0.12 * pow(P[i].Mass*UNIT_MASS_IN_SOLAR, 1./3.)*pow(SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, 5./3.);
@@ -1691,7 +1636,7 @@ void selfshield_local_incident_uv_flux(void)
         }
     }
 }
-#endif // GALSF_FB_FIRE_RT_UVHEATING
+#endif
 
 
 
@@ -1703,7 +1648,7 @@ double get_equilibrium_dust_temperature_estimate(int i)
     if(i >= 0)
     {
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
-        int k; double e_HiEgy=0, e_IR=0;
+        int k; double e_HiEgy=0, e_IR=0, E_tot_to_evol_eVcgs = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_EV;
         for(k=0;k<N_RT_FREQ_BINS;k++) {e_HiEgy+=SphP[i].Rad_E_gamma_Pred[k];}
 #if defined(GALSF_FB_FIRE_RT_LONGRANGE)
         e_IR += SphP[i].Rad_E_gamma_Pred[RT_FREQ_BIN_FIRE_IR]; // note IR
@@ -1712,6 +1657,7 @@ double get_equilibrium_dust_temperature_estimate(int i)
         e_IR += SphP[i].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED]; // note IR
 #endif
         e_HiEgy -= e_IR; // don't double-count the IR component flagged above //
+        e_IR *= E_tot_to_evol_eVcgs; e_HiEgy *= E_tot_to_evol_eVcgs;
 #endif
     }
     double Tdust_eqm = 2.92 * pow(Tdust_ext*e_IR + T_cmb*e_CMB + T_hiegy*e_HiEgy, 1./5.); // approximate equilibrium temp assuming Q~1/lambda
@@ -1735,7 +1681,7 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
     if(target >= 0) {*ne_guess=SphP[target].Ne;} else {*ne_guess=1.;}
     rho *= UNIT_DENSITY_IN_CGS; u *= UNIT_SPECEGY_IN_CGS;   /* convert to physical cgs units */
     double temp = convert_u_to_temp(u, rho, target, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess);
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ??
     if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target);}} /* fully ionized [if using older model] */
     *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp, rho, nH0_guess, ne_guess, 0, target);
 #endif
@@ -1747,11 +1693,10 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
 
 
 #ifdef CHIMES 
-/* This routine updates the ChimesGasVars structure 
- * for particle target. */ 
+/* This routine updates the ChimesGasVars structure for particle target. */
 void chimes_update_gas_vars(int target) 
 {
-  double dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; 
+  double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target); 
   double u_old_cgs = DMAX(All.MinEgySpec, SphP[target].InternalEnergy) * UNIT_SPECEGY_IN_CGS; 
   double rho_cgs = SphP[target].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS; 
   
@@ -1769,10 +1714,8 @@ void chimes_update_gas_vars(int target)
 #ifndef GALSF_FB_FIRE_RT_HIIHEATING
   ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(All.MinGasTemp, 10.1); 
 #else 
-  if (SphP[target].DelayTimeHII > 0) 
-    ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(HIIRegion_Temp, 10.1); 
-  else 
-    ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(All.MinGasTemp, 10.1); 
+  if (SphP[target].DelayTimeHII > 0) {ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(HIIRegion_Temp, 10.1);}
+    else {ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(All.MinGasTemp, 10.1);}
 #endif 
 
   // Flag to control how the temperature 

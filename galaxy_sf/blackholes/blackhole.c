@@ -639,7 +639,7 @@ void set_blackhole_long_range_rp(int i, int n) /* pre-set quantities needed for 
 void blackhole_final_operations(void)
 {
     int i, k, n, bin; double dt, mass_disk, mdot_disk, MgasBulge, MstarBulge, r0; k=0;
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
     int count_bhelim=0, tot_bhelim;
 #endif
 
@@ -650,7 +650,7 @@ void blackhole_final_operations(void)
             {
                 double fac_bh_shift=0;
 #if (BH_REPOSITION_ON_POTMIN == 2)
-                dt = (P[n].TimeBin ? (((integertime) 1) << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+                dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(n);
                 double dr_min=0; for(k=0;k<3;k++) {dr_min+=(BPP(n).BH_MinPotPos[k]-P[n].Pos[k])*(BPP(n).BH_MinPotPos[k]-P[n].Pos[k]);}
                 if(dr_min > 0 && dt > 0)
                 {
@@ -728,14 +728,8 @@ void blackhole_final_operations(void)
 #endif
 
         /* Correct for the mass loss due to radiation and BAL winds */
-#ifndef WAKEUP
-        dt = (P[n].TimeBin ? (((integertime) 1) << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-        dt = P[n].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif //ifndef WAKEUP
-        
-        
         /* always substract the radiation energy from BPP(n).BH_Mass && P[n].Mass */
+        dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(n);
         double dm = BPP(n).BH_Mdot * dt;
         double radiation_loss = All.BlackHoleRadiativeEfficiency * dm;
         if(radiation_loss > DMIN(P[n].Mass,BPP(n).BH_Mass)) radiation_loss = DMIN(P[n].Mass,BPP(n).BH_Mass);
@@ -782,7 +776,7 @@ void blackhole_final_operations(void)
         BPP(n).BH_Mass -= dm_wind;
 #endif 
 #endif
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 #if defined(SINGLE_STAR_FB_WINDS)
        if(P[n].ProtoStellarStage == 5){
            if(P[n].wind_mode == 1) {
@@ -828,22 +822,22 @@ void blackhole_final_operations(void)
 #endif
     
 #if defined(BH_OUTPUT_MOREINFO)
-#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE
+#ifdef SINGLE_STAR_STARFORGE_DEFAULTS
         fprintf(FdBlackHolesDetails, "%2.12f %u  %g %g %g %g %g  %g %g %g %g %g %g  %2.10f %2.10f %2.10f  %2.7f %2.7f %2.7f  %g %g %g  %g %g %g\n",
                 All.Time, P[n].ID,  P[n].Mass, BPP(n).BH_Mass, mass_disk, BPP(n).BH_Mdot, mdot_disk, dt, BPP(n).DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy,
                 BlackholeTempInfo[i].Mgas_in_Kernel, BlackholeTempInfo[i].Mstar_in_Kernel, r0, P[n].Pos[0], P[n].Pos[1], P[n].Pos[2],  P[n].Vel[0], P[n].Vel[1], P[n].Vel[2],
-                BlackholeTempInfo[i].Jgas_in_Kernel[0], BlackholeTempInfo[i].Jgas_in_Kernel[1], BlackholeTempInfo[i].Jgas_in_Kernel[2], BPP(n).BH_Specific_AngMom[0]*P[n].Mass, BPP(n).BH_Specific_AngMom[1]*P[n].Mass, BPP(n).BH_Specific_AngMom[2]*P[n].Mass );
+                BlackholeTempInfo[i].Jgas_in_Kernel[0], BlackholeTempInfo[i].Jgas_in_Kernel[1], BlackholeTempInfo[i].Jgas_in_Kernel[2], BPP(n).BH_Specific_AngMom[0]*P[n].Mass, BPP(n).BH_Specific_AngMom[1]*P[n].Mass, BPP(n).BH_Specific_AngMom[2]*P[n].Mass ); fflush(FdBlackHolesDetails);
 #else
         fprintf(FdBlackHolesDetails, "%2.12f %u  %g %g %g %g %g %g  %g %g %g %g %g %g %g %g  %2.10f %2.10f %2.10f  %2.7f %2.7f %2.7f  %g %g %g  %g %g %g\n",
                 All.Time, P[n].ID,  P[n].Mass, BPP(n).BH_Mass, mass_disk, BPP(n).BH_Mdot, mdot_disk, dt, BPP(n).DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy, BlackholeTempInfo[i].Sfr_in_Kernel,
                 BlackholeTempInfo[i].Mgas_in_Kernel, BlackholeTempInfo[i].Mstar_in_Kernel, MgasBulge, MstarBulge, r0, P[n].Pos[0], P[n].Pos[1], P[n].Pos[2],  P[n].Vel[0], P[n].Vel[1], P[n].Vel[2],
-                BlackholeTempInfo[i].Jgas_in_Kernel[0], BlackholeTempInfo[i].Jgas_in_Kernel[1], BlackholeTempInfo[i].Jgas_in_Kernel[2], BlackholeTempInfo[i].Jstar_in_Kernel[0], BlackholeTempInfo[i].Jstar_in_Kernel[1], BlackholeTempInfo[i].Jstar_in_Kernel[2] );
+                BlackholeTempInfo[i].Jgas_in_Kernel[0], BlackholeTempInfo[i].Jgas_in_Kernel[1], BlackholeTempInfo[i].Jgas_in_Kernel[2], BlackholeTempInfo[i].Jstar_in_Kernel[0], BlackholeTempInfo[i].Jstar_in_Kernel[1], BlackholeTempInfo[i].Jstar_in_Kernel[2] ); fflush(FdBlackHolesDetails);
 #endif
 #else
 
 #ifndef IO_REDUCED_MODE
         fprintf(FdBlackHolesDetails, "BH=%u %g %g %g %g %g %g %g %g   %2.7f %2.7f %2.7f\n", P[n].ID, All.Time, BPP(n).BH_Mass, mass_disk, P[n].Mass, BPP(n).BH_Mdot, mdot_disk,
-                P[n].DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy, P[n].Pos[0], P[n].Pos[1], P[n].Pos[2]);            // DAA: DensAroundStar is actually not defined in BHP->BPP...
+                P[n].DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy, P[n].Pos[0], P[n].Pos[1], P[n].Pos[2]); fflush(FdBlackHolesDetails);           // DAA: DensAroundStar is actually not defined in BHP->BPP...
 #endif
 #endif
         
@@ -853,14 +847,14 @@ void blackhole_final_operations(void)
         TimeBin_BH_Mdot[bin] += BPP(n).BH_Mdot;
         if(BPP(n).BH_Mass > 0) {TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;}
         
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
         singlestar_subgrid_protostellar_evolution_update_track(n, dm, dt);
         if((P[n].Type!=5) || (P[n].Mass==0)) {count_bhelim++;} // our subroutine has promoted or removed this sink: one fewer BH-type particle exists now //
 #endif
         
     } // for(i=0; i<N_active_loc_BHs; i++)
             
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     MPI_Allreduce(&count_bhelim, &tot_bhelim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     All.TotBHs -= tot_bhelim;
 #endif

@@ -1864,14 +1864,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     
 #ifdef RT_USE_GRAVTREE
     if(ptype==0) {if((soft>0)&&(pmass>0)) {valid_gas_particle_for_rt = 1;}}
-#ifdef RT_LEBRON
+#if defined(RT_LEBRON) && !defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
     double fac_stellum[N_RT_FREQ_BINS];
     if(valid_gas_particle_for_rt)
     {
         double h_eff_phys = soft * pow(NORM_COEFF/All.DesNumNgb,1./NUMDIMS) * All.cf_atime; // convert from softening kernel extent to effective size, assuming 3D here, and convert to physical code units
         double sigma_particle =  pmass / (h_eff_phys*h_eff_phys); // quick estimate of effective surface density of the target, in physical code units
         double fac_stellum_0 = -All.PhotonMomentum_Coupled_Fraction / (4.*M_PI * C_LIGHT_CODE * sigma_particle * All.G); // this will be multiplied by L/r^2 below, giving acceleration, then extra G because code thinks this is gravity, so put extra G here. everything is in -physical- code units here //
-        int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {fac_stellum[kf] = fac_stellum_0*(1 - exp(-rt_kappa(0,kf)*sigma_particle));} // rt_kappa is in physical code units, so sigma_eff_abs should be also -- approximate surface-density through particle (for checking if we enter optically-thick limit)
+        int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {fac_stellum[kf] = fac_stellum_0*(1 - exp(-rt_kappa(-1,kf)*sigma_particle));} // rt_kappa is in physical code units, so sigma_eff_abs should be also -- approximate surface-density through particle (for checking if we enter optically-thick limit)
     }
 #endif
 #endif
@@ -2607,9 +2607,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 incident_flux_uv += fac_intensity * mass_stellarlum[RT_FREQ_BIN_FIRE_UV];// * shortrange_table[tabindex];
                 if((mass_stellarlum[RT_FREQ_BIN_FIRE_IR]<mass_stellarlum[RT_FREQ_BIN_FIRE_UV])&&(mass_stellarlum[RT_FREQ_BIN_FIRE_IR]>0)) // if this -isn't- satisfied, no chance you are optically thin to EUV //
                 {
-                    // here, use ratio and linear scaling of escape with tau to correct to the escape fraction for the correspondingly higher EUV kappa: factor ~2000 is KAPPA_EUV/KAPPA_UV
+                    // here, use ratio and linear scaling of escape with tau to correct to the escape fraction for the correspondingly higher EUV kappa: factor ~2000 here comes from the ratio of (kappa_euv/kappa_uv)
                     incident_flux_euv += fac_intensity * mass_stellarlum[RT_FREQ_BIN_FIRE_UV] * (All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV) *
-												    ((mass_stellarlum[RT_FREQ_BIN_FIRE_UV]+mass_stellarlum[RT_FREQ_BIN_FIRE_IR])/(mass_stellarlum[RT_FREQ_BIN_FIRE_UV]+mass_stellarlum[RT_FREQ_BIN_FIRE_IR]*(2042.6))));
+												    ((mass_stellarlum[RT_FREQ_BIN_FIRE_UV] + mass_stellarlum[RT_FREQ_BIN_FIRE_IR]) /
+                                                     (mass_stellarlum[RT_FREQ_BIN_FIRE_UV] + 2042.6*mass_stellarlum[RT_FREQ_BIN_FIRE_IR])));
                 } else {
                     // here, just enforce a minimum escape fraction //
                     double m_lum_total = 0; int ks_q; for(ks_q=0;ks_q<N_RT_FREQ_BINS;ks_q++) {m_lum_total += mass_stellarlum[ks_q];}
@@ -2651,20 +2652,22 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef RT_LEBRON /* now we couple radiation pressure [single-scattering] terms within this module */
 #ifdef GALSF_FB_FIRE_RT_LONGRANGE /* we only allow the momentum to couple over some distance to prevent bad approximations when the distance between points here is enormous */
                 if(r*UNIT_LENGTH_IN_KPC*All.cf_atime > 50.) {fac=0;}
-#endif /* simply apply an on-the-spot approximation and do the absorption now. appropriate normalization (and sign) in 'fac_stellum' */
-                double lum_force_fac=0; int kf_rt;
-                for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {lum_force_fac += mass_stellarlum[kf_rt] * fac_stellum[kf_rt];}
-#if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
+#endif
+                int kf_rt; double lum_force_fac=0;
+#if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX) /* save the fluxes for use below, where we will calculate their RP normally */
                 double fac_flux = -fac * All.cf_a2inv / (4.*M_PI); // ~L/(4pi*r^3), in -physical- units (except for last r, cancelled by dx_stellum), since L is physical
                 for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {Rad_Flux[kf_rt][0]+=mass_stellarlum[kf_rt]*fac_flux*dx_stellarlum; Rad_Flux[kf_rt][1]+=mass_stellarlum[kf_rt]*fac_flux*dy_stellarlum; Rad_Flux[kf_rt][2]+=mass_stellarlum[kf_rt]*fac_flux*dz_stellarlum;}
+#else /* simply apply an on-the-spot approximation and do the absorption and RP force now */
+                for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {lum_force_fac += mass_stellarlum[kf_rt] * fac_stellum[kf_rt];} // add directly to forces. appropriate normalization (and sign) in 'fac_stellum'
 #endif
 #ifdef BH_PHOTONMOMENTUM /* divide out PhotoMom_coupled_frac here b/c we have our own BH_Rad_Mom factor, and don't want to double-count */
-                lum_force_fac += All.BH_Rad_MomentumFactor / All.PhotonMomentum_Coupled_Fraction * mass_bhlum * fac_stellum[N_RT_FREQ_BINS-1];
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
                 Rad_Flux[RT_FREQ_BIN_FIRE_IR][0]+=mass_bhlum*fac_flux*dx_stellarlum; Rad_Flux[RT_FREQ_BIN_FIRE_IR][1]+=mass_bhlum*fac_flux*dy_stellarlum; Rad_Flux[RT_FREQ_BIN_FIRE_IR][2]+=mass_bhlum*fac_flux*dz_stellarlum;
+#else
+                lum_force_fac += (All.BH_Rad_MomentumFactor / (MIN_REAL_NUMBER + All.PhotonMomentum_Coupled_Fraction)) * mass_bhlum * fac_stellum[N_RT_FREQ_BINS-1];
 #endif
 #endif
-                acc_x += FLT(dx_stellarlum * fac*lum_force_fac); acc_y += FLT(dy_stellarlum * fac*lum_force_fac); acc_z += FLT(dz_stellarlum * fac*lum_force_fac);
+                if(lum_force_fac>0) {acc_x += FLT(dx_stellarlum * fac*lum_force_fac); acc_y += FLT(dy_stellarlum * fac*lum_force_fac); acc_z += FLT(dz_stellarlum * fac*lum_force_fac);}
 #endif
             } // closes if(valid_gas_particle_for_rt)
                 

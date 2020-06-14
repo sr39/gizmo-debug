@@ -46,7 +46,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 #if !defined(SINGLE_STAR_SINK_DYNAMICS)
     return 0; /* not defined */
 #endif
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2) /* this is pre-calculated, simply return it */
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2) /* this is pre-calculated, simply return it */
     return P[i].StarLuminosity_Solar / UNIT_LUM_IN_SOLAR;
 #endif
     /* if above flags not defined, estimate accretion + main-sequence luminosity as simply as possible */
@@ -61,7 +61,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
         else if(m_solar < 53.9) {lum_sol = 1.5 * m_solar*m_solar*m_solar * sqrt(m_solar);}
         else {lum_sol = 32000. * m_solar;}
     }
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1) // now, account for pre-main sequence evolution and calculate accretion luminosity using protostellar radius
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 1) // now, account for pre-main sequence evolution and calculate accretion luminosity using protostellar radius
     if(i > 0) {if(P[i].Type == 5) {
         double eps_protostar=1.0, T4000_4 = pow(m_solar , 0.55), l_kh = 0.2263 * P[i].ProtoStellarRadius_inSolar*P[i].ProtoStellarRadius_inSolar * T4000_4; // protostellar temperature along Hayashi track and luminosity from KH contraction
         lum = DMAX(lum_sol,l_kh) / UNIT_LUM_IN_SOLAR + eps_protostar * (All.G * P[i].Mass / (P[i].ProtoStellarRadius_inSolar / UNIT_LENGTH_IN_SOLAR)) * mdot; // assume GM/r liberated per unit mass. Note we need radius in code units here since everything else in 'lum' is code-units as well. for pre-ms evolution, if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
@@ -169,7 +169,7 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
     return R_SNe;
 #endif
     
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* SINGLE-STAR version: simple implementation of single-star wind mass-loss and SNe rates */
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) /* SINGLE-STAR version: simple implementation of single-star wind mass-loss and SNe rates */
     double m_sol,l_sol; m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR; l_sol=bh_lum_bol(0,P[i].Mass,i)*UNIT_LUM_IN_SOLAR;
 #ifdef SINGLE_STAR_FB_WINDS
     double gam=DMIN(0.5,3.2e-5*l_sol/m_sol), alpha=0.5+0.4/(1.+16./m_sol), q0=(1.-alpha)*gam/(1.-gam), k0=1./30.; // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons, approximate scaling for alpha factor with stellar type (weak effect)
@@ -211,7 +211,7 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 
 double mechanical_fb_calculate_eventrates_SNe(int i, double dt) 
 {
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && (!defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)) /* no single-star module to use here, for these flags its in the spawn routine */
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && (!defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)) /* no single-star module to use here, for these flags its in the spawn routine */
     return 0;
 #endif
     if(All.SNe_Energy_Renormalization <= 0) return 0;
@@ -266,7 +266,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 #if defined(SINGLE_STAR_FB_WINDS) /* SINGLE-STAR VERSION: single-star wind mass-loss rates */
     double fire_wind_rel_mass_res = 1e-4; //relative mass resolution of winds, essentially the wind will get spawned in packets of fire_wind_rel_mass_res*(gas_mass_resolution) mass
     D_RETURN_FRAC = fire_wind_rel_mass_res * (2.0*All.MinMassForParticleMerger)/ P[i].Mass;
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION /* for 'fancy' multi-stage modules, have a separate subroutine to compute this */
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION /* for 'fancy' multi-stage modules, have a separate subroutine to compute this */
     if(P[i].wind_mode != 2) {return;} /* only some eligible particles have winds in this module */
     p = single_star_wind_mdot(i,0) * dt / P[i].Mass; /* actual mdot from its own subroutine, given in code units */
 #else /* otherwise use standard scaling from e.g. Castor, Abbot, & Klein */
@@ -330,18 +330,43 @@ void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i)
 void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
 {
     int k; if(P[i].SNe_ThisTimeStep<=0) {in->Msne=0; return;} // no event
-    int SNeIaFlag=0; if(evaluate_stellar_age_Gyr(P[i].StellarAge) > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
+    double t_gyr = evaluate_stellar_age_Gyr(P[i].StellarAge); // age in Gyr
+    int SNeIaFlag=0; if(t_gyr > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
     double Msne=10.5; if(SNeIaFlag) {Msne=1.4;} // average ejecta mass for single event (normalized to give total mass loss correctly)
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
-    Msne=8.72; if(SNeIaFlag) {Msne=1.4;} // updated table of SNe rates and energetics, this is the updated mean mass per explosion to give the correct total SNe mass
-#endif
     double SNeEgy = All.SNe_Energy_Renormalization*P[i].SNe_ThisTimeStep * 1.0e51/UNIT_ENERGY_IN_CGS; // assume each SNe has 1e51 erg
 #ifdef METALS
-    double yields[NUM_METAL_SPECIES]={0};
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+    Msne=8.72; SNeIaFlag=0; if(t_gyr > 0.044) {SNeIaFlag=1; Msne=1.4;} // updated table of SNe rates and energetics, this is the updated mean mass per explosion to give the correct total SNe mass
+    double yields[NUM_METAL_SPECIES]={0}, M_ejecta_model=10.5; // normalization total mass
     if(NUM_METAL_SPECIES>=10) {
         // All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe
         if(SNeIaFlag) {
             /* SNIa */ /* from Iwamoto et al. 1999; 'W7' models */
+            M_ejecta_model = 1.4; /* total ejecta mass */
+            yields[0]=1; /* total metal mass */ yields[1]=0; /*He*/
+            yields[2]=3.50e-2;/*C*/  yields[3]=8.57e-7;/*N*/  yields[4] =0.102;/*O*/
+            yields[5]=3.21e-3;/*Ne*/ yields[6]=6.14e-3;/*Mg*/ yields[7] =0.111;/*Si*/
+            yields[8]=6.21e-2;/*S*/  yields[9]=8.57e-3;/*Ca*/ yields[10]=0.531;/*Fe*/
+        } else {
+            double t=t_gyr, tmin=0.0037, tbrk=0.0065, tmax=0.044, Mmax=35., Mbrk=10., Mmin=6.; // numbers for interpolation of ejecta masses [must be careful here that this integrates to the correct -total- ejecta mass]
+            if(t<=tbrk) {Msne=Mmax*pow(t/tmin, log(Mbrk/Mmax)/log(tbrk/tmin));} else {Msne=Mbrk*pow(t/tbrk, log(Mmin/Mbrk)/log(tmax/tbrk));} // power-law interpolation of ejecta mass from initial to final value over duration of CC phase
+            //M_ejecta_model=Msne; /* these are defined identically in our updated [not IMF-averaged] yields */
+            double t0y=0.009, t1y=0.012, t2y=0.018, z_sol=P[i].Metallicity[0]/All.SolarAbundances[0]; // some reference timescales for the piecewise-constant NuGrid yields
+            for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k];} // initialize to surface abundances //
+            if(t<=t0y)      {yields[1]=0.43; yields[2]=1.2e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=4.5e-2; yields[5]=1.0e-2; yields[6]=6.e-3*pow(DMAX(z_sol,1.e-4),0.25); yields[7]=4.e-3*pow(DMAX(z_sol,1.e-4),0.2); yields[8]=1.0e-3; yields[9]=P[i].Metallicity[9]; yields[10]=P[i].Metallicity[10];}
+            else if(t<=t1y) {yields[1]=0.39; yields[2]=1.2e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=1.0e-1; yields[5]=1.6e-2;            yields[6]=9.0e-3; yields[7]=9.0e-3; yields[8]=4.0e-3; yields[9]=8.0e-5; yields[10]=1.0e-3;}
+            else if(t<=t2y) {yields[1]=0.37; yields[2]=1.2e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=7.0e-2; yields[5]=1.0e-2;            yields[6]=5.5e-3; yields[7]=1.6e-2; yields[8]=1.3e-2; yields[9]=2.0e-4; yields[10]=5.0e-3;}
+            else            {yields[1]=0.40; yields[2]=1.0e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=2.0e-2; yields[5]=6.e-4+2.e-3*z_sol; yields[6]=1.5e-3; yields[7]=8.5e-3; yields[8]=6.0e-3; yields[9]=7.0e-4; yields[10]=1.8e-2;}
+            yields[0]=0; for(k=2;k<NUM_METAL_SPECIES;k++) {yields[0]+=yields[k];}
+        }
+    }
+#else
+    double yields[NUM_METAL_SPECIES]={0}, M_ejecta_model=10.5; // normalization total mass
+    if(NUM_METAL_SPECIES>=10) {
+        // All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe
+        if(SNeIaFlag) {
+            /* SNIa */ /* from Iwamoto et al. 1999; 'W7' models */
+            M_ejecta_model = 1.4; // normalization total mass
             yields[0]=1.4;/* total metal mass */
             yields[1]=0.0;/*He*/ yields[2]=0.049;/*C*/ yields[3]=1.2e-6;/*N*/ yields[4]=0.143;/*O*/
             yields[5]=0.0045;/*Ne*/ yields[6]=0.0086;/*Mg*/ yields[7]=0.156;/*Si*/
@@ -366,12 +391,14 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
         }
     }
     if(NUM_METAL_SPECIES==1) {if(SNeIaFlag) {yields[0]=1.4;} else {yields[0]=2.0;}}
-    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]/Msne;} // normalize to mass fraction //
+    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]/M_ejecta_model;} // normalize to mass fraction //
     /* add a check to allow for larger abundances in the progenitor stars (usually irrelevant) */
     for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]);}
     if(SNeIaFlag) {if(NUM_METAL_SPECIES>=10) {yields[1]=0.0;}} // no He yield for Ia SNe //
-    for(k=0;k<NUM_METAL_SPECIES;k++) {if(yields[k]<0) {yields[k]=0.0;} if(yields[k]>1) {yields[k]=1;} in->yields[k]=yields[k];}
 #endif
+    for(k=0;k<NUM_METAL_SPECIES;k++) {in->yields[k]=DMIN(1.,DMAX(0.,yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
+#endif
+    
     in->Msne = P[i].SNe_ThisTimeStep * (Msne/UNIT_MASS_IN_SOLAR); // total mass in code units
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     in->Msne = P[i].Mass; // conserve mass and destroy star completely
@@ -390,12 +417,27 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
     if(NUM_METAL_SPECIES>=10)
     {
         /* All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe ;; follow AGB/O star yields in more detail for the light elements */
-        /*   the interesting species are He & CNO: below is based on a compilation of van den Hoek & Groenewegen 1997, Marigo 2001, Izzard 2004 */
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+        /* everything except He and CNO is well-approximated by surface abundances. and CNO is conserved to high accuracy in sum */
+        double f_H_0=1.-(yields[0]+yields[1]), f_He_0=yields[1], f_CNO_0=yields[2]+yields[3]+yields[4]+MIN_REAL_NUMBER; // define initial H, He, CNO fraction
+        double t = evaluate_stellar_age_Gyr(P[i].StellarAge), z_sol; z_sol = f_CNO_0 / (All.SolarAbundances[2]+All.SolarAbundances[3]+All.SolarAbundances[4]); // stellar population age in Gyr, and solar-scaled CNO abundance
+        double f_He_burn = 0.076, f_C_f = 0.5, f_N_f = DMAX(0.,DMIN(1.-f_C_f, 0.37)), f_O_f = DMAX(0.,1.-(f_C_f+f_N_f)); // CNO must sum to unity, so only two degrees of freedom
+        double t0=0.001, t1=0.0037, t2=0.037, t3=3., t4=14.; // set some variables for characteristic times to use below
+        if(t <= t0) {f_He_burn=0; f_C_f=yields[2]/f_CNO_0; f_N_f=yields[3]/f_CNO_0; f_O_f=yields[4]/f_CNO_0;} // pure surface abundances at extremely early times
+        else if(t <= t1) {f_He_burn=0.076;} // placeholders, for now use the constant yields above, but will replace this?????
+        else if(t <= t2) {f_He_burn=0.076;}
+        else if(t <= t3) {f_He_burn=0.076;}
+        else {f_He_burn=0.076 + 0.*t4;}
+        yields[1] = f_He_0 + f_He_burn*f_H_0; // final He fraction
+        yields[2] = f_CNO_0 * f_C_f, yields[3] = f_CNO_0 * f_N_f, yields[4] = f_CNO_0 * f_O_f; // final C,N,O fractions
+#else
+        /* the interesting species are He & CNO: below is based on a compilation of van den Hoek & Groenewegen 1997, Marigo 2001, Izzard 2004 */
         yields[1]=0.36; /*He*/ yields[2]=0.016; /*C*/ yields[3]=0.0041; /*N*/ yields[4]=0.0118; /*O*/
         // metal-dependent yields: O scaling is strongly dependent on initial metallicity of the star //
         if(P[i].Metallicity[0]<0.033) {yields[4] *= P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[4] *= 1.65;}
         for(k=1;k<=4;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]); if(yields[k]<0) {yields[k]=0.0;} if(yields[k]>1) {yields[k]=1;} in->yields[k]=yields[k];} // enforce yields obeying pre-existing surface abundances, and upper/lower limits //
         yields[0]=0.0; for(k=2;k<NUM_METAL_SPECIES;k++) {yields[0]+=yields[k];}
+#endif
     } else {
         yields[0]=0.032; for(k=1;k<NUM_METAL_SPECIES;k++) {yields[k]=0.0;}
     }
@@ -413,11 +455,10 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
     in->SNe_v_ejecta = sqrt(All.StellarMassLoss_Energy_Renormalization) * f0 * (3000./(1.+pow(t/0.003,2.5)) + 600./(1.+pow(sqrt(Z)*t/0.05,6.)+pow(Z/0.2,1.5)) + 30.) / UNIT_VEL_IN_KMS; /* interpolates smoothly from OB winds through AGB, also versus Z */
 #endif
 
-
 #if defined(SINGLE_STAR_FB_WINDS) /* SINGLE-STAR VERSION: instead of a stellar population, this is wind from a single star */
     double m_msun=P[i].Mass*UNIT_MASS_IN_SOLAR;
     in->SNe_v_ejecta = (616. * sqrt((1.+0.1125*m_msun)/(1.+0.0125*m_msun)) * pow(m_msun,0.131)) / UNIT_VEL_IN_KMS; // scaling from size-mass relation+eddington factor, assuming line-driven winds //
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     in->SNe_v_ejecta = single_star_wind_velocity(i); /* for fancy models, wind velocity in subroutine, based on Leitherer 1992 and stellar evolutions tage, size, etc. */
 #endif
 #endif
@@ -432,7 +473,7 @@ double Z_for_stellar_evol(int i)
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(COOL_METAL_LINES_BY_SPECIES) // ??
     int i_Fe=10; Z_solar = P[i].Metallicity[i_Fe]/All.SolarAbundances[i_Fe]; // use Fe, specifically, for computing stellar properties, as its most relevant here. MAKE SURE this is set to the correct abundance in the list, to match Fe!!!
 #endif
-    return DMIN(DMAX(Z_solar,0.01),3.);
+    return DMIN(DMAX(Z_solar,0.01),3.); // stellar evolution tables here are not arbitrarily extrapolable, so this is bounded //
 }
 
 #endif // GALSF_FB_MECHANICAL+GALSF_FB_FIRE_STELLAREVOLUTION
@@ -443,7 +484,7 @@ double Z_for_stellar_evol(int i)
 #ifdef SINGLE_STAR_FB_JETS
 double single_star_jet_velocity(int n){
     /*Calculates the launch velocity of jets*/
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* use the fancy stellar evolution modules to calculate these for stars or protostars */
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) /* use the fancy stellar evolution modules to calculate these for stars or protostars */
     return (All.BAL_f_launch_v * sqrt(All.G * P[n].BH_Mass / (P[n].ProtoStellarRadius_inSolar / UNIT_LENGTH_IN_SOLAR)) * All.cf_atime); // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
 #else
     return (All.BAL_f_launch_v * sqrt(All.G * P[n].BH_Mass / (10. / UNIT_LENGTH_IN_SOLAR)) * All.cf_atime); // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum; without a better guess, assume fiducial protostellar radius of 10*Rsun, as in Federrath 2014
@@ -452,12 +493,12 @@ double single_star_jet_velocity(int n){
 #endif
 
 
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) /* begins large block of 'fancy' protostar-through-MS stellar evolution models */
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) /* begins large block of 'fancy' protostar-through-MS stellar evolution models */
 
 /* 'master' function to update the size (and other properties like effective temperature) of accreting protostars along relevant stellar evolution tracks */
 void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt)
 {
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1)
+#if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 1)
     /* this is the simple version written by Phil: intentionally simplified PS evolution tracks, designed to make it easy to understand and model the evolution and reduce un-necessary complications */
     double lum_sol = 0.0, m_initial = DMAX(1.e-37 , (BPP(n).BH_Mass - dm)), mu = DMAX(0, dm/m_initial), m_solar = BPP(n).BH_Mass*UNIT_MASS_IN_SOLAR, T4000_4 = pow(m_solar, 0.55); // m_initial = mass before the accretion, mu = relative mass accreted, m_solar = mass in solar units, T4000_4 = (temperature/4000K)^4 along Hayashi track
     if(m_solar > 0.012) // below this limit, negligible luminosity //
@@ -481,13 +522,13 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
     if(m_solar <= 1) {R_main_sequence_ignition = pow(m_solar,0.8);} else {R_main_sequence_ignition = pow(m_solar,0.57);}
     if(BPP(n).ProtoStellarRadius_inSolar <= R_main_sequence_ignition)
     {
-        BPP(n).ProtoStellarRadius_inSolar = R_main_sequence_ignition; BPP(n).ProtoStellarStage = 5; //using same notation for MS as SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 1
+        BPP(n).ProtoStellarRadius_inSolar = R_main_sequence_ignition; BPP(n).ProtoStellarStage = 5; //using same notation for MS as SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 1
 #ifdef SINGLE_STAR_PROMOTION
         P[n].Type = 4; P[n].StellarAge = All.Time; P[n].Mass = DMAX(P[n].Mass , BPP(n).BH_Mass + BPP(n).BH_Mass_AlphaDisk); // convert type, mark the new ZAMS age according to the current time, and accrete remaining mass
 #endif
     }
 
-#elif (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2) /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */
+#elif (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2) /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */
     
     double frad = 0.18; //limit for forming radiative barrier, based on Offner+MckKee 2011 source code
     double fk = 0.5; //fraction of kinetic energy that is radiated away in the inner disk before reaching the surface, using default ORION value here as it is not a GIZMO input parameter
@@ -631,8 +672,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                 P[n].Mass = P[n].BH_Mass; 
 #endif
                 //Save properties of SN progenitor
-                fprintf(FdBhSNDetails, "%g %u %g %g %g %g %g %g %g \n", All.Time, P[n].ID, P[n].BH_Mass, P[n].Pos[0], P[n].Pos[1],P[n].Pos[2],P[n].Vel[0], P[n].Vel[1],P[n].Vel[2]);
-                fflush(FdBhSNDetails);
+                fprintf(FdBhSNDetails, "%g %u %g %g %g %g %g %g %g \n", All.Time, P[n].ID, P[n].BH_Mass, P[n].Pos[0], P[n].Pos[1],P[n].Pos[2],P[n].Vel[0], P[n].Vel[1],P[n].Vel[2]); fflush(FdBhSNDetails);
             }
 #endif
         }
@@ -656,10 +696,10 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
 #else
     BPP(n).StarLuminosity_Solar = (eps_protostar*All.G*mass*mdot/r + lum_Hayashi) * UNIT_LUM_IN_SOLAR; //same as above but we don't count H burning for th emission. Thsi way the radial evolution follows the same track as with the full model, but we don't provide feedback from H burning to the nearby gas
 #endif
-#endif//end of SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2
+#endif//end of SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2
 
 #ifdef PS_EVOL_OUTPUT_MOREINFO // print out the basic star info
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2)
+#if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
     if (BPP(n).ProtoStellarStage >= 5) //only for MS stars, for previous stages we will print out the properties before
 #endif
     {printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: 0 rel_dr: 0 dm: %g dm_D: 0 Tc: 0 Pc: 0 rhoc: 0 beta: 0 dt: %g n_ad: 0 lum_int: 0 lum_I: 0 lum_D: 0 age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: 0 n_subcycle: 0.ZAMS_Mass %g PS_end\n",All.Time, P[n].ID,BPP(n).BH_Mass*UNIT_MASS_IN_SOLAR,BPP(n).ProtoStellarRadius_inSolar,BPP(n).ProtoStellarStage, BPP(n).BH_Mdot*UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR , dm*UNIT_MASS_IN_SOLAR, dt*UNIT_TIME_IN_MYR, (All.Time-P[n].ProtoStellarAge)*UNIT_TIME_IN_MYR, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk*UNIT_MASS_IN_SOLAR, BPP(n).SinkRadius, P[n].ZAMS_Mass );}
@@ -787,7 +827,7 @@ void single_star_SN_init_directions(void){
 #endif
 
 
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2) /* Functions for protosteller evolution model based on Offner 2009 */
+#if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2) /* Functions for protosteller evolution model based on Offner 2009 */
 /* Calculate the mean ratio of the gas pressure to the gas+radiation pressure, either by solving the Eddington quartic (for n_ad=3, Eq B5) or by using tabulated values, based on Offner 2009, code taken from ORION */
 double ps_beta(double m, double n_ad, double rhoc, double Pc) {
     double mass=m*UNIT_MASS_IN_SOLAR;//in units of solar mass
@@ -910,7 +950,7 @@ double ps_radius_MS_in_solar(double m) {
     return (1.71535900*pow(m_solar,2.5)+6.59778800*pow(m_solar,6.5)+10.08855000*pow(m_solar,11)+1.01249500*pow(m_solar,19)+0.07490166*pow(m_solar,19.5)) /
         (0.01077422+3.08223400*pow(m_solar,2)+17.84778000*pow(m_solar,8.5)+pow(m_solar,18.5)+0.00022582*pow(m_solar,19.5));
 }
-#endif // (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2) /* end functions for protosteller evolution model based on Offner 2009 */
+#endif // (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2) /* end functions for protosteller evolution model based on Offner 2009 */
 
 
 #endif //end of protostellar evolution functions
