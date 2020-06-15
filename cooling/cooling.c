@@ -238,6 +238,10 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     u = (double) ChimesGasVars[target].temperature * BOLTZMANN / ((GAMMA(target)-1) * PROTONMASS * calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars));
     u /= UNIT_SPECEGY_IN_CGS;  // code units
 
+#ifdef CHIMES_TURB_DIFF_IONS 
+    chimes_update_turbulent_abundances(target, 1); 
+#endif 
+
     return DMAX(u, All.MinEgySpec);
 
 #else // CHIMES
