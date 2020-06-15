@@ -44,8 +44,8 @@ double return_user_desired_target_pressure(int i)
     variable as well. */
 double get_pressure(int i)
 {
-    double soundspeed=0, press=0, gamma_eos_index = GAMMA(i); /* get effective adiabatic index */
-    press = (gamma_eos_index-1) * SphP[i].InternalEnergyPred * Particle_density_for_energy_i(i); /* ideal gas EOS (will get over-written it more complex EOS assumed) */
+    double soundspeed, press=0, gamma_eos_index = GAMMA(i); soundspeed=0; /* get effective adiabatic index */
+    press = (gamma_eos_index-1) * SphP[i].InternalEnergyPred * Get_Gas_density_for_energy_i(i); /* ideal gas EOS (will get over-written it more complex EOS assumed) */
     
     
 #ifdef GALSF_EFFECTIVE_EQS /* modify pressure to 'interpolate' between effective EOS and isothermal, with the Springel & Hernquist 2003 'effective' EOS */
@@ -84,19 +84,20 @@ double get_pressure(int i)
 
     
 #ifdef EOS_GMC_BAROTROPIC // barytropic EOS calibrated to Masunaga & Inutsuka 2000, eq. 4 in Federrath 2014 Apj 790. Reasonable over the range of densitites relevant to some small-scale star formation problems
-    gamma_eos_index=7./5.; double rho=Particle_density_for_energy_i(i), nH_cgs=rho*All.cf_a3inv * ( All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam ) / PROTONMASS;
+    gamma_eos_index=7./5.; double rho=Get_Gas_density_for_energy_i(i), nH_cgs=rho*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
     if(nH_cgs > 2.30181e16) {gamma_eos_index=5./3.;} /* dissociates to atomic if dense enough (hot) */
-#if (EOS_GMC_BAROTROPIC==0) // EOS used in Bate Bonnell & Bromm 2003 and related works - isothermal below 6e10 cm^-3, adiabatic above. Assumes c_s = 200m/s at low density
-    if (nH_cgs < 6e10) {press = 6.60677e-16 * nH_cgs;} // isothermal below 6e10 cm^-3 (adiabatic gamma=5/3 for soundspeed, etc, but this assumes effective eos from cooling, etc
-    else press = 3.964062e-5 * pow(nH_cgs/6e10,1.4);
-#else    
     if (nH_cgs < 1.49468e8) {press = 6.60677e-16 * nH_cgs;} // isothermal below ~10^8 cm^-3 (adiabatic gamma=5/3 for soundspeed, etc, but this assumes effective eos from cooling, etc
     else if (nH_cgs < 2.30181e11) {press = 1.00585e-16 * pow(nH_cgs, 1.1);} // 'transition' region
     else if (nH_cgs < 2.30181e16) {press = 3.92567e-20 * pow(nH_cgs, gamma_eos_index);} // adiabatic molecular
     else if (nH_cgs < 2.30181e21) {press = 3.1783e-15 * pow(nH_cgs, 1.1);} // 'transition' region
     else {press = 2.49841e-27 * pow(nH_cgs, gamma_eos_index);} // adiabatic atomic
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(EOS_GMC_BAROTROPIC)
+#if (EOS_GMC_BAROTROPIC==1) // EOS used in Bate Bonnell & Bromm 2003 and related works - isothermal below 6e10 cm^-3, adiabatic above. Assumes c_s = 200m/s at low density
+    if (nH_cgs < 6e10) {press = 6.60677e-16 * nH_cgs;} // isothermal below 6e10 cm^-3 (adiabatic gamma=5/3 for soundspeed, etc, but this assumes effective eos from cooling, etc
+    else press = 3.964062e-5 * pow(nH_cgs/6e10,1.4);
 #endif
-    press /= All.UnitPressure_in_cgs;
+#endif
+    press /= UNIT_PRESSURE_IN_CGS;
     /* in this case the EOS is modeling cooling, etc, so -does not- allow shocks or deviations from adiabat, so we reset the internal energy every time this is checked */
     SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (rho * (gamma_eos_index-1.));
 #endif
@@ -106,7 +107,7 @@ double get_pressure(int i)
     double soundspeed2 = gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred;
     int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
-        press += Get_Particle_CosmicRayPressure(i,k_CRegy);
+        press += Get_Gas_CosmicRayPressure(i,k_CRegy);
         soundspeed2 += GAMMA_COSMICRAY*GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred[k_CRegy] / P[i].Mass;
 #ifdef COSMIC_RAYS_ALFVEN
         press += (GAMMA_ALFVEN_CRS-1) * SphP[i].Density * (SphP[i].CosmicRayAlfvenEnergy[k_CRegy][0]+SphP[i].CosmicRayAlfvenEnergy[k_CRegy][1]);
@@ -146,7 +147,7 @@ double get_pressure(int i)
     
     
 #ifdef EOS_GENERAL /* need to be sure soundspeed variable is set: if not defined above, set it to the default which is given by the effective gamma */
-    if(soundspeed == 0) {SphP[i].SoundSpeed = sqrt(gamma_eos_index * press / Particle_density_for_energy_i(i));} else {SphP[i].SoundSpeed = soundspeed;}
+    if(soundspeed == 0) {SphP[i].SoundSpeed = sqrt(gamma_eos_index * press / Get_Gas_density_for_energy_i(i));} else {SphP[i].SoundSpeed = soundspeed;}
 #endif
     return press;
 }
@@ -162,7 +163,7 @@ double gamma_eos(int i)
     if(i>=0) {
         if(P[i].Type==0) {
             double T_eff_atomic = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred;
-            double nH_cgs = SphP[i].Density*All.cf_a3inv * ( All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam ) / PROTONMASS;
+            double nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
             double T_transition=DMIN(8000.,nH_cgs), f_mol=1./(1. + T_eff_atomic*T_eff_atomic/(T_transition*T_transition));
             /* double gamma_mol_atom = (29.-8./(2.-f_mol))/15.; // interpolates between 5/3 (fmol=0) and 7/5 (fmol=1) */
             /* return gamma_mol_atom + (5./3.-gamma_mol_atom) / (1 + T_eff_atomic*T_eff_atomic/(40.*40.)); // interpolates back up to 5/3 when temps fall below ~30K [cant excite upper states] */
@@ -204,7 +205,7 @@ void check_particle_for_temperature_minimum(int i)
 
 
 
-double INLINE_FUNC Particle_density_for_energy_i(int i)
+double INLINE_FUNC Get_Gas_density_for_energy_i(int i)
 {
 #ifdef HYDRO_PRESSURE_SPH
     return SphP[i].EgyWtDensity;
@@ -213,15 +214,42 @@ double INLINE_FUNC Particle_density_for_energy_i(int i)
 }
 
 
-
-double INLINE_FUNC Particle_effective_soundspeed_i(int i)
+/* calculate the 'total' effective sound speed in a given element [including e.g. cosmic ray pressure and other forms of pressure, if present] */
+double INLINE_FUNC Get_Gas_effective_soundspeed_i(int i)
 {
 #ifdef EOS_GENERAL
     return SphP[i].SoundSpeed;
 #else
     /* if nothing above triggers, then we resort to good old-fashioned ideal gas */
-    return sqrt(GAMMA(i) * SphP[i].Pressure / Particle_density_for_energy_i(i));
+    return sqrt(GAMMA(i) * SphP[i].Pressure / Get_Gas_density_for_energy_i(i));
 #endif
+}
+
+
+/* calculate the thermal sound speed (using just the InternalEnergy variable) in a given element */
+double INLINE_FUNC Get_Gas_thermal_soundspeed_i(int i)
+{
+    return sqrt(convert_internalenergy_soundspeed2(i,SphP[i].InternalEnergyPred));
+}
+
+
+/* calculate the Alfven speed in a given element */
+double Get_Gas_Alfven_speed_i(int i)
+{
+#if defined(MAGNETIC)
+    int k; double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Gas_BField(i,k)*All.cf_a2inv*Get_Gas_BField(i,k)*All.cf_a2inv;}
+    if(bmag > 0) {return sqrt(bmag / (MIN_REAL_NUMBER + SphP[i].Density*All.cf_a3inv));}
+#endif
+    return 0;
+}
+
+/* calculate and return the actual B Field of a cell */
+double INLINE_FUNC Get_Gas_BField(int i_particle_id, int k_vector_component)
+{
+#if defined(MAGNETIC)
+    return SphP[i_particle_id].BPred[k_vector_component] * SphP[i_particle_id].Density / P[i_particle_id].Mass;
+#endif
+    return 0;
 }
 
 
@@ -238,15 +266,121 @@ double INLINE_FUNC convert_internalenergy_soundspeed2(int i, double u)
 double Get_Gas_Ionized_Fraction(int i)
 {
 #ifdef COOLING
-    double ne=SphP[i].Ne, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, u0=SphP[i].InternalEnergyPred;
+#ifdef CHIMES 
+  return (double) ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_HII]]; 
+#else 
+    double ne=1, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, u0=SphP[i].InternalEnergyPred;
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
-#ifdef GALSF_FB_FIRE_RT_HIIHEATING
-    if(SphP[i].DelayTimeHII>0) {nh0=0;} // account for our effective ionization model here
-#endif
     double f_ion = DMIN(DMAX(DMAX(DMAX(1-nh0, nhp), ne/1.2), 1.e-8), 1.); // account for different measures above (assuming primordial composition)
     return f_ion;
 #endif
+#endif
     return 1;
+}
+
+
+/* return an estimate of the Hydrogen molecular fraction of gas, intended for simulations of e.g. molecular clouds, galaxies, and star formation */
+double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral_fraction, double urad_from_uvb_in_G0, double clumping_factor)
+{
+    /* if tracking chemistry explicitly, return the explicitly-evolved H2 fraction */
+#ifdef CHIMES // use the CHIMES molecular network for H2
+    return DMIN(1,DMAX(0, ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_H2]] * 2.0)); // factor 2 converts to mass fraction in molecular gas, as desired
+#endif
+    
+#if (COOL_GRACKLE_CHEMISTRY >= 2) // Use GRACKLE explicitly-tracked H2 [using the molecular network if this is valid]
+    return DMIN(1,DMAX(0, SphP[i].grH2I + SphP[i].grH2II)); // include both states of H2 tracked
+#endif
+    
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) /* ?? if not tracking chemistry explicitly, return a simple estimate of H2 fraction following the KMT [Apj 2009 693, 216] model */
+    if(temperature > 3.e5) {return 0;} // approximations below not designed for high temperatures, should simply give null
+    /* get neutral fraction [given by call to this program] */
+    double f_neutral=DMAX(neutral_fraction,0.);
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING)
+    if(SphP[i].DelayTimeHII > 0) {return 0;} // force gas flagged as in HII regions to have zero molecular fraction
+#endif
+    /* get metallicity */
+    double Z_Zsol=1, urad_G0=1; // assumes spatially uniform Habing field for incident FUV radiation unless reset below //
+#ifdef METALS
+    Z_Zsol = P[i].Metallicity[0]/All.SolarAbundances[0] + 1.e-3 ; // metallicity in solar units [scale to total Z, since this mixes dust and C opacity], and enforce a low-Z floor to prevent totally unphysical behaviors at super-low Z [where there is still finite opacity in reality; e.g. Kramer's type and other opacities enforce floor around ~1e-3]
+#endif
+    /* get incident radiation field */
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
+    urad_G0 = DMAX(SphP[i].Rad_Flux_UV, 0.1); // note this is ALREADY self-shielded, so we need to be careful about 2x-counting the self-shielding approximation below; hence limit this to a rather sizeable value  //
+#endif
+#if defined(RT_PHOTOELECTRIC) || defined(RT_LYMAN_WERNER)
+    int whichbin = RT_FREQ_BIN_LYMAN_WERNER;
+#if !defined(RT_LYMAN_WERNER)
+    whichbin = RT_FREQ_BIN_PHOTOELECTRIC; // use photo-electric bin as proxy (very close) if don't evolve LW explicitly
+#endif
+    urad_G0 = SphP[i].Rad_E_gamma[whichbin] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_CGS / 3.9e-14; // convert to Habing field //
+#endif
+    urad_G0 += urad_from_uvb_in_G0; // include whatever is contributed from the meta-galactic background, fed into this routine
+    urad_G0 = DMIN(DMAX( urad_G0 , 1.e-3 ) , 1.e10 ); // limit values, because otherwise exponential self-shielding approximation easily artificially gives 0 incident field
+    /* get estimate of mass column density integrated away from this location for self-shielding */
+    double surface_density_Msun_pc2 = 0.05 * evaluate_NH_from_GradRho(SphP[i].Gradients.Density,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS / 0.000208854; // approximate column density with Sobolev or Treecol methods as appropriate; converts to M_solar/pc^2
+    /* 0.05 above is in testing, based on calculations by Laura Keating: represents a plausible re-scaling of the shielding length for sub-grid clumping */
+    /* get estimate of local density and clumping factor */
+    double nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS; // get nH defined as in KMT [number of nucleons per cm^3]
+    double clumping_factor_for_unresolved_densities = clumping_factor; // Gnedin et al. add a large clumping factor to account for inability to resolve high-densities, here go with what is resolved
+    /* now actually do the relevant calculation with the KMT fitting functions */
+    double chi = 0.766 * (1. + 3.1*pow(Z_Zsol,0.365)); // KMT estimate of chi, useful if we do -not- know anything about actual radiation field
+    if(urad_G0 >= 0) {chi = 71. * urad_G0 / (clumping_factor_for_unresolved_densities * nH_cgs);} // their actual fiducial value including radiation information
+    double psi = chi * (1.+0.4*chi)/(1.+1.08731*chi); // slightly-transformed chi variable
+    double s = Z_Zsol * surface_density_Msun_pc2 / (MIN_REAL_NUMBER + psi); // key variable controlling shielding in the KMT approximaton
+    double q = s * (125. + s) / (11. * (96. + s)); // convert to more useful form from their Eq. 37
+    double fH2 = 1. - pow(1.+q*q*q , -1./3.); // full KMT expression [unlike log-approximation, this extrapolates physically at low-q]
+    if(q<0.2) {fH2 = q*q*q * (1. - 2.*q*q*q/3.)/3.;} // catch low-q limit more accurately [prevent roundoff error problems]
+    if(q>10.) {fH2 = 1. - 1./q;} // catch high-q limit more accurately [prevent roundoff error problems]
+    fH2 = DMIN(1,DMAX(0, fH2 * f_neutral)); // multiple by neutral fraction, as this is ultimately the fraction of the -neutral- gas in H2
+    return fH2;
+#endif
+    
+#if (SINGLE_STAR_SINK_FORMATION & 256) || defined(GALSF_SFR_MOLECULAR_CRITERION) /* estimate f_H2 with Krumholz & Gnedin 2010 fitting function, assuming simple scalings of radiation field, clumping, and other factors with basic gas properties so function only of surface density and metallicity, truncated at low values (or else it gives non-sensical answers) */
+    double fH2_kg=0, tau_fmol = (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]) * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * 434.78 * UNIT_SURFDEN_IN_CGS; // convert units for surface density. also limit to Z>=0.1, where their fits were actually good, or else get unphysically low molecular fractions
+    if(tau_fmol>0) {double y = 0.756 * (1 + 3.1*pow(P[i].Metallicity[0]/All.SolarAbundances[0],0.365)) / clumping_factor; // this assumes all the equilibrium scalings of radiation field, density, SFR, etc, to get a trivial expression
+        y = log(1 + 0.6*y + 0.01*y*y) / (0.6*tau_fmol); y = 1 - 0.75*y/(1 + 0.25*y); fH2_kg=DMIN(1,DMAX(0,y));}
+    return fH2_kg * neutral_fraction;
+#endif
+    
+#if defined(COOLING) /* if none of the above is set, default to a wildly-oversimplified scaling set by fits to the temperature below which gas at a given density becomes molecular from cloud simulations in Glover+Clark 2012 */
+    double T_mol = DMAX(1.,DMIN(8000., SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS));
+    return neutral_fraction / (1. + temperature*temperature/(T_mol*T_mol));
+#endif
+    
+    return 0; // catch //
+}
+
+
+/* return helium -number- fraction, not mass fraction */
+double yhelium(int target)
+{
+#ifdef COOL_METAL_LINES_BY_SPECIES
+    if(target >= 0) {double ytmp=DMIN(0.5,P[target].Metallicity[1]); return 0.25*ytmp/(1.-ytmp);} else {return ((1-HYDROGEN_MASSFRAC)/(4*HYDROGEN_MASSFRAC));}
+#else
+    return ((1-HYDROGEN_MASSFRAC)/(4*HYDROGEN_MASSFRAC)); // assume uniform H-He gas
+#endif
+}
+
+
+/* return mean molecular weight, appropriate for the approximations of the user-selected chemical network[s] */
+double Get_Gas_Mean_Molecular_Weight_mu(double T_guess, double rho, double *xH0, double *ne_guess, double urad_from_uvb_in_G0, int target)
+{
+#if defined(CHIMES)
+    return calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars);
+#elif defined(COOLING)
+    double X=HYDROGEN_MASSFRAC, Y=1.-X, Z=0, fmol;
+#ifdef METALS
+    if(target >= 0)
+    {
+        Z = DMIN(0.25,P[target].Metallicity[0]); if(NUM_METAL_SPECIES>=10) {Y = DMIN(0.35,P[target].Metallicity[1]);}
+        X = 1. - (Y+Z);
+    }
+#endif
+    fmol = Get_Gas_Molecular_Mass_Fraction(target, T_guess, *xH0, urad_from_uvb_in_G0, 1); /* use our simple subroutine to estimate this, ignoring UVB and with clumping factor=1 */
+    return 1. / ( X*(1-0.5*fmol) + Y/4. + *ne_guess*HYDROGEN_MASSFRAC + Z/(16.+12.*fmol) ); // since our ne is defined in some routines with He, should multiply by universal
+#else
+    return 4./(3.+5.*HYDROGEN_MASSFRAC); // fully-ionized H-He plasma
+#endif
 }
 
 

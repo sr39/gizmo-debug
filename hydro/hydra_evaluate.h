@@ -14,7 +14,7 @@
 int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     int j, k, n, startnode, numngb, kernel_mode, listindex;
-    double hinv_i,hinv3_i,hinv4_i,hinv_j,hinv3_j,hinv4_j,V_i,V_j,dt_hydrostep,r2,rinv,rinv_soft,u,Particle_Size_i;
+    double hinv_i,hinv3_i,hinv4_i,hinv_j,hinv3_j,hinv4_j,V_i,V_j,dt_hydrostep_i,dt_hydrostep_j,dt_hydrostep,r2,rinv,rinv_soft,u,Particle_Size_i;
     double v_hll,k_hll,b_hll; v_hll=k_hll=0,b_hll=1;
     struct kernel_hydra kernel;
     struct INPUT_STRUCT_NAME local;
@@ -71,7 +71,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
     hinv_j=hinv3_j=hinv4_j=0;
     V_i = local.Mass / local.Density;
     Particle_Size_i = pow(V_i,1./NUMDIMS) * All.cf_atime; // in physical, used below in some routines //
-    dt_hydrostep = local.Timestep * All.Timebase_interval / All.cf_hubble_a; /* (physical) timestep */
+    dt_hydrostep_i = local.Timestep * UNIT_INTEGERTIME_IN_PHYSICAL; /* (physical) timestep */
     out.MaxSignalVel = kernel.sound_i;
     kernel_mode = 0; /* need dwk and wk */
     double cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber;
@@ -145,7 +145,8 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif
 
                 /* check if I need to compute this pair-wise interaction from "i" to "j", or skip it and let it be computed from "j" to "i" */
-                integertime TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
+                integertime TimeStep_J; TimeStep_J = GET_PARTICLE_INTEGERTIME(j); dt_hydrostep_j = TimeStep_J * UNIT_INTEGERTIME_IN_PHYSICAL;
+                dt_hydrostep = DMAX(dt_hydrostep_i , dt_hydrostep_j); // this is used for flux-limiting, so we always want to be more conservative and use the larger timestep //
                 int j_is_active_for_fluxes = 0;
 #if !defined(BOX_SHEARING) && !defined(_OPENMP) // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this; OpenMP on some new compilers goes bad here because pointers [e.g. P...] are not thread-safe shared with predictive operations, and vectorization means no gain here with OMP anyways) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
@@ -200,21 +201,21 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 kernel.dv[1] = local.Vel[1] - VelPred_j[1];
                 kernel.dv[2] = local.Vel[2] - VelPred_j[2];
                 kernel.rho_ij_inv = 2.0 / (local.Density + SphP[j].Density);
-                double Particle_Size_j = Get_Particle_Size(j) * All.cf_atime; /* physical units */
+                double Particle_Size_j; Particle_Size_j = Get_Particle_Size(j) * All.cf_atime; /* physical units */
 
                 /* --------------------------------------------------------------------------------- */
                 /* sound speed, relative velocity, and signal velocity computation */
-                kernel.sound_j = Particle_effective_soundspeed_i(j);
+                kernel.sound_j = Get_Gas_effective_soundspeed_i(j);
                 kernel.vsig = kernel.sound_i + kernel.sound_j;
 #ifdef COSMIC_RAYS
-                double CosmicRayPressure_j[N_CR_PARTICLE_BINS]; for(k=0;k<N_CR_PARTICLE_BINS;k++) {CosmicRayPressure_j[k] = Get_Particle_CosmicRayPressure(j,k);} /* compute this for use below */
+                double CosmicRayPressure_j[N_CR_PARTICLE_BINS]; for(k=0;k<N_CR_PARTICLE_BINS;k++) {CosmicRayPressure_j[k] = Get_Gas_CosmicRayPressure(j,k);} /* compute this for use below */
                 //double Streaming_Loss_Term = 0; // alternative evaluation of streaming+diffusion losses: still experimental //
 #endif
 #ifdef MAGNETIC
                 double BPred_j[3];
-                for(k=0;k<3;k++) {BPred_j[k]=Get_Particle_BField(j,k);} /* defined j b-field in appropriate units for everything */
+                for(k=0;k<3;k++) {BPred_j[k]=Get_Gas_BField(j,k);} /* defined j b-field in appropriate units for everything */
 #ifdef DIVBCLEANING_DEDNER
-                double PhiPred_j = Get_Particle_PhiField(j); /* define j phi-field in appropriate units */
+                double PhiPred_j = Get_Gas_PhiField(j); /* define j phi-field in appropriate units */
 #endif
                 kernel.b2_j = BPred_j[0]*BPred_j[0] + BPred_j[1]*BPred_j[1] + BPred_j[2]*BPred_j[2];
                 kernel.alfven2_j = kernel.b2_j * fac_magnetic_pressure / SphP[j].Density;
@@ -233,7 +234,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif
                 kernel.vdotr2 = kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2];
                 // hubble-flow correction: need in -code- units, hence extra a2 appearing here //
-                if(All.ComovingIntegrationOn) kernel.vdotr2 += All.cf_hubble_a2 * r2;
+                if(All.ComovingIntegrationOn) {kernel.vdotr2 += All.cf_hubble_a2 * r2;}
                 if(kernel.vdotr2 < 0)
                 {
 #if defined(HYDRO_SPH) || defined(HYDRO_MESHLESS_FINITE_VOLUME)
@@ -354,7 +355,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif
 
 #ifdef CHIMES_TURB_DIFF_IONS
-#include "chimes_turbulent_ion_diffusion.h"
+#include "../turb/chimes_turbulent_ion_diffusion.h"
 #endif
 
 #ifdef COSMIC_RAYS
@@ -374,7 +375,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 /* now we will actually assign the hydro variables for the evolution step */
                 /* --------------------------------------------------------------------------------- */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-                double dmass_holder = Fluxes.rho * dt_hydrostep, dmass_limiter;
+                double dmass_holder = Fluxes.rho * dt_hydrostep_i, dmass_limiter;
                 if(dmass_holder > 0) {dmass_limiter=P[j].Mass;} else {dmass_limiter=local.Mass;}
                 dmass_limiter *= 0.1;
                 if(fabs(dmass_holder) > dmass_limiter) {dmass_holder *= dmass_limiter / fabs(dmass_holder);}

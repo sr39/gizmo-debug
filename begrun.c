@@ -399,6 +399,7 @@ void begrun(void)
 #endif
 
 #ifdef NUCLEAR_NETWORK
+      strcpy(All.EosSpecies, all.EosSpecies);
       strcpy(All.NetworkRates, all.NetworkRates);
       strcpy(All.NetworkPartFunc, all.NetworkPartFunc);
       strcpy(All.NetworkMasses, all.NetworkMasses);
@@ -448,7 +449,7 @@ void begrun(void)
 #endif
 #endif
 
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     single_star_SN_init_directions();
 #endif
 #ifdef RADTRANSFER
@@ -485,53 +486,34 @@ void begrun(void)
  */
 void set_units(void)
 {
-  double meanweight;
-
-  All.UnitTime_in_s = All.UnitLength_in_cm / All.UnitVelocity_in_cm_per_s;
-  All.UnitTime_in_Megayears = All.UnitTime_in_s / (1.0e6*SEC_PER_YEAR);
-
-  if(All.GravityConstantInternal == 0)
-    All.G = GRAVITY_G / pow(All.UnitLength_in_cm, 3) * All.UnitMass_in_g * pow(All.UnitTime_in_s, 2);
-  else
-    All.G = All.GravityConstantInternal;
+  /* convert some physical input parameters to internal units */
+  if(All.G <= 0) {All.G = GRAVITY_G * UNIT_MASS_IN_CGS / (UNIT_LENGTH_IN_CGS * UNIT_VEL_IN_CGS*UNIT_VEL_IN_CGS);}
 #ifdef GR_TABULATED_COSMOLOGY_G
   All.Gini = All.G;
   All.G = All.Gini * dGfak(All.TimeBegin);
 #endif
-
-  All.UnitDensity_in_cgs = All.UnitMass_in_g / pow(All.UnitLength_in_cm, 3);
-  All.UnitPressure_in_cgs = All.UnitMass_in_g / All.UnitLength_in_cm / pow(All.UnitTime_in_s, 2);
-  All.UnitEnergy_in_cgs = All.UnitMass_in_g * pow(All.UnitLength_in_cm, 2) / pow(All.UnitTime_in_s, 2);
-
-#ifdef GDE_DISTORTIONTENSOR
-  All.UnitDensity_in_Gev_per_cm3 = 5.609589206e23 / pow(All.UnitLength_in_cm, 3) * All.UnitMass_in_g; /* 5.609589206e23 is the factor to convert from g to GeV/c^2, the rest comes from All.UnitDensity_in_cgs */
-#endif
-
-  /* convert some physical input parameters to internal units */
-
-  All.Hubble_H0_CodeUnits = HUBBLE_CGS * All.UnitTime_in_s;
-
+  All.Hubble_H0_CodeUnits = H0_CGS * UNIT_TIME_IN_CGS;
   if(ThisTask == 0)
     {
-      printf("\nHubble (internal units) = %g\n", All.Hubble_H0_CodeUnits);
-      printf("G (internal units) = %g\n", All.G);
-      printf("UnitMass_in_g = %g \n", All.UnitMass_in_g);
-      printf("UnitTime_in_s = %g \n", All.UnitTime_in_s);
-      printf("UnitVelocity_in_cm_per_s = %g \n", All.UnitVelocity_in_cm_per_s);
-      printf("UnitDensity_in_cgs = %g \n", All.UnitDensity_in_cgs);
-      printf("UnitEnergy_in_cgs = %g \n", All.UnitEnergy_in_cgs);
-#ifdef GDE_DISTORTIONTENSOR
-      printf("Annihilation radiation units:\n");
-      printf("UnitDensity_in_Gev_per_cm3 = %g\n", All.UnitDensity_in_Gev_per_cm3);
-#endif
-
+      printf("\nCode units to be used: make sure you check these are correct! \n");
+      printf("  Hubble H0 (internal units) = %g \n", All.Hubble_H0_CodeUnits);
+      printf("  Gravity G (internal units) = %g \n", All.G);
+      printf("  unit Mass in g             = %g \n", UNIT_MASS_IN_CGS);
+      printf("  unit Length in cm          = %g \n", UNIT_LENGTH_IN_CGS);
+      printf("  unit Time in s             = %g \n", UNIT_TIME_IN_CGS);
+      printf("  unit Velocity in cm/s      = %g \n", UNIT_VEL_IN_CGS);
+      printf("  unit Energy in erg         = %g \n", UNIT_ENERGY_IN_CGS);
+      printf("  unit Density in g/cm^3     = %g \n", UNIT_DENSITY_IN_CGS);
+      printf("  unit Pressure in erg/cm^3  = %g \n", UNIT_PRESSURE_IN_CGS);
+      printf("  unit Luminosity in erg/s   = %g \n", UNIT_LUM_IN_CGS);
+      printf("  unit Flux in erg/s/cm^2    = %g \n", UNIT_FLUX_IN_CGS);
+      printf("  unit B[internal] in gauss  = %g \n", UNIT_B_IN_GAUSS);
       printf("\n");
     }
 
+    double meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC); /* assumes fully-atomic otherwise */
 #ifdef COOL_LOW_TEMPERATURES
     meanweight = 1. / ( HYDROGEN_MASSFRAC*0.5 + (1-HYDROGEN_MASSFRAC)/4. + 1./(16.+12.)); /* assumes fully-molecular if low-temp cooling enabled */
-#else
-    meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC); /* assumes fully-atomic otherwise */
 #endif
     All.MinEgySpec = All.MinGasTemp / (meanweight * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
 
@@ -540,7 +522,7 @@ void set_units(void)
   /* for historical reasons, we need to convert to "All.MaxSfrTimescale", defined as the SF timescale in code units at the critical physical
      density given above. use the dimensionless SfEffPerFreeFall (which has been read in) to calculate this. This must be done -BEFORE- calling set_units_sfr) */
 #ifndef GALSF_EFFECTIVE_EQS
-    All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity * meanweight * PROTONMASS / (All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam))));
+    All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity * meanweight / UNIT_DENSITY_IN_NHCGS)));
 #endif
     set_units_sfr();
 #endif
@@ -548,7 +530,7 @@ void set_units(void)
 
 #ifdef DM_FUZZY
     /* For Schroedinger equation: this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass. This is the key variable used throughout */
-    All.ScalarField_hbar_over_mass = 591569.0 / ((double)All.ScalarField_hbar_over_mass * (double)All.UnitVelocity_in_cm_per_s * (double)All.UnitLength_in_cm/(double)All.HubbleParam);
+    All.ScalarField_hbar_over_mass = 591569.0 / ((double)All.ScalarField_hbar_over_mass * UNIT_VEL_IN_CGS * UNIT_LENGTH_IN_CGS);
 #endif
 
 
@@ -559,7 +541,7 @@ void set_units(void)
     double u_to_temp = meanweight_ion * (GAMMA_DEFAULT-1.) * U_TO_TEMP_UNITS; /* for full ionization, assume gas has a monatomic ideal eos gamma=5/3 */
     /* Kappa_Spitzer definition taken from Zakamska & Narayan 2003 ( ApJ 582:162-169, Eq. (5) ) */
     double coulomb_log = 37.8; // Sarazin value (recommendation from PIC calculations) //
-    double coefficient = (1.84e-5/coulomb_log) * pow(u_to_temp,3.5) * ((All.UnitTime_in_s*All.UnitTime_in_s*All.UnitTime_in_s) / (All.UnitLength_in_cm*All.UnitMass_in_g * All.HubbleParam*All.HubbleParam)); // ok, this multiplied by the specific energy (u_code)^(3/2) gives the diffusity of u_code, as needed (density term is included in said diffusivity)
+    double coefficient = (1.84e-5/coulomb_log) * pow(u_to_temp,3.5) * ((UNIT_TIME_IN_CGS*UNIT_TIME_IN_CGS*UNIT_TIME_IN_CGS) / (UNIT_LENGTH_IN_CGS*UNIT_MASS_IN_CGS)); // ok, this multiplied by the specific energy (u_code)^(3/2) gives the diffusity of u_code, as needed (density term is included in said diffusivity)
 #ifdef CONDUCTION_SPITZER
     All.ConductionCoeff *= coefficient;
 #endif
@@ -569,13 +551,12 @@ void set_units(void)
 #endif
     /* factor used for determining saturation */
     All.ElectronFreePathFactor = 8 * pow(3.0, 1.5) * pow((GAMMA_DEFAULT-1), 2) / pow(3 + 5 * HYDROGEN_MASSFRAC, 2)
-        / (1 + HYDROGEN_MASSFRAC) / sqrt(M_PI) / coulomb_log * pow(PROTONMASS, 3) / pow(ELECTRONCHARGE, 4)
-        / (All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) * pow(All.UnitPressure_in_cgs / All.UnitDensity_in_cgs, 2);
+        / (1 + HYDROGEN_MASSFRAC) / sqrt(M_PI) / coulomb_log * pow(PROTONMASS, 3) / pow(ELECTRONCHARGE, 4) / (UNIT_DENSITY_IN_CGS) * pow(UNIT_SPECEGY_IN_CGS, 2);
 
   /* If the above value is multiplied with u^2/rho in code units (with rho being the physical density), then
    * one gets the electron mean free path in centimeters. Since we want to compare this with another length
    * scale in code units, we now add an additional factor to convert back to code units. */
-  All.ElectronFreePathFactor *= All.HubbleParam / All.UnitLength_in_cm;
+  All.ElectronFreePathFactor /= UNIT_LENGTH_IN_CGS;
 #endif
 
 
@@ -584,116 +565,57 @@ void set_units(void)
 
 
 
-/*!  This function opens various log-files that report on the status and
- *   performance of the simulstion. On restart from restart-files
- *   (start-option 1), the code will append to these files.
- */
+/*!  This function opens various log-files that report on the status and performance of the simulation.
+        On restart from restart-files, (start-option 1), the code will append to these files. */
 void open_outputfiles(void)
 {
   char mode[2], buf[200];
-
-  if(RestartFlag == 0)
-    strcpy(mode, "w");
-  else
-    strcpy(mode, "a");
-
-  if(ThisTask == 0)
-    mkdir(All.OutputDir, 02755);
+  if(RestartFlag == 0) {strcpy(mode, "w");} else {strcpy(mode, "a");}
+  if(ThisTask == 0) {mkdir(All.OutputDir, 02755);}
   MPI_Barrier(MPI_COMM_WORLD);
 
-#ifdef BLACK_HOLES
-  /* Note: This is done by everyone, even if it might be empty */
-  if(ThisTask == 0)
-    {
-      sprintf(buf, "%sblackhole_details", All.OutputDir);
-      mkdir(buf, 02755);
-    }
+#ifdef BLACK_HOLES /* Note: This is done by everyone [all tasks can write to these log-files], even if it might be empty */
+  if(ThisTask == 0) {sprintf(buf, "%sblackhole_details", All.OutputDir); mkdir(buf, 02755);}
   MPI_Barrier(MPI_COMM_WORLD);
 #if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
   sprintf(buf, "%sblackhole_details/blackhole_details_%d.txt", All.OutputDir, ThisTask);
-  if(!(FdBlackHolesDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif // no io-reduced, or more-info if
+  if(!(FdBlackHolesDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#endif
 #ifdef BH_OUTPUT_GASSWALLOW
   sprintf(buf, "%sblackhole_details/bhswallow_%d.txt", All.OutputDir, ThisTask);
-  if(!(FdBhSwallowDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif // output-gas-swallow if
+  if(!(FdBhSwallowDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#endif
 #ifdef BH_OUTPUT_FORMATION_PROPERTIES
   sprintf(buf, "%sblackhole_details/bhformation_%d.txt", All.OutputDir, ThisTask);
-  if(!(FdBhFormationDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif // output-gas-formation if
+  if(!(FdBhFormationDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#endif
 #ifdef BH_OUTPUT_MOREINFO
   sprintf(buf, "%sblackhole_details/bhmergers_%d.txt", All.OutputDir, ThisTask);
-  if(!(FdBhMergerDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdBhMergerDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #ifdef BH_WIND_KICK
   sprintf(buf, "%sblackhole_details/bhwinds_%d.txt", All.OutputDir, ThisTask);
-  if(!(FdBhWindDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif // bh-wind-kick if
+  if(!(FdBhWindDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#endif
 #endif // bh-output-more-info if
 #endif // black-holes if
 
-  if(ThisTask != 0)		/* only the root processors writes to the log files */
-    return;
+    if(ThisTask != 0) {return;}	/* only the root processors writes to the log files listed below */
 
     sprintf(buf, "%s%s", All.OutputDir, "cpu.txt");
-    if(!(FdCPU = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdCPU = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 
 #ifndef IO_REDUCED_MODE
     sprintf(buf, "%s%s", All.OutputDir, "timebin.txt");
-    if(!(FdTimebin = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
-
+    if(!(FdTimebin = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
     sprintf(buf, "%s%s", All.OutputDir, "info.txt");
-    if(!(FdInfo = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
-
+    if(!(FdInfo = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
     sprintf(buf, "%s%s", All.OutputDir, "energy.txt");
-    if(!(FdEnergy = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdEnergy = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
     sprintf(buf, "%s%s", All.OutputDir, "timings.txt");
-    if(!(FdTimings = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdTimings = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+
     sprintf(buf, "%s%s", All.OutputDir, "balance.txt");
-    if(!(FdBalance = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdBalance = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
     fprintf(FdBalance, "\n");
     fprintf(FdBalance, "Treewalk1      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWALK1], CPU_SymbolImbalance[CPU_TREEWALK1]);
     fprintf(FdBalance, "Treewalk2      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWALK2], CPU_SymbolImbalance[CPU_TREEWALK2]);
@@ -744,90 +666,51 @@ void open_outputfiles(void)
     fprintf(FdBalance, "\n");
 #endif
 
-
 #ifdef GALSF
   sprintf(buf, "%s%s", All.OutputDir, "sfr.txt");
-  if(!(FdSfr = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdSfr = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
-
 
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
     sprintf(buf, "%s%s", All.OutputDir, "MomWinds.txt");
-    if(!(FdMomWinds = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdMomWinds = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
+
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
     sprintf(buf, "%s%s", All.OutputDir, "HIIheating.txt");
-    if(!(FdHIIHeating = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdHIIHeating = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
+
 #ifdef GALSF_FB_MECHANICAL
     sprintf(buf, "%s%s", All.OutputDir, "SNeIIheating.txt");
-    if(!(FdSneIIHeating = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }
+    if(!(FdSneIIHeating = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
 #if defined(RT_CHEM_PHOTOION) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "rt_photoion_chem.txt");
-  if(!(FdRad = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdRad = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
   sprintf(buf, "%s%s", All.OutputDir, "SN_details.txt");
-  if(!(FdBhSNDetails = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdBhSNDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
 #ifdef BLACK_HOLES
   sprintf(buf, "%s%s", All.OutputDir, "blackholes.txt");
-  if(!(FdBlackHoles = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdBlackHoles = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
 #if defined(TURB_DRIVING) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "turb.txt");
-  if(!(FdTurb = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
+  if(!(FdTurb = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
-
 
 #if defined(GR_TABULATED_COSMOLOGY) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "darkenergy.txt");
-  if(!(FdDE = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-  else
-    {
-      if(RestartFlag == 0)
-	{
+  if(!(FdDE = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  else if(RestartFlag == 0)
+  {
 	  fprintf(FdDE, "nstep time H(a) ");
 #ifndef GR_TABULATED_COSMOLOGY_W
 	  fprintf(FdDE, "w0 Omega_L ");
@@ -837,10 +720,8 @@ void open_outputfiles(void)
 #ifdef GR_TABULATED_COSMOLOGY_G
 	  fprintf(FdDE, "dH dG ");
 #endif
-	  fprintf(FdDE, "\n");
-	  fflush(FdDE);
-	}
-    }
+      fprintf(FdDE, "\n"); fflush(FdDE);
+  }
 #endif
 
 }
@@ -871,6 +752,10 @@ void read_parameter_file(char *fname)
   char tag[MAXTAGS][50];
   char alternate_tag[MAXTAGS][50];
   int pnum, errorFlag = 0;
+
+#ifdef CHIMES
+  double Tdust_buf, Tmol_buf, relTol_buf, absTol_buf, expTol_buf, z_reion_buf;
+#endif
 
   if(sizeof(long long) != 8)
     {
@@ -1140,7 +1025,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
+#if defined(INIT_STELLAR_METALS_AGES_DEFINED)
         strcpy(tag[nt],"InitMetallicity");
         strcpy(alternate_tag[nt],"Initial_Metallicity");
         addr[nt] = &All.InitMetallicityinSolar;
@@ -1415,7 +1300,7 @@ void read_parameter_file(char *fname)
 
       strcpy(tag[nt], "GravityConstantInternal");
       strcpy(alternate_tag[nt], "GravityConstant_SetByHand_inCodeUnits");
-      addr[nt] = &All.GravityConstantInternal;
+      addr[nt] = &All.G;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "InitGasTemp");
@@ -1533,6 +1418,12 @@ void read_parameter_file(char *fname)
 
         strcpy(tag[nt],"BAL_v_outflow");
         addr[nt] = &All.BAL_v_outflow;
+        id[nt++] = REAL;
+#endif
+
+#if defined(SINGLE_STAR_FB_JETS)
+        strcpy(tag[nt],"BAL_f_launch_v");
+        addr[nt] = &All.BAL_f_launch_v;
         id[nt++] = REAL;
 #endif
 
@@ -1779,7 +1670,11 @@ void read_parameter_file(char *fname)
 
 
 #ifdef NUCLEAR_NETWORK
-      strcpy(tag[nt], "NetworkRates");
+      strcpy(tag[nt], "EosSpecies");
+      addr[nt] = All.EosSpecies;
+      id[nt++] = STRING;
+
+        strcpy(tag[nt], "NetworkRates");
       addr[nt] = All.NetworkRates;
       id[nt++] = STRING;
 
@@ -1914,8 +1809,12 @@ void read_parameter_file(char *fname)
       addr[nt] = ChimesDataPath;
       id[nt++] = STRING;
 
-      strcpy(tag[nt], "PhotoIon_table_path");
-      addr[nt] = ChimesGlobalVars.PhotoIonTablePath;
+      strcpy(tag[nt], "PhotoIonTable");
+      addr[nt] = ChimesPhotoIonTable;
+      id[nt++] = STRING;
+
+      strcpy(tag[nt], "EqAbundanceTable");
+      addr[nt] = ChimesEqAbundanceTable;
       id[nt++] = STRING;
 
       strcpy(tag[nt], "Thermal_Evolution_On");
@@ -1923,11 +1822,15 @@ void read_parameter_file(char *fname)
       id[nt++] = INT;
 
       strcpy(tag[nt], "Chemistry_eqm");
-      addr[nt] = &ForceEqOn;
+      addr[nt] = &ChimesEqmMode;
       id[nt++] = INT;
 
-      strcpy(tag[nt], "Reduction_On");
-      addr[nt] = &ChimesGlobalVars.reductionOn;
+      strcpy(tag[nt], "redshift_dependent_UVB_mode");
+      addr[nt] = &ChimesUVBMode;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "InitIonState");
+      addr[nt] = &ChimesInitIonState;
       id[nt++] = INT;
 
       strcpy(tag[nt], "StaticMolCooling");
@@ -1942,52 +1845,36 @@ void read_parameter_file(char *fname)
       addr[nt] = &shielding_length_factor;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "Reduction_N_Ions_Low");
-      addr[nt] = &ChimesGlobalVars.n_ions_low;
-      id[nt++] = INT;
-
-      strcpy(tag[nt], "Reduction_N_Ions_Med");
-      addr[nt] = &ChimesGlobalVars.n_ions_med;
-      id[nt++] = INT;
-
-      strcpy(tag[nt], "Reduction_N_Ions_High");
-      addr[nt] = &ChimesGlobalVars.n_ions_high;
-      id[nt++] = INT;
-
       strcpy(tag[nt], "Grain_Temperature");
-      addr[nt] = &ChimesGlobalVars.grain_temperature;
+      addr[nt] = &Tdust_buf;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "CR_rate");
       addr[nt] = &cr_rate;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "macrostep_tolerance");
-      addr[nt] = &ChimesGlobalVars.time_tolerance;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "min_macrostep");
-      addr[nt] = &ChimesGlobalVars.min_subcyclestep;
-      id[nt++] = REAL;
-
       strcpy(tag[nt], "max_mol_temperature");
-      addr[nt] = &ChimesGlobalVars.T_mol;
+      addr[nt] = &Tmol_buf;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "Isotropic_photon_density");
-      addr[nt] = &isotropic_photon_density;
+      strcpy(tag[nt], "rad_field_norm_factor");
+      addr[nt] = &chimes_rad_field_norm_factor;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "relativeTolerance");
-      addr[nt] = &ChimesGlobalVars.relativeTolerance;
+      addr[nt] = &relTol_buf;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "absoluteTolerance");
-      addr[nt] = &ChimesGlobalVars.absoluteTolerance;
+      addr[nt] = &absTol_buf;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "thermalAbsoluteTolerance");
-      addr[nt] = &ChimesGlobalVars.thermalAbsoluteTolerance;
+      strcpy(tag[nt], "explicitTolerance");
+      addr[nt] = &expTol_buf;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "reionisation_redshift");
+      addr[nt] = &z_reion_buf;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "scale_metal_tolerances");
@@ -2032,6 +1919,10 @@ void read_parameter_file(char *fname)
 
       strcpy(tag[nt], "N_chimes_full_output_freq");
       addr[nt] = &N_chimes_full_output_freq;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "chimes_debug");
+      addr[nt] = &ChimesGlobalVars.chimes_debug;
       id[nt++] = INT;
 
 #ifdef CHIMES_STELLAR_FLUXES
@@ -2157,7 +2048,7 @@ void read_parameter_file(char *fname)
                 if(strcmp("MinGasTemp",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasTemp); continue;}
                 if(strcmp("MinGasHsmlFractional",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasHsmlFractional); continue;}
                 if(strcmp("MaxHsml",tag[i])==0) {*((double *)addr[i])=MAX_REAL_NUMBER; printf("Tag %s (%s) not set in parameter file: defaulting to assume no maximum (=%g) \n",tag[i],alternate_tag[i],All.MaxHsml); continue;}
-                if(strcmp("GravityConstantInternal",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to calculating in terms of other specified units if needed (=%g) \n",tag[i],alternate_tag[i],All.GravityConstantInternal); continue;}
+                if(strcmp("GravityConstantInternal",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to calculating in terms of other specified units if needed (=%g) \n",tag[i],alternate_tag[i],All.G); continue;}
                 if(strcmp("MinSizeTimestep",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to minimum allowed by memory table-size (=%g) \n",tag[i],alternate_tag[i],All.MinSizeTimestep); continue;}
                 if(strcmp("NumFilesWrittenInParallel",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to only main-task writes (=%d) \n",tag[i],alternate_tag[i],All.NumFilesWrittenInParallel); continue;}
                 if(strcmp("NumFilesPerSnapshot",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to single-file snapshots (=%d) \n",tag[i],alternate_tag[i],All.NumFilesPerSnapshot); continue;}
@@ -2172,6 +2063,9 @@ void read_parameter_file(char *fname)
                 if(strcmp("UnitMagneticField_in_gauss",tag[i])==0) {*((double *)addr[i])=3.5449077018110318; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitMagneticField_in_gauss); continue;}
 #endif
 #endif
+#if defined(SINGLE_STAR_FB_JETS) && defined(SINGLE_STAR_STARFORGE_DEFAULTS)
+                if(strcmp("BAL_f_launch_v",tag[i])==0) {*((double *)addr[i])=0.3; printf("Tag %s (%s) not set in parameter file: will default to %g \n",tag[i],alternate_tag[i],All.BAL_f_launch_v); continue;}
+#endif
 #ifdef CONDUCTION_SPITZER
                 if(strcmp("ConductionCoeff",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with Spitzer-Braginski conductivity, so will default to calculating the physical coefficient without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.ConductionCoeff); continue;}
 #endif
@@ -2182,7 +2076,7 @@ void read_parameter_file(char *fname)
 #ifdef TURB_DIFFUSION
                 if(strcmp("TurbDiffusionCoefficient",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with turbulent diffusion, so will default to calculating the coefficients without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.TurbDiffusion_Coefficient); continue;}
 #endif
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
+#if defined(INIT_STELLAR_METALS_AGES_DEFINED)
                 if(strcmp("InitMetallicity",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to zero (Z=%g) \n",tag[i],alternate_tag[i],All.InitMetallicityinSolar); continue;}
                 if(strcmp("InitStellarAge",tag[i])==0) {*((double *)addr[i])=10.; printf("Tag %s (%s) not set in parameter file: defaulting to very old pre-existing stars [if any exist, otherwise this is irrelevant] (=%g Gyr) \n",tag[i],alternate_tag[i],All.InitStellarAgeinGyr); continue;}
 #endif
@@ -2255,13 +2149,26 @@ void read_parameter_file(char *fname)
     /* now communicate the relevant parameters to the other processes */
     MPI_Bcast(&All, sizeof(struct global_data_all_processes), MPI_BYTE, 0, MPI_COMM_WORLD);
 #ifdef CHIMES
+    if (ThisTask == 0)
+      {
+	ChimesGlobalVars.grain_temperature = (ChimesFloat) Tdust_buf;
+	ChimesGlobalVars.T_mol = (ChimesFloat) Tmol_buf;
+	ChimesGlobalVars.relativeTolerance = (ChimesFloat) relTol_buf;
+	ChimesGlobalVars.absoluteTolerance = (ChimesFloat) absTol_buf;
+	ChimesGlobalVars.explicitTolerance = (ChimesFloat) expTol_buf;
+	ChimesGlobalVars.reionisation_redshift = (ChimesFloat) z_reion_buf;
+      }
     MPI_Bcast(&ChimesGlobalVars, sizeof(struct globalVariables), MPI_BYTE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&ChimesDataPath, 500 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&isotropic_photon_density, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&ChimesDataPath, 256 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&ChimesEqAbundanceTable, 196 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&ChimesPhotoIonTable, 196 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&chimes_rad_field_norm_factor, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&shielding_length_factor, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&cr_rate, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&N_chimes_full_output_freq, sizeof(int), MPI_BYTE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&ForceEqOn, sizeof(int), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&ChimesEqmMode, sizeof(int), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&ChimesUVBMode, sizeof(int), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&ChimesInitIonState, sizeof(int), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
 
@@ -2658,41 +2565,28 @@ int read_outputlist(char *fname)
  */
 void readjust_timebase(double TimeMax_old, double TimeMax_new)
 {
-  int i;
-  long long ti_end;
+  int i; long long ti_end;
 
   if(sizeof(long long) != 8)
-    {
-      if(ThisTask == 0)
-	printf("\nType 'long long' is not 64 bit on this platform\n\n");
-      endrun(555);
-    }
+    {if(ThisTask == 0) {printf("\nType 'long long' is not 64 bit on this platform; this will produce segfaults: need to exit.\n\n");} endrun(555);}
 
   if(ThisTask == 0)
     {
-      printf("\nAll.TimeMax has been changed in the parameterfile\n");
-      printf("Need to adjust integer timeline\n\n");
+      printf("\n TimeMax (Time_at_End_of_Simulation) has been augmented to be larger in the parameterfile;\n");
+      printf("  We need to adjust integer timeline, which perturbs all the structure of particle timesteps. Usually this is ok, but with some config flags on, your run will suddently be extremely slow (because the code cannot correctly reorder the timeline). In those cases, restarting from a snapshot is recommended.\n\n");
     }
 
   if(TimeMax_new < TimeMax_old)
-    {
-      if(ThisTask == 0)
-	printf("\nIt is not allowed to reduce All.TimeMax\n\n");
-      endrun(556);
-    }
+    {if(ThisTask == 0) {printf("\n You cannot reduce TimeMax (Time_at_End_of_Simulation) in the parameterfile, in a restart [this breaks the integer timeline]. Simply stop the run when desired, instead. Quitting.\n");} endrun(556);}
 
-  if(All.ComovingIntegrationOn)
-    ti_end = (long long) (log(TimeMax_new / All.TimeBegin) / All.Timebase_interval);
-  else
-    ti_end = (long long) ((TimeMax_new - All.TimeBegin) / All.Timebase_interval);
+  if(All.ComovingIntegrationOn) {ti_end = (long long) (log(TimeMax_new / All.TimeBegin) / All.Timebase_interval);}
+    else {ti_end = (long long) ((TimeMax_new - All.TimeBegin) / All.Timebase_interval);}
 
   while(ti_end > TIMEBASE)
-    {
+  {
       All.Timebase_interval *= 2.0;
-
       ti_end /= 2;
       All.Ti_Current /= 2;
-
 #ifdef PMGRID
       All.PM_Ti_begstep /= 2;
       All.PM_Ti_endstep /= 2;
@@ -2701,24 +2595,17 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
       StTPrev /= 2;
 #endif
 
-      for(i = 0; i < NumPart; i++)
+    for(i = 0; i < NumPart; i++)
 	{
-	  P[i].Ti_begstep /= 2;
-	  P[i].Ti_current /= 2;
-
-	  if(P[i].TimeBin > 0)
+        P[i].Ti_begstep /= 2;
+        P[i].Ti_current /= 2;
+        if(P[i].TimeBin > 0)
 	    {
 	      P[i].TimeBin--;
-	      if(P[i].TimeBin <= 0)
-		{
-		  printf("Error in readjust_timebase(). Minimum Timebin for particle %d reached.\n", i);
-		  endrun(8765);
-		}
+	      if(P[i].TimeBin <= 0) {printf("Attempted to restructure integer timeline but ran into an error in readjust_timebase(). The minimum timebin for particle %d has been reached -- need smaller timesteps. Exiting.\n", i); endrun(8765);}
 	    }
 	}
-
-      All.Ti_nextlineofsight /= 2;
-    }
-
+    All.Ti_nextlineofsight /= 2;
+  }
   All.TimeMax = TimeMax_new;
 }

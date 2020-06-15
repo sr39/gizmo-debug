@@ -62,7 +62,7 @@ double diffusion_coefficient_constant(int target, int k_CRegy)
 void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime_cgs)
 {
     if(dtime_cgs <= 0) {return;} /* catch */
-    int k,k_CRegy; double f_ion=DMAX(DMIN(Get_Gas_Ionized_Fraction(target),1.),0.);
+    int k_CRegy; double f_ion=DMAX(DMIN(Get_Gas_Ionized_Fraction(target),1.),0.);
     double a_hadronic = 6.37e-16, b_coulomb_per_GeV = 3.09e-16*(n_elec + 0.57*(1.-f_ion))*HYDROGEN_MASSFRAC; /* some coefficients; a_hadronic is the default coefficient, b_coulomb_per_GeV the default Coulomb+ionization (the two scale nearly-identically) normalization divided by GeV, b/c we need to divide the energy per CR  */
     for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
@@ -89,7 +89,7 @@ void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime
         double q_CR_cool = exp(-CR_coolrate * dtime_cgs); if(CR_coolrate * dtime_cgs > 20.) {q_CR_cool = 0;}
         SphP[target].CosmicRayEnergyPred[k_CRegy] *= q_CR_cool; SphP[target].CosmicRayEnergy[k_CRegy] *= q_CR_cool;
 #ifdef COSMIC_RAYS_M1
-        for(k=0;k<3;k++) {SphP[target].CosmicRayFlux[k_CRegy][k] *= q_CR_cool; SphP[target].CosmicRayFluxPred[k_CRegy][k] *= q_CR_cool;}
+        int k; for(k=0;k<3;k++) {SphP[target].CosmicRayFlux[k_CRegy][k] *= q_CR_cool; SphP[target].CosmicRayFluxPred[k_CRegy][k] *= q_CR_cool;}
 #endif
     }
     return;
@@ -104,7 +104,8 @@ void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime
         2: fQLT=1, fcas=100
         3: fQLT=1, fcas-K41 from Hopkins et al. 2020 paper, for pure-Kolmogorov isotropic spectrum
         4: fQLT=1, fcas-IK, IK spectrum instead of GS
-   if set mode < 0, will also ignore the dust-damping contribution from Squire et al. 2020
+   if set mode < 0, will also ignore the dust-damping contribution from Squire et al. 2020.
+   coefficient is returned in cgs units
  */
 #ifndef COSMIC_RAYS_SET_SC_MODEL
 #define COSMIC_RAYS_SET_SC_MODEL 1 /* set which mode to return from the SC subroutine here, of the various choices for how to e.g. model fCas, fQLT */
@@ -120,7 +121,7 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
 #else
     B2=e_CR; cos_Bgrad=1; for(k=0;k<3;k++) {double p0=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]; P2+=p0*p0;} /* this model doesn't really make sense without B-fields, but included for completeness here */
 #endif
-    double Omega_gyro=0.00898734*b_muG*(All.UnitTime_in_s/All.HubbleParam)/R_CR_GV, r_L=C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*C_LIGHT_CODE;
+    double Omega_gyro=(0.00898734*b_muG/R_CR_GV) * UNIT_TIME_IN_CGS, r_L=C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*C_LIGHT_CODE; /* all in physical -code- units */
     double x_LL = DMAX( C_LIGHT_CODE / (Omega_gyro * L_scale), EPSILON_SMALL ), CRPressureGradScaleLength=Get_CosmicRayGradientLength(target,k_CRegy), vA_code=vA_noion, k_turb=1./L_scale, k_L=1./r_L, x_EB_ECR=(0.5*B2+EPSILON_SMALL)/(e_CR+EPSILON_SMALL);
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
     if(f_ion>0) {vA_code /= sqrt(f_ion);} // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
@@ -133,22 +134,25 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
 
     //if(M_A<1.) {fturb_multiplier*=DMIN(sqrt(M_A),pow(M_A,7./6.)/pow(x_LL,1./6.));} else {fturb_multiplier*=DMIN(1.,1./(pow(M_A,1./2.)*pow(x_LL,1./6.)));} // corrects to Alfven scale, for correct estimate according to Farmer and Goldreich, Lazarian, etc. /* Lazarian+ 2016 multi-part model for where the resolved scales lie on the cascade */
     /* ok now we finally have all the terms needed to calculate the various damping rates that determine the equilibrium diffusivity */
-    double U0bar_grain=3., rhograin_int_cgs=1., fac_grain=R_CR_GV*sqrt(n_cgs)*U0bar_grain/(b_muG*rhograin_int_cgs), f_grainsize = DMAX(8.e-4*pow(fac_grain*(temperature/1.e4),0.25), 3.e-3*sqrt(fac_grain)); // b=2, uniform logarithmic grain spectrum over a factor of ~100 in grain size; f_grainsize = 0.07*pow(sqrt(fion*n1)*EcrGeV*T4/BmuG,0.25); // MRN size spectrum
-    double G_dust = vA_code*k_L * (P[target].Metallicity[0]/0.014) * f_grainsize; // also can increase by up to a factor of 2 for regimes where charge collisionally saturated, though this is unlikely to be realized
+    double U0bar_grain=3., rhograin_int_cgs=1., fac_grain=R_CR_GV*sqrt(n_cgs)*U0bar_grain/(b_muG*rhograin_int_cgs), f_grainsize = DMAX(8.e-4*pow(fac_grain*(temperature/1.e4),0.25), 3.e-3*sqrt(fac_grain)), Z_sol=1.; // b=2, uniform logarithmic grain spectrum over a factor of ~100 in grain size; f_grainsize = 0.07*pow(sqrt(fion*n1)*EcrGeV*T4/BmuG,0.25); // MRN size spectrum
+#ifdef METALS
+    Z_sol = P[target].Metallicity[0]/0.014;
+#endif
+    double G_dust = vA_code*k_L * Z_sol * f_grainsize; // also can increase by up to a factor of 2 for regimes where charge collisionally saturated, though this is unlikely to be realized
     if(mode<0) {G_dust = 0;} // for this choice, neglect the dust-damping term 
-    double G_ion_neutral = 5.77e-11 * n_cgs * (0.97*nh0 + 0.03*nHe0) * sqrt(temperature) * (All.UnitTime_in_s/All.HubbleParam); if(Z_charge_CR > 1) {G_ion_neutral /= sqrt(2.*Z_charge_CR);} // ion-neutral damping: need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
+    double G_ion_neutral = (5.77e-11 * n_cgs * (0.97*nh0 + 0.03*nHe0) * sqrt(temperature)) * UNIT_TIME_IN_CGS; if(Z_charge_CR > 1) {G_ion_neutral /= sqrt(2.*Z_charge_CR);} // ion-neutral damping: need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
     double G_turb_plus_linear_landau = (vA_noion + sqrt(M_PI)*cs_thermal/4.) * sqrt(k_turb*k_L) * fturb_multiplier; // linear Landau + turbulent (both have same form, assume k_turb from cascade above)
     double G0 = G_ion_neutral + G_turb_plus_linear_landau + G_dust; // linear terms all add into single G0 term
     double Gamma_effective = G0, phi_0 = (sqrt(M_PI)/6.)*(fabs(cos_Bgrad))*(1./(x_EB_ECR+EPSILON_SMALL))*(cs_thermal*vA_code*k_L/(CRPressureGradScaleLength*G0*G0 + EPSILON_SMALL)); // parameter which determines whether NLL dominates
     if(isfinite(phi_0) && (phi_0>0.01)) {Gamma_effective *= phi_0/(2.*(sqrt(1.+phi_0)-1.));} // this accounts exactly for the steady-state solution for the Thomas+Pfrommer formulation, including both the linear [Landau,turbulent,ion-neutral] + non-linear terms. can estimate (G_nonlinear_landau_effective = Gamma_effective - G0)
     /* with damping rates above, equilibrium transport is equivalent to pure streaming, with v_stream = vA + (diffusive equilibrium part) give by the solution below, proportional to Gamma_effective and valid to O(v^2/c^2) */
     double v_st_eff = vA_code * (1. + f_QLT * 4. * kappa_0 * Gamma_effective * x_EB_ECR * (1. + 2.*vA_code*vA_code/(C_LIGHT_CODE*C_LIGHT_CODE)) / (M_PI*vA_code*vA_code + EPSILON_SMALL)); // effective equilibrium streaming speed for all terms accounted
-    return GAMMA_COSMICRAY * v_st_eff * CRPressureGradScaleLength; // convert to effective diffusivity from 'streaming'
+    return (GAMMA_COSMICRAY * v_st_eff * CRPressureGradScaleLength) * (UNIT_VEL_IN_CGS*UNIT_LENGTH_IN_CGS); // convert to effective diffusivity from 'streaming speed' [this introduces the gamma and gradient length], and convert to CGS from code units
 }
 
 
 
-/* routine which gives diffusion coefficient for extrinsic turbulence models. 'mode' sets whether we assume Alfven modes (mode<0), Fast-mode scattering (mode>0), or both (=0),
+/* routine which gives diffusion coefficient [in cgs] for extrinsic turbulence models. 'mode' sets whether we assume Alfven modes (mode<0), Fast-mode scattering (mode>0), or both (=0),
      0: 'default' Alfven + Fast modes (both, summing scattering rates linearly)
     -1: 'default' Alfven modes: correctly accounting for an anisotropic Goldreich-Shridar cascade, per Chandran 2000
     -2: Alfven modes in pure Goldreich-Shridhar cascade, ignoring anisotropic effects [*much* higher scattering rate, artificially]
@@ -158,7 +162,7 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
 double diffusion_coefficient_extrinsic_turbulence(int mode, int target, int k_CRegy, double M_A, double L_scale, double b_muG,
     double vA_noion, double rho_cgs, double temperature, double cs_thermal, double nh0, double nHe0, double f_ion)
 {
-    double f_cas_ET=MAX_REAL_NUMBER, EPSILON_SMALL=1.e-50, h0_kpc=L_scale*(All.UnitLength_in_cm/All.HubbleParam)/3.086e21;
+    double f_cas_ET=MAX_REAL_NUMBER, EPSILON_SMALL=1.e-50, h0_kpc=L_scale*UNIT_LENGTH_IN_KPC;
     if(mode <= 0) /* Alfvenic turbulence [default here following Chandran 200, including anisotropy effects] */
     {
         f_cas_ET = 0.007 * C_LIGHT_CODE / vA_noion; /* damping in Alfvenic turbulence following an anisotropic Goldreich-Shridar cascade, per Chandran 2000 */
@@ -193,13 +197,13 @@ double diffusion_coefficient_extrinsic_turbulence(int mode, int target, int k_CR
 /* utility to estimate -locally- (without multi-pass filtering) the local Alfven Mach number */
 double Get_AlfvenMachNumber_Local(int i, double vA_idealMHD_codeunits, int use_shear_corrected_vturb_flag)
 {
-    int i1,i2; double v2_t=0,dv2_t=0,b2_t=0,db2_t=0,x_LL,M_A,h0,EPSILON_SMALL=1.e-50,fturb_multiplier=1; // factor which will represent which cascade model we are going to use
+    int i1,i2; double v2_t=0,dv2_t=0,b2_t=0,db2_t=0,M_A,h0,EPSILON_SMALL=1.e-50; // factor which will represent which cascade model we are going to use
     for(i1=0;i1<3;i1++)
     {
         v2_t += SphP[i].VelPred[i1]*SphP[i].VelPred[i1];
         for(i2=0;i2<3;i2++) {dv2_t += SphP[i].Gradients.Velocity[i1][i2]*SphP[i].Gradients.Velocity[i1][i2];}
 #ifdef MAGNETIC
-        b2_t += Get_Particle_BField(i,i1) * Get_Particle_BField(i,i1);
+        b2_t += Get_Gas_BField(i,i1) * Get_Gas_BField(i,i1);
         for(i2=0;i2<3;i2++) {db2_t += SphP[i].Gradients.B[i1][i2]*SphP[i].Gradients.B[i1][i2];}
 #endif
     }
@@ -242,7 +246,7 @@ double Get_AlfvenMachNumber_Local(int i, double vA_idealMHD_codeunits, int use_s
     Do want to make sure that the rates we assume here are consistent with those used in the CR cooling routine above. */
 double CR_gas_heating(int target, double n_elec, double nHcgs)
 {
-    double e_heat=0, e_CR_units_0=(SphP[target].Density*All.cf_a3inv/P[target].Mass) * (All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam) / nHcgs; int k_CRegy;
+    double e_heat=0, e_CR_units_0=(SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_CGS / nHcgs; int k_CRegy;
     double a_hadronic = 6.37e-16, b_coulomb_per_GeV = 3.09e-16*n_elec*HYDROGEN_MASSFRAC, f_heat_hadronic=1./6.; /* some coefficients; a_hadronic is the default coefficient, b_coulomb_per_GeV the default divided by GeV, b/c we need to divide the energy per CR  */
     for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
@@ -271,19 +275,17 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     /* first define some very general variables, and calculate some useful quantities that will be used for any model */
     int k_CRegy; double DiffusionCoeff, CR_kappa_streaming, CRPressureGradScaleLength, v_streaming; v_streaming=Get_CosmicRayStreamingVelocity(i);
 #if (COSMIC_RAYS_DIFFUSION_MODEL > 0)
-    double cs_thermal,M_A,L_scale,vA_code,vA_noion,codelength_to_kpc,Z_charge_CR,gizmo2gauss,Omega_per_GeV,Bmag,unit_kappa_code,b_muG,E_B,f_ion,temperature,EPSILON_SMALL; int k;
-    unit_kappa_code=All.UnitVelocity_in_cm_per_s*All.UnitLength_in_cm/All.HubbleParam; gizmo2gauss=sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); f_ion=1; temperature=0; EPSILON_SMALL=1.e-50; codelength_to_kpc=(All.UnitLength_in_cm/All.HubbleParam)/(3.086e21);
+    double cs_thermal,M_A,L_scale,vA_code,vA_noion,gizmo2gauss,Omega_per_GeV,Bmag,unit_kappa_code,b_muG,E_B,f_ion,temperature,EPSILON_SMALL; int k; k=0;
+    unit_kappa_code=UNIT_VEL_IN_CGS*UNIT_LENGTH_IN_CGS; gizmo2gauss=UNIT_B_IN_GAUSS; f_ion=1; temperature=0; EPSILON_SMALL=1.e-50;
     Bmag=2.*SphP[i].Pressure*All.cf_a3inv; cs_thermal=sqrt(convert_internalenergy_soundspeed2(i,SphP[i].InternalEnergyPred)); /* quick thermal pressure properties (we'll assume beta=1 if MHD not enabled) */
 #ifdef MAGNETIC /* get actual B-field */
-    double B[3]={0}; Bmag=0; for(k=0;k<3;k++) {B[k]=Get_Particle_BField(i,k)*All.cf_a2inv; Bmag+=B[k]*B[k];} // B-field in code units (physical)
+    double B[3]={0}; Bmag=0; for(k=0;k<3;k++) {B[k]=Get_Gas_BField(i,k)*All.cf_a2inv; Bmag+=B[k]*B[k];} // B-field in code units (physical)
 #endif
-    Bmag=sqrt(DMAX(Bmag,0)); b_muG=Bmag*gizmo2gauss/1.e-6; b_muG=sqrt(b_muG*b_muG + 1.e-6); vA_code=sqrt(Bmag*Bmag/(SphP[i].Density*All.cf_a3inv)); vA_noion=vA_code; E_B=0.5*Bmag*Bmag*(P[i].Mass/(SphP[i].Density*All.cf_a3inv)); Omega_per_GeV=0.00898734*b_muG*(All.UnitTime_in_s/All.HubbleParam); /* B-field in units of physical microGauss; set a floor at nanoGauss level */
+    Bmag=sqrt(DMAX(Bmag,0)); b_muG=Bmag*gizmo2gauss/1.e-6; b_muG=sqrt(b_muG*b_muG + 1.e-6); vA_code=sqrt(Bmag*Bmag/(SphP[i].Density*All.cf_a3inv)); vA_noion=vA_code; E_B=0.5*Bmag*Bmag*(P[i].Mass/(SphP[i].Density*All.cf_a3inv));
+    Omega_per_GeV=(0.00898734*b_muG) * UNIT_TIME_IN_CGS; /* B-field in units of physical microGauss; set a floor at nanoGauss level. convert to physical code units */
 #ifdef COOLING
-    double ne=SphP[i].Ne, nh0=0, nHe0=0, nHepp, nhp, nHeII, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, rho_cgs, u0=SphP[i].InternalEnergyPred;
-    temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); rho_cgs = rho * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; // get thermodynamic properties
-#ifdef GALSF_FB_FIRE_RT_HIIHEATING
-    if(SphP[i].DelayTimeHII>0) {nh0=DMIN(1.e-4,nh0); nHe0=DMIN(1.e-5,nHe0);} // account for our effective ionization model here
-#endif
+    double ne=1, nh0=0, nHe0=0, nHepp, nhp, nHeII, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, rho_cgs, u0=SphP[i].InternalEnergyPred;
+    temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); rho_cgs=rho*UNIT_DENSITY_IN_CGS; // get thermodynamic properties
     f_ion = DMIN(DMAX(DMAX(DMAX(1-nh0, nhp), ne/1.2), 1.e-8), 1.); // account for different measures above (assuming primordial composition)
 #endif
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
@@ -309,9 +311,9 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
         DiffusionCoeff = (3.e29/unit_kappa_code) * (1.-f_ion + f_ion/30.); // 30x lower in neutral (note use f_ion directly here, not temperature as they do)
 #endif
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 4) /* Wiener et al. 2017 style pure-streaming but with larger streaming speeds and limited losses, using their scaling for assumption that turbulent+non-linear Landau only dominate damping */
-        double ni_m3=f_ion*(rho_cgs/PROTONMASS)/1.e-3, T6=temperature/1.e6, Lturbkpc=L_scale*codelength_to_kpc, Lgradkpc=CRPressureGradScaleLength*(All.UnitLength_in_cm/All.HubbleParam)/3.086e21, h0_fac=Get_Particle_Size(i)*All.cf_atime*All.cf_a2inv*All.UnitVelocity_in_cm_per_s/1.e6, dv2_10=0; for(k=0;k<3;k++) {int j; for(j=0;j<3;j++) {dv2_10 += SphP[i].Gradients.Velocity[j][k]*SphP[i].Gradients.Velocity[j][k]*h0_fac*h0_fac;}}
-        double ecr_14 = SphP[i].CosmicRayEnergyPred[k_CRegy] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) * ((All.UnitEnergy_in_cgs/All.HubbleParam)/pow(All.UnitLength_in_cm/All.HubbleParam,3)) / 1.0e-14; // CR energy density in CGS units //
-        CR_kappa_streaming = GAMMA_COSMICRAY * CRPressureGradScaleLength * (v_streaming + (1.e5/All.UnitVelocity_in_cm_per_s)*(4.1*pow(MIN_REAL_NUMBER+ni_m3*T6,0.25)/pow(MIN_REAL_NUMBER+ecr_14*Lgradkpc,0.5) + 1.2*pow(MIN_REAL_NUMBER+dv2_10*ni_m3,0.75)/(MIN_REAL_NUMBER+ecr_14*sqrt(Lturbkpc)))); // convert to effective diffusivity
+        double ni_m3=f_ion*(rho_cgs/PROTONMASS)/1.e-3, T6=temperature/1.e6, Lturbkpc=L_scale*UNIT_LENGTH_IN_KPC, Lgradkpc=CRPressureGradScaleLength*UNIT_LENGTH_IN_KPC, h0_fac=0.1*Get_Particle_Size(i)*All.cf_atime*All.cf_a2inv*UNIT_VEL_IN_KMS, dv2_10=0; for(k=0;k<3;k++) {int j; for(j=0;j<3;j++) {dv2_10 += SphP[i].Gradients.Velocity[j][k]*SphP[i].Gradients.Velocity[j][k]*h0_fac*h0_fac;}}
+        double ecr_14 = SphP[i].CosmicRayEnergyPred[k_CRegy] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_CGS / 1.0e-14; // CR energy density in CGS units //
+        CR_kappa_streaming = GAMMA_COSMICRAY * CRPressureGradScaleLength * (v_streaming + (1./UNIT_VEL_IN_KMS)*(4.1*pow(MIN_REAL_NUMBER+ni_m3*T6,0.25)/pow(MIN_REAL_NUMBER+ecr_14*Lgradkpc,0.5) + 1.2*pow(MIN_REAL_NUMBER+dv2_10*ni_m3,0.75)/(MIN_REAL_NUMBER+ecr_14*sqrt(Lturbkpc)))); // convert to effective diffusivity
 #endif
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 5) /* streaming at fast MHD wavespeed [just to see what it does] */
         CR_kappa_streaming = GAMMA_COSMICRAY * sqrt(v_streaming*v_streaming + cs_thermal*cs_thermal) * CRPressureGradScaleLength;
@@ -324,10 +326,13 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 #if (COSMIC_RAYS_DIFFUSION_MODEL==2)
         scatter_modes = 1; /* Fast modes only*/
 #endif
+#if defined(COSMIC_RAYS_SET_ET_MODEL)
+        scatter_modes = COSMIC_RAYS_SET_ET_MODEL; /* set to user-defined value */
+#endif
         DiffusionCoeff = diffusion_coefficient_extrinsic_turbulence(scatter_modes,i,k_CRegy,M_A,L_scale,b_muG,vA_noion,rho_cgs,temperature,cs_thermal,nh0,nHe0,f_ion) / unit_kappa_code;
 #endif
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 6) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* self-confinement-based diffusivity */
-        double Omega_gyro=0.00898734*b_muG*(All.UnitTime_in_s/All.HubbleParam)/return_CRbin_CR_rigidity_in_GV(i,k_CRegy), r_L=C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*C_LIGHT_CODE; // some handy numbers for limiting extreme-kappa below
+        double Omega_gyro=(0.00898734*b_muG/return_CRbin_CR_rigidity_in_GV(i,k_CRegy)) * UNIT_TIME_IN_CGS, r_L=C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*C_LIGHT_CODE; // some handy numbers for limiting extreme-kappa below. all in -physical- code units //
         CR_kappa_streaming = diffusion_coefficient_self_confinement(COSMIC_RAYS_SET_SC_MODEL,i,k_CRegy,M_A,L_scale,b_muG,vA_noion,rho_cgs,temperature,cs_thermal,nh0,nHe0,f_ion) / unit_kappa_code;
         if(!isfinite(CR_kappa_streaming)) {CR_kappa_streaming = 1.e30/unit_kappa_code;} /* apply some limiters since its very easy for the routine above to give wildly-large-or-small diffusivity, which wont make a difference compared to just 'small' or 'large', but will mess things up numerically */
         CR_kappa_streaming = DMIN( DMAX( DMIN(DMAX(CR_kappa_streaming,kappa_0) , 1.0e6*GAMMA_COSMICRAY*CRPressureGradScaleLength*COSMIC_RAYS_M1) , 1.e25/unit_kappa_code ) , 1.e32/unit_kappa_code );
@@ -347,7 +352,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
         double kappa_diff_vel = DiffusionCoeff * GAMMA_COSMICRAY_MINUS1 / L_eff; DiffusionCoeff *= 1 / (1 + kappa_diff_vel/diffusion_velocity_limit); /* caps maximum here */
 #ifdef GALSF /* for multi-physics problems, we suppress diffusion [in the FLD-like limit] where it is irrelevant for timestepping-sake */
         DiffusionCoeff *= 1 / (1 + kappa_diff_vel/(0.01*diffusion_velocity_limit)); /* caps maximum here */
-        double P_cr_Ratio = Get_Particle_CosmicRayPressure(i,k_CRegy) / (MIN_REAL_NUMBER + SphP[i].Pressure), P_min=1.0e-4; if(P_cr_Ratio < P_min) {DiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
+        double P_cr_Ratio = Get_Gas_CosmicRayPressure(i,k_CRegy) / (MIN_REAL_NUMBER + SphP[i].Pressure), P_min=1.0e-4; if(P_cr_Ratio < P_min) {DiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
         P_min = 1.0e-6; if(P_cr_Ratio < P_min) {DiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
 #endif
         DiffusionCoeff /= GAMMA_COSMICRAY_MINUS1; // ensure correct units for subsequent operations //
@@ -360,22 +365,32 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 
 
 /* utility routine which handles the numerically-necessary parts of the CR 'injection' for you */
-double inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir)
+void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir)
 {
-    int k_CRegy,k; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
+    int k_CRegy,k; k=0; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
         double dEcr = CR_energy_to_inject * CR_energy_spectrum_injection_fraction(k_CRegy,source_PType,injection_velocity);
         SphP[target].CosmicRayEnergy[k_CRegy]+=dEcr; SphP[target].CosmicRayEnergyPred[k_CRegy]+=dEcr;
 #ifdef COSMIC_RAYS_M1
-        for(k=0;k<3;k++) {double dflux=dEcr*dir[k]*COSMIC_RAYS_M1; SphP[target].CosmicRayFlux[k_CRegy][k]+=dflux; SphP[target].CosmicRayFluxPred[k_CRegy][k]+=dflux;}
+        double dir_mag=0, flux_mag=dEcr*COSMIC_RAYS_M1, dir_to_use[3]={0};
+#ifdef MAGNETIC
+        double B_dot_dir=0, Bdir[3]={0}; for(k=0;k<3;k++) {Bdir[k]=SphP[target].BPred[k]; B_dot_dir+=dir[k]*Bdir[k];} // the 'default' direction is projected onto B
+        for(k=0;k<3;k++) {dir_to_use[k]=B_dot_dir*Bdir[k];} // launch -along- B, projected [with sign determined] by the intially-desired direction
+#else
+        for(k=0;k<3;k++) {dir_to_use[k]=dir[k];} // launch in the 'default' direction
+#endif
+        for(k=0;k<3;k++) {dir_mag += dir_to_use[k]*dir_to_use[k];}
+        if(dir_mag <= 0) {dir_to_use[0]=0; dir_to_use[1]=0; dir_to_use[2]=1; dir_mag=1;}
+        for(k=0;k<3;k++) {double dflux=flux_mag*dir_to_use[k]/sqrt(dir_mag); SphP[target].CosmicRayFlux[k_CRegy][k]+=dflux; SphP[target].CosmicRayFluxPred[k_CRegy][k]+=dflux;}
 #endif
     }
+    return;
 }
 
 
 
 /* return CR pressure within a given bin */
-double INLINE_FUNC Get_Particle_CosmicRayPressure(int i, int k_CRegy)
+double INLINE_FUNC Get_Gas_CosmicRayPressure(int i, int k_CRegy)
 {
     if((P[i].Mass > 0) && (SphP[i].Density>0) && (SphP[i].CosmicRayEnergyPred[k_CRegy] > 0))
     {
@@ -393,7 +408,7 @@ double Get_CosmicRayGradientLength(int i, int k_CRegy)
     int k; for(k=0;k<3;k++) {CRPressureGradMag += SphP[i].Gradients.CosmicRayPressure[k_CRegy][k]*SphP[i].Gradients.CosmicRayPressure[k_CRegy][k];}
     CRPressureGradMag = sqrt(1.e-46 + CRPressureGradMag); // sqrt to make absolute value
 #ifdef MAGNETIC /* with anisotropic transport, we really want the -parallel- gradient scale-length, so need another factor here */
-    double B2_tot=0.0, b=0; CRPressureGradMag=0; for(k=0;k<3;k++) {b=Get_Particle_BField(i,k); B2_tot+=b*b; CRPressureGradMag+=b*SphP[i].Gradients.CosmicRayPressure[k_CRegy][k];} // note, this is signed!
+    double B2_tot=0.0, b=0; CRPressureGradMag=0; for(k=0;k<3;k++) {b=Get_Gas_BField(i,k); B2_tot+=b*b; CRPressureGradMag+=b*SphP[i].Gradients.CosmicRayPressure[k_CRegy][k];} // note, this is signed!
     CRPressureGradMag = sqrt((1.e-40 + CRPressureGradMag*CRPressureGradMag) / (1.e-46 + B2_tot)); // divide B-magnitude to get scalar magnitude, and take sqrt[(G.P)^2] to get absolute value
 #endif
     
@@ -403,11 +418,11 @@ double Get_CosmicRayGradientLength(int i, int k_CRegy)
     double L_gradient_max = DMAX(1000.*L_gradient_min, 500.0*PPP[i].Hsml*All.cf_atime);
 
     /* also, physically, cosmic rays cannot stream/diffuse with a faster coefficient than ~v_max*L_mean_free_path, where L_mean_free_path ~ 2.e20 * (cm^-3/n) */
-    double nH_cgs = SphP[i].Density * All.cf_a3inv * ( All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam ) / PROTONMASS ;
-    double L_mean_free_path = (3.e25 / nH_cgs) / (All.UnitLength_in_cm / All.HubbleParam);
+    double nH_cgs = SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS;
+    double L_mean_free_path = (3.e25 / nH_cgs) / UNIT_LENGTH_IN_CGS;
     L_gradient_max = DMIN(L_gradient_max, L_mean_free_path);
     
-    double CRPressureGradScaleLength = Get_Particle_CosmicRayPressure(i,k_CRegy) / CRPressureGradMag * All.cf_atime;
+    double CRPressureGradScaleLength = Get_Gas_CosmicRayPressure(i,k_CRegy) / CRPressureGradMag * All.cf_atime;
     if(CRPressureGradScaleLength > 0) {CRPressureGradScaleLength = 1.0/(1.0/CRPressureGradScaleLength + 1.0/L_gradient_max);} else {CRPressureGradScaleLength=0;}
     CRPressureGradScaleLength = sqrt(L_gradient_min*L_gradient_min + CRPressureGradScaleLength*CRPressureGradScaleLength);
     return CRPressureGradScaleLength; /* this is returned in -physical- units */
@@ -423,7 +438,7 @@ double Get_CosmicRayStreamingVelocity(int i)
 #ifdef MAGNETIC
     /* in the strong-field (low-beta) case, it's actually the Alfven velocity: interpolate between these */
     double vA_2 = 0.0; double cs_stream = v_streaming;
-    int k; for(k=0;k<3;k++) {vA_2 += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+    int k; for(k=0;k<3;k++) {vA_2 += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);}
     vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
     vA_2 /= Get_Gas_Ionized_Fraction(i); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
@@ -481,7 +496,7 @@ double return_CRbin_kinetic_energy_in_GeV(int target, int k_CRegy)
 /* routine which returns the CR number density at a given bin in cm^-3 */
 double return_CRbin_numberdensity_in_cgs(int target, int k_CRegy)
 {
-    double e_CR_tot = SphP[target].CosmicRayEnergyPred[k_CRegy] * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * (All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam);
+    double e_CR_tot = SphP[target].CosmicRayEnergyPred[k_CRegy] * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * (UNIT_PRESSURE_IN_CGS);
     double ECR_per  = return_CRbin_kinetic_energy_in_GeV(target,k_CRegy) * 0.00160218; /* converts to energy in erg */
     return e_CR_tot / ECR_per;
 }
@@ -490,9 +505,9 @@ double return_CRbin_numberdensity_in_cgs(int target, int k_CRegy)
 /* handy functoin that just returns the B-field magnitude in microGauss, physical units. purely here to save us time re-writing this */
 double get_cell_Bfield_in_microGauss(int i)
 {
-    double Bmag=0, gizmo2mugauss_2=4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam*1.e12;
+    double Bmag=0, gizmo2mugauss_2=UNIT_B_IN_GAUSS*UNIT_B_IN_GAUSS*1.e12;
 #ifdef MAGNETIC
-    int k; for(k=0;k<3;k++) {double B=Get_Particle_BField(i,k)*All.cf_a2inv; Bmag+=B*B*gizmo2mugauss_2;} // actual B-field in code units
+    int k; for(k=0;k<3;k++) {double B=Get_Gas_BField(i,k)*All.cf_a2inv; Bmag+=B*B*gizmo2mugauss_2;} // actual B-field in code units
 #else
     Bmag=2.*SphP[i].Pressure*All.cf_a3inv*gizmo2mugauss_2; // assume equipartition
 #endif
@@ -500,20 +515,16 @@ double get_cell_Bfield_in_microGauss(int i)
 }
 
 
-/* handy functoin that just returns the radiation energy density in eV/cm^-3, physical units. purely here to save us time re-writing this */
+/* handy function that just returns the radiation energy density in eV/cm^-3, physical units. purely here to save us time re-writing this */
 double get_cell_Urad_in_eVcm3(int i)
 {
     double erad = 0.26*All.cf_a3inv/All.cf_atime; // default with the CMB energy density, which we assume here is a baseline minimum
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
-    int kfreq; double e_units = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam * 6.24151e11;
-#ifdef RT_EVOLVE_ENERGY
+    int kfreq; double e_units = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_EV;
     for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad+=SphP[i].Rad_E_gamma_Pred[kfreq]*e_units;}
 #else
-    for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad+=SphP[i].Rad_E_gamma[kfreq]*e_units;}
-#endif
-#else
     double uRad_MW = 0.31 + 0.66; /* dust (0.31) and stars (0.66) for Milky way ISRF from Draine (2011); want this to decay as we approach the IGM (where CMB totally dominates) */
-    double prefac_rad=1, rho_cgs=SphP[i].Density*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam; if(All.ComovingIntegrationOn) {double rhofac = rho_cgs / (1000.*All.OmegaBaryon*(All.HubbleParam*HUBBLE_CGS)*(All.HubbleParam*HUBBLE_CGS)*(3./(8.*M_PI*GRAVITY_G))*All.cf_a3inv);
+    double prefac_rad=1, rho_cgs=SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS; if(All.ComovingIntegrationOn) {double rhofac = rho_cgs / (1000.*COSMIC_BARYON_DENSITY_CGS);
         if(rhofac < 0.2) {prefac_rad=0;} else {if(rhofac > 200.) {prefac_rad=1;} else {prefac_rad=exp(-1./(rhofac*rhofac));}}} // in cosmological runs, turn off stellar background for any gas with density unless it's >1000 times the cosmic mean density
     prefac_rad *= rho_cgs/(0.01*PROTONMASS + rho_cgs); // cut off below low densities, ~1e-2
     erad += uRad_MW * prefac_rad;

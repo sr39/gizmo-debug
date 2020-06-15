@@ -221,7 +221,7 @@ struct INPUT_STRUCT_NAME
         MyDouble Rad_E_gamma_ET[N_RT_FREQ_BINS][3];
 #endif
     } Gradients;
-    MyFloat NV_T[3][3];
+    MyLongDouble NV_T[3][3];
 
 #if defined(KERNEL_CRK_FACES)
     MyFloat Tensor_CRK_Face_Corrections[16];
@@ -235,7 +235,7 @@ struct INPUT_STRUCT_NAME
 #endif
 
 #ifdef CHIMES_TURB_DIFF_IONS
-    MyDouble ChimesNIons[TOTSIZE];
+    MyDouble ChimesNIons[CHIMES_TOTSIZE];
 #endif
 
 #ifdef RT_SOLVER_EXPLICIT
@@ -337,7 +337,7 @@ struct OUTPUT_STRUCT_NAME
 #endif
 
 #ifdef CHIMES_TURB_DIFF_IONS
-    MyDouble ChimesIonsYield[TOTSIZE];
+    MyDouble ChimesIonsYield[CHIMES_TOTSIZE];
 #endif
 
 #if defined(RT_SOLVER_EXPLICIT)
@@ -400,8 +400,8 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
     in->Density = SphP[i].Density;
     in->Pressure = SphP[i].Pressure;
     in->InternalEnergyPred = SphP[i].InternalEnergyPred;
-    in->SoundSpeed = Particle_effective_soundspeed_i(i);
-    in->Timestep = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0);
+    in->SoundSpeed = Get_Gas_effective_soundspeed_i(i);
+    in->Timestep = GET_PARTICLE_INTEGERTIME(i);
     in->ConditionNumber = SphP[i].ConditionNumber;
 #ifdef MHD_CONSTRAINED_GRADIENT
     /* since it is not used elsewhere, we can use the sign of the condition number as a bit
@@ -464,11 +464,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #ifdef RT_SOLVER_EXPLICIT
     for(k=0;k<N_RT_FREQ_BINS;k++)
     {
-#ifdef RT_EVOLVE_ENERGY
         in->Rad_E_gamma[k] = SphP[i].Rad_E_gamma_Pred[k];
-#else
-        in->Rad_E_gamma[k] = SphP[i].Rad_E_gamma[k];
-#endif
         in->Rad_Kappa[k] = SphP[i].Rad_Kappa[k];
         in->RT_DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
 #if defined(RT_EVOLVE_FLUX) || defined(HYDRO_SPH)
@@ -515,19 +511,19 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #endif
 
 #ifdef MAGNETIC
-    for(k = 0; k < 3; k++) {in->BPred[k] = Get_Particle_BField(i,k);}
+    for(k = 0; k < 3; k++) {in->BPred[k] = Get_Gas_BField(i,k);}
 #if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
     in->Balpha = SphP[i].Balpha;
 #endif
 #ifdef DIVBCLEANING_DEDNER
-    in->PhiPred = Get_Particle_PhiField(i);
+    in->PhiPred = Get_Gas_PhiField(i);
 #endif
 #endif // MAGNETIC //
 
 #ifdef COSMIC_RAYS
     for(j=0;j<N_CR_PARTICLE_BINS;j++)
     {
-        in->CosmicRayPressure[j] = Get_Particle_CosmicRayPressure(i,j);
+        in->CosmicRayPressure[j] = Get_Gas_CosmicRayPressure(i,j);
         in->CosmicRayDiffusionCoeff[j] = SphP[i].CosmicRayDiffusionCoeff[j];
 #ifdef COSMIC_RAYS_M1
         for(k=0;k<3;k++) {in->CosmicRayFlux[j][k] = SphP[i].CosmicRayFluxPred[j][k];}
@@ -642,8 +638,7 @@ void hydro_final_operations_and_cleanup(void)
     {
         if(P[i].Type == 0 && P[i].Mass > 0)
         {
-            double dt;
-            dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            double dt; dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             /* signal velocity needs to include rate of gas flow -over- the resolution element, which can be non-zero here */
@@ -660,8 +655,8 @@ void hydro_final_operations_and_cleanup(void)
                 /* this part of the induction equation has to do with advection of div-B, it is not present in SPH */
                 SphP[i].DtB[k] -= SphP[i].divB * SphP[i].VelPred[k]/All.cf_atime;
 #endif
-                SphP[i].HydroAccel[k] -= SphP[i].divB * Get_Particle_BField(i,k)*All.cf_a2inv;
-                SphP[i].DtInternalEnergy -= SphP[i].divB * (SphP[i].VelPred[k]/All.cf_atime) * Get_Particle_BField(i,k)*All.cf_a2inv;
+                SphP[i].HydroAccel[k] -= SphP[i].divB * Get_Gas_BField(i,k)*All.cf_a2inv;
+                SphP[i].DtInternalEnergy -= SphP[i].divB * (SphP[i].VelPred[k]/All.cf_atime) * Get_Gas_BField(i,k)*All.cf_a2inv;
             }
 
             double magnorm_closure = Get_DtB_FaceArea_Limiter(i);
@@ -673,7 +668,6 @@ void hydro_final_operations_and_cleanup(void)
             db_vsig_h_norm = 0.1; // can be as low as 0.03 //
 #ifdef PM_HIRES_REGION_CLIPPING
             tolerance_for_correction = 0.5; // could be as high as 0.75 //
-            //db_vsig_h_norm = 0.03;
 #endif
 
             double DtB_PhiCorr=0,DtB_UnCorr=0,db_vsig_h=0,PhiCorr_Norm=1.0;
@@ -695,7 +689,7 @@ void hydro_final_operations_and_cleanup(void)
                 for(k=0; k<3; k++)
                 {
                     SphP[i].DtB[k] += PhiCorr_Norm * SphP[i].DtB_PhiCorr[k];
-                    SphP[i].DtInternalEnergy += PhiCorr_Norm * SphP[i].DtB_PhiCorr[k] * Get_Particle_BField(i,k)*All.cf_a2inv;
+                    SphP[i].DtInternalEnergy += PhiCorr_Norm * SphP[i].DtB_PhiCorr[k] * Get_Gas_BField(i,k)*All.cf_a2inv;
                 }
             }
 
@@ -709,7 +703,7 @@ void hydro_final_operations_and_cleanup(void)
                 double tmp_ded = 0.5 * SphP[i].MaxSignalVel / (fac_mu*All.cf_atime); // has units of v_physical now
                 /* do a check to make sure divB isn't something wildly divergent (owing to particles being too close) */
                 double b2_max = 0.0;
-                for(k=0;k<3;k++) {b2_max += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+                for(k=0;k<3;k++) {b2_max += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);}
                 b2_max = 100.0 * fabs( sqrt(b2_max) * All.cf_a2inv * P[i].Mass / (SphP[i].Density*All.cf_a3inv) * 1.0 / (PPP[i].Hsml*All.cf_atime) );
                 if(fabs(SphP[i].divB) > b2_max) {SphP[i].divB *= b2_max / fabs(SphP[i].divB);}
                 /* ok now can apply this to get the growth rate of phi */
@@ -739,7 +733,7 @@ void hydro_final_operations_and_cleanup(void)
                 (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
             double vstream_0 = Get_CosmicRayStreamingVelocity(i), vA=10.*vstream_0;
 #ifdef MAGNETIC /* account for the fact that the loss term is always [or below] the Alfven speed, regardless of the bulk streaming speed */
-            vA=0; for(k=0;k<3;k++) {vA += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+            vA=0; for(k=0;k<3;k++) {vA += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);}
             vA = All.cf_afac3 * sqrt(All.cf_afac1 * vA/ (All.cf_atime * SphP[i].Density));
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
             vA /= Get_Gas_Ionized_Fraction(i); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
@@ -762,7 +756,7 @@ void hydro_final_operations_and_cleanup(void)
 #ifndef HYDRO_SPH
             for(k=0;k<3;k++)
             {
-                SphP[i].DtInternalEnergy += -Get_Particle_BField(i,k)*All.cf_a2inv * SphP[i].DtB[k];
+                SphP[i].DtInternalEnergy += -Get_Gas_BField(i,k)*All.cf_a2inv * SphP[i].DtB[k];
             }
 #endif
             for(k=0;k<3;k++) {SphP[i].DtB[k] *= magnorm_closure;}
@@ -774,19 +768,20 @@ void hydro_final_operations_and_cleanup(void)
             if(PPP[i].Hsml >= 0.99*All.MaxHsml) {SphP[i].DtInternalEnergy = 0;}
 
             // need to explicitly include adiabatic correction from the hubble-flow (for drifting) here //
-            if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*(GAMMA(i)-1) * SphP[i].InternalEnergyPred * All.cf_hubble_a;
+            if(All.ComovingIntegrationOn) {SphP[i].DtInternalEnergy -= 3*(GAMMA(i)-1) * SphP[i].InternalEnergyPred * All.cf_hubble_a;}
             // = du/dlna -3*(gamma-1)*u ; then dlna/dt = H(z) =  All.cf_hubble_a //
 
 
 #if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_EVOLVE_FLUX) && !defined(RT_RADPRESSURE_IN_HYDRO) //#elif defined(RT_COMPGRAD_EDDINGTON_TENSOR) /* // -- moved for OTVET+FLD to drift-kick operation to deal with limiters more accurately -- // */
             /* calculate the radiation pressure force */
-            double radacc[3],fluxcorr; radacc[0]=radacc[1]=radacc[2]=0;  int kfreq;
+            double radacc[3]; radacc[0]=radacc[1]=radacc[2]=0;  int kfreq;
             for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++)
             {
                 double vol_inv = SphP[i].Density*All.cf_a3inv/P[i].Mass, f_kappa_abs = rt_absorb_frac_albedo(i,kfreq), vel_i[3]={0}, vdot_h[3]={0}, flux_i[3]={0}, flux_mag=0, erad_i=0, flux_corr=1, work_band=0;
                 erad_i = SphP[i].Rad_E_gamma_Pred[kfreq]*vol_inv;
                 for(k=0;k<3;k++) {flux_i[k]=SphP[i].Rad_Flux_Pred[kfreq][k]*vol_inv; vel_i[k]=SphP[i].VelPred[k]/All.cf_atime; flux_mag+=flux_i[k]*flux_i[k];}
-                eddington_tensor_dot_vector(SphP[i].ET[kfreq],vel_i,vdot_h); for(k=0;k<3;k++) {vdot_h[k] = erad_i * (vel_i[k] + vdot_h[k]);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term. this is the P term //
+                eddington_tensor_dot_vector(SphP[i].ET[kfreq],vel_i,vdot_h);
+                for(k=0;k<3;k++) {vdot_h[k] = erad_i * (vel_i[k] + vdot_h[k]);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term. this is the P term //
                 double flux_thin = erad_i * C_LIGHT_CODE_REDUCED; if(flux_mag>0) {flux_mag=sqrt(flux_mag);} else {flux_mag=1.e-20*flux_thin;}
                 flux_corr = DMIN(1., flux_thin/flux_mag);
 #if defined(RT_ENABLE_R15_GRADIENTFIX)
@@ -867,38 +862,23 @@ void hydro_final_operations_and_cleanup(void)
 
 
 #ifdef NUCLEAR_NETWORK
-    if(ThisTask == 0)
-    {
-        printf("Doing nuclear network.\n");
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-    tstart = my_second();
+    PRINT_STATUS("Doing nuclear network");
+    MPI_Barrier(MPI_COMM_WORLD); int nuc_particles=0,nuc_particles_sum=0; double dedt_nuc;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
         if(P[i].Type == 0)
-        {
-            /* evaluate network here, but do it only for high enough temperatures */
+        {   /* evaluate network here, but do it only for high enough temperatures */
             if(SphP[i].Temperature > All.NetworkTempThreshold)
             {
                 nuc_particles++;
-                network_integrate(SphP[i].Temperature, SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnuc,
-                                  SphP[i].dxnuc, dt*All.UnitTime_in_s, &dedt_nuc, NULL, &All.nd, &All.nw);
-                SphP[i].DtInternalEnergy += dedt_nuc * All.UnitEnergy_in_cgs / All.UnitTime_in_s;
+                double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) * UNIT_TIME_IN_CGS;
+                network_integrate(SphP[i].Temperature, SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS, SphP[i].xnuc,
+                                  SphP[i].dxnuc, dt, &dedt_nuc, NULL, &All.nd, &All.nw);
+                SphP[i].DtInternalEnergy += dedt_nuc * UNIT_ENERGY_IN_CGS / UNIT_TIME_IN_CGS;
             }
-            else
-            {
-                for(k = 0; k < EOS_NSPECIES; k++)
-                {
-                    SphP[i].dxnuc[k] = 0;
-                }
-            }
+            else {for(k = 0; k < EOS_NSPECIES; k++) {SphP[i].dxnuc[k] = 0;}}
         }
-    tend = my_second();
     MPI_Allreduce(&nuc_particles, &nuc_particles_sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    if(ThisTask == 0)
-    {
-        printf("Nuclear network done for %d particles.\n", nuc_particles_sum);
-    }
-    timewait1 += timediff(tend, my_second());
+    PRINT_STATUS("Nuclear network done for %d particles", nuc_particles_sum);
 #endif
 }
 

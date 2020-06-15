@@ -774,31 +774,16 @@ void powerspec_turb_save(char *fname, double *disp)
   FILE *fd;
   char buf[500];
   int i;
-
   if(ThisTask == 0)
     {
-      if(!(fd = fopen(fname, "w")))
-	{
-	  sprintf(buf, "can't open file `%s`\n", fname);
-	  terminate(buf);
-	}
-
+      if(!(fd = fopen(fname, "w"))) {sprintf(buf, "can't open file `%s`\n", fname); terminate(buf);}
       fprintf(fd, "%g\n", All.Time);
       i = TURB_DRIVING_SPECTRUMGRID;
       fprintf(fd, "%d\n", i);
       i = BINS_PS;
       fprintf(fd, "%d\n", i);
-
-      fprintf(fd, "%g\n", disp[0]);
-      fprintf(fd, "%g\n", disp[1]);
-      fprintf(fd, "%g\n", disp[2]);
-
-      for(i = 0; i < BINS_PS; i++)
-	{
-	  fprintf(fd, "%g %g %g %g\n", 
-		  Kbin[i], Power[i], (double) CountModes[i], SumPower[i]);
-	}
-
+      fprintf(fd, "%g\n", disp[0]); fprintf(fd, "%g\n", disp[1]); fprintf(fd, "%g\n", disp[2]);
+      for(i = 0; i < BINS_PS; i++) {fprintf(fd, "%g %g %g %g\n", Kbin[i], Power[i], (double) CountModes[i], SumPower[i]);}
       fclose(fd);
     }
 }

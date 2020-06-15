@@ -22,7 +22,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     double kappa_j = fabs(SphP[j].CosmicRayDiffusionCoeff[k_CRegy]);
     double d_scalar = scalar_i - scalar_j;
     
-    if(((kappa_i>0)||(kappa_j>0))&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>0)&&(Face_Area_Norm>0)&&(dt_hydrostep>0))
+    if(((kappa_i>0)||(kappa_j>0))&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>0)&&(Face_Area_Norm>0))
     {
 #ifndef COSMIC_RAYS_M1
         // NOT SPH: Now we use the more accurate finite-volume formulation, with the effective faces we have already calculated //
@@ -60,7 +60,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
             if(gnew > 0)
             {
                 gnew = sqrt(gnew);
-                for(k=0;k<3;k++) {grad_ij[k] / grad_mag * gnew;}
+                for(k=0;k<3;k++) {grad_ij[k] *= gnew / grad_mag;}
                 grad_mag = gnew;
             }
         }
@@ -196,7 +196,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_j_to_i] += flux_tmp[k_j_to_i] * SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k_j_to_i];
         Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_i_to_j] += flux_tmp[k_i_to_j] * local.CosmicRayAlfvenEnergy[k_CRegy][k_i_to_j];
         for(k=0;k<2;k++) {out.DtCosmicRayAlfvenEnergy[k_CRegy][k] += Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}
-        if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= Fluxes.CosmicRayAlfvenEnergy[k_CR_egy][k];}}
+        if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}}
 #endif
         
 #endif // COSMIC_RAYS_M1

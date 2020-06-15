@@ -160,7 +160,7 @@ void do_dm_fuzzy_drift_kick(int i, double dt, int mode)
     double vol_inv = P[i].AGS_Density / P[i].Mass;
     if(mode == 0)
     {
-        double psimag_mass_old = (P[i].AGS_Psi_Re*P[i].AGS_Psi_Re + P[i].AGS_Psi_Im*P[i].AGS_Psi_Im) * vol_inv;
+        //double psimag_mass_old = (P[i].AGS_Psi_Re*P[i].AGS_Psi_Re + P[i].AGS_Psi_Im*P[i].AGS_Psi_Im) * vol_inv;
         P[i].AGS_Psi_Re += P[i].AGS_Dt_Psi_Re * dt;
         P[i].AGS_Psi_Im += P[i].AGS_Dt_Psi_Im * dt;
         double mass_old = P[i].Mass, dmass = P[i].AGS_Dt_Psi_Mass * dt, mass_new = mass_old + dmass;

@@ -1841,7 +1841,7 @@ void fof_make_black_holes(void)
             gsl_rng_set(random_generator_forbh,P[import_indices[n]].ID+17);
             random_number_forbh = gsl_ran_gaussian(random_generator_forbh, All.SeedBlackHoleMassSigma);
             BPP(import_indices[n]).BH_Mass = pow( 10., log10(All.SeedBlackHoleMass) + random_number_forbh );
-            unitmass_in_msun = (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS;
+            unitmass_in_msun = UNIT_MASS_IN_SOLAR;
             if( BPP(import_indices[n]).BH_Mass < 100./unitmass_in_msun )
                 BPP(import_indices[n]).BH_Mass = 100./unitmass_in_msun;      // enforce lower limit of Mseed = 100 x Msun
         } else {
@@ -1856,9 +1856,6 @@ void fof_make_black_holes(void)
             P[import_indices[n]].DensAroundStar = SphP[import_indices[n]].Density;
         }
         /* set some specific BH variables that are needed below */
-#ifdef BH_PHOTONMOMENTUM
-        P[import_indices[n]].BH_disk_hr = 0.333333;
-#endif
 #ifdef BH_INCREASE_DYNAMIC_MASS
         P[import_indices[n]].Mass *= BH_INCREASE_DYNAMIC_MASS;
 #endif
@@ -2220,7 +2217,7 @@ void read_fof(int num)
   MyIDType *ids;
   int *list_of_ngroups, *list_of_nids, *list_of_allgrouplen;
   int *recvoffset;
-  int grnr, ngrp, sendTask, recvTask, imax1, imax2;
+  int grnr, ngrp, sendTask, recvTask;
   int nprocgroup, masterTask, groupTask, nid_previous;
   int fof_compare_P_SubNr(const void *a, const void *b);
     PRINT_STATUS("Trying to read preexisting FoF group catalogues...  (presently allocated=%g MB)",AllocatedBytes / (1024.0 * 1024.0));

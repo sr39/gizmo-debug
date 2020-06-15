@@ -79,10 +79,7 @@ MyFloat Jgas_in_Kernel[3], Jstar_in_Kernel[3], Jalt_in_Kernel[3]; // mass/angula
 #if defined(BH_OUTPUT_MOREINFO)
     MyFloat Sfr_in_Kernel;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-    MyFloat GradRho_in_Kernel[3];
-#endif
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
     MyFloat BH_SurroundingGasVel[3];
 #endif
 #if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
@@ -126,10 +123,7 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 #if defined(BH_OUTPUT_MOREINFO)
     ASSIGN_ADD(BlackholeTempInfo[target].Sfr_in_Kernel,out->Sfr_in_Kernel,mode);
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-    for(k=0;k<3;k++) {ASSIGN_ADD(BlackholeTempInfo[target].GradRho_in_Kernel[k],out->GradRho_in_Kernel[k],mode);}
-#endif
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
     for(k=0;k<3;k++) {ASSIGN_ADD(BlackholeTempInfo[target].BH_SurroundingGasVel[k],out->BH_SurroundingGasVel[k],mode);}
 #endif
 #if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
@@ -163,7 +157,7 @@ void bh_normalize_temp_info_struct_after_environment_loop(int i)
     if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
     {
         BlackholeTempInfo[i].BH_InternalEnergy /= BlackholeTempInfo[i].Mgas_in_Kernel;
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
         for(k=0;k<3;k++) {BlackholeTempInfo[i].BH_SurroundingGasVel[k] /= BlackholeTempInfo[i].Mgas_in_Kernel * All.cf_atime;}
 #endif
     }
@@ -200,15 +194,12 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
     /* initialize variables before loop is started */
     int startnode, numngb, listindex = 0, j, k, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
-    double ags_h_i, h_i, hinv, hinv3; h_i=local.Hsml; hinv=1./h_i; hinv3=hinv*hinv*hinv; ags_h_i=All.ForceSoftening[5];
+    double ags_h_i, h_i, hinv, hinv3, wk, dwk, u; wk=0; dwk=0; u=0; h_i=local.Hsml; hinv=1./h_i; hinv3=hinv*hinv*hinv; ags_h_i=All.ForceSoftening[5];
 #if (ADAPTIVE_GRAVSOFT_FORALL & 32)
     ags_h_i = local.AGS_Hsml;
 #endif
 #ifdef BH_ACCRETE_NEARESTFIRST
     out.BH_dr_to_NearestGasNeighbor = MAX_REAL_NUMBER; // initialize large value
-#endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (BH_GRAVACCRETION == 8) || defined(BH_RETURN_BFLUX) || defined(BH_RETURN_ANGMOM_TO_GAS)
-    MyFloat wk, dwk, u; // initialized here to prevent some annoying compiler warnings
 #endif
     /* Now start the actual neighbor computation for this particle */
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
@@ -268,12 +259,7 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
 #if defined(BH_OUTPUT_MOREINFO)
                         out.Sfr_in_Kernel += SphP[j].Sfr;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-                        u=0; for(k=0;k<3;k++) {u+=dP[k]*dP[k];}
-                        u=sqrt(u)/h_i; if(u<1) {kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,1);} else {wk=dwk=0;}
-                        dwk /= u*h_i; for(k=0;k<3;k++) out.GradRho_in_Kernel[k] += wt * dwk * fabs(dP[k]);
-#endif
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
                         for(k=0;k<3;k++) {out.BH_SurroundingGasVel[k] += wt*dv[k];}
 #endif
 #ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK
@@ -293,7 +279,7 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
 #if (BH_GRAVACCRETION == 8)
                         u=0; for(k=0;k<3;k++) {u+=dP[k]*dP[k];}
                         u=sqrt(u)/h_i; if(u<1) {kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,-1);} else {wk=dwk=0;}
-                        double rj=u*h_i*All.cf_atime; double csj=Particle_effective_soundspeed_i(j);
+                        double rj=u*h_i*All.cf_atime; double csj=Get_Gas_effective_soundspeed_i(j);
                         double vdotrj=0; for(k=0;k<3;k++) {vdotrj+=-dP[k]*dv[k];}
                         double vr_mdot = 4*M_PI * wt*(wk*All.cf_a3inv) * rj*vdotrj;
                         if(rj < All.ForceSoftening[5]*All.cf_atime)

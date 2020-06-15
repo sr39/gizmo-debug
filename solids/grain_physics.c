@@ -46,7 +46,7 @@ void apply_grain_dragforce(void)
 #if defined(GRAIN_BACKREACTION)
             for(k=0;k<3;k++) {P[i].Grain_DeltaMomentum[k]=0;} /* reset momentum to couple back to gas (or else would diverge) */
 #endif
-            double dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
             double vgas_mag = 0.0; for(k=0;k<3;k++) {vgas_mag+=(P[i].Gas_Velocity[k]-P[i].Vel[k])*(P[i].Gas_Velocity[k]-P[i].Vel[k]);}
             vgas_mag = sqrt(vgas_mag) / All.cf_atime; /* convert to physical units */
             int grain_subtype = 1; /* default assumption about particulate sub-type for operations below */
@@ -57,12 +57,12 @@ void apply_grain_dragforce(void)
             {
                 double gamma_eff = GAMMA_DEFAULT; // adiabatic index to use below
                 double cs = sqrt( (gamma_eff*(gamma_eff-1)) * P[i].Gas_InternalEnergy);
-                double R_grain_cgs = P[i].Grain_Size, R_grain_code = R_grain_cgs / (All.UnitLength_in_cm / All.HubbleParam);
-                double rho_gas = P[i].Gas_Density * All.cf_a3inv, rho_grain_physical = All.Grain_Internal_Density, rho_grain_code = rho_grain_physical / (All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam); // rho_grain in cgs and code units //
+                double R_grain_cgs = P[i].Grain_Size, R_grain_code = R_grain_cgs / UNIT_LENGTH_IN_CGS;
+                double rho_gas = P[i].Gas_Density * All.cf_a3inv, rho_grain_physical = All.Grain_Internal_Density, rho_grain_code = rho_grain_physical / UNIT_DENSITY_IN_CGS; // rho_grain in cgs and code units //
                 double x0 = 0.469993*sqrt(gamma_eff) * vgas_mag/cs; // (3/8)*sqrt[pi/2]*|vgas-vgrain|/cs //
                 double tstop_inv = 1.59577/sqrt(gamma_eff) * rho_gas * cs / (R_grain_code * rho_grain_code); // 2*sqrt[2/pi] * 1/tstop //
 #ifdef GRAIN_LORENTZFORCE /* calculate the grain charge following Draine & Sutin */
-                double cs_cgs = cs * All.UnitVelocity_in_cm_per_s;
+                double cs_cgs = cs * UNIT_VEL_IN_CGS;
                 double tau_draine_sutin = R_grain_cgs * (2.3*PROTONMASS) * (cs_cgs*cs_cgs) / (gamma_eff * ELECTRONCHARGE*ELECTRONCHARGE);
                 double Z_grain = -DMAX( 1./(1. + sqrt(1.0e-3/tau_draine_sutin)) , 2.5*tau_draine_sutin ); /* note: if grains moving super-sonically with respect to gas, and charge equilibration time is much shorter than the streaming/dynamical timescales, then the charge is slightly reduced, because the ion collision rate is increased while the electron collision rate is increased less (since electrons are moving much faster, we assume the grain is still sub-sonic relative to the electron sound speed. in this case, for the large-grain limit, the Draine & Sutin results can be generalized; the full expressions are messy but can be -approximated- fairly well for Mach numbers ~3-30 by simply suppressing the equilibrium grain charge by a power ~exp[-0.04*mach]  (weak effect, though can be significant for mach>10) */
                 if(isnan(Z_grain)||(Z_grain>=0)) {Z_grain=0;}
@@ -72,8 +72,8 @@ void apply_grain_dragforce(void)
                 {
                     double mu = 2.3*PROTONMASS, temperature = (mu/PROTONMASS) * (1.4-1.) * U_TO_TEMP_UNITS * P[i].Gas_InternalEnergy; // assume molecular gas (as its the only regime where this is relevant) with gamma=1.4
                     double cross_section = GRAIN_EPSTEIN_STOKES * 2.0e-15 * (1. + 70./temperature);
-                    cross_section /= (All.UnitLength_in_cm * All.UnitLength_in_cm / (All.HubbleParam*All.HubbleParam));
-                    double n_mol = rho_gas / (mu * All.HubbleParam/All.UnitMass_in_g), mean_free_path = 1 / (n_mol * cross_section); // should be in code units now //
+                    cross_section /= UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS;
+                    double n_mol = rho_gas * UNIT_MASS_IN_CGS / mu, mean_free_path = 1 / (n_mol * cross_section); // should be in code units now //
                     double corr_mfp = R_grain_code / ((9./4.) * mean_free_path);
                     if(corr_mfp > 1) {tstop_inv /= corr_mfp;}
                 }
@@ -90,7 +90,7 @@ void apply_grain_dragforce(void)
                     if(T_Kelvin > 1000.) {f_ion_to_use = exp(-15000./T_Kelvin);} /* default to a simple approximate guess for ionization, without cooling active */
 #ifdef COOLING  // in this case, have the ability to calculate more accurate ionization fraction
                     double u_tmp, ne_tmp = 1, nh0_tmp = 0, mu_tmp = 1, temp_tmp, nHeII_tmp, nhp_tmp, nHe0_tmp, nHepp_tmp;
-                    u_tmp = 1.3807e-16 * T_Kelvin / (2.3*PROTONMASS) * (All.UnitMass_in_g/All.UnitEnergy_in_cgs); // needs to be in code units
+                    u_tmp = T_Kelvin / (2.3 * U_TO_TEMP_UNITS); // needs to be in code units; 2.3 for mean molecular weight factor and gamma_eos factor //
                     temp_tmp = ThermalProperties(u_tmp, rho_gas, -1, &mu_tmp, &ne_tmp, &nh0_tmp, &nhp_tmp, &nHe0_tmp, &nHeII_tmp, &nHepp_tmp);
                     f_ion_to_use = DMIN(ne_tmp , 1.);
 #endif
@@ -111,9 +111,9 @@ void apply_grain_dragforce(void)
                         with force per particle Fp = (1 - R) * (np*E0 + J_p/c x B) / np = (1-R)*(E0 + v_p x B);
                         we ignore the Hall effect setting R=0 (ignore current carried by the particles themselves in induction) */
                     double grain_mass = (4.*M_PI/3.) * R_grain_code*R_grain_code*R_grain_code * rho_grain_code; // code units
-                    double lorentz_units = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); // code B to Gauss
-                    lorentz_units *= (ELECTRONCHARGE/C_LIGHT) * All.UnitVelocity_in_cm_per_s / (All.UnitMass_in_g / All.HubbleParam); // converts acceleration to cgs
-                    lorentz_units /= All.UnitVelocity_in_cm_per_s / (All.UnitTime_in_s / All.HubbleParam); // converts it to code-units acceleration
+                    double lorentz_units = UNIT_B_IN_GAUSS; // code B to Gauss
+                    lorentz_units *= (ELECTRONCHARGE/C_LIGHT) * UNIT_VEL_IN_CGS / UNIT_MASS_IN_CGS; // converts acceleration to cgs
+                    lorentz_units /= UNIT_VEL_IN_CGS / UNIT_TIME_IN_CGS; // converts it to code-units acceleration
 
                     double bhat[3], bmag=0, efield[3]={0}, efield_coeff=0, dv[3]; /* define unit vectors and B for evolving the lorentz force */
                     for(k=0;k<3;k++) {bhat[k]=P[i].Gas_B[k]*All.cf_a2inv; bmag+=bhat[k]*bhat[k]; dv[k]=(P[i].Vel[k]-P[i].Gas_Velocity[k])/All.cf_atime;}
@@ -177,9 +177,9 @@ void apply_grain_dragforce(void)
                 double reduced_C = PIC_SPEEDOFLIGHT_REDUCTION * C_LIGHT_CODE; /* effective speed of light for this part of the code */
                 double charge_to_mass_ratio_dimensionless = All.PIC_Charge_to_Mass_Ratio; /* dimensionless q/m in units of e/mp */
 
-                double lorentz_units = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); // code B to Gauss
-                lorentz_units *= All.UnitVelocity_in_cm_per_s * (ELECTRONCHARGE/(PROTONMASS*C_LIGHT)); // code velocity to CGS, times base units e/(mp*c)
-                lorentz_units /= All.UnitVelocity_in_cm_per_s / (All.UnitTime_in_s / All.HubbleParam); // convert 'back' to code-units acceleration
+                double lorentz_units = UNIT_B_IN_GAUSS; // code B to Gauss
+                lorentz_units *= UNIT_VEL_IN_CGS * (ELECTRONCHARGE/(PROTONMASS*C_LIGHT)); // code velocity to CGS, times base units e/(mp*c)
+                lorentz_units /= UNIT_VEL_IN_CGS / UNIT_TIME_IN_CGS; // convert 'back' to code-units acceleration
                 double efield[3], bhat[3]={0}, bmag=0, v_g[3]; /* define unit vectors and B for evolving the lorentz force */
                 for(k=0;k<3;k++) {bhat[k]=P[i].Gas_B[k]*All.cf_a2inv; bmag+=bhat[k]*bhat[k]; v_g[k]=P[i].Gas_Velocity[k]/(All.cf_atime*reduced_C);} /* get magnitude and unit vector for B */
                 if(bmag>0) {bmag=sqrt(bmag); for(k=0;k<3;k++) {bhat[k]/=bmag;}} else {bmag=0;} /* take it correctly assuming its non-zero */
@@ -345,13 +345,12 @@ double return_grain_cross_section_per_unit_mass(int i)
     where here 'All.DM_InteractionCrossSection' is the cross-section read in from the params file, and other params like DM_InteractionVelocityScale
     allow the user to control the collision velocity dependence. This function should be appropriately modified to the actual grain physics being represented.
     Here, the default assumption is simple hard-sphere scattering with a constant cross section per unit grain mass, set by the grain size */
-double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, double h_si, double dV[3], integertime dt_step, int j_ngb)
+double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, double h_si, double dV[3], double dt, int j_ngb)
 {
     double dVmag = sqrt(dV[0]*dV[0]+dV[1]*dV[1]+dV[2]*dV[2]) / All.cf_atime; // velocity in physical
-    double dt = dt_step * All.Timebase_interval / All.cf_hubble_a; // time in physical
     double rho_eff = 0.5*(mass + P[j_ngb].Mass) / (h_si*h_si*h_si) * All.cf_a3inv; // density in physical
     double cx_eff = g_geo(r/h_si) * (mass*cx_per_unitmass + P[j_ngb].Mass*return_grain_cross_section_per_unit_mass(j_ngb)) / (mass + P[j_ngb].Mass); // mass-weighted effective cross section (physical) scaled to cgs
-    double units = All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; // needed to convert everything to cgs
+    double units = UNIT_SURFDEN_IN_CGS; // needed to convert everything to cgs
     if(All.DM_InteractionVelocityScale>0) {double x=dVmag/All.DM_InteractionVelocityScale; cx_eff/=1+x*x*x*x;} // take velocity dependence
     return rho_eff * cx_eff * dVmag * dt * units; // dimensionless probability
 }
@@ -398,7 +397,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
     if((1 << P[i].Type) & (GRAIN_PTYPES))
     {
         in->Grain_Size=P[i].Grain_Size; int k_freq;
-        double R_grain_code=P[i].Grain_Size/(All.UnitLength_in_cm/All.HubbleParam), rho_grain_code=All.Grain_Internal_Density/(All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam), rho_gas_code=P[i].Gas_Density*All.cf_a3inv; /* internal grain density in code units */
+        double R_grain_code=P[i].Grain_Size/UNIT_LENGTH_IN_CGS, rho_grain_code=All.Grain_Internal_Density/UNIT_DENSITY_IN_CGS, rho_gas_code=P[i].Gas_Density*All.cf_a3inv; /* internal grain density in code units */
         for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
         {
             double Q_abs_eff = return_grain_absorption_efficiency_Q(i, k_freq); /* need this to calculate the absorption efficiency in each band */
@@ -451,7 +450,7 @@ int interpolate_fluxes_opacities_gasgrains_evaluate(int target, int mode, int *e
                     if(local.Type==0) /* sitting on a -gas- element, want to interpolate opacity to it */
                     {
                         wt = P[j].Mass * (wk_i / P[j].Gas_Density); /* dimensionless weight of this gas element as 'seen' by the grain: = (grain_part_mass/gas_part_mass) * (gas_part_mass * Wk / gas_density [=sum gas_part_mass * Wk]) */
-                        double R_grain_code=P[j].Grain_Size/(All.UnitLength_in_cm/All.HubbleParam), rho_grain_code=All.Grain_Internal_Density/(All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam); /* internal grain density in code units */
+                        double R_grain_code=P[j].Grain_Size/UNIT_LENGTH_IN_CGS, rho_grain_code=All.Grain_Internal_Density/UNIT_DENSITY_IN_CGS; /* internal grain density in code units */
                         for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
                         {
                             double Q_abs_eff = return_grain_absorption_efficiency_Q(j, k_freq); /* need this to calculate the absorption efficiency in each band */

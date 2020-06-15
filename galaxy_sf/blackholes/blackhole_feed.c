@@ -24,7 +24,7 @@
 struct INPUT_STRUCT_NAME
 {
     int NodeList[NODELISTLENGTH]; MyDouble Pos[3]; MyFloat Vel[3], Hsml, Mass, BH_Mass, Dt, Density, Mdot; MyIDType ID;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
     MyFloat Jgas_in_Kernel[3];
 #endif
 #if defined(BH_GRAVCAPTURE_GAS)
@@ -38,9 +38,6 @@ struct INPUT_STRUCT_NAME
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
-#endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-    MyFloat BH_disk_hr;
 #endif
 #ifdef BH_ACCRETE_NEARESTFIRST
     MyFloat BH_dr_to_NearestGasNeighbor;
@@ -63,18 +60,11 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 #ifdef BH_ALPHADISK_ACCRETION
     in->BH_Mass_AlphaDisk = BPP(i).BH_Mass_AlphaDisk;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-    in->BH_disk_hr = P[i].BH_disk_hr;
-#endif
-#ifndef WAKEUP
-    in->Dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-    in->Dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif
+    in->Dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
 #ifdef BH_ACCRETE_NEARESTFIRST
     in->BH_dr_to_NearestGasNeighbor = P[i].BH_dr_to_NearestGasNeighbor;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
     for(k=0;k<3;k++) {in->Jgas_in_Kernel[k] = P[i].BH_Specific_AngMom[k];}
 #else
@@ -90,7 +80,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 /* this structure defines the variables that need to be sent -back to- the 'searching' element */
 struct OUTPUT_STRUCT_NAME
 { /* define variables below as e.g. "double X;" */
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
     double BH_angle_weighted_kernel_sum;
 #endif
 #ifdef BH_REPOSITION_ON_POTMIN
@@ -104,7 +94,7 @@ struct OUTPUT_STRUCT_NAME
 static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
     int k, target; k=0; target = P[i].IndexMapToTempStruc;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
     ASSIGN_ADD_PRESET(BlackholeTempInfo[target].BH_angle_weighted_kernel_sum, out->BH_angle_weighted_kernel_sum, mode);
 #endif
 #ifdef BH_REPOSITION_ON_POTMIN
@@ -122,33 +112,30 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
     /* initialize variables before loop is started */
     int startnode, numngb, listindex = 0, j, k, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
-    double h_i = local.Hsml, wk, dwk, vrel, vesc, dpos[3], dvel[3], f_accreted=1; if((local.Mass<0)||(h_i<=0)) return -1;
-    double w, p, r2, r, u, sink_radius=All.ForceSoftening[5], h_i2 = h_i * h_i, hinv = 1 / h_i, hinv3 = hinv * hinv * hinv, ags_h_i = All.ForceSoftening[5];
+    double h_i = local.Hsml, wk, dwk, vrel, vesc, dpos[3], dvel[3], f_accreted; f_accreted=1; if((local.Mass<0)||(h_i<=0)) {return -1;}
+    double w, p, r2, r, u, sink_radius=All.ForceSoftening[5], h_i2 = h_i * h_i, hinv = 1 / h_i, hinv3 = hinv * hinv * hinv, ags_h_i = All.ForceSoftening[5]; p=0; w=0;
 #ifdef BH_REPOSITION_ON_POTMIN
     out.BH_MinPot = BHPOTVALUEINIT;
 #endif
 #if (ADAPTIVE_GRAVSOFT_FORALL & 32)
     ags_h_i = local.AGS_Hsml;
 #endif
-#if defined(BH_PHOTONMOMENTUM)  || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
     double J_dir[3]; for(k=0;k<3;k++) {J_dir[k] = local.Jgas_in_Kernel[k];}
 #endif
 #if defined(BH_GRAVCAPTURE_GAS) && defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
     double meddington = bh_eddington_mdot(local.BH_Mass), medd_max_accretable = All.BlackHoleEddingtonFactor * meddington * local.Dt, eddington_factor = local.mass_to_swallow_edd / medd_max_accretable;   /* if <1 no problem, if >1, need to not set some swallowIDs */
 #endif
 #if defined(BH_SWALLOWGAS)
-    double mass_markedswallow=0, bh_mass_withdisk=local.BH_Mass;
+    double mass_markedswallow,bh_mass_withdisk; mass_markedswallow=0; bh_mass_withdisk=local.BH_Mass;
 #ifdef BH_ALPHADISK_ACCRETION
     bh_mass_withdisk += local.BH_Mass_AlphaDisk;
 #endif
 #endif
-#if defined(BH_SWALLOW_SMALLTIMESTEPS)
-    double dt_min_to_accrete = DMAX(0.001 * sqrt(pow(All.SofteningTable[5],3.0)/(All.G * local.Mass)), 20.0*DMAX(All.MinSizeTimestep,All.Timebase_interval) ); //0.001 = tolerance factor for dt_min, defined in part (ii) of 2.3.5 in Hubber 2013.
-#endif
 #if defined(BH_WIND_KICK) && !defined(BH_GRAVCAPTURE_GAS) /* DAA: increase the effective mass-loading of BAL winds to reach the desired momentum flux given the outflow velocity "All.BAL_v_outflow" chosen --> appropriate for cosmological simulations where particles are effectively kicked from ~kpc scales (i.e. we need lower velocity and higher mass outflow rates compared to accretion disk scales) - */
     f_accreted = All.BAL_f_accretion; if((All.BlackHoleFeedbackFactor > 0) && (All.BlackHoleFeedbackFactor != 1.)) {f_accreted /= All.BlackHoleFeedbackFactor;} else {if(All.BAL_v_outflow > 0) {f_accreted = 1./(1. + fabs(1.*BH_WIND_KICK)*All.BlackHoleRadiativeEfficiency*C_LIGHT_CODE/(All.BAL_v_outflow));}}
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
     double norm=0; for(k=0;k<3;k++) {norm+=J_dir[k]*J_dir[k];}
     if(norm>0) {norm=1/sqrt(norm); for(k=0;k<3;k++) {J_dir[k]*=norm;}} else {J_dir[0]=J_dir[1]=0; J_dir[2]=1;}
 #endif
@@ -174,9 +161,6 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                         vrel=0; for(k=0;k<3;k++) {vrel += dvel[k]*dvel[k];}
                         r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime;  /* do this once and use below */
                         vesc=bh_vesc(j,local.Mass,r, ags_h_i);
-#if defined(BH_SWALLOW_SMALLTIMESTEPS)
-                        if(P[j].Type != 5) {if(vrel<vesc) {if(P[j].dt_step*All.Timebase_interval/All.cf_hubble_a<dt_min_to_accrete) {if(P[j].SwallowID<local.ID) {P[j].SwallowID = local.ID;}}}} /* Bound particles with very small timestep get eaten to avoid issues. */
-#endif
 #ifdef BH_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
                         double boundedness_function, potential_function; boundedness_function = P[j].Potential + 0.5 * vrel*vrel * All.cf_atime; potential_function = P[j].Potential;
@@ -220,7 +204,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                                     printf(" ..ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, local.ID, P[j].ID, vrel, vesc);
 #else
 #ifndef IO_REDUCED_MODE
-                                    fprintf(FdBlackHolesDetails, "ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, local.ID, P[j].ID, vrel, vesc);
+                                    fprintf(FdBlackHolesDetails, "ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, local.ID, P[j].ID, vrel, vesc); fflush(FdBlackHolesDetails);
 #endif
 #endif
                                 }
@@ -302,11 +286,11 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                                 if(P[j].SwallowID < local.ID) {P[j].SwallowID = local.ID; mass_markedswallow += P[j].Mass*f_accreted;}
                             } // if(w < p)
 #endif // BH_SWALLOWGAS
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) /* calculate the angle-weighting for the photon momentum */
+#if defined(BH_CALC_LOCAL_ANGLEWEIGHTS) /* calculate the angle-weighting for the photon momentum */
                             if((local.Mdot>0)&&(local.Dt>0)&&(r>0)&&(P[j].SwallowID==0)&&(P[j].Mass>0)&&(P[j].Type==0))
                             { /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
                                 norm=0; for(k=0;k<3;k++) {norm+=(dpos[k]/r)*J_dir[k];}
-                                out.BH_angle_weighted_kernel_sum += bh_angleweight_localcoupling(j,local.BH_disk_hr,norm,r,h_i);
+                                out.BH_angle_weighted_kernel_sum += bh_angleweight_localcoupling(j,norm,r,h_i);
                             }
 #endif
 #ifdef BH_THERMALFEEDBACK

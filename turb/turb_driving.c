@@ -264,7 +264,7 @@ void st_calc_phases(void)
 
 void set_turb_ampl(void)
 {
-    int i; double delta = (All.Ti_Current - StTPrev) * All.Timebase_interval / All.cf_hubble_a;
+    int i; double delta = (All.Ti_Current - StTPrev) * UNIT_INTEGERTIME_IN_PHYSICAL;
     double e_diss_sum=0, e_drive_sum=0, glob_diss_sum=0, glob_drive_sum=0;
     if(delta >= All.StDtFreq)
     {
@@ -297,7 +297,7 @@ void set_turb_ampl(void)
         st_update_ouseq();
         PRINT_STATUS(" ..st_calc_phases() ... \n");
         st_calc_phases();
-        StTPrev = StTPrev + All.StDtFreq/All.Timebase_interval;
+        StTPrev = StTPrev + All.StDtFreq / All.Timebase_interval;
         PRINT_STATUS(" ..updated turbulent stirring field at time %f.\n", StTPrev * All.Timebase_interval);
     }
 }
@@ -368,7 +368,7 @@ void do_turb_driving_step_first_half(void)
     int i, j; integertime ti_step, tstart, tend; double dvel[3], dt_gravkick;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0; tstart = P[i].Ti_begstep; tend = P[i].Ti_begstep + ti_step / 2;	/* beginning / midpoint of step */
+        ti_step = GET_PARTICLE_INTEGERTIME(i); tstart = P[i].Ti_begstep; tend = P[i].Ti_begstep + ti_step / 2;	/* beginning / midpoint of step */
         if(All.ComovingIntegrationOn) {dt_gravkick = get_gravkick_factor(tstart, tend);} else {dt_gravkick = (tend - tstart) * All.Timebase_interval;}
         if(P[i].Type == 0)
         {
@@ -388,7 +388,7 @@ void do_turb_driving_step_second_half(void)
     int i, j; integertime ti_step, tstart, tend; double dvel[3], dt_gravkick;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0; tstart = P[i].Ti_begstep + ti_step / 2; tend = P[i].Ti_begstep + ti_step;	/* midpoint/end of step */
+        ti_step = GET_PARTICLE_INTEGERTIME(i); tstart = P[i].Ti_begstep + ti_step / 2; tend = P[i].Ti_begstep + ti_step;	/* midpoint/end of step */
         if(All.ComovingIntegrationOn) {dt_gravkick = get_gravkick_factor(tstart, tend);} else {dt_gravkick = (tend - tstart) * All.Timebase_interval;}
         if(P[i].Type == 0)
         {
@@ -427,8 +427,10 @@ void log_turb_temp(void)
     double mach = sqrt(2.*glob_ekin / (GAMMA_DEFAULT*(GAMMA_DEFAULT-1)*glob_ethermal));
     
     if(ThisTask == 0)
+    {
         fprintf(FdTurb, "%g %g %g %g %g %g %g\n", All.Time, mach, (glob_ekin + glob_ethermal) / glob_mass, glob_dudt_drive / glob_mass,
-                glob_dudt_diss / glob_mass, All.TurbInjectedEnergy / glob_mass, All.TurbDissipatedEnergy / glob_mass);
+                glob_dudt_diss / glob_mass, All.TurbInjectedEnergy / glob_mass, All.TurbDissipatedEnergy / glob_mass); fflush(FdTurb);
+    }
 #endif
 }
 

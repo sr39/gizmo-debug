@@ -3,9 +3,9 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include "../../kernel.h"
 #include "../../allvars.h"
 #include "../../proto.h"
+#include "../../kernel.h"
 /*
 * This file was originally part of the GADGET3 code developed by Volker Springel.
 * It has been updated significantly by PFH for basic compatibility with GIZMO,
@@ -218,10 +218,6 @@ int subfind_loctree_treebuild(int npart, struct unbind_data *mp)
   else
     Nextnode[last] = -1;
 
-  /*
-     fprintf(Logfile,"Have put %d particles into tree.\n", num);
-   */
-
   return numnodes;
 }
 
@@ -392,7 +388,7 @@ double subfind_loctree_treeevaluate_potential(int target)
 	}
       else			/* we have an internal node. Need to check opening criterion */
 	{
-        double ErrTolThetaSubfind = All.ErrTolThetaSubfind;
+        double ErrTolThetaSubfind = All.ErrTolTheta;
 	  if(nop->len * nop->len > r2 * ErrTolThetaSubfind * ErrTolThetaSubfind)
 	    {
 	      /* open cell */
@@ -459,9 +455,6 @@ double subfind_locngb_treefind(MyDouble xyz[3], int desngb, double hguess)
 
   do
     {
-      /*
-         fprintf(Logfile,"hguess= %g\n", hguess);
-       */
       numngb = subfind_locngb_treefind_variable(xyz, hguess);
 
       if(numngb < desngb)
