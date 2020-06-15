@@ -669,7 +669,7 @@ void gravity_tree(void);
 void hydro_force(void);
 void init(void);
 void do_the_cooling_for_particle(int i);
-double get_equilibrium_dust_temperature_estimate(int i);
+double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_for_exgalbg);
 void apply_pm_hires_region_clipping_selection(int i);
 double get_starformation_rate(int i);
 void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double cloudmass_fraction, double rateOfSF);
