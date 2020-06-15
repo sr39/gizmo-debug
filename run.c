@@ -275,8 +275,6 @@ void calculate_non_standard_physics(void)
 #endif
     MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_BLACKHOLES] += measure_time();
 #endif
-    CPU_Step[CPU_BLACKHOLES] += measure_time();
-#endif
 
 
 #if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)

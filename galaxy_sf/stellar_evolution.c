@@ -166,11 +166,11 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 
     double RSNe = 0.0;
 #if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) // FIRE-specific stellar population version: separate calculation for SNe, stellar mass loss, R-process injection //
-    R_SNe = mechanical_fb_calculate_eventrates_SNe(i,dt);
+    RSNe = mechanical_fb_calculate_eventrates_SNe(i,dt);
     mechanical_fb_calculate_eventrates_Winds(i,dt);
     mechanical_fb_calculate_eventrates_Rprocess(i,dt);
     mechanical_fb_calculate_eventrates_Agetracers(i,dt);
-    return R_SNe;
+    return RSNe;
 #endif
 
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) /* SINGLE-STAR version: simple implementation of single-star wind mass-loss and SNe rates */
@@ -194,7 +194,8 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 #endif
 
 #ifdef GALSF_FB_MECHANICAL /* STELLAR-POPULATION version: mechanical feedback: 'dummy' example model below assumes a constant SNe rate for t < 30 Myr, then nothing. experiment! */
-    RSNe=0, star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+    double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+    RSNe=0.0;
     if(star_age < 0.03)
     {
         RSNe = 3.e-4; // assume a constant rate ~ 3e-4 SNe/Myr/solar mass for t = 0-30 Myr //
@@ -335,7 +336,7 @@ void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
     // we might miss deposition if using stochastic method
     //
     const double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge) * 1000.0; // Age in Myr
-    dt                   *= All.UnitTime_in_Megayears; // convert to Myr
+    dt                   *= UNIT_TIME_IN_MYR; // convert to Myr
     const int k           = get_age_tracer_bin(star_age);
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
     const double bin_dt   = All.AgeTracerTimeBins[k+1] - All.AgeTracerTimeBins[k];
@@ -498,7 +499,7 @@ void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
     }
     double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge) * 1000.0; // Age in Myr
 
-    const double dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a * All.UnitTime_in_Megayears; // get particle timestep in Myr
+    const double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) * UNIT_TIME_IN_MYR; // get particle timestep in Myr
 
     /* AJE: may need to switch to normalizing over logbin spacing if bins are large
       too avoid small number issues  - this requires undoing the normalization in post */
@@ -691,9 +692,8 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
         if(P[i].Metallicity[0]<0.033) {yields[4] *= P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[4] *= 1.65;}
 
         for(k=1;k<=4;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]); if(yields[k]<0) {yields[k]=0.0;} if(yields[k]>1) {yields[k]=1;} in->yields[k]=yields[k];} // enforce yields obeying pre-existing surface abundances, and upper/lower limits //
-//  - no #else statement needed since default yield abundances are surface (see above)
-
         yields[0]=0.0; for(k=2;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {yields[0]+=yields[k];}
+#endif
 
     } else {
         yields[0]=0.032; for(k=1;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {yields[k]=0.0;}

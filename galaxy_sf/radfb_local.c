@@ -317,7 +317,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                             already_ionized = do_the_local_ionization(j,dt,i);
                             total_N_ionized += 1;
                             mion_actual += P[j].Mass;
-                            double dx=pos[0]-P[j].Pos[0],dy=pos[1]-P[j].Pos[1],dz=pos[2]-P[j].Pos[2]; NEAREST_XYZ(dx,dy,dz,1); r2=dx*dx+dy*dy+dz*dz;
+                            double dx=pos[0]-P[j].Pos[0],dy=pos[1]-P[j].Pos[1],dz=pos[2]-P[j].Pos[2]; NEAREST_XYZ(dx,dy,dz,1); double r2=dx*dx+dy*dy+dz*dz;
                             avg_RHII += P[j].Mass*sqrt(r2)*All.cf_atime*UNIT_LENGTH_IN_KPC;
                         }
                         mionized += prob*m_effective;

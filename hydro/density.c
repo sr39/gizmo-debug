@@ -62,7 +62,7 @@ int density_isactive(int n)
         if(P[n].MassReturn_ThisTimeStep>0) return 1;
         if(P[n].RProcessEvent_ThisTimeStep>0) return 1;
 #if defined(GALSF_FB_FIRE_AGE_TRACERS)
-        if(P[i].AgeDeposition_ThisTimeStep>0) return 1;
+        if(P[n].AgeDeposition_ThisTimeStep>0) return 1;
 #endif
 #endif
 #endif

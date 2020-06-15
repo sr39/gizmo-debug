@@ -1325,7 +1325,7 @@ struct unbind_data
 extern MPI_Status mpistat;
 #undef MPI_STATUS_IGNORE
 #define MPI_STATUS_IGNORE &mpistat
-#endifAGE
+#endif
 
 #define FLT(x) (x)
 typedef MyFloat MyLongDouble;
