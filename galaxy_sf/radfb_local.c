@@ -334,7 +334,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                     } // if(mionized < 0.95*mionizable)
                     NITER_HIIFB++;
                 } while(startnode >= 0);
-                if(mionized>0) {total_m_ionized += mionized; avg_RHII += RHII*All.cf_atime*UNIT_MASS_IN_KPC;}
+                if(mionized>0) {total_m_ionized += mionized; avg_RHII += RHII*All.cf_atime*UNIT_LENGTH_IN_KPC;}
             } // if(prandom < 2.0*mionizable/P[i].Mass)
         } // if((P[i].Type == 4)||(P[i].Type == 2)||(P[i].Type == 3))
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
