@@ -179,11 +179,11 @@ void radiation_pressure_winds_consolidated(void)
         {
             totMPI_avg_v /= MIN_REAL_NUMBER + totMPI_n_wind; totMPI_avg_taufac /= MIN_REAL_NUMBER + totMPI_mom_wind;
             fprintf(FdMomWinds, "%lg %g %g %g %g %g \n", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_avg_taufac); fflush(FdMomWinds);
-            PRINT_STATUS(" ..momentum coupled: Time=%g Nkicked=%g (L/c)dt=%g Momkicks=%g V_avg=%g tau_j_mean=%g ", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_avg_taufac);
+            PRINT_STATUS(" ..Ncells_pushed=%g (L/c)dt=%g dP_coupled=%g <dv_cell>=%g <dP_multi/dP_single>=%g", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_avg_taufac);
         }
     } // if(ThisTask==0)
     if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin && ThisTask == 0) {fflush(FdMomWinds);}
-    PRINT_STATUS(" .. completed local Radiation-Pressure acceleration");
+    PRINT_STATUS(" ..completed local Radiation-Pressure acceleration");
     CPU_Step[CPU_LOCALWIND] += measure_time(); /* collect timings and reset clock for next timing */
 } // end routine :: void radiation_pressure_winds_consolidated(void)
 
@@ -202,8 +202,9 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 #endif
     if(All.HIIRegion_fLum_Coupled<=0) {return;}
     if(All.Time<=0) {return;}
+    PRINT_STATUS("Local HII-Region photo-heating/ionization calculation");
     MyDouble *pos; MyFloat h_i, dt, rho; int startnode, numngb, j, n, i, NITER_HIIFB, MAX_N_ITERATIONS_HIIFB, jnearest,already_ionized,do_ionize,dummy;
-    double total_m_ionizable=0,total_N_ionizing_part=0,total_Ndot_ionizing=0,total_m_ionized=0,total_N_ionized=0,avg_RHII=0,mionizable=0,mionized=0;
+    double total_N_ionizing_part=0,total_Ndot_ionizing=0,total_m_ionized=0,total_N_ionized=0,avg_RHII=0,mionizable=0,mionized=0,mion_actual=0;
     double RHII,RHIIMAX,R_search,rnearest,stellum,prob,rho_j,prandom,m_available,m_effective,RHII_initial,RHIImultiplier;
     double uion = HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS); /* assume fully-ionized gas with gamma=5/3; this is a global variable below */
     Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
@@ -237,7 +238,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
             if(RHII > RHIIMAX) {RHII = RHIIMAX;} // limit initial guess to max
             if(RHII < 0.5*h_i) {RHII=0.5*h_i;} // limit initial guess to above 1/2 kernel, so can find neighbors
             RHII_initial=RHII;
-            total_N_ionizing_part += 1; total_Ndot_ionizing += stellum * (3.05e10/HYDROGEN_MASSFRAC); total_m_ionizable += mionizable; // increment before loop //
+            total_N_ionizing_part += 1; total_Ndot_ionizing += stellum * (3.05e10/HYDROGEN_MASSFRAC); // increment before loop //
             
             prandom = get_random_number(P[i].ID + 7); // pre-calc the (eventually) needed random number
             // guesstimate if this is even close to being interesting for the particle masses of interest
@@ -259,7 +260,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                             j = ngb_list_touse[n];
                             if(P[j].Type == 0 && P[j].Mass > 0)
                             {
-                                double dx = pos[0] - P[j].Pos[0], dy = pos[1] - P[j].Pos[1], dz = pos[2] - P[j].Pos[2];
+                                double dx=pos[0]-P[j].Pos[0], dy=pos[1]-P[j].Pos[1], dz=pos[2]-P[j].Pos[2];
                                 NEAREST_XYZ(dx,dy,dz,1); /*  now find the closest image in the given box size */
                                 double r2 = dx * dx + dy * dy + dz * dz; double r=sqrt(r2), u=0;
                                 /* check whether the particle is already ionized */
@@ -286,7 +287,13 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                         prob = m_available/m_effective; // partial ionization. determine randomly if ionized
                                         if(prandom < prob) {do_ionize=1;}
                                     } // if(m_effective<=m_available) {
-                                    if(do_ionize==1) {already_ionized=do_the_local_ionization(j,dt,i); total_N_ionized+=1;}
+                                    if(do_ionize==1)
+                                    {
+                                        already_ionized = do_the_local_ionization(j,dt,i);
+                                        total_N_ionized += 1;
+                                        mion_actual += P[j].Mass;
+                                        avg_RHII += P[j].Mass*r*All.cf_atime*UNIT_LENGTH_IN_KPC;
+                                    }
                                     mionized += prob*m_effective;
                                 } // if((r<=RHII)&&(already_ionized==0)&&(mionized<mionizable))
                                 
@@ -305,7 +312,14 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                     {
                         j=jnearest; m_effective=P[j].Mass*(SphP[j].Density/rho); m_available=mionizable-mionized; prob=m_available/m_effective; do_ionize=0;
                         if(prandom < prob) {do_ionize=1;}
-                        if(do_ionize==1) {already_ionized=do_the_local_ionization(j,dt,i); total_N_ionized+=1;}
+                        if(do_ionize==1)
+                        {
+                            already_ionized = do_the_local_ionization(j,dt,i);
+                            total_N_ionized += 1;
+                            mion_actual += P[j].Mass;
+                            double dx=pos[0]-P[j].Pos[0],dy=pos[1]-P[j].Pos[1],dz=pos[2]-P[j].Pos[2]; NEAREST_XYZ(dx,dy,dz,1); r2=dx*dx+dy*dy+dz*dz;
+                            avg_RHII += P[j].Mass*sqrt(r2)*All.cf_atime*UNIT_LENGTH_IN_KPC;
+                        }
                         mionized += prob*m_effective;
                     } // if((mionized<mionizable)&&(jnearest>=0))
                     
@@ -334,7 +348,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                     } // if(mionized < 0.95*mionizable)
                     NITER_HIIFB++;
                 } while(startnode >= 0);
-                if(mionized>0) {total_m_ionized += mionized; avg_RHII += RHII*All.cf_atime*UNIT_LENGTH_IN_KPC;}
+                if(mion_actual>0) {total_m_ionized += mion_actual;}
             } // if(prandom < 2.0*mionizable/P[i].Mass)
         } // if((P[i].Type == 4)||(P[i].Type == 2)||(P[i].Type == 3))
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
@@ -345,15 +359,14 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
     MPI_Reduce(&total_Ndot_ionizing, &totMPI_Ndot_ionizing, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&total_m_ionized, &totMPI_m_ionized, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&total_N_ionized, &totMPI_N_ionized, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&total_m_ionizable, &totMPI_m_ionizable, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&avg_RHII, &totMPI_avg_RHII, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if(ThisTask == 0)
     {
         if(totMPI_N_ionizing_part>0)
         {
-            totMPI_avg_RHII /= totMPI_N_ionizing_part;
-            PRINT_STATUS("HII PhotoHeating: Time=%g: %g sources emitting dN/dt=%g ionizing photons/sec; ionized N=%g cells with effective mass=%g [Msun] of %g [Msun] possible at stellar-mean density, within an average HII search radius <R_HII>=%g [kpc]", All.Time,totMPI_N_ionizing_part,totMPI_Ndot_ionizing,totMPI_N_ionized,totMPI_m_ionized*UNIT_MASS_IN_SOLAR,totMPI_m_ionizable*UNIT_MASS_IN_SOLAR,totMPI_avg_RHII);
-            fprintf(FdHIIHeating, "%lg %g %g %g %g %g %g \n",All.Time,totMPI_N_ionizing_part,totMPI_Ndot_ionizing,totMPI_N_ionized,totMPI_m_ionized*UNIT_MASS_IN_SOLAR,totMPI_m_ionizable*UNIT_MASS_IN_SOLAR,totMPI_avg_RHII); fflush(FdHIIHeating);
+            if(totMPI_m_ionized>0) {totMPI_avg_RHII /= totMPI_N_ionizing_part;}
+            PRINT_STATUS(" ..Nsources=%g with dN/dt=%g/s ionized N=%g (M=%g sol) cells in <R_HII>=%g kpc",totMPI_N_ionizing_part,totMPI_Ndot_ionizing,totMPI_N_ionized,totMPI_m_ionized*UNIT_MASS_IN_SOLAR,totMPI_avg_RHII);
+            fprintf(FdHIIHeating,"%lg %g %g %g %g %g \n",All.Time,totMPI_N_ionizing_part,totMPI_Ndot_ionizing,totMPI_N_ionized,totMPI_m_ionized*UNIT_MASS_IN_SOLAR,totMPI_avg_RHII); fflush(FdHIIHeating);
         }
         if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {fflush(FdHIIHeating);}
     } // ThisTask == 0
