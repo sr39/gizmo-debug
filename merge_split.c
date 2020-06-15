@@ -175,7 +175,7 @@ void merge_and_split_particles(void)
             }
         }
 #endif
-#if defined(GALSF) && !defined(TO_GAL)
+#if defined(GALSF)
         if(((P[i].Type==0)||(P[i].Type==4))&&(TimeBinActive[P[i].TimeBin])) /* if SF active, allow star particles to merge if they get too small */
 #else
         if((P[i].Type==0)&&(TimeBinActive[P[i].TimeBin])) /* default mode, only gas particles merged */
@@ -206,10 +206,10 @@ void merge_and_split_particles(void)
                                 if(vr_tmp > 0) {do_allow_merger=0;}
                                 if(v2_tmp > 0) {v2_tmp=sqrt(v2_tmp*All.cf_a2inv);} else {v2_tmp=0;}
 #if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS)
-                                if(v2_tmp >  DMIN(Particle_effective_soundspeed_i(i),Particle_effective_soundspeed_i(j))) {do_allow_merger = 0;}
+                                if(v2_tmp >  DMIN(Get_Gas_effective_soundspeed_i(i),Get_Gas_effective_soundspeed_i(j))) {do_allow_merger = 0;}
                                 if(P[j].ID == All.AGNWindID) {do_allow_merger = 0;} // wind particles can't intermerge
 #else                                
-                                if((v2_tmp > 0.25*All.BAL_v_outflow) && (v2_tmp > 0.9*Particle_effective_soundspeed_i(j)*All.cf_afac3)) {do_allow_merger=0;}
+                                if((v2_tmp > 0.25*All.BAL_v_outflow) && (v2_tmp > 0.9*Get_Gas_effective_soundspeed_i(j)*All.cf_afac3)) {do_allow_merger=0;}
 #endif                                
                             }
                         }
@@ -321,7 +321,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
         endrun(8888);
     }
 #ifndef SPAWN_PARTICLES_VIA_SPLITTING
-    if(P[i].Type != 0) {printf("SPLITTING NON-GAS-PARTICLE: i=%d ID=%d Type=%d \n",i,P[i].ID,P[i].Type);} //fflush(stdout); endrun(8889);
+    if(P[i].Type != 0) {printf("SPLITTING NON-GAS-PARTICLE: i=%d ID=%llu Type=%d \n",i,(unsigned long long) P[i].ID,P[i].Type);} //fflush(stdout); endrun(8889);
 #endif
 
     /* here is where the details of the split are coded, the rest is bookkeeping */
@@ -372,10 +372,6 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
     P[i].ID_generation = P[i].ID_generation + 1;
     if(P[i].ID_generation > 30) {P[i].ID_generation=0;} // roll over at 32 generations (unlikely to ever reach this)
     P[j].ID_generation = P[i].ID_generation; // ok, all set!
-
-#ifdef CHIMES 
-    ChimesGasVars[j].ID_child_number = P[j].ID_child_number;
-#endif
 
     /* assign masses to both particles (so they sum correctly) */
     P[j].Mass = mass_of_new_particle * P[i].Mass;
@@ -748,7 +744,7 @@ void merge_particles_ij(int i, int j)
     wt_h_j = 1.0; 
 #endif 
     for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) 
-      ChimesGasVars[j].abundances[k] = (ChimesGasVars[j].abundances[k] * wt_j * wt_h_j) + (ChimesGasVars[i].abundances[k] * wt_i * wt_h_i);
+      ChimesGasVars[j].abundances[k] = (ChimesFloat) ((ChimesGasVars[j].abundances[k] * wt_j * wt_h_j) + (ChimesGasVars[i].abundances[k] * wt_i * wt_h_i));
 #endif // CHIMES 
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++)
@@ -929,8 +925,8 @@ void rearrange_particle_sequence(void)
 #ifdef CHIMES /* swap chimes-specific 'gasvars' structure which is separate from SphP */
                 gasVarsSave = ChimesGasVars[i]; ChimesGasVars[i] = ChimesGasVars[j]; ChimesGasVars[j] = gasVarsSave;
                 /* Old particle (now at position j) is no longer a gas particle, so delete its abundance array. */
-                free(ChimesGasVars[j].abundances); free(ChimesGasVars[j].isotropic_photon_density); free(ChimesGasVars[j].dust_G_parameter); free(ChimesGasVars[j].H2_dissocJ);
-                ChimesGasVars[j].abundances = NULL; ChimesGasVars[j].isotropic_photon_density = NULL; ChimesGasVars[j].dust_G_parameter = NULL; ChimesGasVars[j].H2_dissocJ = NULL;
+		free_gas_abundances_memory(&(ChimesGasVars[j]), &ChimesGlobalVars); 
+                ChimesGasVars[j].abundances = NULL; ChimesGasVars[j].isotropic_photon_density = NULL; ChimesGasVars[j].G0_parameter = NULL; ChimesGasVars[j].H2_dissocJ = NULL;
 #endif /* CHIMES */
                 
                 /* ok we've now swapped the ordering so the gas particle is still inside the block */
@@ -947,9 +943,7 @@ void rearrange_particle_sequence(void)
         {
             P[i].Mass = 0;
             TimeBinCount[P[i].TimeBin]--;
-            
-            if(TimeBinActive[P[i].TimeBin])
-                NumForceUpdate--;
+            if(TimeBinActive[P[i].TimeBin]) {NumForceUpdate--;}
             
             if(P[i].Type == 0)
             {
@@ -961,11 +955,10 @@ void rearrange_particle_sequence(void)
                 swap_treewalk_pointers(i, N_gas-1);
 #endif		
                 /* swap with properties of last gas particle (i-- below will force a check of this so its ok) */
-                
 #ifdef CHIMES
-                free(ChimesGasVars[i].abundances); free(ChimesGasVars[i].isotropic_photon_density); free(ChimesGasVars[i].dust_G_parameter); free(ChimesGasVars[i].H2_dissocJ);
+                free_gas_abundances_memory(&(ChimesGasVars[i]), &ChimesGlobalVars);
                 ChimesGasVars[i] = ChimesGasVars[N_gas - 1];
-                ChimesGasVars[N_gas - 1].abundances = NULL; ChimesGasVars[N_gas - 1].isotropic_photon_density = NULL; ChimesGasVars[N_gas - 1].dust_G_parameter = NULL; ChimesGasVars[N_gas - 1].H2_dissocJ = NULL;
+                ChimesGasVars[N_gas - 1].abundances = NULL; ChimesGasVars[N_gas - 1].isotropic_photon_density = NULL; ChimesGasVars[N_gas - 1].G0_parameter = NULL; ChimesGasVars[N_gas - 1].H2_dissocJ = NULL;
 #endif
                 
                 P[N_gas - 1] = P[NumPart - 1]; /* redirect the final gas pointer to go to the final particle (BH) */
@@ -1012,3 +1005,37 @@ void rearrange_particle_sequence(void)
 }
 
 
+/* function to apply -optional- cell excision for special cases where e.g. cells go far outside of the desired 'zoom-in region' or target region of a multi-scale simulation */
+void apply_pm_hires_region_clipping_selection(int i)
+{
+#ifdef PM_HIRES_REGION_CLIPPING
+    int clip_flag = 0; // flag for clipping
+    if(All.Time <= All.TimeBegin) {return;} // no clips before run properly starts
+    if(P[i].Type==5) {return;} // no clips for sinks
+    if(P[i].Type==0 && density_isactive(i)) {if((SphP[i].Density <= 0) || (PPP[i].NumNgb <= 0)) {clip_flag=1;}} // undefined density behavior
+    if(density_isactive(i)) {if(PPP[i].Hsml >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+    if(ags_density_isactive(i)) {if(PPP[i].AGS_Hsml >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip
+#endif
+#ifdef GALSF
+    if((All.ComovingIntegrationOn) && (P[i].Type==0) && (P[i].Mass>0)) // clip material outside of a hires zoom-in region [unphysically well below cosmic mean density]
+        if((SphP[i].Density>0) && (PPP[i].Hsml>0))
+        {
+            double rho_igm = COSMIC_BARYON_DENSITY_CGS * DMIN(1., 1000./All.cf_a3inv); /* density of IGM: cap scaling with z at z=10, so that we don't accidentally rule out very dense real stuff b/c IGM is also very dense */
+            double rho_gas = DMAX( SphP[i].Density , All.DesNumNgb*P[i].Mass/(4.*M_PI/3.*PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml) )* All.cf_a3inv * UNIT_DENSITY_IN_CGS;
+            if(rho_gas < 1.e-6*rho_igm) {clip_flag=1;} // clip
+        }
+#endif
+#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
+    if(All.ComovingIntegrationOn)
+    {
+        int k; double v_i=0; for(k=0;k<3;k++) {v_i+=P[i].Vel[k]*P[i].Vel[k];}
+        v_i=sqrt(v_i)/All.cf_atime*UNIT_VEL_IN_KMS; // check for unphysical velocities
+        if(v_i>1.e5) {clip_flag=1;} // clip
+        if(v_i>3.e4) {for(k=0;k<3;k++) {P[i].Vel[k]*=3.e4/v_i;}} // limit
+    }
+#endif
+    if(clip_flag==1) {P[i].Mass=0;} // clip
+#endif
+    return; // done
+}

@@ -25,12 +25,10 @@
  */ 
 void init(void)
 {
-    int i, j;
-    double a3, atime;
+    int i, j; double a3, atime, a2_fac;
     
 #ifdef MAGNETIC
-    double a2_fac;
-    double gauss2gizmo = All.UnitMagneticField_in_gauss / sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam);
+    double gauss2gizmo = All.UnitMagneticField_in_gauss / UNIT_B_IN_GAUSS;
     /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here;
         [much simpler, but be sure of your conversions!] */
 #endif
@@ -38,10 +36,6 @@ void init(void)
 #ifdef BLACK_HOLES
     int count_holes = 0;
 #endif
-    
-#ifdef CHIMES 
-    double H_mass_fraction, He_mass_fraction; 
-#endif 
     
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();    
@@ -121,25 +115,16 @@ void init(void)
     IonizeParams();
 #endif
     
+    All.Ti_Current = 0;
     if(All.ComovingIntegrationOn)
     {
         All.Timebase_interval = (log(All.TimeMax) - log(All.TimeBegin)) / TIMEBASE;
-        All.Ti_Current = 0;
-        a3 = All.Time * All.Time * All.Time;
-        atime = All.Time;
-#ifdef MAGNETIC
-        a2_fac = (All.Time * All.Time);
-#endif
+        a3 = All.Time * All.Time * All.Time; atime = All.Time; a2_fac = (All.Time * All.Time);
     }
     else
     {
         All.Timebase_interval = (All.TimeMax - All.TimeBegin) / TIMEBASE;
-        All.Ti_Current = 0;
-        a3 = 1;
-        atime = 1;
-#ifdef MAGNETIC
-        a2_fac = 1;
-#endif
+        a3 = atime = a2_fac = 1;
     }
         
     set_softenings();
@@ -167,8 +152,7 @@ void init(void)
     
 #ifdef OUTPUT_LINEOFSIGHT
     All.Ti_nextlineofsight = (int) (log(All.TimeFirstLineOfSight / All.TimeBegin) / All.Timebase_interval);
-    if(RestartFlag == 2)
-        endrun(78787);
+    if(RestartFlag == 2) {endrun(78787);}
 #endif
     
     All.TotNumOfForces = 0;
@@ -275,15 +259,13 @@ void init(void)
 #endif
         
 #ifdef PMGRID
-        for(j = 0; j < 3; j++)
-            P[i].GravPM[j] = 0;
+        for(j = 0; j < 3; j++) {P[i].GravPM[j] = 0;}
 #endif
         P[i].Ti_begstep = 0;
         P[i].Ti_current = (integertime)0;
         P[i].TimeBin = 0;
         
-        if(header.flag_ic_info != FLAG_SECOND_ORDER_ICS)
-            P[i].OldAcc = 0;	/* Do not zero in 2lpt case as masses are stored here */
+        if(header.flag_ic_info != FLAG_SECOND_ORDER_ICS) {P[i].OldAcc = 0;}	/* Do not zero in 2lpt case as masses are stored here */
         
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY)    
         P[i].Potential = 0;
@@ -309,7 +291,7 @@ void init(void)
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
 #endif
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 #if defined(SINGLE_STAR_FB_SNE)
             P[i].Mass_final = P[i].Mass; //best guess, only matters if we restart in the middle of spawning an SN 
 #endif
@@ -330,11 +312,8 @@ void init(void)
 #endif
         }
        
-#if defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
-        if(RestartFlag == 0)
-        {
-	        P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001) * get_random_number(P[i].ID + 3);
-        }
+#if defined(INIT_STELLAR_METALS_AGES_DEFINED) && defined(GALSF)
+        if(RestartFlag == 0) {P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (UNIT_TIME_IN_GYR) * get_random_number(P[i].ID + 3);}
 #endif
         
 #ifdef GRAIN_FLUID
@@ -409,7 +388,7 @@ void init(void)
         }
 #endif // COOL_METAL_LINES_BY_SPECIES
         
-#if (GALSF_FB_FIRE_STELLAREVOLUTION == 3) // new default abundances; using Asplund et al. 2009 proto-solar abundances ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // new default abundances; using Asplund et al. 2009 proto-solar abundances ??
         All.SolarAbundances[0]=0.0142; if(NUM_METAL_SPECIES>=10) {
             All.SolarAbundances[1]=0.27030; All.SolarAbundances[2]=2.53e-3; All.SolarAbundances[3]=7.41e-4; All.SolarAbundances[4]=6.13e-3; All.SolarAbundances[5]=1.34e-3;
             All.SolarAbundances[6]=7.57e-4; All.SolarAbundances[7]=7.12e-4; All.SolarAbundances[8]=3.31e-4; All.SolarAbundances[9]=6.87e-5; All.SolarAbundances[10]=1.38e-3;}
@@ -420,7 +399,7 @@ void init(void)
 #endif
         
         if(RestartFlag == 0) {
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)  
+#if defined(INIT_STELLAR_METALS_AGES_DEFINED)
             P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
 #else
             P[i].Metallicity[0] = 0;
@@ -435,19 +414,20 @@ void init(void)
 #ifdef COOL_METAL_LINES_BY_SPECIES 
 	if (P[i].Type == 0) 
 	  {
-	    H_mass_fraction = 1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1]); 
-	    ChimesGasVars[i].element_abundances[0] = P[i].Metallicity[1] / (4.0 * H_mass_fraction);   // He 
-	    ChimesGasVars[i].element_abundances[1] = P[i].Metallicity[2] / (12.0 * H_mass_fraction);  // C 
-	    ChimesGasVars[i].element_abundances[2] = P[i].Metallicity[3] / (14.0 * H_mass_fraction);  // N 
-	    ChimesGasVars[i].element_abundances[3] = P[i].Metallicity[4] / (16.0 * H_mass_fraction);  // O 
-	    ChimesGasVars[i].element_abundances[4] = P[i].Metallicity[5] / (20.0 * H_mass_fraction);  // Ne 
-	    ChimesGasVars[i].element_abundances[5] = P[i].Metallicity[6] / (24.0 * H_mass_fraction);  // Mg 
-	    ChimesGasVars[i].element_abundances[6] = P[i].Metallicity[7] / (28.0 * H_mass_fraction);  // Si 
-	    ChimesGasVars[i].element_abundances[7] = P[i].Metallicity[8] / (32.0 * H_mass_fraction);  // S 
-	    ChimesGasVars[i].element_abundances[8] = P[i].Metallicity[9] / (40.0 * H_mass_fraction);  // Ca 
-	    ChimesGasVars[i].element_abundances[9] = P[i].Metallicity[10] / (56.0 * H_mass_fraction); // Fe 
+	    double H_mass_fraction = 1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1]); 
+	    ChimesGasVars[i].element_abundances[0] = (ChimesFloat) (P[i].Metallicity[1] / (4.0 * H_mass_fraction));   // He 
+	    ChimesGasVars[i].element_abundances[1] = (ChimesFloat) (P[i].Metallicity[2] / (12.0 * H_mass_fraction));  // C 
+	    ChimesGasVars[i].element_abundances[2] = (ChimesFloat) (P[i].Metallicity[3] / (14.0 * H_mass_fraction));  // N 
+	    ChimesGasVars[i].element_abundances[3] = (ChimesFloat) (P[i].Metallicity[4] / (16.0 * H_mass_fraction));  // O 
+	    ChimesGasVars[i].element_abundances[4] = (ChimesFloat) (P[i].Metallicity[5] / (20.0 * H_mass_fraction));  // Ne 
+	    ChimesGasVars[i].element_abundances[5] = (ChimesFloat) (P[i].Metallicity[6] / (24.0 * H_mass_fraction));  // Mg 
+	    ChimesGasVars[i].element_abundances[6] = (ChimesFloat) (P[i].Metallicity[7] / (28.0 * H_mass_fraction));  // Si 
+	    ChimesGasVars[i].element_abundances[7] = (ChimesFloat) (P[i].Metallicity[8] / (32.0 * H_mass_fraction));  // S 
+	    ChimesGasVars[i].element_abundances[8] = (ChimesFloat) (P[i].Metallicity[9] / (40.0 * H_mass_fraction));  // Ca 
+	    ChimesGasVars[i].element_abundances[9] = (ChimesFloat) (P[i].Metallicity[10] / (56.0 * H_mass_fraction)); // Fe 
 
-	    ChimesGasVars[i].metallicity = P[i].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129. 
+	    ChimesGasVars[i].metallicity = (ChimesFloat) (P[i].Metallicity[0] / 0.0129);  // In Zsol. CHIMES uses Zsol = 0.0129. 
+	    ChimesGasVars[i].dust_ratio = ChimesGasVars[i].metallicity; 
 	  }
 #else 
 	if (ThisTask == 0)
@@ -462,10 +442,11 @@ void init(void)
 #ifdef CHIMES 
 	if (P[i].Type == 0) 
 	  {
-	    H_mass_fraction = HYDROGEN_MASSFRAC; 
-	    ChimesGasVars[i].element_abundances[0] = (1.0 - H_mass_fraction) / (4.0 * H_mass_fraction);  // He 
-	    for (j = 1; j < 10; j++) {ChimesGasVars[i].element_abundances[j] = 0.0;}
+	    double H_mass_fraction = HYDROGEN_MASSFRAC; 
+	    ChimesGasVars[i].element_abundances[0] = (ChimesFloat) ((1.0 - H_mass_fraction) / (4.0 * H_mass_fraction));  // He 
+	    for (j = 1; j < 10; j++) {ChimesGasVars[i].element_abundances[j] = 0.0;} 
 	    ChimesGasVars[i].metallicity = 0.0; 
+	    ChimesGasVars[i].dust_ratio = 0.0; 
 	  }
 #endif // CHIMES 
 #endif // METALS
@@ -476,7 +457,7 @@ void init(void)
 #ifdef BH_WAKEUP_GAS
 	    if(P[i].Type == 0) {P[i].LowestBHTimeBin = TIMEBINS;}
 #endif
-#ifdef SINGLE_STAR_FORMATION
+#if (SINGLE_STAR_SINK_FORMATION & 8)
         P[i].BH_Ngb_Flag = 0;
 #endif	
 #ifdef SINGLE_STAR_TIMESTEPPING
@@ -494,9 +475,9 @@ void init(void)
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                 BPP(i).BH_Mass = P[i].Mass;
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION // properly initialize luminosity
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION // properly initialize luminosity
                 singlestar_subgrid_protostellar_evolution_update_track(i,0,0);             
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2)
+#if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
                 calculate_individual_stellar_luminosity(BPP(i).BH_Mdot, BPP(i).BH_Mass, i);
 #endif        
 #endif
@@ -636,8 +617,8 @@ void init(void)
 #if (GALSF_SUBGRID_WIND_SCALING==1)
         SphP[i].HostHaloMass = 0;
 #endif
-#endif // GALSF_SUBGRID_WINDS //
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) 
+#endif
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING)
         SphP[i].DelayTimeHII = 0;
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING
@@ -645,7 +626,7 @@ void init(void)
 #endif
 #ifdef GALSF
         SphP[i].Sfr = 0;
-#if (GALSF_SFR_VIRIAL_SF_CRITERION>=3)
+#if defined(GALSF_SFR_VIRIAL_CRITERION_TIMEAVERAGED)
         SphP[i].AlphaVirial_SF_TimeSmoothed = 0;
 #endif
 #endif
@@ -726,13 +707,6 @@ void init(void)
     if(RestartFlag==0) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
 #ifdef NO_CHILD_IDS_IN_ICS
     if(RestartFlag != 1) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
-#endif 
-
-#ifdef CHIMES
-    if(RestartFlag==0) {for(i = 0; i < NumPart; i++) {ChimesGasVars[i].ID_child_number = P[i].ID_child_number;}}
-#ifdef NO_CHILD_IDS_IN_ICS
-    if(RestartFlag != 1) {for(i = 0; i < NumPart; i++) {ChimesGasVars[i].ID_child_number = P[i].ID_child_number;}}
-#endif 
 #endif 
     
 #ifdef TEST_FOR_IDUNIQUENESS
@@ -1019,12 +993,12 @@ void init(void)
 	      chimes_update_gas_vars(i); 
 
 	      // Evolve the chemistry for (1 / nH) Myr (limited to 1 Gyr) ten times at fixed temperature.
-	      ChimesGasVars[i].hydro_timestep = DMIN(3.16e13 / ChimesGasVars[i].nH_tot, 3.16e16); 
+	      ChimesGasVars[i].hydro_timestep = (ChimesFloat) DMIN(3.16e13 / ChimesGasVars[i].nH_tot, 3.16e16); 
 	      ChimesGasVars[i].ThermEvolOn = 0; 
 
-	      for (iter_number = 0; iter_number < 10; iter_number++)
-		chimes_network(&(ChimesGasVars[i]), &ChimesGlobalVars, AllRates_omp[ThisThread], all_reactions_root_omp[ThisThread], nonmolecular_reactions_root_omp[ThisThread]); 
+	      for (iter_number = 0; iter_number < 10; iter_number++) chimes_network(&(ChimesGasVars[i]), &ChimesGlobalVars); 
 
+            
 #ifdef CHIMES_TURB_DIFF_IONS 
 	      chimes_update_turbulent_abundances(i, 1); 
 #endif 
@@ -1286,7 +1260,7 @@ void test_id_uniqueness(void)
                    (int) (ids[i] / 1000000000), (int) (ids[i] % 1000000000), ThisTask, i, NumPart);
             
 #else
-            printf("non-unique ID=%d found on task=%d   (i=%d NumPart=%d)\n", (int) ids[i], ThisTask, i, NumPart);
+            printf("non-unique ID=%llu found on task=%d   (i=%d NumPart=%d)\n", (unsigned long long) ids[i], ThisTask, i, NumPart);
 #endif
             endrun(12);
         }
@@ -1296,7 +1270,7 @@ void test_id_uniqueness(void)
     if(ThisTask < NTask - 1)
         if(ids[NumPart - 1] == ids_first[ThisTask + 1])
         {
-            printf("non-unique ID=%d found on task=%d\n", (int) ids[NumPart - 1], ThisTask);
+            printf("non-unique ID=%llu found on task=%d\n", (unsigned long long) ids[NumPart - 1], ThisTask);
             endrun(13);
         }
     

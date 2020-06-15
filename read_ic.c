@@ -40,11 +40,7 @@ void read_ic(char *fname)
     CPU_Step[CPU_MISC] += measure_time();
     
 #ifdef RESCALEVINI
-    if(ThisTask == 0 && RestartFlag == 0)
-    {
-        fprintf(stdout, "Rescaling v_ini !\n");
-        fflush(stdout);
-    }
+    if(ThisTask == 0 && RestartFlag == 0) {fprintf(stdout, "Rescaling v_ini !\n"); fflush(stdout);}
 #endif
     
     NumPart = 0;
@@ -67,8 +63,7 @@ void read_ic(char *fname)
         
         for(gr = 0; gr < ngroups; gr++)
         {
-            if(ThisTask == (groupMaster + gr))	/* ok, it's this processor's turn */
-                read_file(buf, ThisTask, ThisTask);
+            if(ThisTask == (groupMaster + gr)) {read_file(buf, ThisTask, ThisTask);}	/* ok, it's this processor's turn */
             MPI_Barrier(MPI_COMM_WORLD);
         }
         
@@ -99,8 +94,7 @@ void read_ic(char *fname)
         
         for(gr = 0; gr < ngroups; gr++)
         {
-            if((filenr / All.NumFilesWrittenInParallel) == gr)	/* ok, it's this processor's turn */
-                read_file(buf, masterTask, lastTask);
+            if((filenr / All.NumFilesWrittenInParallel) == gr) {read_file(buf, masterTask, lastTask);}	/* ok, it's this processor's turn */
             MPI_Barrier(MPI_COMM_WORLD);
         }
     }
@@ -179,14 +173,8 @@ void read_ic(char *fname)
     }
     
     for(i = 0; i < N_gas; i++) {SphP[i].InternalEnergyPred = SphP[i].InternalEnergy = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);}
-    
     MPI_Barrier(MPI_COMM_WORLD);
-    
-    if(ThisTask == 0)
-    {
-        printf("Reading done. Total number of particles :  %d%09d\n\n", (int) (All.TotNumPart / 1000000000), (int) (All.TotNumPart % 1000000000));
-        fflush(stdout);
-    }
+    if(ThisTask == 0) {printf("Reading done. Total number of particles :  %d%09d\n\n", (int) (All.TotNumPart / 1000000000), (int) (All.TotNumPart % 1000000000)); fflush(stdout);}
     
     CPU_Step[CPU_SNAPSHOT] += measure_time();
 }
@@ -239,12 +227,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             
         case IO_ID:		/* particle ID */
             for(n = 0; n < pc; n++)
-            {
-                P[offset + n].ID = *ip++;
-#ifdef CHIMES 
-                if(type == 0) {ChimesGasVars[offset + n].ID = P[offset + n].ID; }
-#endif 
-            }
+	      P[offset + n].ID = *ip++;
             break;
             
             
@@ -252,12 +235,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             if(RestartFlag == 2)
             {
                 for(n = 0; n < pc; n++)
-                {
-                    P[offset + n].ID_child_number = *ip++;
-#ifdef CHIMES 
-                    if(type==0) {ChimesGasVars[offset + n].ID_child_number = P[offset + n].ID_child_number; }
-#endif 
-                }
+		  P[offset + n].ID_child_number = *ip++;
             }
             break;
 
@@ -302,15 +280,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++) {P[offset + n].caustic_counter = *fp++;}
             break;
 #endif
-            
-        case IO_SECONDORDERMASS:
-            for(n = 0; n < pc; n++)
-            {
-                P[offset + n].OldAcc = P[offset + n].Mass;	/* use this to temporarily store the masses in the 2plt IC case */
-                P[offset + n].Mass = *fp++;
-            }
-            break;
-            
+   
         case IO_U:			/* temperature */
             for(n = 0; n < pc; n++) {SphP[offset + n].InternalEnergy = *fp++;}
             break;
@@ -362,23 +332,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
             
-        case IO_VRMS:		/* Turbulence on kernel scale */
-            break;
-        case IO_VBULK:
-            break;
-        case IO_VTAN:
-            break;
-        case IO_VRAD:
-            break;
-        case IO_VDIV:
-            break;
-        case IO_VROT:
-            break;
-        case IO_VORT:
-            break;
-        case IO_TRUENGB:
-            break;
-            
         case IO_BFLD:		/* Magnetic field */
 #ifdef MAGNETIC
             for(n = 0; n < pc; n++)
@@ -428,31 +381,31 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++) {P[offset + n].BH_Mdot = *fp++;}
 #endif
         case IO_R_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].ProtoStellarRadius_inSolar = *fp++;}
 #endif
             break;
             
         case IO_MASS_D_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].Mass_D = *fp++;}
 #endif
             break;
             
         case IO_ZAMS_MASS:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].ZAMS_Mass = *fp++;}
 #endif
             break;
             
         case IO_STAGE_PROTOSTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].ProtoStellarStage = *ip_int++;}
 #endif
             break;
             
         case IO_LUM_SINGLESTAR:
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             for(n = 0; n < pc; n++) {P[offset + n].StarLuminosity_Solar = *fp++;}
 
 #endif
@@ -500,10 +453,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++) {for(k = 0; k < N_RT_FREQ_BINS; k++) {SphP[offset + n].Rad_E_gamma[k] = *fp++;}}
 #endif
             break;
-            
-        case IO_CHEM:		/* Chemical abundances */
-            break;
-            
+   
             /* adaptive softening parameters */
         case IO_AGS_SOFT:
 #if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTGRAVSOFT)
@@ -517,24 +467,19 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
-#ifdef CHIMES 
-        case IO_CHIMES_ABUNDANCES: 
-#ifndef CHIMES_INITIALISE_IN_EQM 
-	  for (n = 0; n < pc; n++) 
-	    {
-	      allocate_gas_abundances_memory(&(ChimesGasVars[offset + n]), &ChimesGlobalVars); 
-	      for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) {ChimesGasVars[offset + n].abundances[k] = (double) (*fp++);}
+        case IO_CHIMES_ABUNDANCES:
+#if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM)
+            for (n = 0; n < pc; n++)
+            {
+    	        allocate_gas_abundances_memory(&(ChimesGasVars[offset + n]), &ChimesGlobalVars); 
+	            for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) {ChimesGasVars[offset + n].abundances[k] = (ChimesFloat) (*fp++);}
 #ifdef CHIMES_TURB_DIFF_IONS
-	      chimes_update_turbulent_abundances(n, 1); 
+                chimes_update_turbulent_abundances(n, 1);
 #endif 	      
-	    }
-#endif // CHIMES_INITIALISE_IN_EQM 
-	  break; 
+            }
+#endif
+            break;
 	  
-        case IO_CHIMES_REDUCED: 
-	  break; 
-#endif 
-
         case IO_COSMICRAY_ENERGY:
 #ifdef COSMIC_RAYS            
             for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {SphP[offset + n].CosmicRayEnergy[k] = *fp++;}}
@@ -573,9 +518,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
              initial conditions of the code */
             
         case IO_COSMICRAY_KAPPA:
-        case IO_AGS_OMEGA:
-        case IO_AGS_CORR:
-        case IO_AGS_NGBS:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
         case IO_AGS_PSI_RE:
@@ -587,42 +529,26 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_POT:
         case IO_ACCEL:
         case IO_DTENTR:
-        case IO_STRESSDIAG:
-        case IO_STRESSOFFDIAG:
         case IO_RAD_ACCEL:
         case IO_GDE_DISTORTIONTENSOR:
-        case IO_HeHII:
-        case IO_DI:
-        case IO_DII:
-        case IO_HD:
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
         case IO_HHRATE:
         case IO_MCRATE:
-        case IO_HM:
-        case IO_H2II:
-        case IO_H2I:
-        case IO_HeIII:
         case IO_HeII:
         case IO_HeI:
         case IO_HII:
         case IO_NH:
-        case IO_STRESSBULK:
-        case IO_SHEARCOEFF:
         case IO_TSTP:
-        case IO_DBDT:
         case IO_IMF:
         case IO_DIVB:
         case IO_ABVC:
         case IO_COOLRATE:
-        case IO_CONDRATE:
-        case IO_DENN:
         case IO_AMDC:
         case IO_PHI:
         case IO_GRADPHI:
         case IO_TIDALTENSORPS:
-        case IO_ROTB:
         case IO_FLOW_DETERMINANT:
         case IO_STREAM_DENSITY:
         case IO_PHASE_SPACE_DETERMINANT:
@@ -634,8 +560,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_ACRB:
         case IO_VSTURB_DISS:
         case IO_VSTURB_DRIVE:
-        case IO_MG_PHI:
-        case IO_MG_ACCEL:
         case IO_grHI:
         case IO_grHII:
         case IO_grHM:
@@ -650,6 +574,17 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_TURB_DIFF_COEFF:
         case IO_DYNERROR:
         case IO_DYNERRORDEFAULT:
+        case IO_VDIV:
+        case IO_VORT:
+        case IO_CHIMES_MU:
+        case IO_CHIMES_REDUCED:
+        case IO_CHIMES_NH:
+        case IO_CHIMES_STAR_SIGMA:
+        case IO_DENS_AROUND_STAR:
+        case IO_DELAY_TIME_HII:
+        case IO_MOLECULARFRACTION:
+        case IO_CHIMES_FLUX_G0:
+        case IO_CHIMES_FLUX_ION:
             break;
 
         case IO_LASTENTRY:
@@ -925,7 +860,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #ifdef PIC_MHD
                    && blocknr != IO_GRAINTYPE
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
                    && blocknr != IO_R_PROTOSTAR
                    && blocknr != IO_MASS_D_PROTOSTAR
                    && blocknr != IO_ZAMS_MASS
@@ -967,12 +902,6 @@ void read_file(char *fname, int readTask, int lastTask)
             if(blocknr == IO_AGS_ZETA)
                 continue;
 #endif
-            if(blocknr == IO_AGS_OMEGA)
-                continue;
-            if(blocknr == IO_AGS_NGBS)
-                continue;
-            if(blocknr == IO_AGS_CORR)
-                continue;
 #endif
             
             

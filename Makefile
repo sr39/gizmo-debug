@@ -69,6 +69,7 @@ HG_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null)
 BUILDINFO = "Build on $(HOSTNAME) by $(USER) from $(HG_BRANCH):$(HG_COMMIT) at $(HG_REPO)"
 OPT += -DBUILDINFO='$(BUILDINFO)'
 
+
 # initialize some default flags -- these will all get re-written below
 CC	= mpicc		# sets the C-compiler (default, will be set for machine below)
 CXX	= mpiCC		# sets the C++-compiler (default, will be set for machine below)
@@ -317,21 +318,37 @@ endif
 ifeq ($(SYSTYPE),"MacBookPro")
 CC       =  mpicc
 CXX      =  mpiccxx
-FC       =  $(CC) #mpifort
+FC       =  $(CC) #mpifort  ## change this to "mpifort" for packages requiring linking secondary fortran code, currently -only- the helmholtz eos modules do this, so I leave it un-linked for now to save people the compiler headaches
 OPTIMIZE = -O1 -funroll-loops
 OPTIMIZE += -g -Wall # compiler warnings
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
+CHIMESINCL = -I/usr/local/include/sundials
+CHIMESLIBS = -L/usr/local/lib -lsundials_cvode -lsundials_nvecserial
+endif
 GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = #
 MKL_LIBS = #
-GSL_INCL = -I/usr/local/include -I$(PORTINCLUDE)
-GSL_LIBS = -L/usr/local/lib -L$(PORTLIB)
+GSL_INCL = -I/usr/local/include #-I$(PORTINCLUDE)
+GSL_LIBS = -L/usr/local/lib #-L$(PORTLIB)
 FFTW_INCL= -I/usr/local/include
 FFTW_LIBS= -L/usr/local/lib
-HDF5INCL = -I/usr/local/include -I$(PORTINCLUDE) -DH5_USE_16_API
-HDF5LIB  = -L/usr/local/lib -L$(PORTLIB) -lhdf5 -lz
+HDF5INCL = -I/usr/local/include -DH5_USE_16_API #-I$(PORTINCLUDE) -DH5_USE_16_API
+HDF5LIB  = -L/usr/local/lib -lhdf5 -lz #-L$(PORTLIB)
 MPICHLIB = #
-OPT     += #
+OPT     += -DDISABLE_ALIGNED_ALLOC -DCHIMES_USE_DOUBLE_PRECISION #
+##
+## update 2020: on more recent macs, MacPorts is not as useful a library installer.
+##  I [PFH] switched over to homebrew. First you still need to install the extended XCode developer
+##  tools and make sure all the appropriate extended tools, permissions, etc, are installed on your mac.
+##  You can find tutorials online with simple searches like "how to install gcc and mpicc on osx"
+##  rather than looking for something GIZMO-specific. Then look for how to install homebrew or
+##  another package manager.
+## Most of the compilation tools will then be available. You may need to install your own HDF5 libraries,
+##  but this can be done with homebrew. Similarly some special code sub-modules require their own
+##  packages. For example, chimes modules require sundials, which can be easily installed with
+##  "brew install sundials". In the above, /usr/local/lib etc reflect the default homebrew install locations.
+## FFTW is trickier, see the instructions below [special treatment is still needed]
 ##
 ## PFH: this is my own laptop installation (2013 MacBook Pro running Yosemite)
 ## --
@@ -656,7 +673,7 @@ OPTIMIZE += -parallel -openmp # openmp required compiler flags
 endif
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
 CHIMESINCL = -I/home/ajr882/sundials/include  
-CHIMESLIBS = -L/home/ajr882/sundials/lib -lsundials_cvode -lsundials_kinsol -lsundials_nvecserial 
+CHIMESLIBS = -L/home/ajr882/sundials/lib -lsundials_cvode -lsundials_nvecserial 
 endif 
 GMP_INCL = #
 GMP_LIBS = #
@@ -687,8 +704,8 @@ ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -parallel -openmp -mt_mpi 
 endif
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
-CHIMESINCL = -I/home/ajr882/sundials/include  
-CHIMESLIBS = -L/home/ajr882/sundials/lib -lsundials_cvode -lsundials_kinsol -lsundials_nvecserial 
+CHIMESINCL = -I/home/sundials/include  
+CHIMESLIBS = -L/home/sundials/lib -lsundials_cvode -lsundials_nvecserial 
 endif 
 GMP_INCL = #
 GMP_LIBS = #
@@ -696,8 +713,8 @@ MKL_INCL = -I$(MKLROOT)/include
 MKL_LIBS = -L$(MKLROOT)/lib/intel64 -lm -lmkl_core -lmkl_sequential -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_blacs_intelmpi_lp64
 GSL_INCL = 
 GSL_LIBS = 
-FFTW_INCL= -I/home/ajr882/libraries/fftw-2.1.5_install/include 
-FFTW_LIBS= -L/home/ajr882/libraries/fftw-2.1.5_install/lib 
+FFTW_INCL= -I/home/libraries/fftw-2.1.5_install/include 
+FFTW_LIBS= -L/home/libraries/fftw-2.1.5_install/lib 
 HDF5INCL = -DH5_USE_16_API 
 HDF5LIB  = -lhdf5 -lz
 MPICHLIB = 
@@ -1072,6 +1089,7 @@ endif
 #----------------------------------------------------------------------------------------------
 #----------------------------------------------------------------------------------------------
 
+
 #
 # different code groups that need to be compiled. the groupings below are
 # arbitrary (they will all be added to OBJS and compiled, and if they are
@@ -1119,7 +1137,7 @@ EOSCOOL_OBJS =  cooling/cooling.o \
 				solids/elastic_physics.o \
 				solids/grain_physics.o \
 				nuclear/nuclear_network_solver.o \
-				nuclear/nuclear_network.o \
+				nuclear/nuclear_network.o 
 
 STARFORM_OBJS = galaxy_sf/sfr_eff.o \
                 galaxy_sf/stellar_evolution.o \
@@ -1168,7 +1186,7 @@ OPTIONS = $(OPTIMIZE) $(OPT)
 OBJS  = $(CORE_OBJS) $(SYSTEM_OBJS) $(GRAVITY_OBJS) $(HYDRO_OBJS) \
 		$(EOSCOOL_OBJS) $(STARFORM_OBJS) $(SINK_OBJS) $(RHD_OBJS) \
 		$(FOF_OBJS) $(MISC_OBJS)
-		
+
 ## fortran recompiler block
 FOPTIONS = $(OPTIMIZE) $(FOPT)
 FOBJS =
@@ -1214,7 +1232,8 @@ endif
 # chimes files are treated as special for now because they are not in the public
 #  code and have not had their macro logic cleaned up to allow appropriate compilation without chimes flags enabled
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
-OBJS    += cooling/chimes/chimes.o cooling/chimes/cooling.o cooling/chimes/init_chimes.o cooling/chimes/init_chimes_parallel.o cooling/chimes/interpol.o cooling/chimes/optimise.o cooling/chimes/rate_coefficients.o cooling/chimes/rate_equations.o cooling/chimes/set_rates.o
+OBJS    += cooling/chimes/chimes.o cooling/chimes/chimes_cooling.o cooling/chimes/init_chimes.o cooling/chimes/rate_equations.o cooling/chimes/update_rates.o 
+INCL    += cooling/chimes/chimes_interpol.h cooling/chimes/chimes_proto.h cooling/chimes/chimes_vars.h 
 endif
 
 # if HDF5 explicitly disabled, remove the linked libraries

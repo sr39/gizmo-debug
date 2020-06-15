@@ -7,11 +7,10 @@
 {
     /* basic overhead variables and zero-ing fluxes for the computation */
     Fluxes.rho = Fluxes.p = Fluxes.v[0] = Fluxes.v[1] = Fluxes.v[2] = 0;
-    double du_ij;
     kernel.dwk_ij = 0.5 * (kernel.dwk_i + kernel.dwk_j);
     cnumcrit2 *= 1.0;
     double vdotr2_phys = kernel.vdotr2;
-    if(All.ComovingIntegrationOn) vdotr2_phys -= All.cf_hubble_a2 * r2;
+    if(All.ComovingIntegrationOn) {vdotr2_phys -= All.cf_hubble_a2 * r2;}
     V_j = P[j].Mass / SphP[j].Density;
 #ifdef COSMIC_RAYS
     for(k=0;k<N_CR_PARTICLE_BINS;k++)
@@ -207,9 +206,7 @@
         double visc = -BulkVisc_ij * mu_ij * (c_ij - 2*mu_ij) * kernel.rho_ij_inv; /* this method should use beta/alpha=2 */
 #endif
 #ifndef NOVISCOSITYLIMITER
-        double dt = 2 * TIMAX(local.Timestep, (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0)) * All.Timebase_interval;
-        if(dt > 0 && kernel.dwk_ij < 0)
-            visc = DMIN(visc, 0.5 * fac_vsic_fix * kernel.vdotr2 / ((local.Mass + P[j].Mass) * kernel.dwk_ij * kernel.r * dt));
+        if(dt_hydrostep > 0 && kernel.dwk_ij < 0) {visc = DMIN(visc, 0.5 * fac_vsic_fix * kernel.vdotr2 / ((local.Mass + P[j].Mass) * kernel.dwk_ij * kernel.r * (2.*dt_hydrostep)));}
 #endif
         hfc_visc = -local.Mass * P[j].Mass * visc * kernel.dwk_ij / kernel.r;
         Fluxes.v[0] += hfc_visc * kernel.dp[0]; /* this is momentum */
@@ -228,7 +225,7 @@
     if((vsigu > 0) && (fabs(local.Pressure) + fabs(SphP[j].Pressure) > 0)) // implicitly sets vsig=0 if 3*w_ij > (c_i+c_j)
     {
         vsigu *= fabs(local.Pressure - SphP[j].Pressure)/(fabs(local.Pressure) + fabs(SphP[j].Pressure));
-        du_ij = kernel.spec_egy_u_i - SphP[j].InternalEnergyPred;
+        double du_ij = kernel.spec_egy_u_i - SphP[j].InternalEnergyPred;
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
         du_ij *= 0.5 * (local.alpha + SphP[j].alpha_limiter * SphP[j].alpha); // in this case, All.ArtCondConstant is just a multiplier -relative- to art. visc.
 #endif

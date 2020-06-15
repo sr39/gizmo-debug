@@ -98,7 +98,7 @@ void blackhole_end(void)
         if((ThisTask == 0) && (total_mdot > 0) && (total_mass_real > 0))
         {
             /* convert to solar masses per yr */
-            mdot_in_msun_per_year = total_mdot * (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
+            mdot_in_msun_per_year = total_mdot * UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR;
             total_mdoteddington *= 1.0 / bh_eddington_mdot(1);
             fprintf(FdBlackHoles, "%g %d %g %g %g %g %g\n", All.Time, All.TotBHs, total_mass_holes, total_mdot, mdot_in_msun_per_year, total_mass_real, total_mdoteddington);
         }
@@ -127,7 +127,7 @@ void blackhole_end(void)
 /* return the eddington accretion-rate = L_edd/(epsilon_r*c*c) */
 double bh_eddington_mdot(double bh_mass)
 {
-    return (4 * M_PI * GRAVITY_G*C_LIGHT * PROTONMASS / (All.BlackHoleRadiativeEfficiency * C_LIGHT * C_LIGHT * THOMPSON)) * (bh_mass/All.HubbleParam) * All.UnitTime_in_s;
+    return (4*M_PI * GRAVITY_G * PROTONMASS / (All.BlackHoleRadiativeEfficiency * C_LIGHT * THOMPSON)) * bh_mass * UNIT_TIME_IN_CGS;
 }
 
 
@@ -150,15 +150,9 @@ void blackhole_properties_loop(void) /* Note, normalize_temp_info_struct is now 
     for(i=0; i<N_active_loc_BHs; i++)
     {
         n = BlackholeTempInfo[i].index;
-#ifndef WAKEUP /* define the timestep */
-        dt = (P[n].TimeBin ? (((integertime) 1) << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-        dt = P[n].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif
+        dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(n);
         BPP(n).BH_Mdot=0;  /* always initialize/default to zero accretion rate */
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-        set_blackhole_long_range_rp( i,  n);
-#endif
+        set_blackhole_long_range_rp(i, n);
         set_blackhole_mdot(i, n, dt);
 #if defined(BH_DRAG) || defined(BH_DYNFRICTION)
         set_blackhole_drag(i, n, dt);

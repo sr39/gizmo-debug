@@ -20,58 +20,6 @@
 
 static double dt_displacement = 0;
 
-#ifdef BOX_SHEARING
-void calc_shearing_box_pos_offset(void)
-{
-    Shearing_Box_Pos_Offset = Shearing_Box_Vel_Offset * All.Time;
-    while(Shearing_Box_Pos_Offset > boxSize_Y) {Shearing_Box_Pos_Offset -= boxSize_Y;}
-}
-#endif
-
-void set_cosmo_factors_for_current_time(void)
-{
-    
-    /* These are critical factors used throughout for co-moving integrations. Set them here and
-       call THESE, rather than trying to come up with the factors throughout, since that makes debugging a nightmare */
-    if(All.ComovingIntegrationOn)
-    {
-        /* All.cf_atime = a = 1/(1+z), the cosmological scale factor */
-        All.cf_atime = All.Time;
-        /* All.cf_a2inv is just handy */
-        All.cf_a2inv = 1 / (All.Time * All.Time);
-        /* All.cf_a3inv * Density_code = Density_physical */
-        All.cf_a3inv = 1 / (All.Time * All.Time * All.Time);
-        /* Pressure_code/Density_code = All.cf_afac1 * Pressure_physical/Density_physical */
-        All.cf_afac1 = 1;
-        /* All.cf_afac2 * Pressure_code/Density_code * 1/r_code = Pressure_physical/Density_physical * 1/r_physical */
-        All.cf_afac2 = 1 / (All.Time * All.cf_afac1);
-        /* All.cf_afac3 * sqrt(Pressure_code/Density_code) = sqrt(Pressure_phys/Density_phys) = cs_physical */
-        All.cf_afac3 = 1 / sqrt(All.cf_afac1);
-        /* time units: proper time dt_phys = 1/hubble_function(a) * dz/(1+z) = dlna / hubble_function(a)
-            code time unit in comoving is dlna, so dt_phys = dt_code / All.cf_hubble_a   */
-        All.cf_hubble_a = hubble_function(All.Time); /* hubble_function(a) = H(a) = H(z) */
-        /* dt_code * v_code/r_code = All.cf_hubble_a2 * dt_phys * v_phys/r_phys */
-        All.cf_hubble_a2 = All.Time * All.Time * hubble_function(All.Time);
-#ifdef CHIMES 
-	ChimesGlobalVars.cmb_temperature = 2.725 / All.cf_atime; 
-#endif 
-    }
-    else
-    {
-        All.cf_atime = 1;
-        All.cf_a2inv = 1;
-        All.cf_a3inv = 1;
-        All.cf_afac1 = 1;
-        All.cf_afac2 = 1;
-        All.cf_afac3 = 1;
-        All.cf_hubble_a = 1;
-        All.cf_hubble_a2 = 1;
-#ifdef CHIMES 
-	ChimesGlobalVars.cmb_temperature = 2.725; 
-#endif 
-    }
-}
-
 
 /*! This function advances the system in momentum space, i.e. it does apply the 'kick' operation after the
  *  forces have been computed. Additionally, it assigns new timesteps to particles. At start-up, a
@@ -101,7 +49,7 @@ void find_timesteps(void)
             if(P[i].Type==0)
             {
                 double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i].MaxSignalVel); // in v_phys units //
-                double vsig1 = All.cf_afac3 * sqrt( Particle_effective_soundspeed_i(i)*Particle_effective_soundspeed_i(i) + fac_magnetic_pressure * (Get_Particle_BField(i,0)*Get_Particle_BField(i,0)+Get_Particle_BField(i,1)*Get_Particle_BField(i,1)+Get_Particle_BField(i,2)*Get_Particle_BField(i,2)) / SphP[i].Density );
+                double vsig1 = All.cf_afac3 * sqrt( Get_Gas_effective_soundspeed_i(i)*Get_Gas_effective_soundspeed_i(i) + fac_magnetic_pressure * (Get_Gas_BField(i,0)*Get_Gas_BField(i,0)+Get_Gas_BField(i,1)*Get_Gas_BField(i,1)+Get_Gas_BField(i,2)*Get_Gas_BField(i,2)) / SphP[i].Density );
                 double vsig0 = DMAX(vsig1,vsig2);
 
                 if(vsig0 > fastwavespeed) fastwavespeed = vsig0; // physical unit
@@ -124,26 +72,18 @@ void find_timesteps(void)
     for(i = FirstActiveParticle, ti_min = TIMEBASE; i >= 0; i = NextActiveParticle[i])
     {
         ti_step = get_timestep(i, &aphys, 0);
-        
-        if(ti_step < ti_min)
-            ti_min = ti_step;
+        if(ti_step < ti_min) {ti_min = ti_step;}
     }
-    
-    if(ti_min > (dt_displacement / All.Timebase_interval))
-        ti_min = (dt_displacement / All.Timebase_interval);
+    if(ti_min > (dt_displacement / All.Timebase_interval)) {ti_min = (dt_displacement / All.Timebase_interval);}
     
     ti_step = TIMEBASE;
-    while(ti_step > ti_min)
-        ti_step >>= 1;
-    
+    while(ti_step > ti_min) {ti_step >>= 1;}
     integertime ti_min_glob;
-    
     MPI_Allreduce(&ti_step, &ti_min_glob, 1, MPI_TYPE_TIME, MPI_MIN, MPI_COMM_WORLD);
 #endif
     
     
     /* Now assign new timesteps  */
-    
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
 #ifdef FORCE_EQUAL_TIMESTEPS
@@ -151,37 +91,25 @@ void find_timesteps(void)
 #else
         ti_step = get_timestep(i, &aphys, 0);
 #endif
-
         /* make it a power 2 subdivision */
         ti_min = TIMEBASE;
-        while(ti_min > ti_step)
-            ti_min >>= 1;
+        while(ti_min > ti_step) {ti_min >>= 1;}
         ti_step = ti_min;
-        
         bin = get_timestep_bin(ti_step);
         binold = P[i].TimeBin;
-        
         if(bin > binold)		/* timestep wants to increase */
         {
-            while(TimeBinActive[bin] == 0 && bin > binold)	/* make sure the new step is synchronized */
-                bin--;
-            
-            ti_step = bin ? (((integertime) 1) << bin) : 0;
-        }
-        
-        if(All.Ti_Current >= TIMEBASE)	/* we here finish the last timestep. */
-        {
-            ti_step = 0;
-            bin = 0;
-        }
+            while(TimeBinActive[bin] == 0 && bin > binold) {bin--;}	/* make sure the new step is synchronized */
+            ti_step = GET_INTEGERTIME_FROM_TIMEBIN(bin);
+        }        
+        if(All.Ti_Current >= TIMEBASE) {ti_step = 0; bin = 0;} /* we here finish the last timestep. */
         
         if((TIMEBASE - All.Ti_Current) < ti_step)	/* check that we don't run beyond the end */
         {
             terminate("we are beyond the end of the timeline");	/* should not happen */
             ti_step = TIMEBASE - All.Ti_Current;
             ti_min = TIMEBASE;
-            while(ti_min > ti_step)
-                ti_min >>= 1;
+            while(ti_min > ti_step) {ti_min >>= 1;}
             ti_step = ti_min;
         }
         
@@ -203,27 +131,20 @@ void find_timesteps(void)
                 TimeBin_BH_mass[binold] -= BPP(i).BH_Mass;
                 TimeBin_BH_dynamicalmass[binold] -= P[i].Mass;
                 TimeBin_BH_Mdot[binold] -= BPP(i).BH_Mdot;
-                if(BPP(i).BH_Mass > 0)
-                    TimeBin_BH_Medd[binold] -= BPP(i).BH_Mdot / BPP(i).BH_Mass;
+                if(BPP(i).BH_Mass > 0) {TimeBin_BH_Medd[binold] -= BPP(i).BH_Mdot / BPP(i).BH_Mass;}
                 TimeBin_BH_mass[bin] += BPP(i).BH_Mass;
                 TimeBin_BH_dynamicalmass[bin] += P[i].Mass;
                 TimeBin_BH_Mdot[bin] += BPP(i).BH_Mdot;
-                if(BPP(i).BH_Mass > 0)
-                    TimeBin_BH_Medd[bin] += BPP(i).BH_Mdot / BPP(i).BH_Mass;
+                if(BPP(i).BH_Mass > 0) {TimeBin_BH_Medd[bin] += BPP(i).BH_Mdot / BPP(i).BH_Mass;}
             }
 #endif
-            
             prev = PrevInTimeBin[i];
             next = NextInTimeBin[i];
             
-            if(FirstInTimeBin[binold] == i)
-                FirstInTimeBin[binold] = next;
-            if(LastInTimeBin[binold] == i)
-                LastInTimeBin[binold] = prev;
-            if(prev >= 0)
-                NextInTimeBin[prev] = next;
-            if(next >= 0)
-                PrevInTimeBin[next] = prev;
+            if(FirstInTimeBin[binold] == i) {FirstInTimeBin[binold] = next;}
+            if(LastInTimeBin[binold] == i) {LastInTimeBin[binold] = prev;}
+            if(prev >= 0) {NextInTimeBin[prev] = next;}
+            if(next >= 0) {PrevInTimeBin[next] = prev;}
             
             if(TimeBinCount[bin] > 0)
             {
@@ -238,20 +159,16 @@ void find_timesteps(void)
                 PrevInTimeBin[i] = NextInTimeBin[i] = -1;
             }
             TimeBinCount[bin]++;
-            if(P[i].Type == 0)
-                TimeBinCountSph[bin]++;
-            
+            if(P[i].Type == 0) {TimeBinCountSph[bin]++;}
             P[i].TimeBin = bin;
         }
         
 #ifndef WAKEUP
-        ti_step_old = binold ? (((integertime) 1) << binold) : 0;
+        ti_step_old = GET_INTEGERTIME_FROM_TIMEBIN(binold);
 #else
         ti_step_old = P[i].dt_step;
 #endif
-        
         P[i].Ti_begstep += ti_step_old;
-        
 #if defined(WAKEUP)
         P[i].dt_step = ti_step;
 #endif
@@ -263,28 +180,19 @@ void find_timesteps(void)
     if(All.PM_Ti_endstep == All.Ti_Current)	/* need to do long-range kick */
     {
         ti_step = TIMEBASE;
-        while(ti_step > (dt_displacement / All.Timebase_interval))
-            ti_step >>= 1;
-        
+        while(ti_step > (dt_displacement / All.Timebase_interval)) {ti_step >>= 1;}
         if(ti_step > (All.PM_Ti_endstep - All.PM_Ti_begstep))	/* PM-timestep wants to increase */
         {
             bin = get_timestep_bin(ti_step);
             binold = get_timestep_bin(All.PM_Ti_endstep - All.PM_Ti_begstep);
-            
-            while(TimeBinActive[bin] == 0 && bin > binold)	/* make sure the new step is synchronized */
-                bin--;
-            
-            ti_step = bin ? (((integertime) 1) << bin) : 0;
+            while(TimeBinActive[bin] == 0 && bin > binold) {bin--;}	/* make sure the new step is synchronized */
+            ti_step = GET_INTEGERTIME_FROM_TIMEBIN(bin);
         }
-        
-        if(All.Ti_Current == TIMEBASE)	/* we here finish the last timestep. */
-            ti_step = 0;
-        
+        if(All.Ti_Current == TIMEBASE) {ti_step = 0;} /* we here finish the last timestep. */
         All.PM_Ti_begstep = All.PM_Ti_endstep;
         All.PM_Ti_endstep = All.PM_Ti_begstep + ti_step;
     }
 #endif
-    
     
 #ifdef WAKEUP
     process_wake_ups();
@@ -308,12 +216,6 @@ integertime get_timestep(int p,		/*!< particle index */
 {
     double ax, ay, az, ac, csnd = 0, dt = All.MaxSizeTimestep, dt_courant = 0, dt_divv = 0;
     integertime ti_step; int k; k=0;
-#ifdef CHEMCOOL
-    double hubble_param; if(All.ComovingIntegrationOn) {hubble_param=All.HubbleParam;} else {hubble_param=1;}
-#endif
-#ifdef NUCLEAR_NETWORK
-    double dt_network, dt_species;
-#endif
 
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     P[p].SuperTimestepFlag = 0;
@@ -380,14 +282,13 @@ integertime get_timestep(int p,		/*!< particle index */
     else
     {ac = *aphys;}
     
-    if(ac == 0) ac = 1.0e-30;
+    if(ac == 0) {ac = 1.0e-30;}
     
     
     if(flag > 0)
     {
         /* this is the non-standard mode; use timestep to get the maximum acceleration tolerated */
-        dt = flag * All.Timebase_interval;
-        dt /= All.cf_hubble_a;	/* convert dloga to physical timestep  */
+        dt = flag * UNIT_INTEGERTIME_IN_PHYSICAL; /* convert dloga to physical timestep  */
         
         ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / (dt * dt);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
@@ -509,9 +410,9 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef PIC_MHD
         if(P[p].Grain_SubType==3)
         {
-            double lorentz_units = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); // code B to Gauss
-            lorentz_units *= All.UnitVelocity_in_cm_per_s * (ELECTRONCHARGE/(PROTONMASS*C_LIGHT)); // code velocity to CGS, times base units e/(mp*c)
-            lorentz_units /= All.UnitVelocity_in_cm_per_s / (All.UnitTime_in_s / All.HubbleParam); // convert 'back' to code-units acceleration
+            double lorentz_units = UNIT_B_IN_GAUSS; // code B to Gauss
+            lorentz_units *= UNIT_VEL_IN_CGS * (ELECTRONCHARGE/(PROTONMASS*C_LIGHT)); // code velocity to CGS, times base units e/(mp*c)
+            lorentz_units /= UNIT_VEL_IN_CGS / UNIT_TIME_IN_CGS; // convert 'back' to code-units acceleration
             double reduced_C = PIC_SPEEDOFLIGHT_REDUCTION * C_LIGHT_CODE;
             double charge_to_mass_ratio_dimensionless = All.PIC_Charge_to_Mass_Ratio;
             double v2=0, B2=0; for(k=0;k<3;k++) {v2=P[p].Vel[k]*P[p].Vel[k]; B2+=P[p].Gas_B[k]*P[p].Gas_B[k];}
@@ -578,7 +479,7 @@ integertime get_timestep(int p,		/*!< particle index */
                         double tmp_grad = SphP[p].Gradients.B[k][k2];
                         b_grad += tmp_grad * tmp_grad;
                     }
-                    double tmp_grad = Get_Particle_BField(p,k);
+                    double tmp_grad = Get_Gas_BField(p,k);
                     b_mag += tmp_grad * tmp_grad;
                 }
                 double L_cond_inv = sqrt(b_grad / (1.e-37 + b_mag));
@@ -600,7 +501,7 @@ integertime get_timestep(int p,		/*!< particle index */
             int k_CRegy;
             for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
             {
-                if(Get_Particle_CosmicRayPressure(p,k_CRegy) > 1.0e-20)
+                if(Get_Gas_CosmicRayPressure(p,k_CRegy) > 1.0e-20)
                 {
                     int explicit_timestep_on, cr_diffusion_opt = 0;
 #if defined(DIFFUSION_OPTIMIZERS) || defined(COSMIC_RAYS_M1)
@@ -608,7 +509,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
                     if(All.ComovingIntegrationOn) {cr_diffusion_opt = 1;}
                     double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p,k_CRegy);
-                    double L_cr_weak = CRPressureGradScaleLength;
+                    double L_cr_weak; L_cr_weak = CRPressureGradScaleLength;
 #if defined(COSMIC_RAYS_M1)
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
 #else
@@ -750,8 +651,8 @@ integertime get_timestep(int p,		/*!< particle index */
                     change, which can happen particularly for ionizing photons */
                 if(kf==RT_FREQ_BIN_H0)
                 {
-                    double ne_cgs = (SphP[p].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
-                    double dt_recombination = All.CourantFac * (3.3e12/ne_cgs) / (All.UnitTime_in_s / All.HubbleParam);
+                    double ne_cgs = (SphP[p].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
+                    double dt_recombination = All.CourantFac * (3.3e12/ne_cgs) / UNIT_TIME_IN_CGS;
                     double dt_change = 1.e10*dt; if((SphP[p].Rad_E_gamma[kf] > 0)&&(fabs(SphP[p].Dt_Rad_E_gamma[kf])>0)) {dt_change = SphP[p].Rad_E_gamma[kf] / fabs(SphP[p].Dt_Rad_E_gamma[kf]);}
                     dt_recombination = DMIN(DMAX(dt_recombination,dt_change), DMAX(dt_courant,dt_rad));
                     if(dt_recombination < dt_rad) {dt_rad = dt_recombination;}
@@ -813,11 +714,11 @@ integertime get_timestep(int p,		/*!< particle index */
             
 #if defined(DIVBCLEANING_DEDNER) 
             double fac_magnetic_pressure = All.cf_afac1 / All.cf_atime;
-            double phi_b_units = Get_Particle_PhiField(p) / (All.cf_afac3 * All.cf_atime * SphP[p].MaxSignalVel);
-            double vsig1 = All.cf_afac3 * sqrt( Particle_effective_soundspeed_i(p)*Particle_effective_soundspeed_i(p) +
-                    fac_magnetic_pressure * (Get_Particle_BField(p,0)*Get_Particle_BField(p,0) +
-                                             Get_Particle_BField(p,1)*Get_Particle_BField(p,1)+
-                                             Get_Particle_BField(p,2)*Get_Particle_BField(p,2) +
+            double phi_b_units = Get_Gas_PhiField(p) / (All.cf_afac3 * All.cf_atime * SphP[p].MaxSignalVel);
+            double vsig1 = All.cf_afac3 * sqrt( Get_Gas_effective_soundspeed_i(p)*Get_Gas_effective_soundspeed_i(p) +
+                    fac_magnetic_pressure * (Get_Gas_BField(p,0)*Get_Gas_BField(p,0) +
+                                             Get_Gas_BField(p,1)*Get_Gas_BField(p,1)+
+                                             Get_Gas_BField(p,2)*Get_Gas_BField(p,2) +
                                              phi_b_units*phi_b_units) / SphP[p].Density );
 
             dt_courant = 0.8 * All.CourantFac * (All.cf_atime*L_particle) / vsig1; // 2.0 factor may be added (PFH) //
@@ -834,30 +735,28 @@ integertime get_timestep(int p,		/*!< particle index */
 	    
 	    
 #ifdef NUCLEAR_NETWORK
+            double dt_network, dt_species;
             if(SphP[p].Temperature > 1e7)
             {
                 /* check if the new timestep blows up our abundances */
-                dt_network = dt * All.UnitTime_in_s;
+                dt_network = dt * UNIT_TIME_IN_CGS;
                 for(k = 0; k < EOS_NSPECIES; k++)
                 {
                     if(SphP[p].dxnuc[k] > 0)
                     {
                         dt_species = (1.0 - SphP[p].xnuc[k]) / SphP[p].dxnuc[k];
-                        if(dt_species < dt_network)
-                            dt_network = dt_species;
+                        if(dt_species < dt_network) {dt_network = dt_species;}
                     }
                     else if(SphP[p].dxnuc[k] < 0)
                     {
                         dt_species = (0.0 - SphP[p].xnuc[k]) / SphP[p].dxnuc[k];
-                        if(dt_species < dt_network)
-                            dt_network = dt_species;
+                        if(dt_species < dt_network) {dt_network = dt_species;}
                     }
                     
                 }
-                
-                dt_network /= All.UnitTime_in_s;
-                if(dt_network < dt)
-                    dt = dt_network;
+   
+                dt_network /= UNIT_TIME_IN_CGS;
+                if(dt_network < dt) {dt = dt_network;}
             }
 #endif
             
@@ -899,7 +798,7 @@ integertime get_timestep(int p,		/*!< particle index */
                         while(TimeBinActive[bin] == 0 && bin > binold) {bin--;} /* make sure the new step is synchronized */
                     }
                     /* now convert this -back- to a physical timestep */
-                    double dt_allowed = (bin ? (((integertime) 1) << bin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+                    double dt_allowed = GET_INTEGERTIME_FROM_TIMEBIN(bin) * UNIT_INTEGERTIME_IN_PHYSICAL;
                     if(dt_superstep > 1.5*dt_allowed)
                     {
                         /* the next allowed timestep [because of synchronization] is not big enough to fit the 'big step' 
@@ -923,11 +822,7 @@ integertime get_timestep(int p,		/*!< particle index */
     /* Reduce time-step if this particle got interaction probabilities > 0.2 during the last time-step */
     if((1 << P[p].Type) & (DM_SIDM))
     {
-        if(P[p].dt_step_sidm > 0)
-        {
-            double dt_sidm_physical = P[p].dt_step_sidm * All.Timebase_interval / All.cf_hubble_a;
-            if(dt_sidm_physical < dt) {dt = dt_sidm_physical;}
-        }
+        if(P[p].dtime_sidm > 0) {if(P[p].dtime_sidm < dt) {dt = P[p].dtime_sidm;}}
         if(dt > 0)
         {
             double p_target = 0.2; // desired maximum probability per timestep
@@ -944,7 +839,7 @@ integertime get_timestep(int p,		/*!< particle index */
     
     
     // add a 'stellar evolution timescale' criterion to the timestep, to prevent too-large jumps in feedback //
-#if defined(YOUNGSTARWINDDRIVING) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE)
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || (defined(GALSF) && defined(RADTRANSFER))
     if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0))
     {
         double star_age = evaluate_stellar_age_Gyr(P[p].StellarAge);
@@ -956,11 +851,14 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_stellar_evol = star_age/10.;
         }
         // PFH: temporarily modifying the terms above while Marcel studies them: turns out not to be necessary to use as strict a mass-dependent timestep, so faster to comment out //
-        //dt_stellar_evol /= ( 1. + 0.1*(P[p].Mass*All.UnitMass_in_g)/(1.0e4*1.989e33) ); // multiply by inverse particle mass, since goal is to prevent too much energy in one time //
-        double mcorr = 0.1 * (P[p].Mass*All.UnitMass_in_g/All.HubbleParam)/(1.0e4*1.989e33);
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+        // double mcorr = 1.e-4 * (P[p].Mass*UNIT_MASS_IN_SOLAR); if(mcorr > 1) {dt_stellar_evol /= mcorr;} // don't use - ok to have multiple at low-res, but don't want too-big a jump or miss key stellar evolution
+#else
+        double mcorr = 1.e-5 * (P[p].Mass*UNIT_MASS_IN_SOLAR);
         if(mcorr < 1 && mcorr > 0) {dt_stellar_evol /= mcorr;}
+#endif
         if(dt_stellar_evol < 1.e-6) {dt_stellar_evol = 1.e-6;}
-        dt_stellar_evol /= (0.001*All.UnitTime_in_Megayears/All.HubbleParam); // convert to code units //
+        dt_stellar_evol /= (UNIT_TIME_IN_GYR); // convert to code units //
         if(dt_stellar_evol>0) {if(dt_stellar_evol<dt) {dt = dt_stellar_evol;}}
     }
 #endif
@@ -969,17 +867,13 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef BLACK_HOLES
 
 #ifdef BH_WAKEUP_GAS
-    if(P[p].Type == 0)
-    {
-    	double dt_bh = 2.*(P[p].LowestBHTimeBin ? ((integertime)1 <<  P[p].LowestBHTimeBin) : 0) * All.Timebase_interval/All.cf_hubble_a;
-    	if(dt>dt_bh) {dt=1.01*dt_bh; P[p].LowestBHTimeBin=TIMEBINS;}
-    }
+    if(P[p].Type == 0) {double dt_bh = 2.*GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[p].LowestBHTimeBin); if(dt>dt_bh) {dt=0.99*dt_bh; P[p].LowestBHTimeBin=TIMEBINS;}}
 #endif	
 
     if(P[p].Type == 5)
     {
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && defined(GALSF)
-      double dt_accr = 1.e-2 * 4.2e7 * SEC_PER_YEAR / All.UnitTime_in_s; // this is the Eddington timescale; not relevant for low radiative efficiency
+      double dt_accr = 4.2e5 / UNIT_TIME_IN_YR; // this is the 1% of Salpeter timescale; not relevant for low radiative efficiency
 #else
       double dt_accr = All.MaxSizeTimestep;
 #endif      
@@ -990,10 +884,10 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_accr = 0.001 * DMAX(BPP(p).BH_Mass, All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
             dt_accr *= DMAX(0.1, All.BAL_f_accretion);
-#endif // BH_WIND_CONTINUOUS
+#endif
 #else
             dt_accr = 0.05 * DMAX(BPP(p).BH_Mass , All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
-#endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS)	    
+#endif 	    
 #ifdef SINGLE_STAR_SINK_DYNAMICS
             dt_accr = All.MinMassForParticleMerger / BPP(p).BH_Mdot;
 #ifdef SINGLE_STAR_FB_JETS
@@ -1002,18 +896,15 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
         } // if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
 #ifdef BH_SEED_GROWTH_TESTS
-            double dt_evol = 1.e4 * SEC_PER_YEAR / All.UnitTime_in_s;
+        double dt_evol = 1.e4 / UNIT_TIME_IN_YR;
 #ifdef TURB_DRIVING
-            if(dt_evol > 1.e-3*All.StDecay) {dt_evol=1.e-3*All.StDecay;}
+        if(dt_evol > 1.e-3*All.StDecay) {dt_evol=1.e-3*All.StDecay;}
 #endif
-            if(dt_accr > dt_evol) {dt_accr=dt_evol;}
+        if(dt_accr > dt_evol) {dt_accr=dt_evol;}
 #endif
-            if(dt_accr > 0 && dt_accr < dt) {dt = dt_accr;}
+        if(dt_accr > 0 && dt_accr < dt) {dt = dt_accr;}
 
-        double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (((integertime) 1) << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#ifndef SINGLE_STAR_SINK_DYNAMICS
-        dt_ngbs *= 4.; /* standard wakeup-type threshold: use this by default here, unless dynamical interaction important (e.g. back-rx term from oscillation of BH c-o-m, which is important for single-sink sims */
-#endif
+        double dt_ngbs = 4.1 * GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(BPP(p).BH_TimeBinGasNeighbor); /* standard wakeup-type threshold: use this by default here, unless dynamical interaction important (e.g. back-rx term from oscillation of BH c-o-m, which is important for single-sink sims */
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 
 #if defined(SINGLE_STAR_TIMESTEPPING)
@@ -1037,22 +928,26 @@ integertime get_timestep(int p,		/*!< particle index */
         if(P[p].StellarAge == All.Time)
         {   // want a brand new sink to be on the lowest occupied timebin
             long bin; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;}
-            double dt_min =  ((bin ? (((integertime) 1) << bin) : 0) * All.Timebase_interval / All.cf_hubble_a);
+            double dt_min =  GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(bin);
             if(dt > dt_min && dt_min > 0) dt = 1.01 * dt_min;
         }
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
 #ifdef SINGLE_STAR_FB_WINDS
-        if(P[p].ProtoStellarStage == 5) {double dt_spawn = All.BAL_wind_particle_mass / single_star_wind_mdot(p); if(dt > dt_spawn) dt = 1.01 * dt_spawn;}
+        if(P[p].ProtoStellarStage == 5) {double dt_spawn = All.BAL_wind_particle_mass / single_star_wind_mdot(p,1); if(dt > dt_spawn) dt = 1.01 * dt_spawn;}
 #endif
 #ifdef SINGLE_STAR_FB_SNE
-        if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ){ //Star going supernova, still has mass to eject
-            double t_clear=P[p].SinkRadius/single_star_SN_velocity(p);  dt = DMIN(dt,DMAX(t_clear/2,DMAX(All.MinSizeTimestep,All.Timebase_interval)* 1.01)); } // time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
+        if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ) { //Star going supernova, still has mass to eject
+            double eps = DMIN(KERNEL_CORE_SIZE*All.ForceSoftening[P[p].Type], PPP[p].Hsml);
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+            eps = DMAX(eps, P[p].SinkRadius);
+#endif
+            double t_clear=eps/single_star_SN_velocity(p);  dt=DMIN(dt, DMAX(0.5*t_clear, 1.01*All.MinSizeTimestep)); } // time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
 #endif
 #endif
     } // if(P[p].Type == 5)
 
-#ifdef BH_DEBUG_SPAWN_JET_TEST /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
+#if defined(BH_WIND_SPAWN) && defined(BH_DEBUG_SPAWN_JET_TEST) /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
     if(P[p].Type == 5 && dt>1.e-6) {dt=1.e-6;}
     if(P[p].Type == 0 && P[p].ID == All.AGNWindID && dt>5.e-7)
     {double dist_rad2 = pow((P[p].Pos[0]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[1]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[2]-0.5*All.BoxSize),2.0); if(sqrt(dist_rad2)<10.) {dt=5.e-7;}}
@@ -1085,7 +980,7 @@ integertime get_timestep(int p,		/*!< particle index */
             PRINT_WARNING("Part-ID=%llu  dt=%g dtc=%g ac=%g agrav=%g ahydro=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g m=%g type=%d\n",
                           (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type], P[p].Mass,P[p].Type);
 #endif // ndef LONGIDS
-#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE //extra info for single star runs
+#ifdef SINGLE_STAR_STARFORGE_DEFAULTS //extra info for single star runs
             PRINT_WARNING("Part-ID=%llu min_dist_to_bh=%g cs_est=%g u_int=%g Pressure=%g",  (MyIDType) P[p].ID, P[p].min_dist_to_bh, sqrt(convert_internalenergy_soundspeed2(p, SphP[p].InternalEnergy)), SphP[p].InternalEnergy, SphP[p].Pressure);
 #endif
         }
@@ -1096,7 +991,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #else
             PRINT_WARNING("Part-ID=%llu  dt=%g ac=%g agrav=%g xyz=(%g|%g|%g) type=%d\n", (MyIDType) P[p].ID, dt, ac, agrav, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],P[p].Type);
 #endif // ndef LONGIDS
-#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE //extra info for single star runs
+#ifdef SINGLE_STAR_STARFORGE_DEFAULTS //extra info for single star runs
             PRINT_WARNING("Part-ID=%llu min_dist_to_bh=%g DensAroundStar=%g BH_Mdot=%g min_bh_approach_time=%g min_bh_freefall_time=%g BH_SurroundingGasVel=%g BH_dr_to_NearestGasNeighbor=%g\n", (MyIDType) P[p].ID, P[p].min_dist_to_bh, P[p].DensAroundStar, P[p].BH_Mdot, P[p].min_bh_approach_time, P[p].min_bh_freefall_time, P[p].BH_SurroundingGasVel, P[p].BH_dr_to_NearestGasNeighbor);
 #endif
         }
@@ -1272,17 +1167,10 @@ void process_wake_ups(void)
         {
             if(n > 0)
             {
-                dt_bin = (((integertime) 1) << n);
-                ti_next_for_bin = (All.Ti_Current / dt_bin) * dt_bin + dt_bin;	/* next kick time for this timebin */
+                dt_bin = GET_INTEGERTIME_FROM_TIMEBIN(n); ti_next_for_bin = (All.Ti_Current / dt_bin) * dt_bin + dt_bin;	/* next kick time for this timebin */
             }
-            else
-            {
-                dt_bin = 0;
-                ti_next_for_bin = All.Ti_Current;
-            }
-            
-            if(ti_next_for_bin < ti_next_kick)
-                ti_next_kick = ti_next_for_bin;
+            else {dt_bin = 0; ti_next_for_bin = All.Ti_Current;}
+            if(ti_next_for_bin < ti_next_kick) {ti_next_kick = ti_next_for_bin;}
         }
     }
     
@@ -1294,21 +1182,11 @@ void process_wake_ups(void)
     for(n = 0; n < TIMEBINS; n++)
     {
         dt_bin = (((integertime) 1) << n);
-        
-        if((ti_next_kick_global % dt_bin) == 0)
-            max_time_bin_active = n;
+        if((ti_next_kick_global % dt_bin) == 0) {max_time_bin_active = n;}
     }
     
     /* move the particle on the highest bin, that is active in the next timestep and that is lower than its last timebin */
-    bin = 0;
-    for(n = 0; n < TIMEBINS; n++)
-    {
-        if(TimeBinCount[n] > 0)
-        {
-            bin = n;
-            break;
-        }
-    }
+    bin = 0; for(n = 0; n < TIMEBINS; n++) {if(TimeBinCount[n] > 0) {bin = n; break;}}
     n = 0;
 
     MPI_Allreduce(&NeedToWakeupParticles_local, &NeedToWakeupParticles, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process processes wakeups then they all should, just in case a woke particle gets swapped to another process before we get here
@@ -1316,45 +1194,34 @@ void process_wake_ups(void)
     if(NeedToWakeupParticles){
 	for(i = 0; i < NumPart; i++)
 	{
-	    if(!PPPZ[i].wakeup)
-		continue;
-	
+	    if(!PPPZ[i].wakeup) {continue;}
 #if !defined(AGS_HSML_CALCULATION_IS_ACTIVE)
 	    if(P[i].Type != 0) {continue;} // only gas particles can be awakened
 #endif
-        
-	    if(P[i].Mass <= 0)
-		continue;       
-        
+	    if(P[i].Mass <= 0) {continue;}
 	    binold = P[i].TimeBin;
-	    if(TimeBinActive[binold])
-		continue;
+	    if(TimeBinActive[binold]) {continue;}
         
 	    bin = max_time_bin_active < binold ? max_time_bin_active : binold;
         
 	    if(bin != binold)
 	    {
-		integertime dt_0 = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
+		integertime dt_0 = GET_INTEGERTIME_FROM_TIMEBIN(P[i].TimeBin);
 		integertime tstart = P[i].Ti_begstep + dt_0;
 		integertime t_2 = P[i].Ti_current;
 		if(t_2 > tstart) {tstart = t_2;}
 		integertime tend = All.Ti_Current;
 
 		TimeBinCount[binold]--;
-		if(P[i].Type == 0)
-		    TimeBinCountSph[binold]--;
+		if(P[i].Type == 0) {TimeBinCountSph[binold]--;}
             
 		prev = PrevInTimeBin[i];
 		next = NextInTimeBin[i];
             
-		if(FirstInTimeBin[binold] == i)
-		    FirstInTimeBin[binold] = next;
-		if(LastInTimeBin[binold] == i)
-		    LastInTimeBin[binold] = prev;
-		if(prev >= 0)
-		    NextInTimeBin[prev] = next;
-		if(next >= 0)
-		    PrevInTimeBin[next] = prev;
+		if(FirstInTimeBin[binold] == i) {FirstInTimeBin[binold] = next;}
+		if(LastInTimeBin[binold] == i) {LastInTimeBin[binold] = prev;}
+		if(prev >= 0) {NextInTimeBin[prev] = next;}
+		if(next >= 0) {PrevInTimeBin[next] = prev;}
             
 		if(TimeBinCount[bin] > 0)
 		{
@@ -1369,14 +1236,9 @@ void process_wake_ups(void)
 		    PrevInTimeBin[i] = NextInTimeBin[i] = -1;
 		}
 		TimeBinCount[bin]++;
-		if(P[i].Type == 0)
-		    TimeBinCountSph[bin]++;
-            
+		if(P[i].Type == 0) {TimeBinCountSph[bin]++;}
 		P[i].TimeBin = bin;
-            
-		if(TimeBinActive[bin])
-		    NumForceUpdate++;
-                        
+        if(TimeBinActive[bin]) {NumForceUpdate++;}
 		n++;
 
 		/* reverse part of the last second-half kick this particle received 
@@ -1387,19 +1249,28 @@ void process_wake_ups(void)
 		    set_predicted_sph_quantities_for_extra_physics(i);
 		}
 		P[i].Ti_begstep = All.Ti_Current;
-		P[i].dt_step = bin ? (((integertime) 1) << bin) : 0;
+		P[i].dt_step = GET_INTEGERTIME_FROM_TIMEBIN(bin);
 		if(P[i].Ti_current < All.Ti_Current) {P[i].Ti_current=All.Ti_Current;}
-            
 	    }
 	}
     }
     
     sumup_large_ints(1, &n, &ntot);
-    if(ThisTask == 0)
-    {
-        if(ntot > 0) {printf("%d%09d particles woken up.\n", (int) (ntot / 1000000000), (int) (ntot % 1000000000));}
-    }
+    if(ThisTask == 0) {if(ntot > 0) {printf("%d%09d particles woken up.\n", (int) (ntot / 1000000000), (int) (ntot % 1000000000));}}
     NeedToWakeupParticles = 0;
     NeedToWakeupParticles_local = 0;
 }
 #endif
+
+
+
+
+#ifdef BOX_SHEARING
+void calc_shearing_box_pos_offset(void) /* function that calculates the shear-offset between the shear-periodic boundaries in a shearing box */
+{
+    Shearing_Box_Pos_Offset = Shearing_Box_Vel_Offset * All.Time;
+    while(Shearing_Box_Pos_Offset > boxSize_Y) {Shearing_Box_Pos_Offset -= boxSize_Y;}
+}
+#endif
+
+
