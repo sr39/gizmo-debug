@@ -313,31 +313,6 @@ endif
 
 
 #----------------------------
-ifeq ($(SYSTYPE),"Illium")
-ANACONDAINCL = /home/aemerick/anaconda3/include
-ANACONDALIB  = /home/aemerick/anaconda3/lib
-CC       =  mpicc
-CXX      =  mpiccxx
-FC       =  $(CC) #mpifort
-OPTIMIZE = -O2 -funroll-loops
-OPTIMIZE += -g -Wall # compiler warnings
-GMP_INCL = #
-GMP_LIBS = #
-MKL_INCL = #
-MKL_LIBS = #
-GSL_INCL = -I$(ANACONDAINCL)
-GSL_LIBS = -L$(ANACONDALIB)
-FFTW_INCL= -I/usr/local/include
-FFTW_LIBS= -L/usr/local/lib
-HDF5INCL = -I$(ANACONDAINCL) -DH5_USE_16_API
-HDF5LIB  = -L$(ANACONDALIB) -lhdf5 -lz
-GRACKLEINCL = -I/home/aemerick/code/local/include
-GRACKLELIBS = -L/home/aemerick/code/local/lib -lgrackle
-MPICHLIB = #
-OPT     += -DUSE_MPI_IN_PLACE #
-endif
-
-#----------------------------
 ifeq ($(SYSTYPE),"MacBookPro")
 CC       =  mpicc
 CXX      =  mpiccxx
