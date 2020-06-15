@@ -91,6 +91,7 @@ void radiation_pressure_winds_consolidated(void)
                             startnode=All.MaxPart;
                             if(numngb_inbox<N_MIN_KERNEL) {if(numngb_inbox<=0) {h*=2.0;} else {if(NITER<=5) {h*=pow((float)numngb_inbox/(float)N_MIN_KERNEL,-0.3333);} else {h*=1.26;}}} /* iterate until find appropriate > N_MIN # particles */
                             if(numngb_inbox>N_MAX_KERNEL) {if(NITER<=5) {h*=pow((float)numngb_inbox/(float)N_MAX_KERNEL,-0.3333);} else {h/=1.31;}} /* iterate until find appropriate < N_MAX # particles */
+                            if((NITER>MAXITER_FB/2) && (N_MIN_KERNEL>2)) {N_MIN_KERNEL/=2; N_MAX_KERNEL*=2; if(N_MIN_KERNEL<2) {N_MIN_KERNEL=2;} if(N_MAX_KERNEL>2000) {N_MAX_KERNEL=2000;}} // expand tolerance if we are doing a lot of iterations here //
                         }
                         if(h>20.*RtauMax) {h=20.*RtauMax; if(NITER<MAXITER_FB-1) {NITER=MAXITER_FB-1;}} /* if h exceeds the maximum now, set it to that value, and set NITER to maximum to force end of iteration */
                         NITER++;
@@ -179,7 +180,7 @@ void radiation_pressure_winds_consolidated(void)
         {
             totMPI_avg_v /= MIN_REAL_NUMBER + totMPI_n_wind; totMPI_avg_taufac /= MIN_REAL_NUMBER + totMPI_mom_wind;
             fprintf(FdMomWinds, "%lg %g %g %g %g %g \n", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_avg_taufac); fflush(FdMomWinds);
-            PRINT_STATUS(" ..Ncells_pushed=%g (L/c)dt=%g dP_coupled=%g <dv_cell>=%g <dP_multi/dP_single>=%g", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_avg_taufac);
+            PRINT_STATUS(" ..Ncells_pushed=%g (L/c)dt=%g dP_coupled=%g <dv_cell>=%g <dP_multi/dP_single>=%g",totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_avg_taufac);
         }
     } // if(ThisTask==0)
     if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin && ThisTask == 0) {fflush(FdMomWinds);}
@@ -242,7 +243,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
             
             prandom = get_random_number(P[i].ID + 7); // pre-calc the (eventually) needed random number
             // guesstimate if this is even close to being interesting for the particle masses of interest
-            if(prandom < 10.0*mionizable/P[i].Mass) // prandom > this, won't be able to ionize anything interesting
+            if(prandom < 5.0*mionizable/P[i].Mass) // prandom > this, won't be able to ionize anything interesting
             {
                 mionized=0.0; startnode = All.MaxPart; jnearest=-1; rnearest=MAX_REAL_NUMBER; dummy=0; NITER_HIIFB=0;
                 do {
@@ -317,7 +318,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                             already_ionized = do_the_local_ionization(j,dt,i);
                             total_N_ionized += 1;
                             mion_actual += P[j].Mass;
-                            double dx=pos[0]-P[j].Pos[0],dy=pos[1]-P[j].Pos[1],dz=pos[2]-P[j].Pos[2]; NEAREST_XYZ(dx,dy,dz,1); r2=dx*dx+dy*dy+dz*dz;
+                            double dx=pos[0]-P[j].Pos[0],dy=pos[1]-P[j].Pos[1],dz=pos[2]-P[j].Pos[2],r2; NEAREST_XYZ(dx,dy,dz,1); r2=dx*dx+dy*dy+dz*dz;
                             avg_RHII += P[j].Mass*sqrt(r2)*All.cf_atime*UNIT_LENGTH_IN_KPC;
                         }
                         mionized += prob*m_effective;
