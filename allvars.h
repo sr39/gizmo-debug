@@ -3350,6 +3350,7 @@ extern struct io_header
   double HubbleParam;		/*!< Hubble parameter in units of 100 km/sec/Mpc */
   int flag_stellarage;		/*!< flags whether the file contains formation times of star particles */
   int flag_metals;		/*!< flags whether the file contains metallicity values for gas and star particles */
+  int flag_agetracers;          /*!< flags whether the file contains age-tracer values for gas and star particles */
 
   unsigned int npartTotalHighWord[6];	/*!< High word of the total number of particles of each type (needed to combine with npartTotal to allow >2^31 particles of a given type) */
   int flag_doubleprecision;	/*!< flags that snapshot contains double-precision instead of single precision */
