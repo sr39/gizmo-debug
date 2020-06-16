@@ -514,6 +514,13 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i);
 double Z_for_stellar_evol(int i);
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
+int read_agetracerlist(char *fname);
+#endif
+int get_age_tracer_bin(double age);
+double get_age_tracer_bin_start_time(int k);
+#endif
 #endif
 #endif
 
@@ -717,7 +724,7 @@ void statistics(void);
 double timediff(double t0, double t1);
 void veldisp(void);
 void veldisp_ensure_neighbours(int mode);
-
+int binarySearch(const double * arr, const double x, const int l, const int r, const int total);
 
 double get_gravkick_factor(integertime time0, integertime time1);
 double drift_integ(double a, void *param);

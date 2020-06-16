@@ -3621,26 +3621,15 @@ void write_file(char *fname, int writeTask, int lastTask)
         header.npartTotalHighWord[n] = (unsigned int) (ntot_type_all[n] >> 32);
     }
 
-    if(header.flag_ic_info == FLAG_SECOND_ORDER_ICS)
-        header.flag_ic_info = FLAG_EVOLVED_2LPT;
+    if(header.flag_ic_info == FLAG_SECOND_ORDER_ICS) {header.flag_ic_info = FLAG_EVOLVED_2LPT;}
+    if(header.flag_ic_info == FLAG_ZELDOVICH_ICS) {header.flag_ic_info = FLAG_EVOLVED_ZELDOVICH;}
+    if(header.flag_ic_info == FLAG_NORMALICS_2LPT) {header.flag_ic_info = FLAG_EVOLVED_2LPT;}
+    if(header.flag_ic_info == 0 && All.ComovingIntegrationOn != 0) {header.flag_ic_info = FLAG_EVOLVED_ZELDOVICH;}
 
-    if(header.flag_ic_info == FLAG_ZELDOVICH_ICS)
-        header.flag_ic_info = FLAG_EVOLVED_ZELDOVICH;
-
-    if(header.flag_ic_info == FLAG_NORMALICS_2LPT)
-        header.flag_ic_info = FLAG_EVOLVED_2LPT;
-
-    if(header.flag_ic_info == 0 && All.ComovingIntegrationOn != 0)
-        header.flag_ic_info = FLAG_EVOLVED_ZELDOVICH;
-
-    for(n = 0; n < 6; n++)
-        header.mass[n] = All.MassTable[n];
-
+    for(n = 0; n < 6; n++) {header.mass[n] = All.MassTable[n];}
 
     header.time = All.Time;
-
-    if(All.ComovingIntegrationOn) {header.redshift = 1.0 / All.Time - 1;}
-        else {header.redshift = 0;}
+    if(All.ComovingIntegrationOn) {header.redshift = 1.0 / All.Time - 1;} else {header.redshift = 0;}
 
     header.flag_sfr = 0;
     header.flag_feedback = 0;
@@ -4030,7 +4019,6 @@ void write_file(char *fname, int writeTask, int lastTask)
 void write_header_attributes_in_hdf5(hid_t handle)
 {
     hsize_t adim[1] = { 6 };
-    hsize_t agedim[1] = { NUM_AGE_TRACERS+1 };
 
     hid_t hdf5_dataspace, hdf5_attribute;
 

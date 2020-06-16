@@ -1143,13 +1143,7 @@ void InitCoolMemory(void)
     Betaff = (double *) mymalloc("Betaff", (NCOOLTAB + 1) * sizeof(double));
 
 #ifdef COOL_METAL_LINES_BY_SPECIES
-    long i_nH=41; long i_T=176; long kspecies=(long)NUM_METAL_SPECIES-1;
-#ifdef GALSF_FB_FIRE_RPROCESS
-    kspecies -= NUM_RPROCESS_SPECIES;
-#endif
-#ifdef GALSF_FB_FIRE_AGE_TRACERS
-    kspecies -= NUM_AGE_TRACERS;
-#endif
+    long i_nH=41; long i_T=176; long kspecies=(long)NUM_LIVE_SPECIES_FOR_COOLTABLES;
     SpCoolTable0 = (float *) mymalloc("SpCoolTable0",(kspecies*i_nH*i_T)*sizeof(float));
     if(All.ComovingIntegrationOn) {SpCoolTable1 = (float *) mymalloc("SpCoolTable1",(kspecies*i_nH*i_T)*sizeof(float));}
 #endif
@@ -1215,14 +1209,7 @@ void LoadMultiSpeciesTables(void)
 void ReadMultiSpeciesTables(int iT)
 {
     /* read table w n,T for each species */
-    long i_nH=41; long i_Temp=176; long kspecies=(long)NUM_METAL_SPECIES-1; long i,j,k,r;
-#ifdef GALSF_FB_FIRE_RPROCESS
-    //kspecies -= 1;
-    kspecies -= NUM_RPROCESS_SPECIES;
-#endif
-#ifdef GALSF_FB_FIRE_AGE_TRACERS
-    kspecies -= NUM_AGE_TRACERS;
-#endif
+    long i_nH=41; long i_Temp=176; long kspecies=(long)NUM_LIVE_SPECIES_FOR_COOLTABLES; long i,j,k,r;
     /* int i_He=7;  int l; */
     FILE *fdcool; char *fname;
 
@@ -1539,13 +1526,7 @@ void InitCool(void)
 double GetCoolingRateWSpecies(double nHcgs, double logT, double *Z)
 {
     double ne_over_nh_tbl=1, Lambda=0;
-    int k, N_species_active = NUM_METAL_SPECIES-1;
-#ifdef GALSF_FB_FIRE_RPROCESS
-    N_species_active -= NUM_RPROCESS_SPECIES;
-#endif
-#ifdef GALSF_FB_FIRE_AGE_TRACERS
-    N_species_active -= NUM_AGE_TRACERS;
-#endif
+    int k, N_species_active = (int)NUM_LIVE_SPECIES_FOR_COOLTABLES;
 
     /* pre-calculate the indices for density and temperature, then we just need to call the tables by species */
     int ixmax=40, iymax=175;

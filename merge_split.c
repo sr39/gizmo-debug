@@ -362,8 +362,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
     int abunIndex;
     ChimesGasVars[j] = ChimesGasVars[i];
     allocate_gas_abundances_memory(&(ChimesGasVars[j]), &ChimesGlobalVars);
-    for (abunIndex = 0; abunIndex < ChimesGlobalVars.totalNumberOfSpecies; abunIndex++)
-      ChimesGasVars[j].abundances[abunIndex] = ChimesGasVars[i].abundances[abunIndex];
+    for (abunIndex = 0; abunIndex < ChimesGlobalVars.totalNumberOfSpecies; abunIndex++) {ChimesGasVars[j].abundances[abunIndex] = ChimesGasVars[i].abundances[abunIndex];}
 #endif
 
     // need to assign new particle a unique ID:
@@ -569,13 +568,7 @@ void merge_particles_ij(int i, int j)
         }
         PPP[j].Hsml = pow(pow(PPP[j].Hsml,NUMDIMS)+pow(PPP[i].Hsml,NUMDIMS),1.0/NUMDIMS);
 #ifdef METALS
-        /* AJE: Make sure this is O.K. for age tracers: */
-        for(k=0;k<NUM_METAL_SPECIES;k++)
-            P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k]; /* metal-mass conserving */
-//#ifdef GALSF_FB_FIRE_AGE_TRACERS
-//        for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++)
-//            P[j].Metallicity[k] = P[j].Metallicity[k] + P[i].Metallicity[k]; /* conserve sum of tracer */
-//#endif
+        for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k];} /* metal-mass conserving */
 #endif
         /* finally zero out the particle mass so it will be deleted */
         P[i].Mass = 0;
@@ -748,16 +741,10 @@ void merge_particles_ij(int i, int j)
     wt_h_i = 1.0;
     wt_h_j = 1.0;
 #endif
-    for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++)
-      ChimesGasVars[j].abundances[k] = (ChimesFloat) ((ChimesGasVars[j].abundances[k] * wt_j * wt_h_j) + (ChimesGasVars[i].abundances[k] * wt_i * wt_h_i));
+    for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) {ChimesGasVars[j].abundances[k] = (ChimesFloat) ((ChimesGasVars[j].abundances[k] * wt_j * wt_h_j) + (ChimesGasVars[i].abundances[k] * wt_i * wt_h_i));}
 #endif // CHIMES
 #ifdef METALS
-    for(k=0;k<NUM_METAL_SPECIES;k++)
-        P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k]; /* metal-mass conserving */
-//#ifdef GALSF_FB_FIRE_AGE_TRACERS
-//        for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++)
-//            P[j].Metallicity[k] = P[j].Metallicity[k] + P[i].Metallicity[k]; /* conserve sum of tracer */
-//#endif
+    for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k];} /* metal-mass conserving */
 #endif
 #ifdef COSMIC_RAYS
     int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
@@ -934,7 +921,7 @@ void rearrange_particle_sequence(void)
 #ifdef CHIMES /* swap chimes-specific 'gasvars' structure which is separate from SphP */
                 gasVarsSave = ChimesGasVars[i]; ChimesGasVars[i] = ChimesGasVars[j]; ChimesGasVars[j] = gasVarsSave;
                 /* Old particle (now at position j) is no longer a gas particle, so delete its abundance array. */
-		free_gas_abundances_memory(&(ChimesGasVars[j]), &ChimesGlobalVars);
+                free_gas_abundances_memory(&(ChimesGasVars[j]), &ChimesGlobalVars);
                 ChimesGasVars[j].abundances = NULL; ChimesGasVars[j].isotropic_photon_density = NULL; ChimesGasVars[j].G0_parameter = NULL; ChimesGasVars[j].H2_dissocJ = NULL;
 #endif /* CHIMES */
 

@@ -137,6 +137,8 @@ void compute_stellar_feedback(void)
     mechanical_fb_calc(1); /* additional loop for stellar mass-loss */
 #ifdef GALSF_FB_FIRE_RPROCESS
     mechanical_fb_calc(2); /* additional loop for R-process */
+#endif
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
     mechanical_fb_calc(3); /* additional loop for stellar age tracers */
 #endif
 #endif

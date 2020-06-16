@@ -60,12 +60,15 @@ int density_isactive(int n)
         if(P[n].SNe_ThisTimeStep>0) return 1;
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION)
         if(P[n].MassReturn_ThisTimeStep>0) return 1;
+#ifdef GALSF_FB_FIRE_RPROCESS
         if(P[n].RProcessEvent_ThisTimeStep>0) return 1;
+#endif
 #if defined(GALSF_FB_FIRE_AGE_TRACERS)
         if(P[n].AgeDeposition_ThisTimeStep>0) return 1;
 #endif
 #endif
 #endif
+        
 #if defined(GALSF)
         if(P[n].DensAroundStar<=0) return 1;
         if(All.ComovingIntegrationOn==0) // only do stellar age evaluation if we have to //

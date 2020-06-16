@@ -357,12 +357,12 @@ void begrun(void)
 #endif
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-      All.AgeTracerReturnFraction     = all.AgeTracerReturnFraction;
+      All.AgeTracerReturnFraction = all.AgeTracerReturnFraction;
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
       strcpy(All.AgeTracerListFilename, all.AgeTracerListFilename);
 #else
       All.AgeTracerBinStart = all.AgeTracerBinStart;
-      All.AgeTracerBinEnd   = all.AgeTracerBinEnd;
+      All.AgeTracerBinEnd = all.AgeTracerBinEnd;
 #endif
 #endif
 
@@ -2460,52 +2460,25 @@ void read_parameter_file(char *fname)
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
 int read_agetracerlist(char *fname)
 {
-  FILE *fd;
-  int count;
-  char buf[512];
-
-  if(!(fd = fopen(fname, "r")))
+    FILE *fd; int count,i=0; char buf[512];
+    if(!(fd = fopen(fname, "r"))) {printf("can't read age tracer list in file '%s'\n", fname); return 1;}
+    while(1)
     {
-      printf("can't read age tracer list in file '%s'\n", fname);
-      return 1;
-    }
-
-  int i = 0;
-  while(1)
-    {
-      if(fgets(buf, 500, fd) != buf)
-        break;
-
+      if(fgets(buf, 500, fd) != buf) {break;}
       count = sscanf(buf, " %lg", &All.AgeTracerTimeBins[i]);
-
-      if (count == 1 || count == 2)
-        {
-          if(i >= NUM_AGE_TRACERS+1)
-            {
-              if(ThisTask == 0)
-                printf("\ntoo many entries in age tracer list. You should increase NUM_AGE_TRACERS=%d.\n",
-                       (int) NUM_AGE_TRACERS);
-              endrun(313);
-            }
-
+      if(count == 1 || count == 2)
+      {
+          if(i >= NUM_AGE_TRACERS+1) {PRINT_WARNING("Too many entries in age tracer list. You should increase NUM_AGE_TRACERS=%d",(int)NUM_AGE_TRACERS); endrun(314);}
           i++;
-        }
+      }
     }
-
-  if (i < NUM_AGE_TRACERS+1){
-    printf("\n not enough entries in age tracer list. Found %d entries, but we need %d\n", i, NUM_AGE_TRACERS+1);
-
-    endrun(314);
-  }
-
-  fclose(fd);
-
-  printf("\nfound %d age tracer bin edges in age tracer list.\n", i);
-  return 0;
+    if (i < NUM_AGE_TRACERS+1) {PRINT_WARNING("Not enough entries in age tracer list. Found %d entries, but we need %d\n", i, NUM_AGE_TRACERS+1); endrun(314);}
+    fclose(fd);
+    if(ThisTask==0) {printf("Read age tracer bin set. Found %d age tracer bin edges in age tracer list.\n", i); fflush(stdout);}
+    return 0;
 }
-
-
 #endif
+
 
 /*! this function reads a table with a list of desired output times. The table
  *  does not have to be ordered in any way, but may not contain more than

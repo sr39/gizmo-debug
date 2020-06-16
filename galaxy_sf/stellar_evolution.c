@@ -150,8 +150,8 @@ void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int 
     if(P[i].SNe_ThisTimeStep<1) {double m_msun=P[i].Mass*UNIT_MASS_IN_SOLAR; in->SNe_v_ejecta = (616. * sqrt((1.+0.1125*m_msun)/(1.+0.0125*m_msun)) * pow(m_msun,0.131)) / UNIT_VEL_IN_KMS;} // scaling from size-mass relation+eddington factor, assuming line-driven winds //
 #endif
 #ifdef METALS
-    int k; for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {in->yields[k]=0.178*All.SolarAbundances[k]/All.SolarAbundances[0];} // assume a universal solar-type yield with ~2.63 Msun of metals
-    if(NUM_METAL_SPECIES>=10) {in->yields[1] = 0.4;} // (catch for Helium, which the above scaling would give bad values for)
+    int k; for(k=0;k<NUM_METAL_SPECIES;k++) {in->yields[k]=0.178*All.SolarAbundances[k]/All.SolarAbundances[0];} // assume a universal solar-type yield with ~2.63 Msun of metals
+    if(NUM_LIVE_SPECIES_FOR_COOLTABLES>=10) {in->yields[1] = 0.4;} // (catch for Helium, which the above scaling would give bad values for)
 #endif
 #endif
 }
@@ -163,14 +163,12 @@ void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int 
     quantities from stars. */
 double mechanical_fb_calculate_eventrates(int i, double dt)
 {
-
-    double RSNe = 0.0;
 #if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) // FIRE-specific stellar population version: separate calculation for SNe, stellar mass loss, R-process injection //
-    RSNe = mechanical_fb_calculate_eventrates_SNe(i,dt);
+    double SNe_rate = mechanical_fb_calculate_eventrates_SNe(i,dt);
     mechanical_fb_calculate_eventrates_Winds(i,dt);
     mechanical_fb_calculate_eventrates_Rprocess(i,dt);
     mechanical_fb_calculate_eventrates_Agetracers(i,dt);
-    return RSNe;
+    return SNe_rate;
 #endif
 
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) /* SINGLE-STAR version: simple implementation of single-star wind mass-loss and SNe rates */
@@ -195,15 +193,14 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 
 #ifdef GALSF_FB_MECHANICAL /* STELLAR-POPULATION version: mechanical feedback: 'dummy' example model below assumes a constant SNe rate for t < 30 Myr, then nothing. experiment! */
     double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-    RSNe=0.0;
     if(star_age < 0.03)
     {
-        RSNe = 3.e-4; // assume a constant rate ~ 3e-4 SNe/Myr/solar mass for t = 0-30 Myr //
+        double RSNe = 3.e-4; // assume a constant rate ~ 3e-4 SNe/Myr/solar mass for t = 0-30 Myr //
         double p = RSNe * (P[i].Mass*UNIT_MASS_IN_SOLAR) * (dt*UNIT_TIME_IN_MYR); // unit conversion factor
         double n_sn_0=(float)floor(p); p-=n_sn_0; if(get_random_number(P[i].ID+6) < p) {n_sn_0++;} // determine if SNe occurs
         P[i].SNe_ThisTimeStep = n_sn_0; // assign to particle
+        return RSNe;
     }
-    return RSNe;
 #endif
 
     return 0;
@@ -263,113 +260,65 @@ void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt)
 #endif
 }
 
+
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-int get_age_tracer_bin(const double age){
-/* Finds the age tracer bin (passive scalar) corresponding
-   to the given star's age (in Myr) */
-  int index = -1;
-  const int too_old_flag = -9;
-#ifndef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
-  // Bins are log-spaced do not need to perform a search
-  const double binstart = log10(All.AgeTracerBinStart);
-  const double binend   = log10(All.AgeTracerBinEnd);
-  const double log_bin_dt = (binend - binstart) / (1.0*NUM_AGE_TRACERS);
-
-  if( age <= All.AgeTracerBinStart){
-      index = 0;
-  } else if (age >= All.AgeTracerBinEnd){
-//      Do nothing here and continue. Likely ONLY happens in test problems,
-//      otherwise stellar ages should really never be larger than largest bin
-      return too_old_flag;
-  } else{
-      index = floor( (log10(age) - binstart)/ log_bin_dt); // find bin
-  };
-
+/* Finds the age tracer bin (passive scalar) corresponding to the given star's age (in Myr) */
+int get_age_tracer_bin(double age)
+{
+    int index = -1; int too_old_flag = -9;
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
+    /* Bins are custom with arbitrary sizes - perform a search */
+    if(age < All.AgeTracerTimeBins[0]) {index=0;} // initial bin
+        else if(age >= All.AgeTracerTimeBins[NUM_AGE_TRACERS]) {return too_old_flag;} /* do nothing here and continue */
+        else {index = binarySearch(All.AgeTracerTimeBins,age,0,NUM_AGE_TRACERS+1,NUM_AGE_TRACERS+1); /* find the bin */
+            if(age < All.AgeTracerTimeBins[index]) {PRINT_WARNING("Age tracer binary search not working %d  %f  %f  %f",index, age,All.AgeTracerTimeBins[index],All.AgeTracerTimeBins[index+1]); endrun(8888);}}
 #else
-  // Bins are custom with arbitrary sizes - perform a search
-  if (age < All.AgeTracerTimeBins[0]){
-    index = 0;
-  } else if (age >= All.AgeTracerTimeBins[NUM_AGE_TRACERS]){
-    return too_old_flag;
-  } else {
-    // search for the bin:
-    index = binarySearch(All.AgeTracerTimeBins, age, 0, NUM_AGE_TRACERS+1,
-                                                      NUM_AGE_TRACERS+1);
-    if (age < All.AgeTracerTimeBins[index]){
-        printf("Age tracer binary search not working %d  %f  %f  %f\n",index, age,
-                                                All.AgeTracerTimeBins[index],
-                                                All.AgeTracerTimeBins[index+1]);
-        endrun(8888);
-    }
-  }
-
+    /* Bins are log-spaced we do not need to perform a search */
+    double binstart=log10(All.AgeTracerBinStart), binend=log10(All.AgeTracerBinEnd), log_bin_dt=(binend - binstart)/((double)NUM_AGE_TRACERS);
+    if(age <= All.AgeTracerBinStart) {index=0;} /* initial bin */
+        else if(age >= All.AgeTracerBinEnd) {return too_old_flag;} /* do nothing here and continue [likely only in test problems] */
+        else {index=floor((log10(age)-binstart)/log_bin_dt);} /* find bin */
 #endif
-  if ( index < 0 ){
-    printf("Age tracer binary search not working %d  %f\n",index, age);
-    endrun(8888);
-  }
+    if(index<0) {PRINT_WARNING("Age tracer binary search not working index=%d age=%f",index,age); endrun(8888);} // exit if invalid result
+    return index; // return valid bin
+}
 
-  return index;
+/* Returns the start time, in Myr, of the age bin with index "k" */
+double get_age_tracer_bin_start_time(int k)
+{
+    if(k<0) {return 0;} // always return 0 for arbitrarily low indices
+    if(k>NUM_AGE_TRACERS) {return get_age_tracer_bin_start_time(NUM_AGE_TRACERS);} // should never happen-set to same value as last value here
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
+    return All.AgeTracerTimeBins[k]; // use pre-tabulated bin times, in Myr
+#else
+    return All.AgeTracerBinStart * pow(All.AgeTracerBinEnd/All.AgeTracerBinStart , ((double)k)/((double)NUM_AGE_TRACERS)); // uniform log-spaced bins
+#endif
 }
 #endif
 
 
+/* function to determine if deposition into age-tracer bins occurs this time step */
 void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
 {
-  // Determine if deposition into age-tracer bins occurs this time step
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-    P[i].AgeDeposition_ThisTimeStep = 0;
-    if (P[i].Type != 4) return;
-
-    // AgeTracerReturnFraction < 0 means deposit every time step
-    if (All.AgeTracerReturnFraction <= 0) {
-      P[i].AgeDeposition_ThisTimeStep = 1.0;
-      return;
-    }
-
-    // otherwise, AgeTracerReturnFraction represents the fraction of time
-    // spent depositing the tracers (i.e. in the simple case of constant dt,
-    // the fraction of time steps in which this is deposited)
-
-    //
-    // find bin - make sure dt is not comparable to width of bin, otherwise
-    // we might miss deposition if using stochastic method
-    //
-    const double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge) * 1000.0; // Age in Myr
-    dt                   *= UNIT_TIME_IN_MYR; // convert to Myr
-    const int k           = get_age_tracer_bin(star_age);
-#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
-    const double bin_dt   = All.AgeTracerTimeBins[k+1] - All.AgeTracerTimeBins[k];
-#else
-    const double log_bin_dt = (log10(All.AgeTracerBinEnd - log10(All.AgeTracerBinStart)))
-                                        / (1.0*NUM_AGE_TRACERS);
-    const double bin_dt = pow(10.0,log10(All.AgeTracerBinStart+(k+1)*log_bin_dt)) -
-                          pow(10.0,log10(All.AgeTracerBinStart+(k  )*log_bin_dt));
-#endif
-    //
-    // if dt is large compared to bin spacing this is not safe
-    // make full event and return. This could be improved, but may
-    // require some history of knowing when last ejection was to
-    // back-correct for enrichment missed
-    //
-    if (dt / bin_dt > All.AgeTracerReturnFraction){
-      P[i].AgeDeposition_ThisTimeStep = 1.0; // make event
-      return;
-    }
-
-    // otherwise, rate limit according to the return fraction
-    //    this represents fraction of time star should be depositing
-    if(get_random_number(P[i].ID + 3) < All.AgeTracerReturnFraction){
-        // deposit age tracer and use this scaling to increase
-        // the normalization of the tracer field
-        P[i].AgeDeposition_ThisTimeStep = 1.0 / All.AgeTracerReturnFraction;
-    } else {
-        // don't do anything this timestep
-        P[i].AgeDeposition_ThisTimeStep = 0;
-    }
+    P[i].AgeDeposition_ThisTimeStep=0; // reset
+    if(P[i].Type != 4) {return;} // only new stars are eligible sources
+    double rate_normalization = All.AgeTracerReturnFraction; // determines the fraction of time spent depositing tracers, or rate-per-particle
+    if(rate_normalization <= 0) {P[i].AgeDeposition_ThisTimeStep=1; return;} // rate_normalization < 0 means deposit every time step
+    double stellar_age_myr = evaluate_stellar_age_Gyr(P[i].StellarAge)*1000.; int k = get_age_tracer_bin(stellar_age_myr); // get age in Myr and bin for age
+    double bin_dt_myr = get_age_tracer_bin_start_time(k+1)-get_age_tracer_bin_start_time(k); // get bin duration in Myr
+    if(dt*UNIT_TIME_IN_MYR/bin_dt_myr > rate_normalization) {P[i].AgeDeposition_ThisTimeStep=1;} else  // if dt is large compared to bin spacing, might 'miss' an event, so we want to always make an event and return
+        {if(get_random_number(P[i].ID + 3) < rate_normalization) {P[i].AgeDeposition_ThisTimeStep=1./rate_normalization;}} // rate limit according to the return fraction this represents fraction of time star should be depositing; if selected, deposit age tracer and use this scaling to increase the normalization of the tracer field
+/*
+    double p = All.AgeTracerEventsPerTimeBin * (dt*UNIT_TIME_MYR / bin_dt_myr), n_events=(float)floor(p); p-=n_events; if(get_random_number(P[i].ID + 3) < p) {n_events++;} // if > 1, this cuts that part off so we get appropriate n > 1 solution
+    P[i].AgeDeposition_ThisTimeStep = n_events; // assign event
+ */
 #endif
     return;
 }
+
+
+
 
 void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 {
@@ -431,7 +380,7 @@ void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i)
         if(k==1) {tcrit=0.003; pcrit=0.3333333333;}  // model 1: tmin > 3e6 yr, rate = 1e-5
         if(k==2) {tcrit=0.03;  pcrit=0.03333333333;} // model 2: tmin > 3e7 yr, rate = 1e-6
         if(k==3) {tcrit=0.003; pcrit=0.03333333333;} // model 3: tmin > 3e6 yr, rate = 1e-6
-        if((star_age>=tcrit)&&(p<=pcrit)) {in->yields[NUM_METAL_SPECIES-NUM_RPROCESS_SPECIES-NUM_AGE_TRACERS+k]=1;} // units irrelevant//
+        if((star_age>=tcrit)&&(p<=pcrit)) {in->yields[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+k]=1;} // units irrelevant//
     }
     in->Msne = 0.01 * (double)P[i].RProcessEvent_ThisTimeStep / ((double)(UNIT_MASS_IN_SOLAR)); // mass ejected ~0.01*M_sun; only here for bookkeeping //
 #endif
@@ -439,41 +388,7 @@ void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i)
 
 
 
-#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
-int binarySearch(const double * arr, const double x,
-                 const int l, const int r, const int total)
-{
 
-  if (r<l){ endrun(7777);}
-
-  const int w     = r-l;
-  const int mid   = l + w/2;
-
-  if (w  <= 1){
-    if (mid < total-1)
-      if (x >= arr[mid] && x < arr[mid+1])
-        return mid;
-    if (mid >0)
-      if(x >= arr[mid-1] && x < arr[mid])
-        return mid-1;
-  } // endif w < 1
-  if (arr[mid] > x){
-     return binarySearch(arr,x,l,mid-1,total);
-  } else if (arr[mid]<x){
-    return binarySearch(arr,x,mid+1,r,total);
-  } else {
-    return mid;
-  }
-
-  return -1;
-}
-#endif
-
-
-void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
-{
-
-  in->Msne = 0.0;
 /*
   Routine injects passive scalar tracer field for each star particle
   according to the age of that particle for post processing stellar
@@ -484,97 +399,34 @@ void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
   scaling is simple (just multiply field by mass of metal species
   produced per solar mass of star formation to get an abundance)
 */
-
+void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
+{
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-    int k; if(P[i].AgeDeposition_ThisTimeStep<=0) {in->Msne=0; return;} // no deposition
-    if (P[i].Type != 4) return; // do nothing!
-#ifdef METALS
-    const int k_age_start = NUM_METAL_SPECIES-NUM_AGE_TRACERS;
-    const int k_age_end   = NUM_METAL_SPECIES;
-    /* pull surface "abundances" - really... these are surface "ages" */
-    double yields[NUM_AGE_TRACERS]; for(k=0;k<NUM_AGE_TRACERS;k++) {yields[k]=0.0;}
-    // set default abundances
-    for (k=0; k<NUM_AGE_TRACERS; k++){
-        in->yields[k+k_age_start] = yields[k];
-    }
-    double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge) * 1000.0; // Age in Myr
+    if(P[i].Type != 4) {return;} // only new stars are eligible for events
+    if(P[i].AgeDeposition_ThisTimeStep<=0) {return;} // no event
 
-    const double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) * UNIT_TIME_IN_MYR; // get particle timestep in Myr
+    double M_norm = (P[i].Mass*UNIT_MASS_IN_SOLAR) * P[i].AgeDeposition_ThisTimeStep; /* AJE: may need to switch to normalizing over logbin spacing if bins are large too avoid small number issues  - this requires undoing the normalization in post */
+    double age_myr = evaluate_stellar_age_Gyr(P[i].StellarAge) * 1000.; int k = get_age_tracer_bin(age_myr); // get age in myr and corresponding tracer bin
+    if(k==-9) {printf("Stellar age greater than maximum allows in AGE_TRACERS bins\n"); return;} // error trap for age > max bin
+    double dt=GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i)*UNIT_TIME_IN_MYR, dt_half=0.5*dt, age_initial=age_myr-dt_half, age_final=age_myr+dt_half; // get particle timestep in Myr, and age at beginning/end of timestep centered on us
+    int k_age_start = 1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES; // first index of tracers
 
-    /* AJE: may need to switch to normalizing over logbin spacing if bins are large
-      too avoid small number issues  - this requires undoing the normalization in post */
-    const double M_norm = P[i].Mass * (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS))
-                                    * P[i].AgeDeposition_ThisTimeStep;
-
-    // get age tracer bin
-    k = get_age_tracer_bin(star_age); if (k == -9){printf("age greater than bin\n"); return;} // flag that age > max bin
-
-    // Now deposit the tracer field, with a check to make sure multiple
-    // bins are crossed this dt if dt is large or age happens to be near a bin
-    // edge
-#ifndef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
-    // bin size in linear time (better normalization)
-    const double binstart = log10(All.AgeTracerBinStart);
-    const double binend   = log10(All.AgeTracerBinEnd);
-    const double log_bin_dt = (binend - binstart) / (1.0*NUM_AGE_TRACERS);
-
-    double bin_dt = pow(10.0, binstart+(k+1)*log_bin_dt) - (k==0? 0.0 :pow(10.0, binstart + k*log_bin_dt));
-
-    if ((star_age + dt*0.5 > pow(10.0, binstart+(k+1)*log_bin_dt)) ||
-       ( star_age - 0.5*dt < pow(10.0, binstart+(k)*log_bin_dt))){ // goes over multiple bins!!
-
-       if (star_age - 0.5*dt < pow(10.0, binstart+(k)*log_bin_dt)){
-         k = k - 1;
-       }
-
-       double tstart = star_age - 0.5*dt;
-
-       while ( tstart < star_age + dt*0.5){
-           // do fractional / full injection for each bin we cross:
-           bin_dt      =   pow(10.0, binstart + (k+1)*log_bin_dt) - pow(10.0, binstart+k*log_bin_dt);
-           double tend =   DMIN(   pow(10.0,binstart+(k+1)*log_bin_dt),   star_age + dt*0.5);
-           in->yields[k+k_age_start] += ((tend - tstart) / bin_dt) * M_norm;
-           tstart = tend;
-           k++;
-       }
-    } else {
-        // normalization is somewhat arbitrary, but choosing "1" unit
-        // per bin per solar mass of star for convenience
-        in->yields[k + k_age_start] += ( dt / bin_dt ) * M_norm;
-    }
-
-#else
-   double bin_dt      =   All.AgeTracerTimeBins[k+1] - All.AgeTracerTimeBins[k];
-   if ((star_age + 0.5*dt > All.AgeTracerTimeBins[k+1]) ||
-       (star_age - 0.5*dt < All.AgeTracerTimeBins[k])) { // goes over multiple bins!!
-
-      double tstart = star_age - 0.5*dt;
-
-      if (star_age - 0.5*dt < All.AgeTracerTimeBins[k]){
-        k = k - 1;
-        bin_dt = All.AgeTracerTimeBins[k+1]-All.AgeTracerTimeBins[k];
-      }
-
-      while ( tstart < star_age + dt*0.5){
-          // do fractional here:
-          bin_dt      =   All.AgeTracerTimeBins[k+1] - All.AgeTracerTimeBins[k];
-          double tend =   DMIN(   All.AgeTracerTimeBins[k+1],   star_age + dt*0.5);
-          in->yields[k+k_age_start] += ((tend - tstart) / bin_dt) * M_norm;
-          tstart = tend;
-          k++;
-      }
-   } else {
-       // normalization is somewhat arbitrary, but choosing "1" unit per bin per solar mass of star for convenience
-       in->yields[k + k_age_start] += ( dt / bin_dt ) * M_norm;   // add to this yield bin
-   }
-#endif // custom bins
-
-#endif // metals
-    in->Msne = 1.0E-10 * SOLAR_MASS / All.UnitMass_in_g / All.HubbleParam; // small number just to be nonzero
-
-#endif // age tracer model
+    // now deposit tracer fields, with check if multiple bins are crossed
+    double t_start=get_age_tracer_bin_start_time(k), t_end=get_age_tracer_bin_start_time(k+1), bin_dt=t_end-t_start; // bin edges in Myr
+    if(((k>0) && (age_initial<t_start)) || ((k<NUM_AGE_TRACERS) && (age_final>t_end))) // timestep crosses multiple -valid- bins
+    {
+        double age=age_initial, age_step=0; if(age_initial < t_start) {k--;} // step back a bin, set variables
+        while((age<age_final) && (k<=NUM_AGE_TRACERS)) { // loop over active bins to set yields in each bin
+            bin_dt = get_age_tracer_bin_start_time(k+1) - get_age_tracer_bin_start_time(k); age_step = DMIN(t_end, age_final); // get the step to the end of bin
+            in->yields[k+k_age_start] += ((age_step - age) / bin_dt) * M_norm; // do fractional / full injection for each bin we cross
+            age = age_step; k++;}
+    } else {in->yields[k+k_age_start] += (dt / bin_dt) * M_norm;} // normalization is somewhat arbitrary, but choosing "1" unit per bin per solar mass of star for convenience
+    in->Msne = 1.e-10 / UNIT_MASS_IN_SOLAR; // small number just to be nonzero
+#endif
     return;
 }
+
+
 
 void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
 {
@@ -643,7 +495,7 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
     if(NUM_METAL_SPECIES==1) {if(SNeIaFlag) {yields[0]=1.4;} else {yields[0]=2.0;}}
     for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]/M_ejecta_model;} // normalize to mass fraction //
     /* add a check to allow for larger abundances in the progenitor stars (usually irrelevant) */
-    for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]);}
+    for(k=0;k<=NUM_LIVE_SPECIES_FOR_COOLTABLES;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]);}
 
 
 
@@ -692,11 +544,11 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
         if(P[i].Metallicity[0]<0.033) {yields[4] *= P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[4] *= 1.65;}
 
         for(k=1;k<=4;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]); if(yields[k]<0) {yields[k]=0.0;} if(yields[k]>1) {yields[k]=1;} in->yields[k]=yields[k];} // enforce yields obeying pre-existing surface abundances, and upper/lower limits //
-        yields[0]=0.0; for(k=2;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {yields[0]+=yields[k];}
+        yields[0]=0.0; for(k=2;k<=NUM_LIVE_SPECIES_FOR_COOLTABLES;k++) {yields[0]+=yields[k];}
 #endif
 
     } else {
-        yields[0]=0.032; for(k=1;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {yields[k]=0.0;}
+        yields[0]=0.032; for(k=1;k<NUM_METAL_SPECIES;k++) {yields[k]=0.0;}
     }
     for(k=0;k<NUM_METAL_SPECIES;k++) in->yields[k]=yields[k];
 #endif

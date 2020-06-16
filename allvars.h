@@ -245,8 +245,8 @@
 #define GALSF_FB_FIRE_RT_LOCALRP            /*! turn on local radiation pressure coupling to gas - account for local multiple-scattering and isotropic local absorption */
 #define GALSF_FB_FIRE_RT_LONGRANGE          /*! continuous acceleration from starlight (uses luminosity tree) to propagate FIRE RT */
 #define GALSF_FB_FIRE_RT_UVHEATING          /*! use estimate of local spectral information from FIRE RT for photoionization and photoelectric heating */
-// #define GALSF_FB_FIRE_RPROCESS 4            /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
-// #define GALSF_FB_FIRE_AGE_TRACERS 16        /*! tracks a set of passive scalars corresponding to stellar ages for chemical evolution model postprocessing */
+//#define GALSF_FB_FIRE_RPROCESS 4          /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
+//#define GALSF_FB_FIRE_AGE_TRACERS 16      /*! tracks a set of passive scalars corresponding to stellar ages for chemical evolution model postprocessing */
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
 
@@ -1214,19 +1214,18 @@ typedef unsigned long long peanokey;
 #endif
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-
 #define NUM_AGE_TRACERS (GALSF_FB_FIRE_AGE_TRACERS)
-
 #else
-
 #define NUM_AGE_TRACERS 0
 #endif
 
 #ifdef COOL_METAL_LINES_BY_SPECIES
-#define NUM_METAL_SPECIES (11+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS)
+#define NUM_LIVE_SPECIES_FOR_COOLTABLES 10
 #else
-#define NUM_METAL_SPECIES (1+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS)
+#define NUM_LIVE_SPECIES_FOR_COOLTABLES 0
 #endif
+
+#define NUM_METAL_SPECIES (1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS)
 #endif // METALS //
 
 
@@ -2246,19 +2245,17 @@ extern struct global_data_all_processes
 #endif
 #endif
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
-  double HIIRegion_fLum_Coupled;
+    double HIIRegion_fLum_Coupled;
 #endif
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-  double AgeTracerReturnFraction;       /* Fraction of time to do age tracer deposition (with checks depending on time bin width for current star) */
+    double AgeTracerReturnFraction;                 /* Fraction of time to do age tracer deposition (with checks depending on time bin width for current star) */
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
-/* Bin edges (left) for stellar age passive scalar tracers when using custom (uneven) bins
-   the final value is the right edge of the final bin, hence a total size +1 the number of tracers */
-  double AgeTracerTimeBins[NUM_AGE_TRACERS+1];
-  char   AgeTracerListFilename[100];            /* file name to read ages from (in Myr) as a single column */
+    double AgeTracerTimeBins[NUM_AGE_TRACERS+1];    /* Bin edges (left) for stellar age passive scalar tracers when using custom (uneven) bins the final value is the right edge of the final bin, hence a total size +1 the number of tracers */
+    char   AgeTracerListFilename[100];              /* file name to read ages from (in Myr) as a single column */
 #else
-  double AgeTracerBinStart; // left bin edge of first age tracers (Myr) - for log spaced bins
-  double AgeTracerBinEnd;   // right bin edge of last age tracer (Myr)  - for log spaced bins
+    double AgeTracerBinStart;                       /* left bin edge of first age tracers (Myr) - for log spaced bins */
+    double AgeTracerBinEnd;                         /* right bin edge of last age tracer (Myr)  - for log spaced bins */
 #endif
 #endif
 
@@ -2266,8 +2263,8 @@ extern struct global_data_all_processes
 
 #if (defined(GALSF) && defined(METALS)) || defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
 #define INIT_STELLAR_METALS_AGES_DEFINED // convenience flag for later to know these variables exist
-  double InitMetallicityinSolar;
-  double InitStellarAgeinGyr;
+    double InitMetallicityinSolar;
+    double InitStellarAgeinGyr;
 #endif
 
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
@@ -2276,7 +2273,7 @@ extern struct global_data_all_processes
 #endif
 
 #if defined(SINGLE_STAR_FB_JETS)
-        double BAL_f_launch_v; // scales the amount of accretion power going into jets, we eject (1-All.BAL_f_accretion) fraction of the accreted mass at this value times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.BAL_f_accretion)
+    double BAL_f_launch_v; // scales the amount of accretion power going into jets, we eject (1-All.BAL_f_accretion) fraction of the accreted mass at this value times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.BAL_f_accretion)
 #endif
 
 #if defined(BH_COSMIC_RAYS)
@@ -2558,8 +2555,9 @@ extern ALIGN(32) struct particle_data
     MyFloat SNe_ThisTimeStep; /* flag that indicated number of SNe for the particle in the timestep */
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
     MyFloat MassReturn_ThisTimeStep; /* gas return from stellar winds */
+#ifdef GALSF_FB_FIRE_RPROCESS
     MyFloat RProcessEvent_ThisTimeStep; /* R-process event tracker */
-
+#endif
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
     MyFloat AgeDeposition_ThisTimeStep; /* age-tracer deposition */
 #endif
@@ -3265,9 +3263,6 @@ extern struct gravdata_out
 #ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
     MyLongDouble MencInRcrit;
 #endif
-#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
-    MyLongDouble MencInRcrit;
-#endif
 #ifdef EVALPOTENTIAL
     MyLongDouble Potential;
 #endif
@@ -3330,27 +3325,25 @@ extern struct info_block
  */
 extern struct io_header
 {
-  int npart[6];			/*!< number of particles of each type in this file */
-  double mass[6];		/*!< mass of particles of each type. If 0, then the masses are explicitly
-                                stored in the mass-block of the snapshot file, otherwise they are omitted */
-  double time;			/*!< time of snapshot file */
-  double redshift;		/*!< redshift of snapshot file */
-  int flag_sfr;			/*!< flags whether the simulation was including star formation */
+  int npart[6];			    /*!< number of particles of each type in this file */
+  double mass[6];           /*!< mass of particles of each type. If 0, then the masses are explicitly stored in the mass-block of the snapshot file, otherwise they are omitted */
+  double time;			    /*!< time of snapshot file */
+  double redshift;		    /*!< redshift of snapshot file */
+  int flag_sfr;			    /*!< flags whether the simulation was including star formation */
   int flag_feedback;		/*!< flags whether feedback was included (obsolete) */
-  unsigned int npartTotal[6];	/*!< total number of particles of each type in this snapshot. This can be
-				   different from npart if one is dealing with a multi-file snapshot. */
-  int flag_cooling;		/*!< flags whether cooling was included  */
-  int num_files;		/*!< number of files in multi-file snapshot */
-  double BoxSize;		/*!< box-size of simulation in case periodic boundaries were used */
-  double Omega0;		/*!< matter density in units of critical density */
+  unsigned int npartTotal[6];   /*!< total number of particles of each type in this snapshot. This can be different from npart if one is dealing with a multi-file snapshot. */
+  int flag_cooling;		    /*!< flags whether cooling was included  */
+  int num_files;		    /*!< number of files in multi-file snapshot */
+  double BoxSize;		    /*!< box-size of simulation in case periodic boundaries were used */
+  double Omega0;            /*!< matter density in units of critical density */
   double OmegaLambda;		/*!< cosmological constant parameter */
   double HubbleParam;		/*!< Hubble parameter in units of 100 km/sec/Mpc */
   int flag_stellarage;		/*!< flags whether the file contains formation times of star particles */
-  int flag_metals;		/*!< flags whether the file contains metallicity values for gas and star particles */
-  int flag_agetracers;          /*!< flags whether the file contains age-tracer values for gas and star particles */
+  int flag_metals;		    /*!< flags whether the file contains metallicity values for gas and star particles */
+  int flag_agetracers;      /*!< flags whether the file contains age-tracer values for gas and star particles */
 
-  unsigned int npartTotalHighWord[6];	/*!< High word of the total number of particles of each type (needed to combine with npartTotal to allow >2^31 particles of a given type) */
-  int flag_doubleprecision;	/*!< flags that snapshot contains double-precision instead of single precision */
+  unsigned int npartTotalHighWord[6];   /*!< High word of the total number of particles of each type (needed to combine with npartTotal to allow >2^31 particles of a given type) */
+  int flag_doubleprecision; /*!< flags that snapshot contains double-precision instead of single precision */
 
   int flag_ic_info;             /*!< flag to inform whether IC files are generated with ordinary Zeldovich approximation,
                                      or whether they ocontains 2nd order lagrangian perturbation theory initial conditions.

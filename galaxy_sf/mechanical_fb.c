@@ -25,10 +25,12 @@ int addFB_evaluate_active_check(int i, int fb_loop_iteration)
     if(P[i].SNe_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==0) return 1;}
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
     if(P[i].MassReturn_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==1) return 1;}
+#ifdef GALSF_FB_FIRE_RPROCESS
     if(P[i].RProcessEvent_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==2) return 1;}
 #endif
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
     if(P[i].AgeDeposition_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==3) return 1;}
+#endif
 #endif
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     if(P[i].wind_mode != 2 || P[i].ProtoStellarStage != 5) return 0;
@@ -50,12 +52,14 @@ void determine_where_SNe_occur(void)
         P[i].SNe_ThisTimeStep=0;
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
         P[i].MassReturn_ThisTimeStep=0;
+#ifdef GALSF_FB_FIRE_RPROCESS
         P[i].RProcessEvent_ThisTimeStep=0;
 #endif
-
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
         P[i].AgeDeposition_ThisTimeStep=0;
 #endif
+#endif
+
 
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
         if(P[i].Type == 0) {continue;} // any non-gas type is eligible to be a 'star' here
@@ -124,15 +128,14 @@ struct OUTPUT_STRUCT_NAME
 void particle2in_addFB(struct addFB_evaluate_data_in_ *in, int i, int loop_iteration)
 {
     // pre-assign various values that will be used regardless of feedback physics //
-    int k; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k]; in->Vel[k]=P[i].Vel[k];}
-    double heff=PPP[i].Hsml / PPP[i].NumNgb; in->V_i=heff*heff*heff; in->Hsml = PPP[i].Hsml;
+    int k; for(k=0;k<3;k++) {in->Pos[k] = P[i].Pos[k]; in->Vel[k] = P[i].Vel[k];}
+    double heff = PPP[i].Hsml / PPP[i].NumNgb; in->V_i = heff*heff*heff; in->Hsml = PPP[i].Hsml;
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++) {in->yields[k]=0.0;}
 #endif
     for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {in->Area_weighted_sum[k] = P[i].Area_weighted_sum[k];}
     in->Msne = 0; in->unit_mom_SNe = 0; in->SNe_v_ejecta = 0;
-    /* AJE: Make sure star cluster mass never goes to zero and catches this */
-    if((P[i].DensAroundStar <= 0)||(P[i].Mass == 0)) {return;} // events not possible
+    if((P[i].DensAroundStar <= 0)||(P[i].Mass == 0)) {return;} // events not possible [catch for mass->0]
     if(loop_iteration < 0) {in->Msne=P[i].Mass; in->unit_mom_SNe=1.e-4; in->SNe_v_ejecta=1.0e-4; return;} // weighting loop
     particle2in_addFB_fromstars(in,i,loop_iteration); // subroutine that actually deals with the assignment of feedback properties
     in->unit_mom_SNe = in->Msne * in->SNe_v_ejecta;
@@ -369,27 +372,16 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 SphP[j].MassTrue += dM_ejecta_in;
 #endif
-#if defined(METALS)
-                /* inject metals */
+#if defined(METALS) /* inject metals */
                 for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}
-
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-
-
-                if (loop_iteration == 3){ // add age tracers in taking yields to mean MASS
-                    for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + pnorm*local.yields[k]/P[j].Mass;}
-
+                if(loop_iteration == 3) {for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] += pnorm*local.yields[k]/P[j].Mass;}} // add age tracers in taking yields to mean MASS, so we can make it large without actually exchanging large masses
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_SURFACE_YIELDS
-                } else {
-                    for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k]=(1.0-massratio_ejecta)*P[j].Metallicity[k]+massratio_ejecta*local.yields[k];}
+                if(loop_iteration != 3) {for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}} // treat like any other yield when doing stellar mass exchange
 #endif
-                }
-
 #endif
-
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-                if(loop_iteration == 2) continue; // for r-process, nothing left here to bother coupling //
-                if(loop_iteration == 3) continue; // for age tracers, nothing left here to bother coupling //
+                if(loop_iteration >= 2) continue; // for r-process, age-tracers, etc., nothing left here to bother coupling //
 #endif
 #endif
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) /* inject cosmic rays */
@@ -469,7 +461,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     /* Load the data for the particle injecting feedback */
     if(mode == 0) {particle2in_addFB(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
     if(local.Msne<=0) {return 0;} // no SNe for the master particle! nothing to do here //
-//  #endif
     if(local.Hsml<=0) {return 0;} // zero-extent kernel, no particles //
 
     // some units (just used below, but handy to define for clarity) //
@@ -680,29 +671,16 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 SphP[j].MassTrue += dM_ejecta_in;
 #endif
-#ifdef METALS
-                /* inject metals */
+#ifdef METALS   /* inject metals */
                 for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}
-
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-                  // keep age tracers as fraction (to make constant tracer-metallicity as stars loose mass)
-                  // so e.g. M_age_O = sum(age_bin_O_i * age_bin_i_tracer_amount) * particle_mass
-
-       	       	if (loop_iteration == 3){ // add age tracers in taking yields to mean MASS
-                    for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k] = P[j].Metallicity[k] + pnorm*local.yields[k]/P[j].Mass;}
-
+                if(loop_iteration == 3) {for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] += pnorm*local.yields[k]/P[j].Mass;}} // add age tracers in taking yields to mean MASS, so we can make it large without actually exchanging large masses
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_SURFACE_YIELDS
-       	       	} else {
-       	       	    for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++){P[j].Metallicity[k]=(1.0-massratio_ejecta)*P[j].Metallicity[k]+massratio_ejecta*local.yields[k];}
+                if(loop_iteration != 3) {for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}} // treat like any other yield when doing stellar mass exchange
 #endif
-                }
-
 #endif
-
-
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-                if(loop_iteration == 2) continue; // for r-process, nothing left here to bother coupling //
-                if(loop_iteration == 3) continue; // for age tracers, nothing left here to bother coupling //
+                if(loop_iteration >= 2) continue; // for r-process, age-tracers, etc., nothing left here to bother coupling //
 #endif
 #endif
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
