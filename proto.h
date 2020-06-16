@@ -14,7 +14,7 @@
 /*
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
- * in part (adding/removing routines as necessary) 
+ * in part (adding/removing routines as necessary)
  * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
@@ -48,7 +48,7 @@ int does_particle_need_to_be_split(int i);
 double target_mass_renormalization_factor_for_mergesplit(int i);
 void merge_particles_ij(int i, int j);
 //void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
-void split_particle_i(int i, int n_particles_split, int i_nearest); 
+void split_particle_i(int i, int n_particles_split, int i_nearest);
 double gamma_eos(int i);
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);
@@ -110,7 +110,7 @@ static inline double WRAP_POSITION_UNIFORM_BOX(double x)
 
 static inline double DMAX(double a, double b) { return (a > b) ? a : b; }
 static inline double DMIN(double a, double b) { return (a < b) ? a : b; }
-static inline int IMAX(int a, int b) { return (a > b) ? a : b; } 
+static inline int IMAX(int a, int b) { return (a > b) ? a : b; }
 static inline int IMIN(int a, int b) { return (a < b) ? a : b; }
 static inline double MINMOD(double a, double b) {return (a>0) ? ((b<0) ? 0 : DMIN(a,b)) : ((b>=0) ? 0 : DMAX(a,b));}
 /* special version of MINMOD below: a is always the "preferred" choice, b the stability-required one. here we allow overshoot, just not opposite signage */
@@ -508,10 +508,19 @@ double mechanical_fb_calculate_eventrates(int i, double dt);
 double mechanical_fb_calculate_eventrates_SNe(int i, double dt);
 void mechanical_fb_calculate_eventrates_Winds(int i, double dt);
 void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt);
+void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt);
 void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i);
+void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i);
 double Z_for_stellar_evol(int i);
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
+int read_agetracerlist(char *fname);
+#endif
+int get_age_tracer_bin(double age);
+double get_age_tracer_bin_start_time(int k);
+#endif
 #endif
 #endif
 
@@ -586,13 +595,13 @@ void thermal_fb_calc(void);
 #ifdef COOL_METAL_LINES_BY_SPECIES
 /*double GetMetalLambda(double, double);*/
 double getSpCoolTableVal(long i,long j,long k,long tblK);
-#ifndef CHIMES 
+#ifndef CHIMES
 double GetCoolingRateWSpecies(double nHcgs, double logT, double *Z);
 double GetLambdaSpecies(long k_index, long index_x0y0, long index_x0y1, long index_x1y0, long index_x1y1, double dx, double dy, double dz, double mdz);
 void LoadMultiSpeciesTables(void);
 void ReadMultiSpeciesTables(int iT);
 char *GetMultiSpeciesFilename(int i, int hk);
-#endif 
+#endif
 #endif
 
 double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double dx, double dy, double dz);
@@ -618,22 +627,22 @@ void disp_density(void);
 #endif
 
 
-#ifdef CHIMES 
+#ifdef CHIMES
 double chimes_convert_u_to_temp(double u, double rho, int target);
-void chimes_update_gas_vars(int target); 
-void chimes_gizmo_exit(void); 
-#ifdef COOL_METAL_LINES_BY_SPECIES 
-void chimes_update_element_abundances(int i); 
-#endif 
-#ifdef CHIMES_TURB_DIFF_IONS 
-void chimes_update_turbulent_abundances(int i, int mode); 
-#endif 
-#ifdef CHIMES_METAL_DEPLETION 
-void chimes_init_depletion_data(void); 
-double chimes_jenkins_linear_fit(double nH, double T, double Ax, double Bx, double zx); 
-void chimes_compute_depletions(double nH, double T, int thread_id); 
-#endif 
-#else 
+void chimes_update_gas_vars(int target);
+void chimes_gizmo_exit(void);
+#ifdef COOL_METAL_LINES_BY_SPECIES
+void chimes_update_element_abundances(int i);
+#endif
+#ifdef CHIMES_TURB_DIFF_IONS
+void chimes_update_turbulent_abundances(int i, int mode);
+#endif
+#ifdef CHIMES_METAL_DEPLETION
+void chimes_init_depletion_data(void);
+double chimes_jenkins_linear_fit(double nH, double T, double Ax, double Bx, double zx);
+void chimes_compute_depletions(double nH, double T, int thread_id);
+#endif
+#else
 #endif
 void cooling_parent_routine(void);
 void count_hot_phase(void);
@@ -715,7 +724,7 @@ void statistics(void);
 double timediff(double t0, double t1);
 void veldisp(void);
 void veldisp_ensure_neighbours(int mode);
-
+int binarySearch(const double * arr, const double x, const int l, const int r, const int total);
 
 double get_gravkick_factor(integertime time0, integertime time1);
 double drift_integ(double a, void *param);
@@ -751,11 +760,11 @@ void pm_setup_nonperiodic_kernel(void);
 
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
-#ifdef CHIMES_STELLAR_FLUXES 
-double chimes_G0_luminosity(double stellar_age, double stellar_mass); 
-double chimes_ion_luminosity(double stellar_age, double stellar_mass); 
+#ifdef CHIMES_STELLAR_FLUXES
+double chimes_G0_luminosity(double stellar_age, double stellar_mass);
+double chimes_ion_luminosity(double stellar_age, double stellar_mass);
 int rt_get_source_luminosity(int i, int mode, double *lum, double *chimes_lum_G0, double *chimes_lum_ion);
-#else 
+#else
 int rt_get_source_luminosity(int i, int mode, double *lum);
 #endif
 void eddington_tensor_dot_vector(double ET[6], double vec_in[3], double vec_out[3]);
@@ -937,4 +946,3 @@ double gravfac2(double r, double mass);
 void grav_accel_jerk(double mass, double dx[3], double dv[3], double accel[3], double jerk[3]);
 double eccentric_anomaly(double mean_anomaly, double ecc);
 #endif
-

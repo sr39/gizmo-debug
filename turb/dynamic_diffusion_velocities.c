@@ -15,7 +15,7 @@
  */
 /*
  * This file was rewritten by Doug Rennehan (douglas.rennehan@gmail.com) for GIZMO, and was
- * copied with modifications from gradients.c, which was written by Phil Hopkins 
+ * copied with modifications from gradients.c, which was written by Phil Hopkins
  * (phopkins@caltech.edu) for GIZMO.
  */
 
@@ -46,7 +46,7 @@ struct INPUT_STRUCT_NAME {
     int NodeList[NODELISTLENGTH];
 #endif
 #ifdef GALSF_SUBGRID_WINDS
-    MyFloat DelayTime; 
+    MyFloat DelayTime;
 #endif
     MyDouble VelPred[3];
 }
@@ -100,8 +100,8 @@ void dynamic_diff_vel_calc_initial_operations_preloop(void)
 
 /**
  *
- *  Computes the smoothed velocity field Velocity_bar according to eq. 2.17 in 
- *  Monaghan 2011 (turbulence for SPH). 
+ *  Computes the smoothed velocity field Velocity_bar according to eq. 2.17 in
+ *  Monaghan 2011 (turbulence for SPH).
  *  - D. Rennehan
  *
  */
@@ -118,22 +118,22 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
     if (local.Hsml <= 0) {return 0;}
     if (local.Mass == 0) {return 0;}
     if (local.Density <= 0) {return 0;}
-    
+
     /* now set particle-i centric quantities so we don't do it inside the loop */
     kernel.h_i = local.Hsml;
     double h2_i = kernel.h_i * kernel.h_i;
     int kernel_mode_i = 0;
     kernel_hinv(kernel.h_i, &hinv, &hinv3, &hinv4);
-    
-    /* Now start the actual neighbor computation for this particle */ 
+
+    /* Now start the actual neighbor computation for this particle */
     if (mode == 0) {startnode = All.MaxPart;}	/* root node */
         else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;}	/* open it */
-   
+
     while (startnode >= 0) {
         while (startnode >= 0) {
             numngb = ngb_treefind_pairs_threads(local.Pos, All.TurbDynamicDiffFac * kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             if (numngb < 0) {return -1;}
-            
+
             for (n = 0; n < numngb; n++) {
                 j = ngblist[n];
 #ifdef GALSF_SUBGRID_WINDS
@@ -142,7 +142,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
 #endif
                 if (P[j].Mass <= 0) {continue;}
                 if (SphP[j].Density <= 0) {continue;}
-                
+
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
@@ -188,7 +188,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
                 }
             } // numngb loop
         } // while(startnode)
-        
+
 #ifndef DONOTUSENODELIST
         if (mode == 1) {listindex++;
             if (listindex < NODELISTLENGTH) {startnode = DATAGET_NAME[target].NodeList[listindex]; if (startnode >= 0) startnode = Nodes[startnode].u.d.nextnode;}}	/* open it */
@@ -218,4 +218,3 @@ void dynamic_diff_vel_calc(void) {
 
 
 #endif /* End TURB_DIFF_DYNAMIC */
-

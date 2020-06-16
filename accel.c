@@ -138,6 +138,9 @@ void compute_stellar_feedback(void)
 #ifdef GALSF_FB_FIRE_RPROCESS
     mechanical_fb_calc(2); /* additional loop for R-process */
 #endif
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+    mechanical_fb_calc(3); /* additional loop for stellar age tracers */
+#endif
 #endif
     MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_SNIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */
 #endif

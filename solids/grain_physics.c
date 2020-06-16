@@ -10,16 +10,16 @@
 #include "../kernel.h"
 
 /*
- 
+
  This module contains the self-contained sub-routines needed for
  grain-specific physics in proto-planetary/proto-stellar/planetary cases,
  GMC and ISM/CGM/IGM dust dynamics, dust dynamics in cool-star atmospheres,
  winds, and SNe remnants, as well as terrestrial turbulence and
  particulate-laden turbulence. Anywhere where particles coupled to gas
  via coulomb, aerodynamic, or lorentz forces are interesting.
-  
+
  This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
- 
+
  */
 
 
@@ -99,7 +99,7 @@ void apply_grain_dragforce(void)
                 }
 #endif // LORENTZ + EPSTEIN/STOKES force (Coulomb computation)
 
-                
+
                 /* this external_forcing parameter includes additional grain-specific forces. note that -anything- which imparts an
                  identical acceleration onto gas and dust will cancel in the terms in t_stop, and just act like a 'normal' acceleration
                  on the dust. for this reason the gravitational acceleration doesn't need to enter our 'external_forcing' parameter */
@@ -153,7 +153,7 @@ void apply_grain_dragforce(void)
                     if(tstop_inv > 0) {vdrift = external_forcing[k] / (tstop_inv * sqrt(1+x0*x0));}
                     dv[k] = slow_fac * (v_gas_i - v_init + vdrift);
                     if(isnan(vdrift)||isnan(slow_fac)) {dv[k] = 0;}
-                    
+
                     vel_new = v_init + dv[k];
                     delta_mom[k] = P[i].Mass * (vel_new - v_init);
                     delta_egy += 0.5*P[i].Mass * (vel_new*vel_new - v_init*v_init);
@@ -167,7 +167,7 @@ void apply_grain_dragforce(void)
                 }
             } // closes check for gas density, dt, vmag > 0, subtype valid
 
-                
+
 #ifdef PIC_MHD
 #ifndef PIC_SPEEDOFLIGHT_REDUCTION
 #define PIC_SPEEDOFLIGHT_REDUCTION (1)
@@ -176,7 +176,7 @@ void apply_grain_dragforce(void)
             {
                 double reduced_C = PIC_SPEEDOFLIGHT_REDUCTION * C_LIGHT_CODE; /* effective speed of light for this part of the code */
                 double charge_to_mass_ratio_dimensionless = All.PIC_Charge_to_Mass_Ratio; /* dimensionless q/m in units of e/mp */
-                
+
                 double lorentz_units = UNIT_B_IN_GAUSS; // code B to Gauss
                 lorentz_units *= UNIT_VEL_IN_CGS * (ELECTRONCHARGE/(PROTONMASS*C_LIGHT)); // code velocity to CGS, times base units e/(mp*c)
                 lorentz_units /= UNIT_VEL_IN_CGS / UNIT_TIME_IN_CGS; // convert 'back' to code-units acceleration
@@ -188,7 +188,7 @@ void apply_grain_dragforce(void)
                 double v_0[3],v0[3],vf[3],v2=0; for(k=0;k<3;k++) {v0[k]=P[i].Vel[k]/All.cf_atime; v2+=v0[k]*v0[k];}
                 if(v2 >= reduced_C*reduced_C) {PRINT_WARNING("VELOCITY HAS EXCEEDED THE SPEED OF LIGHT. BAD.");}
                 double gamma_0=1/sqrt(1-v2/(reduced_C*reduced_C)); for(k=0;k<3;k++) {v_0[k]=v0[k]*gamma_0/reduced_C;} // convert to the momentum term ~gamma*v
-                
+
                 /* now apply the boris integrator */
                 double v_m[3]={0}, v_t[3]={0}, v_p[3]={0}, vcrosst[3]={0}, lorentz_coeff=efield_coeff;
                 for(k=0;k<3;k++) {v_m[k] = v_0[k] + efield_coeff*efield[k];} // first half-step from E-field
@@ -275,10 +275,10 @@ int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnode
 {
     int startnode, numngb_inbox, listindex = 0, j, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
-    
+
     if(local.Hsml <= 0) {return 0;} /* don't bother doing a loop if this isnt going to do anything */
     int kernel_shared_BITFLAG = 1; /* grains 'see' gas in this loop */
-    
+
     /* Now start the actual neighbor computation for this particle */
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
     while(startnode >= 0) {
@@ -424,7 +424,7 @@ int interpolate_fluxes_opacities_gasgrains_evaluate(int target, int mode, int *e
 {
     int startnode, numngb_inbox, listindex = 0, j, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
-    
+
     /* Now start the actual neighbor computation for this particle */
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
     while(startnode >= 0) {
@@ -446,7 +446,7 @@ int interpolate_fluxes_opacities_gasgrains_evaluate(int target, int mode, int *e
                 {
                     double wt=0,hinv,hinv3,hinv4,wk_i=0,dwk_i=0,r=sqrt(r2); kernel_hinv(h_to_use,&hinv,&hinv3,&hinv4);
                     kernel_main(r*hinv, hinv3, hinv4, &wk_i, &dwk_i, 0); /* kernel quantities that may be needed */
-                    
+
                     if(local.Type==0) /* sitting on a -gas- element, want to interpolate opacity to it */
                     {
                         wt = P[j].Mass * (wk_i / P[j].Gas_Density); /* dimensionless weight of this gas element as 'seen' by the grain: = (grain_part_mass/gas_part_mass) * (gas_part_mass * Wk / gas_density [=sum gas_part_mass * Wk]) */
@@ -529,5 +529,3 @@ double return_grain_absorption_efficiency_Q(int i, int k_freq)
 
 
 #endif
-
-

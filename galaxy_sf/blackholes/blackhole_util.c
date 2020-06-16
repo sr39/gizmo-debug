@@ -24,7 +24,7 @@
 void blackhole_start(void)
 {
     int i, Nbh;
-    
+
     /* count the num BHs on this task */
     N_active_loc_BHs=0;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
@@ -35,7 +35,7 @@ void blackhole_start(void)
             N_active_loc_BHs++;                     /* N_active_loc_BHs now set for BH routines */
         }
     }
-    
+
     /* allocate the blackhole temp struct */
     if(N_active_loc_BHs>0)
     {
@@ -43,9 +43,9 @@ void blackhole_start(void)
     } else {
         BlackholeTempInfo = (struct blackhole_temp_particle_data *) mymalloc("BlackholeTempInfo", 1 * sizeof(struct blackhole_temp_particle_data));
     }
-    
+
     memset( &BlackholeTempInfo[0], 0, N_active_loc_BHs * sizeof(struct blackhole_temp_particle_data) );
-    
+
     Nbh=0;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
@@ -55,7 +55,7 @@ void blackhole_start(void)
             Nbh++;
         }
     }
-    
+
     /* all future loops can now take the following form:
      for(i=0; i<N_active_loc_BHs; i++)
      {
@@ -63,7 +63,7 @@ void blackhole_start(void)
      ...
      }
      */
-    
+
 }
 
 
@@ -78,7 +78,7 @@ void blackhole_end(void)
         double mdot, mdot_in_msun_per_year;
         double mass_real, total_mass_real, medd, total_mdoteddington;
         double mass_holes, total_mass_holes, total_mdot;
-        
+
         /* sum up numbers to print for summary of the BH step (blackholes.txt) */
         mdot = mass_holes = mass_real = medd = 0;
         for(bin = 0; bin < TIMEBINS; bin++)

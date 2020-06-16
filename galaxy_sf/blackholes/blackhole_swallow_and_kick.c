@@ -49,7 +49,7 @@ struct INPUT_STRUCT_NAME
 #if defined(BH_RETURN_BFLUX)
     MyFloat B[3];
     MyFloat kernel_norm_topass_in_swallowloop;
-#endif    
+#endif
 }
 *DATAIN_NAME, *DATAGET_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
@@ -90,7 +90,7 @@ struct OUTPUT_STRUCT_NAME
     MyDouble accreted_Mass, accreted_BH_Mass, accreted_BH_Mass_alphadisk;
 #ifdef GRAIN_FLUID
     MyDouble accreted_dust_Mass;
-#endif    
+#endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
     MyDouble accreted_momentum[3];
 #endif
@@ -99,8 +99,8 @@ struct OUTPUT_STRUCT_NAME
 #endif
 #if defined(BH_RETURN_BFLUX)
     MyDouble accreted_B[3];
-//    MyDouble accreted_Phi; 
-#endif    
+//    MyDouble accreted_Phi;
+#endif
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
     MyDouble accreted_J[3];
 #endif
@@ -118,12 +118,12 @@ struct OUTPUT_STRUCT_NAME
 static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
     int k, target = P[i].IndexMapToTempStruc; k=0;
-    ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_Mass, out->accreted_Mass, mode);    
+    ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_Mass, out->accreted_Mass, mode);
     ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_BH_Mass, out->accreted_BH_Mass, mode);
     ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_BH_Mass_alphadisk, out->accreted_BH_Mass_alphadisk, mode);
 #ifdef GRAIN_FLUID
     ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_dust_Mass, out->accreted_dust_Mass, mode);
-#endif    
+#endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
     for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_momentum[k], out->accreted_momentum[k], mode);}
 #endif
@@ -133,7 +133,7 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 #if defined(BH_RETURN_BFLUX)
     for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_B[k], out->accreted_B[k], mode);}
 //    ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_Phi, out->accreted_Phi, mode);
-#endif    
+#endif
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
     for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_J[k], out->accreted_J[k], mode);}
 #endif
@@ -171,7 +171,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #ifdef GALSF
     out.Accreted_Age = MAX_REAL_NUMBER;
 #endif
-    
+
     /* Now start the actual neighbor computation for this particle */
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
     while(startnode >= 0) {
@@ -201,16 +201,16 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                 }
 #endif
 #if defined(BH_RETURN_BFLUX) // do a kernel-weighted redistribution of the magnetic flux in the sink into surrounding particles
-                if((P[j].Type == 0) && (local.kernel_norm_topass_in_swallowloop > 0)){                    
+                if((P[j].Type == 0) && (local.kernel_norm_topass_in_swallowloop > 0)){
                     double dB, b_fraction_toreturn = DMIN(0.1, local.Dt / (local.BH_Mass_AlphaDisk / local.Mdot)) * wk / local.kernel_norm_topass_in_swallowloop; // return a fraction dt/t_accretion of the total flux, with simple kernel weighting for each particle
                     for(k=0; k<3;k++) {
                         dB = b_fraction_toreturn * local.B[k];
                         SphP[j].B[k] +=  dB;
                         SphP[j].BPred[k] +=  dB;
-                        out.accreted_B[k] -= dB;                        
+                        out.accreted_B[k] -= dB;
                     }
                 }
-#endif                
+#endif
                 /* we've found a particle to be swallowed.  This could be a BH merger, DM particle, or baryon w/ feedback */
                 if(P[j].SwallowID == local.ID && P[j].Mass > 0)
                 {   /* accreted quantities to be added [regardless of particle type] */
@@ -236,7 +236,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif
 #ifdef GRAIN_FLUID
                     if((1<<P[j].Type) & GRAIN_PTYPES) {out.accreted_dust_Mass += FLT(P[j].Mass);}
-#endif                    
+#endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
                     for(k=0;k<3;k++) {out.accreted_momentum[k] += FLT( mcount_for_conserve * dvel[k]);}
 #endif
@@ -245,7 +245,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif
 #ifdef BH_RETURN_BFLUX
                     for(k=0;k<3;k++) {out.accreted_B[k] += FLT(SphP[j].BPred[k]);}
-#endif                    
+#endif
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
                     out.accreted_J[0] += FLT(mcount_for_conserve * ( dpos[1]*dvel[2] - dpos[2]*dvel[1] ));
                     out.accreted_J[1] += FLT(mcount_for_conserve * ( dpos[2]*dvel[0] - dpos[0]*dvel[2] ));
@@ -281,7 +281,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif
                         bin = P[j].TimeBin; TimeBin_BH_mass[bin] -= BPP(j).BH_Mass; TimeBin_BH_dynamicalmass[bin] -= P[j].Mass; TimeBin_BH_Mdot[bin] -= BPP(j).BH_Mdot;
                         if(BPP(j).BH_Mass > 0) {TimeBin_BH_Medd[bin] -= BPP(j).BH_Mdot / BPP(j).BH_Mass;}
-                        P[j].Mass = 0; BPP(j).BH_Mass = 0; BPP(j).BH_Mdot = 0; 
+                        P[j].Mass = 0; BPP(j).BH_Mass = 0; BPP(j).BH_Mdot = 0;
 #ifdef GALSF
                         out.Accreted_Age = P[j].StellarAge;
 #endif
@@ -308,7 +308,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 
                     /* this is a gas particle: DAA: we need to see if the gas particle has to be accreted in full or not, depending on BH_WIND_KICK
                      the only difference with BH_ALPHADISK_ACCRETION should be that the mass goes first to the alphadisk */
-                    if(P[j].Type == 0)                    
+                    if(P[j].Type == 0)
                     {
                         out.accreted_Mass += FLT(f_accreted*P[j].Mass);
 #ifdef BH_GRAVCAPTURE_GAS
@@ -363,7 +363,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                         for(norm=0,k=0;k<3;k++) {norm+=dir[k]*J_dir[k];}
                         mom_wt = bh_angleweight_localcoupling(j,norm,r,h_i) / local.BH_angle_weighted_kernel_sum;
                         if(local.BH_angle_weighted_kernel_sum<=0) mom_wt=0;
-                                
+
 #ifdef BH_PHOTONMOMENTUM /* inject radiation pressure: add initial L/c optical/UV coupling to the gas at the dust sublimation radius */
                         double v_kick = All.BH_Rad_MomentumFactor * mom_wt * mom / P[j].Mass;
                         for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k];}
@@ -382,7 +382,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                         double dvr_gas_to_bh, dr_gas_to_bh;
                         for(dvr_gas_to_bh=dr_gas_to_bh=0, k=0;k<3;k++) {dvr_gas_to_bh += dvel[k]*dpos[k]; dr_gas_to_bh  += dpos[k]*dpos[k];}
                         dvr_gas_to_bh /= dr_gas_to_bh ;
-                        
+
                         /* add wind mass to particle, correcting density as needed */
                         if(P[j].Hsml<=0)
                         {
@@ -413,7 +413,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif // if defined(BH_WIND_CONTINUOUS) && !defined(BH_WIND_KICK)
                     } // r > 0
                 } // (check if valid gas neighbor of interest)
-#endif // defined(BH_CALC_LOCAL_ANGLEWEIGHTS)                
+#endif // defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
             } // for(n = 0; n < numngb; n++)
         } // while(startnode >= 0)
         if(mode == 1) {listindex++; if(listindex < NODELISTLENGTH) {startnode = DATAGET_NAME[target].NodeList[listindex]; if(startnode >= 0) {startnode = Nodes[startnode].u.d.nextnode; /* open it */}}} /* continue to open leaves if needed */
@@ -459,7 +459,7 @@ void spawn_bh_wind_feedback(void)
             dummy_gas_tag=i;
             break;
         }
-    
+
     /* don't loop or go forward if there are no gas particles in the domain, or the code will crash */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
@@ -496,9 +496,9 @@ void spawn_bh_wind_feedback(void)
     if(MPI_n_particles_split>0){
 #ifdef MAINTAIN_TREE_IN_REARRANGE
         All.NumForcesSinceLastDomainDecomp +=  0.0001 * All.TreeDomainUpdateFrequency * All.TotNumPart; // we can insert spawned particles in the tree, but still a good idea to rebuild the tree every now and then, so we make the next domain+treebuild come a bit sooner; additional cost should be small
-#else        
+#else
         TreeReconstructFlag = 1; // otherwise just wipe and rebuild the tree next chance you get - more expensive but more accurate
-#endif        
+#endif
         if(ThisTask == 0) {printf(" ..BH-Spawn Event: %d particles spawned \n", MPI_n_particles_split);}
     }
 
@@ -519,7 +519,7 @@ void get_random_orthonormal_basis(int seed, double *nx, double *ny, double *nz){
     while(norm==0){ // necessary in case ny is parallel to nz - believe it or not this happened once!
         phi=2.*M_PI*get_random_number(seed+4+ThisTask), cos_theta=2.*(get_random_number(seed+5+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
         ny[0]=sin_theta*cos_phi; ny[1]=sin_theta*sin_phi; ny[2]=cos_theta; // random y axis, needs to have its z component deprojected
-        // do Gram-Schmidt to get an orthonormal basis            
+        // do Gram-Schmidt to get an orthonormal basis
         for(k=0; k<3; k++) {dot_product += ny[k] * nz[k];}
         for(k=0; k<3; k++) {ny[k] -= dot_product * nz[k]; norm += ny[k]*ny[k];} // deproject component along z
         if(norm==0) continue;
@@ -546,7 +546,7 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
         for(k=0; k<3;k++) {veldir[k] = -veldir[k];}
         return; // we're done
     }
-    
+
     double nx[3] = {ny[1]*nz[2] - ny[2]*nz[1], ny[2]*nz[0] - ny[0]*nz[2], ny[0]*nz[1] - ny[1]*nz[0]};
     // now do the actual direction based on the mode we're in
     double phi, cos_theta, sin_theta, sin_phi, cos_phi;
@@ -577,8 +577,8 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
             veldir[k] = All.SN_Ejecta_Direction[dir_ind][0] * nx[k] + All.SN_Ejecta_Direction[dir_ind][1] * ny[k] + All.SN_Ejecta_Direction[dir_ind][2] * nz[k];//use directions pre-computed to isotropically cover a sphere with SINGLE_STAR_FB_SNE_N_EJECTA particles
         }
     }
-#endif    
-    return;          
+#endif
+    return;
 }
 
 
@@ -588,7 +588,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     double total_mass_in_winds = BPP(i).unspawned_wind_mass;
     int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass ); /* if we set BH_WIND_SPAWN we presumably wanted to do this in an exactly-conservative manner, which means we want to have an even number here. */
     int k=0; long j;
-    
+
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     if (P[i].ProtoStellarStage == 6){
         n_particles_split = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
@@ -604,7 +604,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
             else {n_particles_split = n_particles_split - (n_particles_split % SINGLE_STAR_FB_SNE_N_EJECTA);} // we only eject full shells, in practice this will be one shell at a time
     }
 #endif
-    
+
     if((((int)BH_WIND_SPAWN) % 2) == 0) {if(( n_particles_split % 2 ) != 0) {n_particles_split -= 1;}} /* n_particles_split was not even. we'll wait to spawn this last particle, to keep an even number, rather than do it right now and break momentum conservation */
     if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
     int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1)); if((n0max % 2) != 0) {n0max += 1;} // should ensure n0max is always an even number //
@@ -612,8 +612,8 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     if (P[i].ProtoStellarStage == 6) {n0max = DMAX(n0max, SINGLE_STAR_FB_SNE_N_EJECTA);} //so that we can spawn the number of wind particles we want, by setting BH_WIND_SPAWN high it ispossible to spawn multitudes of SINGLE_STAR_FB_SNE_N_EJECTA, but in practice we usually spawn just one
 #endif
     if(n_particles_split > n0max) {n_particles_split = n0max;}
-    
-    
+
+
     /* here is where the details of the split are coded, the rest is bookkeeping */
     //double mass_of_new_particle = total_mass_in_winds / n_particles_split; /* don't do this, as can produce particles with extremely large masses; instead wait to spawn */
     double mass_of_new_particle = All.BAL_wind_particle_mass;
@@ -636,11 +636,11 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #ifdef BH_DEBUG_SPAWN_JET_TEST
     d_r = DMIN(d_r , 0.01); /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
 #endif
-#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS 
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
     d_r = DMIN(P[i].SinkRadius, d_r); //launch close to the sink
 #endif
     long bin, bin_0; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;} /* gives minimum active timebin of any particle */
-    bin_0 = bin; int i0 = i; /* save minimum timebin, also save ID of BH particle for use below */    
+    bin_0 = bin; int i0 = i; /* save minimum timebin, also save ID of BH particle for use below */
     bin = P[i0].TimeBin; /* make this particle active on the BH/star timestep */
 #ifdef BH_DEBUG_SPAWN_JET_TEST
     bin = bin_0; i0 = dummy_sph_i_to_clone; /* make this particle active on the minimum timestep, and order with respect to the cloned particle */
@@ -662,7 +662,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #if defined(SINGLE_STAR_FB_JETS)
         if(P[i].wind_mode == 2) {mode = 1;} // we inject winds with the FIRE module, we only spawn polar jets here
 #endif
-    } 
+    }
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
     if(P[i].ProtoStellarStage == 6) {mode = 3;} // SNe use an angular grid
@@ -671,7 +671,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 
 // based on the mode we're in, let's pick a fixed orthonormal basis that all spawned elements are aware of
     double jz[3]={0,0,1},jy[3]={0,1,0},jx[3]={1,0,0};  /* set up a coordinate system [xyz if we don't have any other information */
-#ifdef BH_FOLLOW_ACCRETED_ANGMOM  /* use local angular momentum to estimate preferred directions/coordinates for spawning */    
+#ifdef BH_FOLLOW_ACCRETED_ANGMOM  /* use local angular momentum to estimate preferred directions/coordinates for spawning */
     if(mode==1){ // set up so that the z axis is the angular momentum vector
 #ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK // Jgas stores total angmom in COM frame of sink-gas system; use this for direction
         double Jtot=0; for(k=0;k<3;k++) {Jtot+=P[i].Jgas_in_Kernel[k]*P[i].Jgas_in_Kernel[k];}
@@ -683,7 +683,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         Jtot=jz[1]*jz[1]+jz[2]*jz[2]; if(Jtot>0) {Jtot=1/sqrt(Jtot); jy[1]=jz[2]*Jtot; jy[2]=-jz[1]*Jtot;}
         jx[0]=jz[1]*jy[2]-jz[2]*jy[1]; jx[1]=jz[2]*jy[0]-jz[0]*jy[2]; jx[2]=jz[0]*jy[1]-jz[1]*jy[0];
     }
-#endif   
+#endif
     if(mode == 3){ // if doing an angular grid, need some fixed coordinates to orient it, but want to switch em up each time to avoid artifacts
         get_random_orthonormal_basis(P[i].ID_child_number, jx, jy, jz);
     }
@@ -768,7 +768,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
             SphP[j].Rad_E_gamma_Pred[k] = 0; SphP[j].Dt_Rad_E_gamma[k] = 0;
 #endif
         }
-#endif        
+#endif
         /* note, if you want to use this routine to inject magnetic flux or cosmic rays, do this below */
 #ifdef MAGNETIC
         SphP[j].divB = 0; for(k=0;k<3;k++) {SphP[j].B[k]*=1.e-10; SphP[j].BPred[k]*=1.e-10; SphP[j].DtB[k]=0;} /* add magnetic flux here if desired */
@@ -779,14 +779,14 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #ifdef COSMIC_RAYS
         int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {SphP[j].CosmicRayEnergyPred[k_CRegy] = SphP[j].CosmicRayEnergy[k_CRegy] = SphP[j].DtCosmicRayEnergy[k_CRegy] = 0;} /* add CR energy here if desired */
 #endif
-        
+
         /* now set the real hydro variables. */
-        /* set the particle ID */ // unsigned int bits; int SPLIT_GENERATIONS = 4; for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++); /* the particle needs an ID: we give it a bit-flip from the original particle to signify the split */     
+        /* set the particle ID */ // unsigned int bits; int SPLIT_GENERATIONS = 4; for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++); /* the particle needs an ID: we give it a bit-flip from the original particle to signify the split */
         P[j].ID = All.AGNWindID; /* update:  We are using a fixed wind ID, to allow for trivial wind particle identification */
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
         if(mass_of_new_particle >= All.MinMassForParticleMerger) {P[j].ID = All.AGNWindID + 1;} // this just has the nominal mass resolution, so no special treatment - this avoids the P[i].ID == All.AGNWindID checks throughout the code
 #endif
-      
+
         P[j].ID_child_number = P[i].ID_child_number; P[i].ID_child_number +=1; P[j].ID_generation = P[i].ID; // this allows us to track spawned particles by giving them unique sub-IDs
 
         P[j].Mass = mass_of_new_particle; /* assign masses to both particles (so they sum correctly) */
@@ -818,7 +818,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
             P[j].Pos[k]=P[i].Pos[k] + veldir[k]*d_r;
             P[j].Vel[k]=P[i].Vel[k] + veldir[k]*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];
         }
-        
+
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
         //SphP[j].Density *= 1e-10; SphP[j].Pressure *= 1e-10; PPP[j].Hsml = All.SofteningTable[0];  /* set dummy values: will be re-generated anyways [actually better to use nearest-neighbor values to start] */
@@ -843,7 +843,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
         force_add_star_to_tree(i0, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
-    }    
+    }
     if(BPP(i).unspawned_wind_mass < 0) {BPP(i).unspawned_wind_mass=0;}
     return n_particles_split;
 }

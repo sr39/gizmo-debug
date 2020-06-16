@@ -3,8 +3,8 @@
 /*! This function is the 'core' of the hydro force computation. A target
 *  particle is specified which may either be local, or reside in the
 *  communication buffer.
-*   In this routine, we find the gas particle neighbors, and do the loop over 
-*  neighbors to calculate the hydro fluxes. The actual flux calculation, 
+*   In this routine, we find the gas particle neighbors, and do the loop over
+*  neighbors to calculate the hydro fluxes. The actual flux calculation,
 *  and the returned values, should be in PHYSICAL (not comoving) units */
 /*
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
@@ -53,14 +53,14 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
     {
         local = DATAGET_NAME[target]; // this setup allows for all the fields we need to define (don't hard-code here)
     }
-    
+
     /* certain particles should never enter the loop: check for these */
     if(local.Mass <= 0) return 0;
     if(local.Density <= 0) return 0;
 #ifdef GALSF_SUBGRID_WINDS
     if(local.DelayTime > 0) {return 0;}
 #endif
-    
+
     /* --------------------------------------------------------------------------------- */
     /* pre-define Particle-i based variables (so we save time in the loop below) */
     /* --------------------------------------------------------------------------------- */
@@ -78,11 +78,11 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #if defined(HYDRO_SPH)
 #ifdef HYDRO_PRESSURE_SPH
     kernel.p_over_rho2_i = local.Pressure / (local.EgyWtRho*local.EgyWtRho);
-#else 
+#else
     kernel.p_over_rho2_i = local.Pressure / (local.Density*local.Density);
 #endif
 #endif
-    
+
 #ifdef MAGNETIC
     kernel.b2_i = local.BPred[0]*local.BPred[0] + local.BPred[1]*local.BPred[1] + local.BPred[2]*local.BPred[2];
 #if defined(HYDRO_SPH)
@@ -107,7 +107,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #ifdef RT_SOLVER_EXPLICIT
     double tau_c_i[N_RT_FREQ_BINS]; for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Rad_Kappa[k]*local.Density*All.cf_a3inv;}
 #endif
-    
+
     /* --------------------------------------------------------------------------------- */
     /* Now start the actual SPH computation for this particle */
     /* --------------------------------------------------------------------------------- */
@@ -124,7 +124,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
         startnode = All.MaxPart;	/* root node */
 #endif
     }
-    
+
     while(startnode >= 0)
     {
         while(startnode >= 0)
@@ -134,7 +134,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
             /* --------------------------------------------------------------------------------- */
             numngb = ngb_treefind_pairs_threads(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             if(numngb < 0) return -1;
-            
+
             for(n = 0; n < numngb; n++)
             {
                 j = ngblist[n];
@@ -164,15 +164,15 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1); /* find the closest image in the given box size  */
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 kernel.h_j = PPP[j].Hsml;
-                
+
                 /* force applied for all particles inside each-others kernels! */
                 if((r2 >= kernel.h_i * kernel.h_i) && (r2 >= kernel.h_j * kernel.h_j)) continue;
                 if(r2 <= 0) continue;
-                
+
                 /* --------------------------------------------------------------------------------- */
                 /* ok, now we definitely have two interacting particles */
                 /* --------------------------------------------------------------------------------- */
-                
+
                 /* --------------------------------------------------------------------------------- */
                 /* calculate a couple basic properties needed: separation, velocity difference (needed for timestepping) */
                 kernel.r = sqrt(r2);
@@ -251,7 +251,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #ifdef TURB_DIFF_METALS
                 double mdot_estimated = 0;
 #endif
-                
+
                 /* --------------------------------------------------------------------------------- */
                 /* calculate the kernel functions (centered on both 'i' and 'j') */
                 if(kernel.r < kernel.h_i)
@@ -275,11 +275,11 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                     kernel.dwk_j = 0;
                     kernel.wk_j = 0;
                 }
-                
+
                 /* --------------------------------------------------------------------------------- */
-                /* with the overhead numbers above calculated, we now 'feed into' the "core" 
-                    hydro computation (SPH, meshless godunov, etc -- doesn't matter, should all take the same inputs) 
-                    the core code is -inserted- here from the appropriate .h file, depending on the mode 
+                /* with the overhead numbers above calculated, we now 'feed into' the "core"
+                    hydro computation (SPH, meshless godunov, etc -- doesn't matter, should all take the same inputs)
+                    the core code is -inserted- here from the appropriate .h file, depending on the mode
                     the code has been compiled in */
                 /* --------------------------------------------------------------------------------- */
 #ifdef HYDRO_SPH
@@ -287,17 +287,17 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #else
 #include "hydra_core_meshless.h"
 #endif
-                
+
 #ifdef FREEZE_HYDRO
                 memset(&Fluxes, 0, sizeof(struct Conserved_var_Riemann));
 #endif
 
 
-                
-                
+
+
 //#ifndef HYDRO_SPH
                 /* the following macros are useful for all the diffusion operations below: this is the diffusion term associated
-                    with the HLL reimann problem solution. This adds numerical diffusion (albeit limited to the magnitude of the 
+                    with the HLL reimann problem solution. This adds numerical diffusion (albeit limited to the magnitude of the
                     physical diffusion coefficients), but stabilizes the relevant equations */
 #ifdef HYDRO_SPH
                 face_vel_i = face_vel_j = 0;
@@ -333,7 +333,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #else
 #define HLL_DIFFUSION_OVERSHOOT_FACTOR  1.0
 #endif
-                
+
 #ifdef EOS_ELASTIC
 #include "../solids/elastic_stress_tensor_force.h"
 #endif
@@ -341,7 +341,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #ifdef MHD_NON_IDEAL
 #include "nonideal_mhd.h"
 #endif
-                
+
 #ifdef CONDUCTION
 #include "conduction.h"
 #endif
@@ -349,19 +349,19 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #ifdef VISCOSITY
 #include "viscosity.h"
 #endif
-                
+
 #ifdef TURB_DIFFUSION
 #include "../turb/turbulent_diffusion.h"
 #endif
 
 #ifdef CHIMES_TURB_DIFF_IONS
-#include "../turb/chimes_turbulent_ion_diffusion.h" 
-#endif 
-                
+#include "../turb/chimes_turbulent_ion_diffusion.h"
+#endif
+
 #ifdef COSMIC_RAYS
 #include "../eos/cosmic_ray_fluid/cosmic_ray_diffusion.h"
 #endif
-                
+
 #ifdef RT_SOLVER_EXPLICIT
 #if defined(RT_EVOLVE_INTENSITIES)
 #include "../radiation/rt_direct_ray_transport.h"
@@ -369,8 +369,8 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #include "../radiation/rt_diffusion_explicit.h"
 #endif
 #endif
-                
-                
+
+
                 /* --------------------------------------------------------------------------------- */
                 /* now we will actually assign the hydro variables for the evolution step */
                 /* --------------------------------------------------------------------------------- */
@@ -390,7 +390,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif
 #endif
                 for(k=0;k<3;k++) {out.Acc[k] += Fluxes.v[k];}
-                out.DtInternalEnergy += Fluxes.p;                
+                out.DtInternalEnergy += Fluxes.p;
 #ifdef MAGNETIC
 #ifndef HYDRO_SPH
                 for(k=0;k<3;k++) {out.Face_Area[k] += Face_Area_Vec[k];}
@@ -421,7 +421,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif
 #endif
 #endif // magnetic //
-                
+
                 /* if this is particle j's active timestep, you should sent them the time-derivative information as well, for their subsequent drift operations */
                 if(j_is_active_for_fluxes)
                 {
@@ -466,7 +466,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif // magnetic //
                 } // j_is_active_for_fluxes
 
-                
+
                 /* --------------------------------------------------------------------------------- */
                 /* don't forget to save the signal velocity for time-stepping! */
                 /* --------------------------------------------------------------------------------- */
@@ -481,8 +481,8 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif
                 }
 #endif
-                
-                
+
+
             } // for(n = 0; n < numngb; n++) //
         } // while(startnode >= 0) //
 #ifndef DONOTUSENODELIST
@@ -497,9 +497,8 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
         } // if(mode == 1) //
 #endif
     } // while(startnode >= 0) //
-    
+
     /* Now collect the result at the right place */
     if(mode == 0) {out2particle_hydra(&out, target, 0, loop_iteration);} else {DATARESULT_NAME[target] = out;}
     return 0;
 }
-

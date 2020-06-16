@@ -11,7 +11,7 @@
 #include <pthread.h>
 #endif
 
-/* Routines for models that require stellar evolution: luminosities, mass loss, SNe rates, etc. 
+/* Routines for models that require stellar evolution: luminosities, mass loss, SNe rates, etc.
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 #ifdef GALSF
@@ -39,7 +39,7 @@ double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i)
 }
 
 
-/* subroutine to calculate luminosity of an individual star, according to accretion rate, 
+/* subroutine to calculate luminosity of an individual star, according to accretion rate,
     mass, age, etc. Modify your assumptions about main-sequence evolution here. ONLY relevant for SINGLE-STAR inputs. */
 double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 {
@@ -77,7 +77,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
     ONLY relevant for STELLAR POPULATION integrated inputs. */
 double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr, int i)
 {
-#ifdef GALSF_SFR_IMF_VARIATION // fitting function from David Guszejnov's IMF calculations (ok for Mturnover in range 0.01-100) for how mass-to-light ratio varies with IMF shape/effective turnover mass 
+#ifdef GALSF_SFR_IMF_VARIATION // fitting function from David Guszejnov's IMF calculations (ok for Mturnover in range 0.01-100) for how mass-to-light ratio varies with IMF shape/effective turnover mass
     double log_mimf = log10(P[i].IMF_Mturnover);
     return (0.051+0.042*(log_mimf+2)+0.031*(log_mimf+2)*(log_mimf+2)) / 0.31;
 #endif
@@ -101,7 +101,7 @@ double particle_ionizing_luminosity_in_cgs(long i)
     return fion * l_sol * SOLAR_LUM; // return value in cgs, as desired for this routine [l_sol is in L_sun, by definition above] //
 
 #else /* STELLAR POPULATION VERSION: use updated SB99 tracks: including rotation, new mass-loss tracks, etc. */
-    
+
     if(P[i].Type != 5)
     {
         double lm_ssp=0, star_age=evaluate_stellar_age_Gyr(P[i].StellarAge), t0=0.0035, tmax=0.02;
@@ -137,6 +137,7 @@ void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int 
     if(fb_loop_iteration == 0) {particle2in_addFB_SNe(in,i);}
     if(fb_loop_iteration == 1) {particle2in_addFB_winds(in,i);}
     if(fb_loop_iteration == 2) {particle2in_addFB_Rprocess(in,i);}
+    if(fb_loop_iteration == 3) {particle2in_addFB_ageTracer(in,i);}
     return;
 #endif
     if(P[i].SNe_ThisTimeStep<=0) {in->Msne=0; return;} // no event
@@ -150,7 +151,7 @@ void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int 
 #endif
 #ifdef METALS
     int k; for(k=0;k<NUM_METAL_SPECIES;k++) {in->yields[k]=0.178*All.SolarAbundances[k]/All.SolarAbundances[0];} // assume a universal solar-type yield with ~2.63 Msun of metals
-    if(NUM_METAL_SPECIES>=10) {in->yields[1] = 0.4;} // (catch for Helium, which the above scaling would give bad values for)
+    if(NUM_LIVE_SPECIES_FOR_COOLTABLES>=10) {in->yields[1] = 0.4;} // (catch for Helium, which the above scaling would give bad values for)
 #endif
 #endif
 }
@@ -163,12 +164,13 @@ void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int 
 double mechanical_fb_calculate_eventrates(int i, double dt)
 {
 #if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) // FIRE-specific stellar population version: separate calculation for SNe, stellar mass loss, R-process injection //
-    double R_SNe = mechanical_fb_calculate_eventrates_SNe(i,dt);
+    double SNe_rate = mechanical_fb_calculate_eventrates_SNe(i,dt);
     mechanical_fb_calculate_eventrates_Winds(i,dt);
     mechanical_fb_calculate_eventrates_Rprocess(i,dt);
-    return R_SNe;
+    mechanical_fb_calculate_eventrates_Agetracers(i,dt);
+    return SNe_rate;
 #endif
-    
+
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) /* SINGLE-STAR version: simple implementation of single-star wind mass-loss and SNe rates */
     double m_sol,l_sol; m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR; l_sol=bh_lum_bol(0,P[i].Mass,i)*UNIT_LUM_IN_SOLAR;
 #ifdef SINGLE_STAR_FB_WINDS
@@ -181,24 +183,24 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 #endif
     return 1;
 #endif
-    
+
 #ifdef GALSF_FB_THERMAL /* STELLAR-POPULATION version: pure thermal feedback: assumes AGORA model (Kim et al., 2016 ApJ, 833, 202) where everything occurs at 5Myr exactly */
     if(P[i].SNe_ThisTimeStep != 0) {P[i].SNe_ThisTimeStep=-1; return 0;} // already had an event, so this particle is "done"
     if(evaluate_stellar_age_Gyr(P[i].StellarAge) < 0.005) {return 0;} // enforce age limit of 5 Myr
     P[i].SNe_ThisTimeStep = P[i].Mass*UNIT_MASS_IN_SOLAR / 91.; // 1 event per 91 solar masses
     return 1;
 #endif
-    
+
 #ifdef GALSF_FB_MECHANICAL /* STELLAR-POPULATION version: mechanical feedback: 'dummy' example model below assumes a constant SNe rate for t < 30 Myr, then nothing. experiment! */
-    double RSNe=0, star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+    double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
     if(star_age < 0.03)
     {
-        RSNe = 3.e-4; // assume a constant rate ~ 3e-4 SNe/Myr/solar mass for t = 0-30 Myr //
+        double RSNe = 3.e-4; // assume a constant rate ~ 3e-4 SNe/Myr/solar mass for t = 0-30 Myr //
         double p = RSNe * (P[i].Mass*UNIT_MASS_IN_SOLAR) * (dt*UNIT_TIME_IN_MYR); // unit conversion factor
         double n_sn_0=(float)floor(p); p-=n_sn_0; if(get_random_number(P[i].ID+6) < p) {n_sn_0++;} // determine if SNe occurs
         P[i].SNe_ThisTimeStep = n_sn_0; // assign to particle
+        return RSNe;
     }
-    return RSNe;
 #endif
 
     return 0;
@@ -209,7 +211,7 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 #if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
 /* functions below contain pre-calculation of event rates and energetics, masses, etc, for FIRE mechanical feedback modules */
 
-double mechanical_fb_calculate_eventrates_SNe(int i, double dt) 
+double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
 {
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && (!defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)) /* no single-star module to use here, for these flags its in the spawn routine */
     return 0;
@@ -228,7 +230,7 @@ double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
     double t_Ia_min=agemax, norm_Ia=1.6e-3; // t_Ia_min = delay time to first Ia, in Gyr; norm_Ia = Hubble-time integrated number of Ia's per solar mass
     if(star_age>t_Ia_min) {RSNe += norm_Ia * 7.94e-5 * pow(star_age,-1.1) / fabs(pow(t_Ia_min/0.1,-0.1) - 0.61);} // Ia DTD following Maoz & Graur 2017, ApJ, 848, 25
 #endif
-    
+
     double renorm = calculate_relative_light_to_mass_ratio_from_imf(star_age,i); // account for higher # of O-stars with a different IMF
     if(star_age<agemax) {RSNe *= renorm;}
 #ifdef GALSF_SFR_IMF_SAMPLING
@@ -259,10 +261,69 @@ void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt)
 }
 
 
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+/* Finds the age tracer bin (passive scalar) corresponding to the given star's age (in Myr) */
+int get_age_tracer_bin(double age)
+{
+    int index = -1; int too_old_flag = -9;
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
+    /* Bins are custom with arbitrary sizes - perform a search */
+    if(age < All.AgeTracerTimeBins[0]) {index=0;} // initial bin
+        else if(age >= All.AgeTracerTimeBins[NUM_AGE_TRACERS]) {return too_old_flag;} /* do nothing here and continue */
+        else {index = binarySearch(All.AgeTracerTimeBins,age,0,NUM_AGE_TRACERS+1,NUM_AGE_TRACERS+1); /* find the bin */
+            if(age < All.AgeTracerTimeBins[index]) {PRINT_WARNING("Age tracer binary search not working %d  %f  %f  %f",index, age,All.AgeTracerTimeBins[index],All.AgeTracerTimeBins[index+1]); endrun(8888);}}
+#else
+    /* Bins are log-spaced we do not need to perform a search */
+    double binstart=log10(All.AgeTracerBinStart), binend=log10(All.AgeTracerBinEnd), log_bin_dt=(binend - binstart)/((double)NUM_AGE_TRACERS);
+    if(age <= All.AgeTracerBinStart) {index=0;} /* initial bin */
+        else if(age >= All.AgeTracerBinEnd) {return too_old_flag;} /* do nothing here and continue [likely only in test problems] */
+        else {index=floor((log10(age)-binstart)/log_bin_dt);} /* find bin */
+#endif
+    if(index<0) {PRINT_WARNING("Age tracer binary search not working index=%d age=%f",index,age); endrun(8888);} // exit if invalid result
+    return index; // return valid bin
+}
+
+/* Returns the start time, in Myr, of the age bin with index "k" */
+double get_age_tracer_bin_start_time(int k)
+{
+    if(k<0) {return 0;} // always return 0 for arbitrarily low indices
+    if(k>NUM_AGE_TRACERS) {return get_age_tracer_bin_start_time(NUM_AGE_TRACERS);} // should never happen-set to same value as last value here
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
+    return All.AgeTracerTimeBins[k]; // use pre-tabulated bin times, in Myr
+#else
+    return All.AgeTracerBinStart * pow(All.AgeTracerBinEnd/All.AgeTracerBinStart , ((double)k)/((double)NUM_AGE_TRACERS)); // uniform log-spaced bins
+#endif
+}
+#endif
+
+
+/* function to determine if deposition into age-tracer bins occurs this time step */
+void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
+{
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+    P[i].AgeDeposition_ThisTimeStep=0; // reset
+    if(P[i].Type != 4) {return;} // only new stars are eligible sources
+    double rate_normalization = All.AgeTracerReturnFraction; // determines the fraction of time spent depositing tracers, or rate-per-particle
+    if(rate_normalization <= 0) {P[i].AgeDeposition_ThisTimeStep=1; return;} // rate_normalization < 0 means deposit every time step
+    double stellar_age_myr = evaluate_stellar_age_Gyr(P[i].StellarAge)*1000.; int k = get_age_tracer_bin(stellar_age_myr); // get age in Myr and bin for age
+    double bin_dt_myr = get_age_tracer_bin_start_time(k+1)-get_age_tracer_bin_start_time(k); // get bin duration in Myr
+    if(dt*UNIT_TIME_IN_MYR/bin_dt_myr > rate_normalization) {P[i].AgeDeposition_ThisTimeStep=1;} else  // if dt is large compared to bin spacing, might 'miss' an event, so we want to always make an event and return
+        {if(get_random_number(P[i].ID + 3) < rate_normalization) {P[i].AgeDeposition_ThisTimeStep=1./rate_normalization;}} // rate limit according to the return fraction this represents fraction of time star should be depositing; if selected, deposit age tracer and use this scaling to increase the normalization of the tracer field
+/*
+    double p = All.AgeTracerEventsPerTimeBin * (dt*UNIT_TIME_MYR / bin_dt_myr), n_events=(float)floor(p); p-=n_events; if(get_random_number(P[i].ID + 3) < p) {n_events++;} // if > 1, this cuts that part off so we get appropriate n > 1 solution
+    P[i].AgeDeposition_ThisTimeStep = n_events; // assign event
+ */
+#endif
+    return;
+}
+
+
+
+
 void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 {
     double D_RETURN_FRAC=1.e-15, p=0;
-    
+
 #if defined(SINGLE_STAR_FB_WINDS) /* SINGLE-STAR VERSION: single-star wind mass-loss rates */
     double fire_wind_rel_mass_res = 1e-4; //relative mass resolution of winds, essentially the wind will get spawned in packets of fire_wind_rel_mass_res*(gas_mass_resolution) mass
     D_RETURN_FRAC = fire_wind_rel_mass_res * (2.0*All.MinMassForParticleMerger)/ P[i].Mass;
@@ -275,9 +336,9 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     p = (2.338 * alpha * pow(L_sol,7./8.) * pow(M_sol,0.1845) * (1./q0) * pow(q0*k0,1./alpha) / m_sol) * (dt*UNIT_TIME_IN_GYR); // mdot in M_sun/Gyr, times dt
 #endif
     p=1.-exp(-p);
-    
+
 #else /* STELLAR POPULATION VERSION: now do stellar-population-averaged inputs */
-    
+
     D_RETURN_FRAC = 0.01; // fraction of particle mass to return on a recycling step //
     if(All.StellarMassLoss_Rate_Renormalization <= 0) {return;}
     double star_age=evaluate_stellar_age_Gyr(P[i].StellarAge), ZZ=Z_for_stellar_evol(i);
@@ -297,7 +358,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     p *= All.StellarMassLoss_Rate_Renormalization * (dt*UNIT_TIME_IN_GYR); // fraction of particle mass expected to return in the timestep //
     p = 1.0 - exp(-p); // need to account for p>1 cases //
 #endif
-    
+
     double n_wind_0=(double)floor(p/D_RETURN_FRAC); p-=n_wind_0*D_RETURN_FRAC; // if p >> return frac, should have > 1 event, so we inject the correct wind mass
     P[i].MassReturn_ThisTimeStep += n_wind_0*D_RETURN_FRAC; // add this in, then determine if there is a 'remainder' to be added as well
     if(get_random_number(P[i].ID + 5) < p/D_RETURN_FRAC) {P[i].MassReturn_ThisTimeStep += D_RETURN_FRAC;} // add the 'remainder' stochastically
@@ -319,10 +380,50 @@ void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i)
         if(k==1) {tcrit=0.003; pcrit=0.3333333333;}  // model 1: tmin > 3e6 yr, rate = 1e-5
         if(k==2) {tcrit=0.03;  pcrit=0.03333333333;} // model 2: tmin > 3e7 yr, rate = 1e-6
         if(k==3) {tcrit=0.003; pcrit=0.03333333333;} // model 3: tmin > 3e6 yr, rate = 1e-6
-        if((star_age>=tcrit)&&(p<=pcrit)) {in->yields[NUM_METAL_SPECIES-NUM_RPROCESS_SPECIES+k]=1;} // units irrelevant//
+        if((star_age>=tcrit)&&(p<=pcrit)) {in->yields[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+k]=1;} // units irrelevant//
     }
     in->Msne = 0.01 * (double)P[i].RProcessEvent_ThisTimeStep / ((double)(UNIT_MASS_IN_SOLAR)); // mass ejected ~0.01*M_sun; only here for bookkeeping //
 #endif
+}
+
+
+
+
+/*
+  Routine injects passive scalar tracer field for each star particle
+  according to the age of that particle for post processing stellar
+  abundances. Finds the appropriate time bin(s) to inject into given
+  the star's age and the timestep. Normalization of these fields is
+  somewhat arbitrary, but normalizing such that each star deposits
+  1 unit in each time bin (regardless of size) per solar mass. Thus,
+  scaling is simple (just multiply field by mass of metal species
+  produced per solar mass of star formation to get an abundance)
+*/
+void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
+{
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+    if(P[i].Type != 4) {return;} // only new stars are eligible for events
+    if(P[i].AgeDeposition_ThisTimeStep<=0) {return;} // no event
+
+    double M_norm = (P[i].Mass*UNIT_MASS_IN_SOLAR) * P[i].AgeDeposition_ThisTimeStep; /* AJE: may need to switch to normalizing over logbin spacing if bins are large too avoid small number issues  - this requires undoing the normalization in post */
+    double age_myr = evaluate_stellar_age_Gyr(P[i].StellarAge) * 1000.; int k = get_age_tracer_bin(age_myr); // get age in myr and corresponding tracer bin
+    if(k==-9) {printf("Stellar age greater than maximum allows in AGE_TRACERS bins\n"); return;} // error trap for age > max bin
+    double dt=GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i)*UNIT_TIME_IN_MYR, dt_half=0.5*dt, age_initial=age_myr-dt_half, age_final=age_myr+dt_half; // get particle timestep in Myr, and age at beginning/end of timestep centered on us
+    int k_age_start = 1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES; // first index of tracers
+
+    // now deposit tracer fields, with check if multiple bins are crossed
+    double t_start=get_age_tracer_bin_start_time(k), t_end=get_age_tracer_bin_start_time(k+1), bin_dt=t_end-t_start; // bin edges in Myr
+    if(((k>0) && (age_initial<t_start)) || ((k<NUM_AGE_TRACERS) && (age_final>t_end))) // timestep crosses multiple -valid- bins
+    {
+        double age=age_initial, age_step=0; if(age_initial < t_start) {k--;} // step back a bin, set variables
+        while((age<age_final) && (k<=NUM_AGE_TRACERS)) { // loop over active bins to set yields in each bin
+            bin_dt = get_age_tracer_bin_start_time(k+1) - get_age_tracer_bin_start_time(k); age_step = DMIN(t_end, age_final); // get the step to the end of bin
+            in->yields[k+k_age_start] += ((age_step - age) / bin_dt) * M_norm; // do fractional / full injection for each bin we cross
+            age = age_step; k++;}
+    } else {in->yields[k+k_age_start] += (dt / bin_dt) * M_norm;} // normalization is somewhat arbitrary, but choosing "1" unit per bin per solar mass of star for convenience
+    in->Msne = 1.e-10 / UNIT_MASS_IN_SOLAR; // small number just to be nonzero
+#endif
+    return;
 }
 
 
@@ -377,6 +478,7 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
             yields[1]=3.87;/*He*/ yields[2]=0.133;/*C*/ yields[3]=0.0479;/*N*/ yields[4]=1.17;/*O*/
             yields[5]=0.30;/*Ne*/ yields[6]=0.0987;/*Mg*/ yields[7]=0.0933;/*Si*/
             yields[8]=0.0397;/*S*/ yields[9]=0.00458;/*Ca*/ yields[10]=0.0741;/*Fe*/
+
             // metal-dependent yields:
             if(P[i].Metallicity[0]<0.033) {yields[3]*=P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[3]*=1.65;} // N scaling is strongly dependent on initial metallicity of the star //
             yields[0] += yields[3]-0.0479; // correct total metal mass for this correction //
@@ -393,12 +495,15 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
     if(NUM_METAL_SPECIES==1) {if(SNeIaFlag) {yields[0]=1.4;} else {yields[0]=2.0;}}
     for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]/M_ejecta_model;} // normalize to mass fraction //
     /* add a check to allow for larger abundances in the progenitor stars (usually irrelevant) */
-    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]);}
+    for(k=0;k<=NUM_LIVE_SPECIES_FOR_COOLTABLES;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]);}
+
+
+
     if(SNeIaFlag) {if(NUM_METAL_SPECIES>=10) {yields[1]=0.0;}} // no He yield for Ia SNe //
 #endif
     for(k=0;k<NUM_METAL_SPECIES;k++) {in->yields[k]=DMIN(1.,DMAX(0.,yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
 #endif
-    
+
     in->Msne = P[i].SNe_ThisTimeStep * (Msne/UNIT_MASS_IN_SOLAR); // total mass in code units
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     in->Msne = P[i].Mass; // conserve mass and destroy star completely
@@ -413,7 +518,9 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
     int k; if(P[i].MassReturn_ThisTimeStep<=0) {in->Msne=0; return;} // no event
 #ifdef METALS
     /* assume track initial metallicity; turn on COOL_METAL_LINES_BY_SPECIES for more detailed tracking of light elements */
-    double yields[NUM_METAL_SPECIES]; for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k];} // return surface abundances, to leading order //
+    double yields[NUM_METAL_SPECIES]={0.0};
+    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k];} // return surface abundances, to leading order //
+
     if(NUM_METAL_SPECIES>=10)
     {
         /* All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe ;; follow AGB/O star yields in more detail for the light elements */
@@ -435,16 +542,18 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
         yields[1]=0.36; /*He*/ yields[2]=0.016; /*C*/ yields[3]=0.0041; /*N*/ yields[4]=0.0118; /*O*/
         // metal-dependent yields: O scaling is strongly dependent on initial metallicity of the star //
         if(P[i].Metallicity[0]<0.033) {yields[4] *= P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[4] *= 1.65;}
+
         for(k=1;k<=4;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]); if(yields[k]<0) {yields[k]=0.0;} if(yields[k]>1) {yields[k]=1;} in->yields[k]=yields[k];} // enforce yields obeying pre-existing surface abundances, and upper/lower limits //
-        yields[0]=0.0; for(k=2;k<NUM_METAL_SPECIES;k++) {yields[0]+=yields[k];}
+        yields[0]=0.0; for(k=2;k<=NUM_LIVE_SPECIES_FOR_COOLTABLES;k++) {yields[0]+=yields[k];}
 #endif
+
     } else {
         yields[0]=0.032; for(k=1;k<NUM_METAL_SPECIES;k++) {yields[k]=0.0;}
     }
     for(k=0;k<NUM_METAL_SPECIES;k++) in->yields[k]=yields[k];
 #endif
     in->Msne = P[i].Mass * P[i].MassReturn_ThisTimeStep; // mass (in code units) returned
-    
+
     /* STELLAR POPULATION-AVERAGED VERSION: calculate wind kinetic luminosity + internal energy (hot winds from O-stars, slow from AGB winds) */
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
     double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), E_wind_tscaling=0.0013;
@@ -478,7 +587,7 @@ double Z_for_stellar_evol(int i)
 
 #endif // GALSF_FB_MECHANICAL+GALSF_FB_FIRE_STELLAREVOLUTION
 
-    
+
 
 
 #ifdef SINGLE_STAR_FB_JETS
@@ -529,7 +638,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
     }
 
 #elif (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2) /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */
-    
+
     double frad = 0.18; //limit for forming radiative barrier, based on Offner+MckKee 2011 source code
     double fk = 0.5; //fraction of kinetic energy that is radiated away in the inner disk before reaching the surface, using default ORION value here as it is not a GIZMO input parameter
     double f_acc = 0.5; //fraction of accretion power that is radiated away instead of being used to drive winds, using default ORION value here as it is not a GIZMO input parameter
@@ -591,7 +700,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                     dm_D = 0; //all new D is burned
                     mass_D = 0; //no D left in protostar
                     }
-                }                
+                }
                 //Let's evolve the stellar radius
                 rel_dr = ( dm_rel * (1.-(1.-fk)/(ag*beta)+0.5*dlogbeta_dlogm) - dt_curr/(ag*beta)*r/(All.G*mass*mass) * (lum_int+lum_I-lum_D) ); //Eq B4 of Offner 2009 divided by r, and corrected by a factor of 2 as per the ORION source used for Offner+McKee 2011
                 //Let's check if we need to subcycle
@@ -599,7 +708,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                     n_subcycle = (int) DMAX(ceil(rel_dr/max_rel_dr), 2.0*n_subcycle); //number of subcycle steps, at least 2, either double the previous number or estimated from dr
                     //reset protostar properties, restart loop
                     loop_subcycle = 0;
-                    mass = m_initial; mass_D = BPP(n).Mass_D; 
+                    mass = m_initial; mass_D = BPP(n).Mass_D;
                     dm_curr = dm/((double)n_subcycle); dt_curr = dt/((double)n_subcycle);
                     r = BPP(n).ProtoStellarRadius_inSolar / UNIT_LENGTH_IN_SOLAR;
                 }
@@ -643,9 +752,9 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
         }
         else{ //the protostar is in the "pre-collapse" state, no internal evolution, just check if it can be promoted to the next stage
             BPP(n).Mass_D = BPP(n).BH_Mass; //no D burned so far
-            if (m_solar >= 0.01){ 
+            if (m_solar >= 0.01){
             stage_increase = 1; //particle qualifies to the "no burning stage"
-            } 
+            }
         }
         if (stage_increase){
             BPP(n).ProtoStellarStage += stage_increase;
@@ -669,7 +778,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                 P[n].Mass_final = P[n].BH_Mass; //record the final mass the star had
 #ifdef BH_ALPHADISK_ACCRETION
                 BPP(n).BH_Mass_AlphaDisk = 0; //probably does not matter, but let's make sure these don't cause issues
-                P[n].Mass = P[n].BH_Mass; 
+                P[n].Mass = P[n].BH_Mass;
 #endif
                 //Save properties of SN progenitor
                 fprintf(FdBhSNDetails, "%g %u %g %g %g %g %g %g %g \n", All.Time, P[n].ID, P[n].BH_Mass, P[n].Pos[0], P[n].Pos[1],P[n].Pos[2],P[n].Vel[0], P[n].Vel[1],P[n].Vel[2]); fflush(FdBhSNDetails);
@@ -713,7 +822,7 @@ double single_star_wind_mdot(int n, int set_mode){ //if set_mode is zero then th
     double minimum_stellarmass_for_winds_solar  = 2.0;  // minimum stellar mass allowed to have winds
     int    model_wolf_rayet_phase_explicitly    = 1;    // assumes that O stars turn into WR stars at the end of their lifetime, increasing their mass loss rate
     double n_particles_for_discrete_wind_spawn  = 1e-2; // parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds) -- particle number required to trigger 'explicit' spawn module. Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
-    
+
     double wind_mass_loss_rate=0; //mass loss rate in code units
     if (P[n].Type != 5) {return 0;}
     if(BPP(n).ProtoStellarStage != 5) {return 0;}
@@ -727,7 +836,7 @@ double single_star_wind_mdot(int n, int set_mode){ //if set_mode is zero then th
     logmdot_wind = -6 + 1.5 * log10(BPP(n).StarLuminosity_Solar / 1e6) + 0.69 * log10(ZZ); // "de Jager / 3"
     logmdot_wind = DMIN(-7.65 + 2.9*log10(BPP(n).StarLuminosity_Solar/ 1e5), logmdot_wind); // weak-wind problem
     wind_mass_loss_rate = pow(10.0,logmdot_wind) / (UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR); //reducing the rate to be more in line with observations, see Nathan Smith 2014, conversion to code units from Msun/yr
-    
+
     if(model_wolf_rayet_phase_explicitly) {if(evaluate_stellar_age_Gyr(P[n].StellarAge) > (stellar_lifetime_in_Gyr(n)-singlestar_WR_lifetime_Gyr(n))){wind_mass_loss_rate*=10;}} //Our star is in the WR phase, for now use the simple prescription of having 10x higher wind loss rates based on Smith 2014
     //Let's deal with the case of undefined wind mode (just promoted to MS or restart from snapshot)
     if ( set_mode && (wind_mass_loss_rate>0) ){
@@ -735,7 +844,7 @@ double single_star_wind_mdot(int n, int set_mode){ //if set_mode is zero then th
         double v_wind = single_star_wind_velocity(n);
         double t_wind =sqrt( wind_mass_loss_rate * (3.0/(4.0*M_PI*P[n].DensAroundStar)) / (v_wind*v_wind*v_wind));
         double N_wind = wind_mass_loss_rate * t_wind / All.BAL_wind_particle_mass;
-        
+
         int old_wind_mode = P[n].wind_mode;
         if (N_wind >= n_particles_for_discrete_wind_spawn){
             P[n].wind_mode = 1; //we can spawn enough particles per wind time
@@ -771,7 +880,7 @@ double single_star_wind_velocity(int n){
     double v_esc = (617.7 / UNIT_VEL_IN_KMS) * sqrt(P[n].Mass*UNIT_MASS_IN_SOLAR / P[n].ProtoStellarRadius_inSolar); // surface escape velocity - wind escape velocity should be O(1) factor times this, factor given below
     if(T_eff < 1.25e4){ return 0.7 * v_esc;}  // Lamers 1995
     else if (T_eff < 2.1e4) {return 1.3 * v_esc;}
-    else {return 2.6 * v_esc;}        
+    else {return 2.6 * v_esc;}
 }
 #endif
 

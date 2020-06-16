@@ -25,7 +25,7 @@
  *   (xchma@caltech.edu) followed on 05/15/15; re-integrated by PFH. Massive updates in 2019
  *   from David Guszejnov and Mike Grudic to incorporate and develop single star modules, and
  *   from PFH to integrate those and re-write the parallelism entirely to conform to the newer
- *   code standards and be properly multi-threaded. 
+ *   code standards and be properly multi-threaded.
  */
 
 #ifdef BLACK_HOLES // master flag [needs to be here to prevent compiler breaking when this is not active] //
@@ -39,7 +39,7 @@ void blackhole_accretion(void)
     PRINT_STATUS("Black-hole operations begin...");
     //     long i; for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* zero out accretion */ //  This zero-out loop is effectively performed in density.c now, only on gas particles that are actually going to be looked at this timestep, to reduce overhead when only a few particles are active
     blackhole_start();              /* allocates and cleans BlackholeTempInfo struct */
-    
+
     /* this is the PRE-PASS loop.*/
     blackhole_environment_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
                                       If using gravcap the desired mass accretion rate is calculated and set to BlackholeTempInfo.mass_to_swallow_edd */
@@ -95,7 +95,7 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     double hinv = 1./All.ForceSoftening[5];
     if(r_code < 1/hinv) {return sqrt(-2*All.G*m_eff*kernel_gravity(r_code*hinv, hinv, hinv*hinv*hinv, -1));}
-#endif    
+#endif
     return sqrt(2.0*All.G*(m_eff)/(r_code*All.cf_atime) + cs_to_add_km_s*cs_to_add_km_s);
 }
 
@@ -106,7 +106,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 {
     /* if pair is a gas particle make sure to account for its thermal pressure */
     double cs = 0; if(P[j].Type==0) {cs=Get_Gas_effective_soundspeed_i(j);}
-    
+
     if(P[j].Type == 0)
     {
 #ifdef SINGLE_STAR_SINK_DYNAMICS
@@ -122,7 +122,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
     }
 
     double v2 = (vrel*vrel+cs*cs)/(vesc*vesc); int bound = 0;
-    if(v2 < 1) 
+    if(v2 < 1)
     {
         double apocenter = dr_code / (1.0-v2); // NOTE: this is the major axis of the orbit, not the apocenter... - MYG
         double apocenter_max = 2*All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
@@ -217,8 +217,8 @@ void set_blackhole_mdot(int i, int n, double dt)
     double meddington = bh_eddington_mdot(BPP(n).BH_Mass);
 #endif
 
-    
-    
+
+
 #ifdef BH_GRAVACCRETION
     /* calculate mdot: gravitational instability accretion rate from Hopkins & Quataert 2011 */
     if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
@@ -246,15 +246,15 @@ void set_blackhole_mdot(int i, int n, double dt)
         }
         j_tmp_for_bhar=sqrt(j_tmp_for_bhar); /* jx,y,z, is independent of 'a_scale' b/c ~ m*r*v, vphys=v/a, rphys=r*a */
         fgas_for_bhar = BlackholeTempInfo[i].Mgas_in_Kernel / m_tmp_for_bhar;
-        
+
         fac = m_tmp_for_bhar * rmax_for_bhar * sqrt(All.G*(m_tmp_for_bhar+bh_mass)/rmax_for_bhar); /* All.G is G in code (physical) units */
-        
+
         f_disk_for_bhar = fgas_for_bhar + (1.75*j_tmp_for_bhar/fac);
         if(f_disk_for_bhar>1) {f_disk_for_bhar=1;}
         mdisk_for_bhar = m_tmp_for_bhar * f_disk_for_bhar;
 #endif  // if(BH_GRAVACCRETION == 1)
         if(mdisk_for_bhar>0) {fgas_for_bhar=BlackholeTempInfo[i].Mgas_in_Kernel/mdisk_for_bhar;} else {fgas_for_bhar=0;}
-        
+
         if((bh_mass <=0)||(fgas_for_bhar<=0)||(m_tmp_for_bhar<=0))
         {
             mdot = 0;
@@ -281,7 +281,7 @@ void set_blackhole_mdot(int i, int n, double dt)
             r0_accretion = DMAX(rmax_for_bhar , 3.*All.ForceSoftening[5]*All.cf_atime); // set to some fixed multiple of the force softening, which is effectively not changing below low redshifts for the BH, and gives a constant physical anchor point
 #endif
             mdot *= pow(r0_accretion/rmax_for_bhar , 3./2.); // scales to estimator value at specified 'accretion radius' r0_accretion, assuming f_disk, etc constant and M_enclosed is a constant-density profile //
-            
+
 #if (BH_GRAVACCRETION == 2) // gas accreted at a constant rate per free-fall time from the specified 'accretion radius'
             mdot = mgas_in_racc * omega_dyn;
 #endif
@@ -334,9 +334,9 @@ void set_blackhole_mdot(int i, int n, double dt)
     } // if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
     mdot *= All.BlackHoleAccretionFactor; // this is a pure normalization multiplier here
 #endif // ifdef BH_GRAVACCRETION
-    
-    
-    
+
+
+
 #ifdef BH_BONDI /* heres where we calculate the Bondi accretion rate, if that's going to be used */
     double bhvel2 = 0, rho = BPP(n).DensAroundStar * All.cf_a3inv; /* we want all quantities in physical units */
 #if (BH_BONDI != 1)
@@ -352,17 +352,17 @@ void set_blackhole_mdot(int i, int n, double dt)
         mdot = 4. * M_PI * AccretionFactor * All.G * All.G * BPP(n).BH_Mass * BPP(n).BH_Mass * rho / fac;
     }
 #endif // ifdef BH_BONDI
-    
-    
-    
-    
+
+
+
+
 /* DAA: note that we should have mdot=0 here , otherwise the mass accreted is counted twice [mdot*dt in set_blackhole_new_mass, accreted_BH_mass in blackhole_swallow_and_kick] */
 #ifdef BH_GRAVCAPTURE_GAS
     mdot = 0; /* force mdot=0 despite any earlier settings here.  If this is set, we have to wait to swallow step to eval mdot. */
     //mdot = BlackholeTempInfo[i].mass_to_swallow_edd / dt;       /* TODO: this can still greatly exceed eddington... */
 #endif //ifdef BH_GRAVCAPTURE_GAS
 
-    
+
 #ifdef BH_ALPHADISK_ACCRETION
     /* use the mass in the accretion disk from the previous timestep to determine the BH accretion rate */
     double x_MdiskSelfGravLimiter = BPP(n).BH_Mass_AlphaDisk / (BH_ALPHADISK_ACCRETION * BPP(n).BH_Mass);
@@ -394,7 +394,7 @@ void set_blackhole_mdot(int i, int n, double dt)
         if(BH_MDOT_FROM_ALPHAMODEL>0) {t_acc_disk = 100. * t_acc_disk * (1 / (Gm_i * DMIN(reff, j*j*Gm_i))) / soundspeed2;} // Shakura-Sunyaev prescription with alpha=0.01, using minimum of sink and circularization radius
 #endif
 #endif
-        
+
 #if defined(BH_GRAVCAPTURE_GAS)
         t_acc_disk /= All.BlackHoleAccretionFactor; // when using GRAVCAPTURE, this won't multiply the continuous mdot, but rather mdot from disk to BH
 #endif
@@ -402,9 +402,9 @@ void set_blackhole_mdot(int i, int n, double dt)
         mdot = BPP(n).BH_Mass_AlphaDisk / t_acc_disk;
     }
 #endif //ifdef BH_ALPHADISK_ACCRETION
-    
-    
-    
+
+
+
 #ifdef BH_SUBGRIDBHVARIABILITY /* account for sub-grid accretion rate variability */
     if((mdot>0)&&(dt>0)&&(P[n].DensAroundStar>0))
     {
@@ -431,7 +431,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #endif
 
 
-    
+
 #ifdef BH_ALPHADISK_ACCRETION
     /* if there -is- an alpha-disk, protect the alpha-disk not to be over-depleted (i.e. overshooting into negative alpha-disk masses) */
     if(dt>0)
@@ -453,11 +453,11 @@ void set_blackhole_mdot(int i, int n, double dt)
 #endif
 #endif // BH_ALPHADISK_ACCRETION
 
-    
+
 #ifdef BH_ENFORCE_EDDINGTON_LIMIT /* cap the maximum at the Eddington limit */
     if(mdot > All.BlackHoleEddingtonFactor * meddington) {mdot = All.BlackHoleEddingtonFactor * meddington;}
 #endif
-    
+
 #if defined(BH_RETURN_ANGMOM_TO_GAS) /* pre-calculate some quantities for 'angular momentum feedback' here, these have to be based on the mdot estimator above */
     double jmag=0,lmag=0,mdot_eff=mdot,return_timescale,angmom_toreturn; BlackholeTempInfo[i].angmom_norm_topass_in_swallowloop=0;
     for(k=0;k<3;k++) {jmag+=BlackholeTempInfo[i].angmom_prepass_sum_for_passback[k]*BlackholeTempInfo[i].angmom_prepass_sum_for_passback[k]; lmag+=BPP(n).BH_Specific_AngMom[k]*BPP(n).BH_Specific_AngMom[k];}
@@ -467,7 +467,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     angmom_toreturn = DMIN(angmom_toreturn, 0.1 * All.G * (P[n].Mass+BlackholeTempInfo[i].Mgas_in_Kernel) * BlackholeTempInfo[i].Mgas_in_Kernel / DMAX(P[n].Hsml, All.ForceSoftening[5]) * dt); // this limiter explicitly ensures that we never apply a torquing force that is comparable in magnitude to the gravitational force: L < (small fraction) * G Mtot Mgas / R * dt (ie. torque is less than torque needed to change the orbit within an orbital time)
     if(jmag>0 && lmag>0) {BlackholeTempInfo[i].angmom_norm_topass_in_swallowloop = angmom_toreturn / sqrt(jmag);} /* this should be in units such that, times CODE radius and (code=physical) ang-mom, gives CODE velocity: looks ok at present */
 #endif
-    
+
     /* alright, now we can FINALLY set the BH accretion rate */
     if(isnan(mdot)) {mdot=0;}
     BPP(n).BH_Mdot = DMAX(mdot,0);
@@ -511,7 +511,7 @@ void set_blackhole_new_mass(int i, int n, double dt)
     BPP(n).BH_Mass += BPP(n).BH_Mdot * dt;
 #endif
 #endif // #else BH_ALPHADISK_ACCRETION
-#ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK 
+#ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK
     double mtot = BlackholeTempInfo[i].Mgas_in_Kernel + BPP(n).Mass;
     for(k=0; k<3; k++) { BlackholeTempInfo[i].BH_SurroundingGasCOM[k] /= mtot;} // this now stores the COM of the sink-gas system, relative to the sink position
     for(k=0; k<3; k++) {
@@ -542,12 +542,12 @@ void set_blackhole_drag(int i, int n, double dt)
         for(k = 0; k < 3; k++) {P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac * BlackholeTempInfo[i].BH_SurroundingGasVel[k] / dt;}
     } // if((dt>0)&&(BPP(n).BH_Mass>0))
 #endif
-    
-    
-    
+
+
+
 #ifdef BH_DYNFRICTION
     double bh_mass, x;
-    
+
     if(BlackholeTempInfo[i].DF_mmax_particles>0) /* found something in the kernel, we can proceed */
     {
         /* averaged value for colomb logarithm and integral over the distribution function */
@@ -608,8 +608,8 @@ void set_blackhole_drag(int i, int n, double dt)
 #endif
     }
 #endif
-    
-    
+
+
 }
 #endif
 
@@ -669,7 +669,7 @@ void blackhole_final_operations(void)
                 for(k = 0; k < 3; k++) {P[n].Pos[k] += (BPP(n).BH_MinPotPos[k]-P[n].Pos[k]) * fac_bh_shift;}
             }
 #endif
-    
+
     for(n = 0; n < TIMEBINS; n++) {if(TimeBinActive[n]) {TimeBin_BH_mass[n] = 0; TimeBin_BH_dynamicalmass[n] = 0; TimeBin_BH_Mdot[n] = 0; TimeBin_BH_Medd[n] = 0;}}
 
     for(i=0; i<N_active_loc_BHs; i++)
@@ -683,12 +683,12 @@ void blackhole_final_operations(void)
             for(k=0; k<3; k++) {if(BlackholeTempInfo[i].accreted_J[k] != 0) {update_bh_moments = 1;}}
 #endif
         }
-        
+
         if(update_bh_moments)
         {
 #ifdef HERMITE_INTEGRATION
             P[n].AccretedThisTimestep = 1;
-#endif          
+#endif
             double m_new; m_new = P[n].Mass + BlackholeTempInfo[i].accreted_Mass;
 #if (BH_FOLLOW_ACCRETED_ANGMOM == 1) /* in this case we are only counting this if its coming from BH particles */
             m_new = P[n].Mass + BlackholeTempInfo[i].accreted_BH_Mass + BlackholeTempInfo[i].accreted_BH_Mass_alphadisk;
@@ -708,9 +708,9 @@ void blackhole_final_operations(void)
             BPP(n).BH_Specific_AngMom[1] -= (BlackholeTempInfo[i].accreted_centerofmass[2]*BlackholeTempInfo[i].accreted_momentum[0] - BlackholeTempInfo[i].accreted_centerofmass[0]*BlackholeTempInfo[i].accreted_momentum[2]) / (m_new*m_new);
             BPP(n).BH_Specific_AngMom[2] -= (BlackholeTempInfo[i].accreted_centerofmass[0]*BlackholeTempInfo[i].accreted_momentum[1] - BlackholeTempInfo[i].accreted_centerofmass[1]*BlackholeTempInfo[i].accreted_momentum[0]) / (m_new*m_new);
 #endif
-#if defined(BH_RETURN_BFLUX)            
+#if defined(BH_RETURN_BFLUX)
             for(k=0;k<3;k++) {P[n].B[k] += BlackholeTempInfo[i].accreted_B[k];}
-#endif            
+#endif
             P[n].Mass += BlackholeTempInfo[i].accreted_Mass;
             BPP(n).BH_Mass += BlackholeTempInfo[i].accreted_BH_Mass;
 #ifdef BH_ALPHADISK_ACCRETION
@@ -718,11 +718,11 @@ void blackhole_final_operations(void)
 #endif
 #ifdef GRAIN_FLUID
             BPP(n).BH_Dust_Mass += BlackholeTempInfo[i].accreted_dust_Mass;
-#endif            
+#endif
         } // if(masses > 0) check
 #ifdef HERMITE_INTEGRATION
         else { P[n].AccretedThisTimestep = 0; }
-#endif        
+#endif
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
         P[n].SinkRadius = DMAX(P[n].SinkRadius, All.ForceSoftening[5]);
 #endif
@@ -735,7 +735,7 @@ void blackhole_final_operations(void)
         if(radiation_loss > DMIN(P[n].Mass,BPP(n).BH_Mass)) radiation_loss = DMIN(P[n].Mass,BPP(n).BH_Mass);
 #ifndef BH_DEBUG_FIX_MASS
         P[n].Mass -= radiation_loss; BPP(n).BH_Mass -= radiation_loss;
-#endif         
+#endif
         /* subtract the BAL wind mass from P[n].Mass && (BPP(n).BH_Mass || BPP(n).BH_Mass_AlphaDisk) // DAA: note that the mass loss in winds for BH_WIND_KICK has already been taken into account */
 #ifdef BH_WIND_CONTINUOUS
         double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
@@ -748,11 +748,11 @@ void blackhole_final_operations(void)
         if(dm_wind > BPP(n).BH_Mass) {dm_wind = BPP(n).BH_Mass;}
 #ifndef BH_DEBUG_FIX_MASS
         P[n].Mass -= dm_wind; BPP(n).BH_Mass -= dm_wind;
-#endif 
+#endif
 #endif
 #endif // ifdef BH_WIND_CONTINUOUS
-        
-	
+
+
 #if defined(SINGLE_STAR_TIMESTEPPING)
         /* save local effective signal velocity of gas for sink particle CFL-like timestep criterion */
         P[n].BH_SurroundingGasVel = 0; for(k=0; k<3; k++) {P[n].BH_SurroundingGasVel += BlackholeTempInfo[i].BH_SurroundingGasVel[k]*BlackholeTempInfo[i].BH_SurroundingGasVel[k];}
@@ -774,13 +774,13 @@ void blackhole_final_operations(void)
         if(dm_wind > BPP(n).BH_Mass) {dm_wind = BPP(n).BH_Mass;}
 #ifndef BH_DEBUG_FIX_MASS
         BPP(n).BH_Mass -= dm_wind;
-#endif 
+#endif
 #endif
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 #if defined(SINGLE_STAR_FB_WINDS)
        if(P[n].ProtoStellarStage == 5){
            if(P[n].wind_mode == 1) {
-                dm_wind = single_star_wind_mdot(n,0) * dt; 
+                dm_wind = single_star_wind_mdot(n,0) * dt;
                 BPP(n).BH_Mass -= dm_wind;
             }
            } //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep: remove mass lost via winds
@@ -809,7 +809,7 @@ void blackhole_final_operations(void)
         BPP(n).unspawned_wind_mass += dm_wind;
         if(BPP(n).unspawned_wind_mass>MaxUnSpanMassBH) {MaxUnSpanMassBH=BPP(n).unspawned_wind_mass;}
 #endif
-        
+
         /* dump the results to the 'blackhole_details' files */
         mass_disk=0; mdot_disk=0; MgasBulge=0; MstarBulge=0; r0 = PPP[n].Hsml * All.cf_atime;
 #ifdef BH_ALPHADISK_ACCRETION
@@ -820,7 +820,7 @@ void blackhole_final_operations(void)
         MgasBulge = BlackholeTempInfo[i].MgasBulge_in_Kernel;
         MstarBulge = BlackholeTempInfo[i].MstarBulge_in_Kernel;
 #endif
-    
+
 #if defined(BH_OUTPUT_MOREINFO)
 #ifdef SINGLE_STAR_STARFORGE_DEFAULTS
         fprintf(FdBlackHolesDetails, "%2.12f %u  %g %g %g %g %g  %g %g %g %g %g %g  %2.10f %2.10f %2.10f  %2.7f %2.7f %2.7f  %g %g %g  %g %g %g\n",
@@ -840,25 +840,25 @@ void blackhole_final_operations(void)
                 P[n].DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy, P[n].Pos[0], P[n].Pos[1], P[n].Pos[2]); fflush(FdBlackHolesDetails);           // DAA: DensAroundStar is actually not defined in BHP->BPP...
 #endif
 #endif
-        
+
         bin = P[n].TimeBin;
         TimeBin_BH_mass[bin] += BPP(n).BH_Mass;
         TimeBin_BH_dynamicalmass[bin] += P[n].Mass;
         TimeBin_BH_Mdot[bin] += BPP(n).BH_Mdot;
         if(BPP(n).BH_Mass > 0) {TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;}
-        
+
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
         singlestar_subgrid_protostellar_evolution_update_track(n, dm, dt);
         if((P[n].Type!=5) || (P[n].Mass==0)) {count_bhelim++;} // our subroutine has promoted or removed this sink: one fewer BH-type particle exists now //
 #endif
-        
+
     } // for(i=0; i<N_active_loc_BHs; i++)
-            
+
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     MPI_Allreduce(&count_bhelim, &tot_bhelim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     All.TotBHs -= tot_bhelim;
 #endif
-    
+
 }
 
 
