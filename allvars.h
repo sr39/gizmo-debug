@@ -2249,7 +2249,7 @@ extern struct global_data_all_processes
 #endif
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-    double AgeTracerReturnFraction;                 /* Fraction of time to do age tracer deposition (with checks depending on time bin width for current star) */
+    double AgeTracerRateNormalization;              /* Determines Fraction of time to do age tracer deposition (with checks depending on time bin width for current star) */
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
     double AgeTracerTimeBins[NUM_AGE_TRACERS+1];    /* Bin edges (left) for stellar age passive scalar tracers when using custom (uneven) bins the final value is the right edge of the final bin, hence a total size +1 the number of tracers */
     char   AgeTracerListFilename[100];              /* file name to read ages from (in Myr) as a single column */

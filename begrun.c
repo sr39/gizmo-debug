@@ -357,7 +357,7 @@ void begrun(void)
 #endif
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-      All.AgeTracerReturnFraction = all.AgeTracerReturnFraction;
+      All.AgeTracerRateNormalization = all.AgeTracerRateNormalization;
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
       strcpy(All.AgeTracerListFilename, all.AgeTracerListFilename);
 #else
@@ -1076,8 +1076,9 @@ void read_parameter_file(char *fname)
 #endif
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-        strcpy(tag[nt], "AgeTracerReturnFraction");
-        addr[nt] = &All.AgeTracerReturnFraction;
+        strcpy(tag[nt], "AgeTracerActiveTimestepFraction");
+        strcpy(alternate_tag[nt], "AgeTracerEventsPerTimeBin");
+        addr[nt] = &All.AgeTracerRateNormalization;
         id[nt++] = REAL;
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
