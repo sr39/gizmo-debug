@@ -767,6 +767,10 @@ int rt_get_source_luminosity(int i, int mode, double *lum, double *chimes_lum_G0
 #else
 int rt_get_source_luminosity(int i, int mode, double *lum);
 #endif
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+double blackbody_lum_frac(double E_lower, double E_upper, double T_eff);
+double stellar_lum_in_band(int i, double E_lower, double E_upper);
+#endif
 void eddington_tensor_dot_vector(double ET[6], double vec_in[3], double vec_out[3]);
 double return_flux_limiter(int target, int k_freq);
 double rt_kappa(int j, int k_freq);

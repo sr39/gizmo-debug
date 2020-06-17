@@ -47,6 +47,50 @@ extern pthread_mutex_t mutex_partnodedrift;
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
 
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+/***********************************************************************************************************/
+/* returns the fraction of a blackbody SED in a given photon energy band - accurate to <1% over all wavelengths
+   E_lower - lower end of the energy band in eV
+   E_upper - upper end of the energy band in eV
+   T_eff - effective blackbody temperature of the SED, in K
+*/
+/***********************************************************************************************************/
+double blackbody_lum_frac(double E_lower, double E_upper, double T_eff){
+    double k_B = 8.617e-5; //Boltzmann constant in eV/K
+    double x1 = E_lower / (k_B * T_eff), x2 = E_upper / (k_B * T_eff), f_lower, f_upper;
+    if(x1 < 3.40309){
+      f_lower = (131.4045728599595*x1*x1*x1)/(2560. + x1*(960. + x1*(232. + 39.*x1))); // approximation of integral of Planck function from 0 to x1, valid for x1 << 1
+    } else {
+      f_lower = 1 - (0.15398973382026504*(6. + x1*(6. + x1*(3. + x1))))*exp(-x1); // approximation of Planck integral for large x
+    }
+    if(x2 < 3.40309){
+      f_upper = (131.4045728599595*x2*x2*x2)/(2560. + x2*(960. + x2*(232. + 39.*x2))); // approximation of integral of Planck function from 0 to x2, valid for x2 << 1
+    } else {
+      f_upper = 1 - (0.15398973382026504*(6. + x2*(6. + x2*(3. + x2))))*exp(-x2); // approximation of Planck integral for large x
+    }
+
+    return DMAX(f_upper - f_lower, 0);
+}
+
+/***********************************************************************************************************/
+/* returns the fraction of a star's SED (approximated as a blackbody) in a given photon energy band - accurate to <1% over all wavelengths
+   i - index of star particle
+   E_lower - lower end of the energy band in eV
+   E_upper - upper end of the energy band in eV
+*/
+/***********************************************************************************************************/
+double stellar_lum_in_band(int i, double E_lower, double E_upper){
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2) 
+    double r_sol = P[i].ProtoStellarRadius_inSolar, l_sol = P[i].StarLuminosity_Solar;  
+#else // use generic fits based on mass
+    double l_sol=bh_lum_bol(0,P[i].Mass,i)*(UNIT_LUM_IN_SOLAR), m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR, r_sol=pow(m_sol,0.738); // L/Lsun, M/Msun, R/Rsun
+#endif
+    double T_eff=5780.*pow(l_sol/(r_sol*r_sol),0.25);
+    double f = blackbody_lum_frac(E_lower, E_upper, T_eff);
+    printf("M=%g T_eff=%g E_lower=%g E_upper=%g f=%g\n", P[i].Mass, T_eff, E_lower, E_upper, f);
+    return f*l_sol*UNIT_LUM_IN_SOLAR;
+}
+#endif
 /***********************************************************************************************************/
 /* routine which returns the luminosity [total volume/mass integrated] for the desired source particles in physical code units (energy/time),
     as a function of whatever the user desires, in the relevant bands. inpute here:
@@ -137,8 +181,14 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
     if((1 << P[i].Type) & (RT_SOURCES))
     {
         lum[RT_FREQ_BIN_INFRARED] = 0.0; //default to no direct IR (just re-emitted light)
-#if defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-        if(P[i].Type == 5) {lum[RT_FREQ_BIN_INFRARED] = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i);} // for tests, entire sink bolometric luminosity
+#if defined(SINGLE_STAR_SINK_DYNAMICS)
+        if(P[i].Type == 5){
+            if(N_RT_FREQ_BINS == 1){ // we're only doing IR, so dump everything into it
+	        lum[RT_FREQ_BIN_INFRARED] = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i);} // for tests, entire sink bolometric luminosity
+	    } else { // only dump the part of the SED longer than 3 micron
+          	lum[RT_FREQ_BIN_INFRARED] = stellar_lum_in_band(i, 0, 0.4133);
+            }    
+        }
 #endif
     }
 #endif
@@ -148,6 +198,12 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
     /* Near-UV approximate spectra (UV/optical spectra, sub-photo-electric, but high-opacity) for stars as used in the FIRE (Hopkins et al.) models */
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
     {
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+        if(P[i].Type == 5){
+            if(mode<0) {return 1;} active_check = 1;
+	    lum[RT_FREQ_BIN_NUV] = stellar_lum_in_band(i, 3.444, 8.);
+        }
+#else
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
         {
             if(mode<0) {return 1;} active_check = 1;
@@ -158,6 +214,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
             double fac = P[i].Mass * UNIT_MASS_IN_SOLAR / UNIT_LUM_IN_SOLAR; // converts to code units
             lum[RT_FREQ_BIN_NUV] = (1-f_op) * fac * evaluate_light_to_mass_ratio(star_age, i);
         }
+#endif
     }
 #endif
 
@@ -166,6 +223,12 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
     /* Optical-NIR approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
     {
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+        if(P[i].Type == 5){
+            if(mode<0) {return 1;} active_check = 1;
+	    lum[RT_FREQ_BIN_OPTICAL_NIR] = stellar_lum_in_band(i, 0.4133, 3.444);
+        }
+#else
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
         {
             if(mode<0) {return 1;} active_check = 1;
@@ -176,6 +239,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
             double fac = P[i].Mass * UNIT_MASS_IN_SOLAR / UNIT_LUM_IN_SOLAR; // converts to code units
             lum[RT_FREQ_BIN_OPTICAL_NIR] = f_op * fac * evaluate_light_to_mass_ratio(star_age, i);
         }
+#endif
     }
 #endif
 
@@ -184,6 +248,16 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
     /* photo-electric bands (8-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
     {
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+        if(P[i].Type == 5){
+            if(mode<0) {return 1;} active_check = 1;
+#ifdef RT_LYMAN_WERNER
+	    lum[RT_FREQ_BIN_PHOTOELECTRIC] = stellar_lum_in_band(i, 8, 11.2);
+#else
+	    lum[RT_FREQ_BIN_PHOTOELECTRIC] = stellar_lum_in_band(i, 8, 13.6);
+#endif // RT_LYMAN_WERNER
+        }
+#else
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
         {
             if(mode<0) {return 1;} active_check = 1;
@@ -199,6 +273,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
             } // 0.1 solar, with nebular. very weak metallicity dependence, with slightly slower decay in time for lower-metallicity pops; effect smaller than binaries
             lum[RT_FREQ_BIN_PHOTOELECTRIC] = l_band; // band luminosity //
         }
+#endif
     }
 #endif
     
@@ -207,6 +282,12 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
     /* lyman-werner bands (11.2-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
     {
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+        if(P[i].Type == 5){
+            if(mode<0) {return 1;} active_check = 1;
+	    lum[RT_FREQ_BIN_LYMAN_WERNER] = stellar_lum_in_band(i,11.2, 13.6);
+	}
+#else
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
         {
             if(mode<0) {return 1;} active_check = 1;
@@ -220,6 +301,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
             } // 0.1 solar, with nebular. very weak metallicity dependence, with slightly slower decay in time for lower-metallicity pops; effect smaller than binaries
             lum[RT_FREQ_BIN_LYMAN_WERNER] = l_band; // band luminosity //
         }
+#endif
     }
 #endif
         
@@ -230,6 +312,19 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
     {
         lum[RT_FREQ_BIN_H0] = 0; // begin from zero //
         double fac = 0;
+#ifdef SINGLE_STAR_SINK_DYNAMICS // we get the luminosities in the specific bands
+        if(P[i].Type == 5){
+            if(mode<0) {return 1;} active_check = 1;
+#if (RT_CHEM_PHOTOION == 1)
+	    lum[RT_FREQ_BIN_H0] = stellar_lum_in_band(i,13.6, 500.);
+#else // divide it up into the different ionizing bands
+	    lum[0] = stellar_lum_in_band(i,13.6, 24.6);
+	    lum[1] = stellar_lum_in_band(i,24.6, 54.4);
+	    lum[2] = stellar_lum_in_band(i,54.4, 70.);
+	    lum[3] = stellar_lum_in_band(i,70., 500.);
+#endif
+	}
+#else // if not dealing with individual stars, proceed normally by getting the total ionizing luminosity, and using the pre-tabulated fractions in different ionizing bands, if needed
 #if defined(GALSF) || defined(GALSF_FB_FIRE_RT_HIIHEATING)
         /* calculate ionizing flux based on actual stellar or BH physics */
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
@@ -251,6 +346,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
 #else
         lum[RT_FREQ_BIN_H0] += fac;
 #endif
+#endif // end non-SINGLE_STAR_SINK_DYNAMICS case
     }
 #endif // RT_CHEM_PHOTOION
 
