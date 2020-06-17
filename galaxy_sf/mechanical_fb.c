@@ -376,7 +376,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
                 if(loop_iteration == 3) {for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] += pnorm*local.yields[k]/P[j].Mass;}} // add age tracers in taking yields to mean MASS, so we can make it large without actually exchanging large masses
-#ifdef GALSF_FB_FIRE_AGE_TRACERS_SURFACE_YIELDS
+#ifndef GALSF_FB_FIRE_AGE_TRACERS_DISABLE_SURFACE_YIELDS
                 if(loop_iteration != 3) {for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}} // treat like any other yield when doing stellar mass exchange
 #endif
 #endif
@@ -675,7 +675,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
                 if(loop_iteration == 3) {for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] += pnorm*local.yields[k]/P[j].Mass;}} // add age tracers in taking yields to mean MASS, so we can make it large without actually exchanging large masses
-#ifdef GALSF_FB_FIRE_AGE_TRACERS_SURFACE_YIELDS
+#ifndef GALSF_FB_FIRE_AGE_TRACERS_DISABLE_SURFACE_YIELDS
                 if(loop_iteration != 3) {for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}} // treat like any other yield when doing stellar mass exchange
 #endif
 #endif
