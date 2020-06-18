@@ -1200,7 +1200,7 @@ void hydro_gradient_calc(void)
 #ifdef MAGNETIC
                 // following Jono Squire's notes, the 'Whistler instability' limits the heat flux at high-beta; Komarov et al., arXiv:1711.11462 (2017) //
                 double beta_i=0; for(k=0;k<3;k++) {beta_i += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);}
-                beta_i *= All.cf_afac1 / (All.cf_atime * SphP[i].Density * Get_Gas_effective_soundspeed_i(i)*Get_Gas_effective_soundspeed_i(i));
+                beta_i *= All.cf_afac1 / (All.cf_atime * SphP[i].Density * Get_Gas_thermal_soundspeed_i(i)*Get_Gas_thermal_soundspeed_i(i));
                 SphP[i].Kappa_Conduction /= (1 + (4.2 + 1./(3.*beta_i)) * electron_free_path / temp_scale_length); // should be in physical units //
 #else
                 SphP[i].Kappa_Conduction /= (1 + 4.2 * electron_free_path / temp_scale_length); // should be in physical units //
@@ -1238,7 +1238,7 @@ void hydro_gradient_calc(void)
 #ifdef MAGNETIC
                 double bhat[3]={0},beta_i=0,bmag=0; for(k=0;k<3;k++) {bhat[k]=Get_Gas_BField(i,k); bmag+=bhat[k]*bhat[k];}
                 double double_dot_dv=0; if(bmag>0) {bmag = sqrt(bmag); for(k=0;k<3;k++) {bhat[k]/=bmag;}}
-                beta_i = bmag*bmag * All.cf_afac1 / (All.cf_atime * SphP[i].Density * Get_Gas_effective_soundspeed_i(i)*Get_Gas_effective_soundspeed_i(i));
+                beta_i = bmag*bmag * All.cf_afac1 / (All.cf_atime * SphP[i].Density * Get_Gas_thermal_soundspeed_i(i)*Get_Gas_thermal_soundspeed_i(i));
 #endif
                 for(k=0;k<3;k++)
                 {

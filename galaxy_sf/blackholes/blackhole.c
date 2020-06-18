@@ -104,7 +104,7 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
 /* check whether a particle is sufficiently bound to the BH to qualify for 'gravitational capture' */
 int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double sink_radius) // need to know the sink radius, which can be distinct from both the softening and search radii
 {
-    /* if pair is a gas particle make sure to account for its thermal pressure */
+    /* if pair is a gas particle make sure to account for its pressure and internal energy */
     double cs = 0; if(P[j].Type==0) {cs=Get_Gas_effective_soundspeed_i(j);}
 
     if(P[j].Type == 0)
