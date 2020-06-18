@@ -312,7 +312,7 @@ void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
         if(dt*UNIT_TIME_IN_MYR/bin_dt_myr > fabs(rate_normalization)) {P[i].AgeDeposition_ThisTimeStep=1;} else  // if dt is large compared to bin spacing, might 'miss' an event, so we want to always make an event and return
             {if(get_random_number(P[i].ID + 3) < fabs(rate_normalization)) {P[i].AgeDeposition_ThisTimeStep=1./fabs(rate_normalization);}} // rate limit according to the return fraction this represents fraction of time star should be depositing; if selected, deposit age tracer and use this scaling to increase the normalization of the tracer field
     } else { // there is a constant probability per -time- (target 'number of events per bin per particle'), with 'amount returned' constant
-        double p=fabs(rate_normalization)*(dt*UNIT_TIME_MYR/bin_dt_myr), n_events=(float)floor(p); p-=n_events; if(get_random_number(P[i].ID + 3) < p) {n_events++;} // if > 1, this cuts that part off so we get appropriate n > 1 solution
+        double p=fabs(rate_normalization)*(dt*UNIT_TIME_IN_MYR/bin_dt_myr), n_events=(float)floor(p); p-=n_events; if(get_random_number(P[i].ID + 3) < p) {n_events++;} // if > 1, this cuts that part off so we get appropriate n > 1 solution
         P[i].AgeDeposition_ThisTimeStep = n_events / fabs(rate_normalization); // assign event
     }
 #endif
