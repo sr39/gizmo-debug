@@ -21,15 +21,6 @@
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
-#if defined(GALSF) && !defined(RT_INJECT_PHOTONS_DISCRETELY)
-#define RT_INJECT_PHOTONS_DISCRETELY // modules will not work correctly with differential timestepping with point sources without discrete injection
-#endif
-#if defined(RT_INJECT_PHOTONS_DISCRETELY) && defined(RT_RAD_PRESSURE_FORCES) && (defined(RT_ENABLE_R15_GRADIENTFIX) || defined(GALSF))
-#define RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION // adds correction for un-resolved extinction which cannot generate photon momentum with M1, FLD, OTVET, etc.
-#endif
-
-
-
 #ifdef RT_SOURCE_INJECTION
 
 
