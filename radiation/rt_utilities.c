@@ -87,7 +87,7 @@ double stellar_lum_in_band(int i, double E_lower, double E_upper){
 #endif
     double T_eff=5780.*pow(l_sol/(r_sol*r_sol),0.25);
     double f = blackbody_lum_frac(E_lower, E_upper, T_eff);
-    return f*l_sol*UNIT_LUM_IN_SOLAR;
+    return f*l_sol / UNIT_LUM_IN_SOLAR;
 }
 #endif
 /***********************************************************************************************************/
