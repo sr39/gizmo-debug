@@ -183,7 +183,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
         if(P[i].Type == 5){
             if(N_RT_FREQ_BINS == 1){ // we're only doing IR, so dump everything into it
-	        lum[RT_FREQ_BIN_INFRARED] = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i);} // for tests, entire sink bolometric luminosity
+	        lum[RT_FREQ_BIN_INFRARED] = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i); // for tests, entire sink bolometric luminosity
 	    } else { // only dump the part of the SED longer than 3 micron
           	lum[RT_FREQ_BIN_INFRARED] = stellar_lum_in_band(i, 0, 0.4133);
             }    
