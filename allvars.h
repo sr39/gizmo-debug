@@ -81,10 +81,12 @@
 #endif
 
 /* lock the 'default' hydro mode */
-#if (defined(HYDRO_FIX_MESH_MOTION) || defined(HYDRO_REGULAR_GRID)) && !defined(HYDRO_MESHLESS_FINITE_VOLUME)
+#if !(defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(HYDRO_MESHLESS_FINITE_MASS) || defined(HYDRO_DENSITY_SPH) || defined(HYDRO_PRESSURE_SPH)) // default solver is not defined
+#if (defined(HYDRO_FIX_MESH_MOTION) && (HYDRO_FIX_MESH_MOTION != 7)) || defined(HYDRO_REGULAR_GRID)
 #define HYDRO_MESHLESS_FINITE_VOLUME /* only makes sense to use this modules with this 'backbone' of MFV here */
-#elif !(defined(HYDRO_MESHLESS_FINITE_MASS) || defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(HYDRO_DENSITY_SPH) || defined(HYDRO_PRESSURE_SPH))
+#else
 #define HYDRO_MESHLESS_FINITE_MASS   /* otherwise default to MFM if nothing is specified */
+#endif
 #endif
 
 /* define the default mesh-motion assumption, if this is not provided by the user */
