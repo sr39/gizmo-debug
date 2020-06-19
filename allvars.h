@@ -668,6 +668,15 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif /* end of options for our general RHD methods */
 
+#ifdef RT_SOURCE_INJECTION
+#if defined(GALSF) && !defined(RT_INJECT_PHOTONS_DISCRETELY)
+#define RT_INJECT_PHOTONS_DISCRETELY // modules will not work correctly with differential timestepping with point sources without discrete injection
+#endif
+#if defined(RT_INJECT_PHOTONS_DISCRETELY) && defined(RT_RAD_PRESSURE_FORCES) && (defined(RT_ENABLE_R15_GRADIENTFIX) || defined(GALSF))
+#define RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION // adds correction for un-resolved extinction which cannot generate photon momentum with M1, FLD, OTVET, etc.
+#endif
+#endif
+
 /* OTVET-specific options [uses the gravity tree to calculate the Eddington tensor] */
 #if defined(RT_OTVET)
 #define RT_USE_GRAVTREE // use gravity tree for Eddington tensor
