@@ -638,9 +638,9 @@ integertime get_timestep(int p,		/*!< particle index */
                     double dt_rt_diffusion = dt_prefac_diffusion * L_RT_diffusion*L_RT_diffusion / (MIN_REAL_NUMBER + rt_diffusion_coefficient(p,kf));
 #ifdef GALSF
                     /* ignore particles where the radiation energy density is basically non-existant */
-                    if((SphP[p].Rad_E_gamma[kf] <= MIN_REAL_NUMBER) ||
-                       (SphP[p].Rad_E_gamma_Pred[kf] <= MIN_REAL_NUMBER) ||
-                       (SphP[p].Rad_E_gamma[kf] < 1.e-5*P[p].Mass*SphP[p].InternalEnergy)) {dt_rt_diffusion = 1.e10 * dt;}
+		    if((SphP[p].Rad_E_gamma[kf] <= MIN_REAL_NUMBER) ||
+		       (SphP[p].Rad_E_gamma_Pred[kf] <= MIN_REAL_NUMBER) ||
+		       (SphP[p].Rad_E_gamma[kf] < 1.e-5*P[p].Mass*SphP[p].InternalEnergy)) {dt_rt_diffusion = 1.e10 * dt;}
 #endif
                     if(dt_rt_diffusion < dt_rad) dt_rad = dt_rt_diffusion;
                 }
@@ -923,6 +923,9 @@ integertime get_timestep(int p,		/*!< particle index */
 
             double L_particle = Get_Particle_Size(p);
             double dt_cour_sink = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / P[p].BH_SurroundingGasVel;
+#ifdef RT_M1
+	    dt_cour_sink = DMIN(All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED, dt_cour_sink);
+#endif
             if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
         }
         if(P[p].StellarAge == All.Time)
