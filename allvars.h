@@ -488,12 +488,12 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #ifdef SINGLE_STAR_FB_RAD
 #define RT_M1
-#define RT_SOURCES=32
-#define RT_SPEEDOFLIGHT_REDUCTION=1e-4
+#define RT_SOURCES 32
+#define RT_SPEEDOFLIGHT_REDUCTION 1e-4
 #define RT_OPTICAL_NIR
 #define RT_NUV
 #define RT_PHOTOELECTRIC
-#define RT_CHEM_PHOTOION=1
+#define RT_CHEM_PHOTOION 1
 #endif
 #ifdef RT_INFRARED
 #define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
