@@ -144,7 +144,7 @@ void do_the_cooling_for_particle(int i)
         {
             if(unew<uion) {unew=uion; if(SphP[i].DtInternalEnergy<0) SphP[i].DtInternalEnergy=0;}
 #ifndef CHIMES
-            SphP[i].Ne = 1.0 + 2.0*yhelium(i); /* fully ionized */
+            SphP[i].Ne = 1.0 + 2.0*yhelium(i); /* fully ionized. note that this gives Ne as free electron fraction per H */
 #endif
         }
 #endif

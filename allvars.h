@@ -81,10 +81,12 @@
 #endif
 
 /* lock the 'default' hydro mode */
-#if (defined(HYDRO_FIX_MESH_MOTION) || defined(HYDRO_REGULAR_GRID)) && !defined(HYDRO_MESHLESS_FINITE_VOLUME)
+#if !(defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(HYDRO_MESHLESS_FINITE_MASS) || defined(HYDRO_DENSITY_SPH) || defined(HYDRO_PRESSURE_SPH)) // default solver is not defined
+#if (defined(HYDRO_FIX_MESH_MOTION) && (HYDRO_FIX_MESH_MOTION != 7)) || defined(HYDRO_REGULAR_GRID)
 #define HYDRO_MESHLESS_FINITE_VOLUME /* only makes sense to use this modules with this 'backbone' of MFV here */
-#elif !(defined(HYDRO_MESHLESS_FINITE_MASS) || defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(HYDRO_DENSITY_SPH) || defined(HYDRO_PRESSURE_SPH))
+#else
 #define HYDRO_MESHLESS_FINITE_MASS   /* otherwise default to MFM if nothing is specified */
+#endif
 #endif
 
 /* define the default mesh-motion assumption, if this is not provided by the user */
@@ -281,7 +283,7 @@
 #undef GALSF_SFR_VIRIAL_SF_CRITERION
 #undef GALSF_SFR_MOLECULAR_CRITERION
 #if !defined(GALSF_SFR_CRITERION)
-#define GALSF_SFR_CRITERION (0+1+2+64+128+1024) // 0=density threshold, 1=virial criterion (strict+time-smoothed), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
+#define GALSF_SFR_CRITERION (0+1+2+64+1024) // 0=density threshold, 1=virial criterion (strict+time-smoothed), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
 #endif
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
@@ -481,8 +483,15 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1
 #endif
-#if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) )
+#if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_RAD))
 #define SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION 2 //we are using the protostellar evolution model from ORION
+#endif
+#ifdef SINGLE_STAR_FB_RAD
+#define RT_M1
+#define RT_OPTICAL_NIR
+#define RT_NUV
+#define RT_PHOTOELECTRIC
+#define RT_CHEM_PHOTOION=1
 #endif
 #ifdef RT_INFRARED
 #define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
