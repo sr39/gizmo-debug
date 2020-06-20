@@ -1173,14 +1173,9 @@ void hydro_gradient_calc(void)
 
 
 #if (defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII) || defined(MHD_NON_IDEAL))
-#if defined(COOLING)
-            /* get the neutral fraction */
-            double ion_frac, nHe0, nHepp, nhp, nHeII, temperature, u, ne, nh0 = 0, mu_meanwt=1;
-            u = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); // needs to be in code units
-            temperature = ThermalProperties(u, SphP[i].Density*All.cf_a3inv, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
-	        ion_frac = DMIN(DMAX(0,1.-nh0),1);
-#else
             double ion_frac; ion_frac=1;
+#if defined(COOLING) /* get the ionized fraction. NOTE we CANNOT call 'ThermalProperties' or functions like 'Get_Ionized_Fraction' here in gradients.c, as we have not done self-shielding steps yet and most modules will yield unphysical answers! */
+            ion_frac = SphP[i].Ne / (1. + 2.*yhelium(i)); /* quick estimator. this is actually what we need for conduction since its the free electrons conducting, and we want number relative to fully-ionized gas */
 #endif
 #endif
 
@@ -1281,13 +1276,14 @@ void hydro_gradient_calc(void)
 #ifdef MHD_NON_IDEAL
             {
                 /* calculations below follow Wurster,Price,+Bate 2016, who themselves follow Wardle 2007 and Keith & Wardle 2014, for the equation sets */
+                double mean_molecular_weight = 2.38; // molecular H2, +He with solar mass fractions and metals
 #ifdef COOLING
-		        double mean_molecular_weight = mu_meanwt;
-#else
-		        double mean_molecular_weight = 2.38; // molecular H2, +He with solar mass fractions and metals
-                double temperature = mean_molecular_weight * (1.4-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergy; // assume molecular eos with gamma=1.4
+                double T_eff_atomic = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred; /* we'll use this to make a quick approximation to the actual mean molecular weight here */
+                double nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, T_transition=DMIN(8000.,nH_cgs), f_mol=1./(1. + T_eff_atomic*T_eff_atomic/(T_transition*T_transition));
+                mean_molecular_weight = 4. / (1. + (3. + 4.*SphP[i].Ne - 2.*f_mol) * HYDROGEN_MASSFRAC);
 #endif
 		        // define some variables we need below //
+                double temperature = mean_molecular_weight * (GAMMA(i)-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred; // will use appropriate EOS to estimate temperature
 		        double zeta_cr = 1.0e-17; // cosmic ray ionization rate (fixed as constant for non-CR runs)
 #ifdef COSMIC_RAYS
                 double u_cr=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_CR += SphP[i].CosmicRayEnergyPred[k];}
@@ -1332,7 +1328,7 @@ void hydro_gradient_calc(void)
 #ifdef COOLING
                 /* at high temperatures, the calculation above breaks down and we should use the fractions from the cooling routines. however this is usually the limit
                     where non-ideal effects are irrelevant */
-                double ne_cool = ne * 0.76 * n_eff; // 0.76 from assumed H fraction in code, ne is free electrons per H //
+                double ne_cool = SphP[i].Ne * HYDROGEN_MASSFRAC * n_eff; // ne is free electrons per H //
                 if((temperature > 8000.)||(ne_cool > n_elec))
                 {
                     n_elec = ne_cool;

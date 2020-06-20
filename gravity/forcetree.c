@@ -722,7 +722,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef CHIMES_STELLAR_FLUXES
                     double chimes_lum_G0[CHIMES_LOCAL_UV_NBINS];
                     double chimes_lum_ion[CHIMES_LOCAL_UV_NBINS];
-                    int active_check = rt_get_source_luminosity(p,1,lum,chimes_lum_G0, chimes_lum_ion);
+                    int active_check = rt_get_source_luminosity_chimes(p,1,lum,chimes_lum_G0, chimes_lum_ion);
 #else
                     int active_check = rt_get_source_luminosity(p,1,lum);
 #endif
@@ -1986,7 +1986,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef CHIMES_STELLAR_FLUXES
                     double chimes_lum_G0[CHIMES_LOCAL_UV_NBINS];
                     double chimes_lum_ion[CHIMES_LOCAL_UV_NBINS];
-                    int active_check = rt_get_source_luminosity(no,1,lum, chimes_lum_G0, chimes_lum_ion);
+                    int active_check = rt_get_source_luminosity_chimes(no,1,lum, chimes_lum_G0, chimes_lum_ion);
 #else
                     int active_check = rt_get_source_luminosity(no,1,lum);
 #endif

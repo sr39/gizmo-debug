@@ -763,14 +763,9 @@ void pm_setup_nonperiodic_kernel(void);
 #ifdef CHIMES_STELLAR_FLUXES
 double chimes_G0_luminosity(double stellar_age, double stellar_mass);
 double chimes_ion_luminosity(double stellar_age, double stellar_mass);
-int rt_get_source_luminosity(int i, int mode, double *lum, double *chimes_lum_G0, double *chimes_lum_ion);
-#else
+int rt_get_source_luminosity_chimes(int i, int mode, double *lum, double *chimes_lum_G0, double *chimes_lum_ion);
+#endif
 int rt_get_source_luminosity(int i, int mode, double *lum);
-#endif
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-double blackbody_lum_frac(double E_lower, double E_upper, double T_eff);
-double stellar_lum_in_band(int i, double E_lower, double E_upper);
-#endif
 void eddington_tensor_dot_vector(double ET[6], double vec_in[3], double vec_out[3]);
 double return_flux_limiter(int target, int k_freq);
 double rt_kappa(int j, int k_freq);
@@ -791,6 +786,8 @@ void rt_init_intensity_directions(void);
 #endif
 void rt_get_lum_gas(int target, double *je);
 double slab_averaging_function(double x);
+double blackbody_lum_frac(double E_lower, double E_upper, double T_eff);
+double stellar_lum_in_band(int i, double E_lower, double E_upper);
 
 #ifdef RT_DIFFUSION_CG
 void rt_diffusion_cg_solve(void);
