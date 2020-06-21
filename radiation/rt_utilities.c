@@ -118,12 +118,22 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
     if((1 << P[i].Type) & (RT_SOURCES))
     {
         lum[RT_FREQ_BIN_INFRARED] = 0.0; //default to no direct IR (just re-emitted light)
-#if defined(SINGLE_STAR_SINK_DYNAMICS)
         if(P[i].Type > 1)
         {
-            if(N_RT_FREQ_BINS == 1) {lum[RT_FREQ_BIN_INFRARED] = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i);} // we're only doing IR, so dump everything into it
-                else {lum[RT_FREQ_BIN_INFRARED] = stellar_lum_in_band(i, 0, 0.4133);} // only dump the part of the SED longer than 3 micron
-        }
+            if(mode<0) {return 1;} active_check = 1;
+#if defined(SINGLE_STAR_SINK_DYNAMICS)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
+	    if((N_RT_FREQ_BINS > 1) && (P[i].ProtoStellarStage >= 5)) // assume protostars radiate only in IR
+#else
+	    if(N_RT_FREQ_BINS > 1)) 
+#endif
+	    {
+                lum[RT_FREQ_BIN_INFRARED] = stellar_lum_in_band(i, 0, 0.4133);  // only dump the part of the SED longer than 3 micron
+            } 
+	    else {
+           	lum[RT_FREQ_BIN_INFRARED] = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i); // all luminosity goes into IR, and we're done here
+            }
+        }     
 #endif
     }
 #endif
@@ -137,7 +147,11 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
         if(P[i].Type > 1)
         {
             if(mode<0) {return 1;} active_check = 1;
-            lum[RT_FREQ_BIN_NUV] = stellar_lum_in_band(i, 3.444, 8.);
+	    lum[RT_FREQ_BIN_NUV] = 0;
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
+	    if(P[i].ProtoStellarStage >= 5) // only assign luminosity in band if on MS
+#endif
+	    lum[RT_FREQ_BIN_NUV] = stellar_lum_in_band(i, 3.444, 8.);
         }
 #else
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
@@ -163,7 +177,11 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
         if(P[i].Type > 1)
         {
             if(mode<0) {return 1;} active_check = 1;
-            lum[RT_FREQ_BIN_OPTICAL_NIR] = stellar_lum_in_band(i, 0.4133, 3.444);
+	    lum[RT_FREQ_BIN_OPTICAL_NIR] = 0;
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
+	    if(P[i].ProtoStellarStage >= 5) // only assign luminosity in band if on MS
+#endif
+	    lum[RT_FREQ_BIN_OPTICAL_NIR] = stellar_lum_in_band(i, 0.4133, 3.444);
         }
 #else
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
@@ -189,6 +207,10 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
         if(P[i].Type > 1)
         {
             if(mode<0) {return 1;} active_check = 1;
+	    lum[RT_FREQ_BIN_PHOTOELECTRIC] = 0;
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
+	    if(P[i].ProtoStellarStage >= 5) // only assign luminosity in band if on MS
+#endif
 #ifdef RT_LYMAN_WERNER
             lum[RT_FREQ_BIN_PHOTOELECTRIC] = stellar_lum_in_band(i, 8, 11.2);
 #else
@@ -224,8 +246,12 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
         if(P[i].Type > 1)
         {
             if(mode<0) {return 1;} active_check = 1;
-            lum[RT_FREQ_BIN_LYMAN_WERNER] = stellar_lum_in_band(i, 11.2, 13.6);
-        }
+	    lum[RT_FREQ_BIN_LYMAN_WERNER] = 0;
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
+	    if(P[i].ProtoStellarStage >= 5) // only assign luminosity in band if on MS
+#endif
+	    lum[RT_FREQ_BIN_LYMAN_WERNER] = stellar_lum_in_band(i,11.2, 13.6);
+	}
 #else
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
         {
@@ -250,20 +276,30 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
     {
         lum[RT_FREQ_BIN_H0] = 0; // begin from zero //
-        double fac; fac = 0;
+        double fac = 0;
 #ifdef SINGLE_STAR_SINK_DYNAMICS // we get the luminosities in the specific bands
         if(P[i].Type > 1)
         {
             if(mode<0) {return 1;} active_check = 1;
 #if (RT_CHEM_PHOTOION == 1)
-            lum[RT_FREQ_BIN_H0] = stellar_lum_in_band(i, 13.6, 500.);
+	    lum[RT_FREQ_BIN_H0] = 0;
+#else // divide it up into the different ionizing bands
+	    lum[0] = lum[1] = lum[2] = lum[3] = 0;
+#endif
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
+	    if(P[i].ProtoStellarStage >= 5) // only assign luminosity in band if on MS
+#endif
+	    {
+#if (RT_CHEM_PHOTOION == 1)
+	    lum[RT_FREQ_BIN_H0] = stellar_lum_in_band(i,13.6, 500.);
 #else // divide it up into the different ionizing bands
             lum[0] = stellar_lum_in_band(i, 13.6, 24.6);
             lum[1] = stellar_lum_in_band(i, 24.6, 54.4);
             lum[2] = stellar_lum_in_band(i, 54.4, 70.);
             lum[3] = stellar_lum_in_band(i, 70., 500.);
 #endif
-        }
+	    }
+	}
 #else // if not dealing with individual stars, proceed normally by getting the total ionizing luminosity, and using the pre-tabulated fractions in different ionizing bands, if needed
 #if defined(GALSF) || defined(GALSF_FB_FIRE_RT_HIIHEATING)
         /* calculate ionizing flux based on actual stellar or BH physics */

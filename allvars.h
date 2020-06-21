@@ -73,7 +73,7 @@
 #endif
 
 #ifndef DISABLE_SPH_PARTICLE_WAKEUP
-#if ((SLOPE_LIMITER_TOLERANCE > 0) && !defined(SINGLE_STAR_SINK_DYNAMICS))
+#if (SLOPE_LIMITER_TOLERANCE > 0)
 #define WAKEUP   4.1            /* allows 2 timestep bins within kernel */
 #else
 #define WAKEUP   2.1            /* allows only 1-separated timestep bins within kernel */
@@ -483,11 +483,21 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1
 #endif
-#if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) )
+#if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_RAD))
 #define SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION 2 //we are using the protostellar evolution model from ORION
+#endif
+#ifdef SINGLE_STAR_FB_RAD
+#define RT_M1
+#define RT_SOURCES 32
+#define RT_SPEEDOFLIGHT_REDUCTION 1e-4
+#define RT_OPTICAL_NIR
+#define RT_NUV
+#define RT_PHOTOELECTRIC
+#define RT_CHEM_PHOTOION 1
 #endif
 #ifdef RT_INFRARED
 #define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
+#define COOLING_OPERATOR_SPLIT 
 #endif
 #if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY))
 #define RT_USE_TREECOL_FOR_NH 6
@@ -668,15 +678,6 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif /* end of options for our general RHD methods */
 
-#ifdef RT_SOURCE_INJECTION
-#if defined(GALSF) && !defined(RT_INJECT_PHOTONS_DISCRETELY)
-#define RT_INJECT_PHOTONS_DISCRETELY // modules will not work correctly with differential timestepping with point sources without discrete injection
-#endif
-#if defined(RT_INJECT_PHOTONS_DISCRETELY) && defined(RT_RAD_PRESSURE_FORCES) && (defined(RT_ENABLE_R15_GRADIENTFIX) || defined(GALSF))
-#define RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION // adds correction for un-resolved extinction which cannot generate photon momentum with M1, FLD, OTVET, etc.
-#endif
-#endif
-
 /* OTVET-specific options [uses the gravity tree to calculate the Eddington tensor] */
 #if defined(RT_OTVET)
 #define RT_USE_GRAVTREE // use gravity tree for Eddington tensor
@@ -708,6 +709,15 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 /* enable radiation pressure forces unless they have been explicitly disabled */
 #if defined(RADTRANSFER) && !defined(RT_DISABLE_RAD_PRESSURE) && !defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
 #define RT_RAD_PRESSURE_FORCES
+#endif
+
+#ifdef RT_SOURCE_INJECTION
+#if defined(GALSF) && !defined(RT_INJECT_PHOTONS_DISCRETELY)
+#define RT_INJECT_PHOTONS_DISCRETELY // modules will not work correctly with differential timestepping with point sources without discrete injection
+#endif
+#if defined(RT_INJECT_PHOTONS_DISCRETELY) && defined(RT_RAD_PRESSURE_FORCES) && (defined(RT_ENABLE_R15_GRADIENTFIX) || defined(GALSF))
+#define RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION // adds correction for un-resolved extinction which cannot generate photon momentum with M1, FLD, OTVET, etc.
+#endif
 #endif
 
 /* check if we need to explicitly calculate gradients of the radiation pressure tensor for the diffusive step */

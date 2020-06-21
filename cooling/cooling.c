@@ -901,7 +901,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         }
         else {LambdaCmptn = 0;}
 
-#if defined(BH_COMPTON_HEATING)
+#if defined(BH_COMPTON_HEATING) && !defined(SINGLE_STAR_SINK_DYNAMICS)
         if(T > AGN_T_Compton)
         {
             LambdaCmptn = AGN_LambdaPre * (T - AGN_T_Compton) * n_elec/nHcgs;
@@ -1639,12 +1639,16 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
     double e_HiEgy=0.66, T_hiegy=5800.; // Milky way ISRF from Draine (2011), assume peak of stellar emission at ~0.6 microns [can still have hot dust, this effect is pretty weak]
     if(i >= 0)
     {
-#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
-        int k; double e_HiEgy=0, e_IR=0, E_tot_to_evol_eVcgs = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_EV;
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) || defined(SINGLE_STAR_FB_RT_HEATING) // use actual explicitly-evolved radiation field, if possible
+        int k; double e_HiEgy=0, E_tot_to_evol_eVcgs = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_EV;
+        e_IR = 0;
         for(k=0;k<N_RT_FREQ_BINS;k++) {e_HiEgy+=SphP[i].Rad_E_gamma_Pred[k];}
 #if defined(GALSF_FB_FIRE_RT_LONGRANGE)
         e_IR += SphP[i].Rad_E_gamma_Pred[RT_FREQ_BIN_FIRE_IR]; // note IR
 #endif
+#if defined(BH_COMPTON_HEATING)
+        e_IR += SphP[i].Rad_Flux_AGN*(P[i].Mass/(SphP[i].Density*All.cf_a3inv * C_LIGHT_CODE)); // latter factor converts from flux to photon energy in cell
+#endif  
 #if defined(RT_INFRARED)
         e_IR += SphP[i].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED]; // note IR
 #endif
