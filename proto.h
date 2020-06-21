@@ -766,6 +766,9 @@ double chimes_ion_luminosity(double stellar_age, double stellar_mass);
 int rt_get_source_luminosity_chimes(int i, int mode, double *lum, double *chimes_lum_G0, double *chimes_lum_ion);
 #endif
 int rt_get_source_luminosity(int i, int mode, double *lum);
+int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum);
+int rt_get_lum_band_agn(int i, int mode, double *lum);
+int rt_get_lum_band_singlestar(int i, int mode, double *lum);
 void eddington_tensor_dot_vector(double ET[6], double vec_in[3], double vec_out[3]);
 double return_flux_limiter(int target, int k_freq);
 double rt_kappa(int j, int k_freq);
