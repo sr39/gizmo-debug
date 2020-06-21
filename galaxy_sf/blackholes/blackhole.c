@@ -636,6 +636,19 @@ void set_blackhole_long_range_rp(int i, int n) /* pre-set quantities needed for 
 
 
 
+/* determine if a sink is active to execute the neighbor loops above */
+int bhsink_isactive(int i)
+{
+    if(P[i].Type != 5) {return 0;} // only sinks
+    if(PPP[i].Hsml <= 0) {return 0;} // only H>0, i.e. found neighbors
+    if(P[i].Mass <= 0) {return 0;} // only mass>0, i.e. not already marked for deletion
+    return 1; // otherwise yes, we are active
+}
+
+
+
+
+
 void blackhole_final_operations(void)
 {
     int i, k, n, bin; double dt, mass_disk, mdot_disk, MgasBulge, MstarBulge, r0; k=0;
