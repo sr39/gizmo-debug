@@ -134,7 +134,7 @@ void rt_get_sigma(void)
          sum_egy_allbands += sum_energy;
     }
 
-    for(i = 0; i < N_BINS_FOR_IONIZATION; i++){precalc_stellar_luminosity_fraction[i] /= sum_egy_allbands;}
+    for(i = 0; i < N_RT_FREQ_BINS; i++) {precalc_stellar_luminosity_fraction[i] /= sum_egy_allbands;}
     
     if(ThisTask == 0) {for(i = 0; i < N_RT_FREQ_BINS; i++) {printf("%g %g | %g %g | %g %g\n",rt_sigma_HI[i]/fac, G_HI[i]/fac_two,rt_sigma_HeI[i]/fac, G_HeI[i]/fac_two,rt_sigma_HeII[i]/fac, G_HeII[i]/fac_two);}}
 #endif
