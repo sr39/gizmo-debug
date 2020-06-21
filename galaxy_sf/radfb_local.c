@@ -214,7 +214,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
 #ifdef BH_HII_HEATING
-        if((P[i].Type==5)||(((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))))
+        if((P[i].Type == 5)||(((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))))
 #else
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
 #endif

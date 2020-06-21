@@ -189,7 +189,7 @@ void drift_particle(int i, integertime time1)
             for(j = 0; j < 3; j++) {SphP[i].VelPred[j] += (P[i].GravAccel[j]) * dt_gravkick + (SphP[i].HydroAccel[j] * dt_hydrokick)*All.cf_atime;} /* make sure v is in code units */
 #endif
 #if (SINGLE_STAR_TIMESTEPPING > 0)
-	        if((P[i].Type==5) && (P[i].SuperTimestepFlag>=2)) {for(j=0;j<3;j++)	{SphP[i].VelPred[j] += fewbody_kick_dv[j];}}
+	        if((P[i].Type == 5) && (P[i].SuperTimestepFlag>=2)) {for(j=0;j<3;j++) {SphP[i].VelPred[j] += fewbody_kick_dv[j];}}
 #endif	    
             
 #if defined(TURB_DRIVING)

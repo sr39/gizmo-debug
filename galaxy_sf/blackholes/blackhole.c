@@ -121,12 +121,12 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 #endif
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS) && defined(BH_SEED_GROWTH_TESTS)
         double r_j = All.ForceSoftening[P[j].Type];
-        if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
+        if(P[j].Type == 0) {r_j = DMAX(r_j , PPP[j].Hsml);}
         apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
-        if(P[j].Type==5) {apocenter_max = DMIN(apocenter_max , 1.*All.ForceSoftening[5]);}
+        if(P[j].Type == 5) {apocenter_max = DMIN(apocenter_max , 1.*All.ForceSoftening[5]);}
 #endif
 #if defined(BH_REPOSITION_ON_POTMIN)
-        if(P[j].Type==5) {return 1;} // default is to be unrestrictive for BH-BH mergers //
+        if(P[j].Type == 5) {return 1;} // default is to be unrestrictive for BH-BH mergers //
 #endif
         if(apocenter < apocenter_max) {bound = 1;}
     }
@@ -647,7 +647,7 @@ void blackhole_final_operations(void)
 
 #ifdef BH_REPOSITION_ON_POTMIN
     for(n = FirstActiveParticle; n >= 0; n = NextActiveParticle[n])
-        if(P[n].Type == 5)
+        if(bhsink_isactive(n))
             if(BPP(n).BH_MinPot < 0.5 * BHPOTVALUEINIT)
             {
                 double fac_bh_shift=0;

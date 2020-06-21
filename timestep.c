@@ -219,7 +219,7 @@ integertime get_timestep(int p,		/*!< particle index */
 
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     P[p].SuperTimestepFlag = 0;
-    if( (P[p].Type==5) && P[p].is_in_a_binary ) // candidate: need to decide whether to use super timestepping for binaries
+    if( (P[p].Type == 5) && P[p].is_in_a_binary ) // candidate: need to decide whether to use super timestepping for binaries
     {
 #if (SINGLE_STAR_TIMESTEPPING == 1) // to be conservative, use the semimajor axis, ie. the internal timescale is the orbital period
 	    double dt_bin = P[p].min_bh_t_orbital / (2.*M_PI); // sqrt(a^3/GM) for binary

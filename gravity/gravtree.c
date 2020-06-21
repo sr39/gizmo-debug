@@ -227,7 +227,7 @@ void gravity_tree(void)
                 for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
-                if (P[place].Type==5)
+                if(P[place].Type == 5)
                 {
                     GravDataIn[j].min_bh_t_orbital = P[place].min_bh_t_orbital; //orbital time for binary
                     GravDataIn[j].comp_Mass = P[place].comp_Mass; //mass of binary companion
@@ -365,7 +365,7 @@ void gravity_tree(void)
                 if(GravDataOut[j].min_bh_freefall_time < P[place].min_bh_freefall_time) {P[place].min_bh_freefall_time = GravDataOut[j].min_bh_freefall_time;}
                 if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron) {P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;}
 #ifdef SINGLE_STAR_FIND_BINARIES
-                if ((P[place].Type==5) && (GravDataOut[j].min_bh_t_orbital < P[place].min_bh_t_orbital))
+                if((P[place].Type == 5) && (GravDataOut[j].min_bh_t_orbital < P[place].min_bh_t_orbital))
                 {
                     P[place].min_bh_t_orbital = GravDataOut[j].min_bh_t_orbital;
                     P[place].comp_Mass = GravDataOut[j].comp_Mass;
