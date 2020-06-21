@@ -80,23 +80,16 @@ void blackhole_accretion(void)
 /* calculate escape velocity to use for bounded-ness calculations relative to the BH */
 double bh_vesc(int j, double mass, double r_code, double bh_softening)
 {
-    double cs_to_add_km_s = 10.0; /* we can optionally add a 'fudge factor' to v_esc to set a minimum value; useful for galaxy applications */
-#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_SEED_GROWTH_TESTS)
-    cs_to_add_km_s = 0.0;
+    double cs_to_add = 10. / UNIT_VEL_IN_KMS; /* we can optionally add a 'fudge factor' to v_esc to set a minimum value; useful for -some- galaxy applications */
+#if defined(BH_SEED_GROWTH_TESTS) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
+    cs_to_add = 0;
 #endif
-    cs_to_add_km_s /= UNIT_VEL_IN_KMS;
-    double m_eff = mass+P[j].Mass;
-    if(P[j].Type==0)
-    {
-#if defined(BH_SEED_GROWTH_TESTS) || defined(SINGLE_STAR_SINK_DYNAMICS)
-        m_eff += 4.*M_PI * r_code*r_code*r_code * SphP[j].Density; // assume an isothermal sphere interior, for Shu-type solution
+    double m_eff = mass + P[j].Mass; // acount for 2-body mass
+#if defined(BH_SEED_GROWTH_TESTS) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
+    if(P[j].Type==0) {m_eff += 4.*M_PI * r_code*r_code*r_code * SphP[j].Density;} // assume an isothermal sphere interior, for Shu-type solution
 #endif
-    }
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-    double hinv = 1./All.ForceSoftening[5];
-    if(r_code < 1/hinv) {return sqrt(-2*All.G*m_eff*kernel_gravity(r_code*hinv, hinv, hinv*hinv*hinv, -1));}
-#endif
-    return sqrt(2.0*All.G*(m_eff)/(r_code*All.cf_atime) + cs_to_add_km_s*cs_to_add_km_s);
+    double hinv = 1./All.ForceSoftening[5], fac=2.*All.G*m_eff/All.cf_atime;
+    return sqrt(-fac*kernel_gravity(r_code*hinv,hinv,hinv*hinv*hinv,-1) + cs_to_add*cs_to_add); // accounts for softening [non-Keplerian inside softening]
 }
 
 
@@ -105,32 +98,28 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
 int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double sink_radius) // need to know the sink radius, which can be distinct from both the softening and search radii
 {
     /* if pair is a gas particle make sure to account for its pressure and internal energy */
-    double cs = 0; if(P[j].Type==0) {cs=Get_Gas_effective_soundspeed_i(j);}
+    double cs=0; if(P[j].Type==0) {cs=Get_Gas_Fast_MHD_wavespeed_i(j);} // use the fast MHD wavespeed to account for magnetic+thermal energy (but not e.g. cosmic ray), in allowing accretion //
 
+#ifdef SINGLE_STAR_SINK_DYNAMICS
     if(P[j].Type == 0)
     {
-#ifdef SINGLE_STAR_SINK_DYNAMICS
         if(Get_Particle_Size(j) > sink_radius*1.396263) {return 0;} // particle volume should be less than sink volume, enforcing a minimum spatial resolution around the sink
-#if defined(MAGNETIC)
-        double bmag=0; int k; for(k=0;k<3;k++) {bmag+=Get_Gas_BField(j,k)*Get_Gas_BField(j,k);} cs = sqrt(cs*cs + bmag/SphP[j].Density); // use fast Alfven speed
-#endif
 #if defined(COOLING)  // check if we're probably sitting at the bottom of a quasi-hydrostatic Larson core
         double nHcgs = HYDROGEN_MASSFRAC * (SphP[j].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
         if(nHcgs > 1e13 && cs > 0.1 * vrel) {double m_eff = 4. * M_PI * dr_code * dr_code * dr_code * SphP[j].Density; vesc = DMAX(sqrt(2*All.G * m_eff / dr_code), vesc);} // assume an isothermal sphere interior, for Shu-type solution, and re-estimate vesc using self-gravity of the gas
 #endif
-#endif
     }
+#endif
 
     double v2 = (vrel*vrel+cs*cs)/(vesc*vesc); int bound = 0;
     if(v2 < 1)
     {
-        double apocenter = dr_code / (1.0-v2); // NOTE: this is the major axis of the orbit, not the apocenter... - MYG
-        double apocenter_max = 2*All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
+        double apocenter = dr_code / (1.-v2); // furthest distance the cell -could- get from the sink, on a purely radial orbit [ignoring internal energy effects, in e.g. a Keplerian potential, this is approximately twice the equivalent circular orbit, while for a highly-eccentric orbit, this is exactly the apocentric radius]
+        double apocenter_max = 2.*All.ForceSoftening[5]; // force softening = 2.8*epsilon (softening length); check that this is within 2x epsilon is statement that circular orbit with equivalent energy is entirely inside epsilon //
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS // Bate 1995-style criterion, with a fixed sink/accretion radius that is distinct from both the force softening and the search radius
-        //double eps = DMIN(2*Get_Particle_Size(j),sink_radius); // in the unresolved limit there's no need to force it to actually get within r_sink
-        if(dr_code>sink_radius) {return 0;} else {return 1;}
+        if(dr_code>sink_radius) {return 0;} else {return 1;} // simply yes-no, if bound and within sink radius, gets accreted
 #endif
-#if !defined(SINGLE_STAR_SINK_DYNAMICS) && (defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS))
+#if !defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS) && defined(BH_SEED_GROWTH_TESTS)
         double r_j = All.ForceSoftening[P[j].Type];
         if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
         apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
