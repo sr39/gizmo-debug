@@ -495,8 +495,8 @@ int rt_get_lum_band_singlestar(int i, int mode, double *lum)
 #if defined(RT_CHEM_PHOTOION)   /* Hydrogen and Helium ionizing bands */
     SET_ACTIVE_RT_CHECK();
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
-    int i_vec[4] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2}; // these will all be the same if not using multi-frequency module //
-    int k; for(k=0;k<4;k++) {lum[i_vec[k]] = stellar_lum_in_band(i, nu[i_vec[k]], nu[i_vec[k+1]]);} // integrate between band boundaries, defined in global 'nu' in eV
+    int i_vec[4] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2}; // these will all be the same if not using multi-frequency module //    
+    int k; for(k=0;k<3;k++) {lum[i_vec[k]] = stellar_lum_in_band(i, nu[i_vec[k]], nu[i_vec[k+1]]);} // integrate between band boundaries, defined in global 'nu' in eV
     lum[i_vec[3]] = stellar_lum_in_band(i, nu[i_vec[3]], 500.); // integrate to end of spectrum for the last band
 #else
     lum[RT_FREQ_BIN_H0] = stellar_lum_in_band(i, 13.6, 500.); // total ionizing flux
