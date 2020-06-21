@@ -419,14 +419,13 @@ int rt_get_lum_band_agn(int i, int mode, double *lum)
 {
     if(P[i].Type != 5) {return 0;} // only go forward for BH-type particles
     int active_check = 0; // default to inactive //
-    
 #if defined(BLACK_HOLES)
     double l_bol = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i); if(l_bol <= 0) {return 0;} // no accretion luminosity -- no point in going further!
     // corrections below follow  Shen, PFH, et al. 2020 to account for alpha-ox and template spectrum to get AGN set in different bands as a function of bolometric luminosity. functional form very similar to Hopkins, Richards, & Hernquist 2007, but updated values. //
     double lbol_lsun = l_bol * UNIT_LUM_IN_SOLAR, R_opt_xr; // luminosity in physical code units //
-    double f_xr_0=0.06202533224818466, R_xr_opt = pow(lbol_lsun/1.e10,0.026) / (0.04557 + 0.14097*pow(lbol_lsun/1.e10,0.304)), Rfxr=R_xr_opt*f_xr_0; // x-ray to optical ratio normalized to its value at Lbol=1e13 solar
+    double f_xr_0=0.0461795, R_xr_opt = pow(lbol_lsun/1.e10,0.026) / (0.0455713 + 0.140974*pow(lbol_lsun/1.e10,0.304)), Rfxr=R_xr_opt*f_xr_0; // x-ray to optical ratio normalized to its value at Lbol=1e13 solar
     if(Rfxr > 0.5) {R_xr_opt /= pow(1.+Rfxr*Rfxr*Rfxr*Rfxr, 0.25);} // this just prevents unphysical divergences
-    R_opt_xr = (1.-Rfxr)/(1.-f_xr_0); // this corrects the IR/optical/UV portion of the spectrum
+    R_opt_xr = (1.-R_xr_opt*f_xr_0) / (1.-f_xr_0); // this corrects the IR/optical/UV portion of the spectrum
     
 #if defined(RT_INFRARED) /* special mid-through-far infrared band, which includes IR radiation temperature evolution */
     SET_ACTIVE_RT_CHECK(); lum[RT_FREQ_BIN_INFRARED] = 0.273 * R_opt_xr * l_bol;
@@ -460,7 +459,8 @@ int rt_get_lum_band_agn(int i, int mode, double *lum)
 #if defined(RT_HARD_XRAY) /* hard x-ray 2-10+ keV band, for compton heating; since used for that we include some higher-frequence radiation as well */
     SET_ACTIVE_RT_CHECK(); lum[RT_FREQ_BIN_HARD_XRAY] = 2.33 * 0.0113 * R_xr_opt * l_bol; // [2.33 factor is extrapolating to include -ultra-hard- X-rays beyond 10keV, useful for some Compton heating estimates]
 #endif
-    
+    /* note: once account for 2x-counting of LW and PE bands above, this adds up to almost the entire Lbol, but fraction ~ 0.0236 * R_xr_opt * l_bol remains, divided between radio [radio-quiet agn here] and gamma-rays */
+
 
 #endif
     return active_check;
