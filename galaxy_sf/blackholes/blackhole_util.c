@@ -29,7 +29,7 @@ void blackhole_start(void)
     N_active_loc_BHs=0;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        if(P[i].Type ==5)
+        if(bhsink_isactive(i))
         {
             P[i].IndexMapToTempStruc = N_active_loc_BHs;         /* allows access via BlackholeTempInfo[P[i].IndexMapToTempStruc] */
             N_active_loc_BHs++;                     /* N_active_loc_BHs now set for BH routines */
@@ -49,7 +49,7 @@ void blackhole_start(void)
     Nbh=0;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        if(P[i].Type ==5)
+        if(bhsink_isactive(i))
         {
             BlackholeTempInfo[Nbh].index = i;               /* only meaningful field set here */
             Nbh++;

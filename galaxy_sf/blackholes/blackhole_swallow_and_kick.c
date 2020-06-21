@@ -229,9 +229,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     /* handle accretion/conservation of certain conserved quantities, depending on whether we are intending our sub-grid model to follow them */
                     double mcount_for_conserve; mcount_for_conserve = f_accreted * P[j].Mass;
 #if (BH_FOLLOW_ACCRETED_ANGMOM == 1) /* in this case we are only counting this if its coming from BH particles */
-                    if(P[j].Type!=5) {mcount_for_conserve=0;} else {mcount_for_conserve=BPP(j).BH_Mass;}
+                    if(P[j].Type != 5) {mcount_for_conserve=0;} else {mcount_for_conserve=BPP(j).BH_Mass;}
 #ifdef BH_ALPHADISK_ACCRETION
-                    if(P[j].Type==5) {mcount_for_conserve += BPP(j).BH_Mass_AlphaDisk;}
+                    if(P[j].Type == 5) {mcount_for_conserve += BPP(j).BH_Mass_AlphaDisk;}
 #endif
 #endif
 #ifdef GRAIN_FLUID
@@ -250,7 +250,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     out.accreted_J[0] += FLT(mcount_for_conserve * ( dpos[1]*dvel[2] - dpos[2]*dvel[1] ));
                     out.accreted_J[1] += FLT(mcount_for_conserve * ( dpos[2]*dvel[0] - dpos[0]*dvel[2] ));
                     out.accreted_J[2] += FLT(mcount_for_conserve * ( dpos[0]*dvel[1] - dpos[1]*dvel[0] ));
-                    if(P[j].Type==5) {for(k=0;k<3;k++) {out.accreted_J[k] += FLT(mcount_for_conserve * BPP(j).BH_Specific_AngMom[k]);}}
+                    if(P[j].Type == 5) {for(k=0;k<3;k++) {out.accreted_J[k] += FLT(mcount_for_conserve * BPP(j).BH_Specific_AngMom[k]);}}
 #endif
 
                     if(P[j].Type == 5)  /* this is a BH-BH merger */
@@ -464,7 +464,7 @@ void spawn_bh_wind_feedback(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20;
-        if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (P[i].Type==5)) // basic condition: particle is a 'spawner' (sink), and code can handle the event safely without crashing.
+        if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (P[i].Type == 5)) // basic condition: particle is a 'spawner' (sink), and code can handle the event safely without crashing.
         {
             int sink_eligible_to_spawn = 0; // flag to check eligibility for spawning
             if(BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*All.BAL_wind_particle_mass) {sink_eligible_to_spawn=1;} // have 'enough' mass to spawn
