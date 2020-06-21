@@ -16,7 +16,7 @@
 
 
 #define MASTER_FUNCTION_NAME blackhole_feed_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
-#define CONDITIONFUNCTION_FOR_EVALUATION if(P[i].Type==5) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(bhsink_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
 #include "../../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 
@@ -195,8 +195,11 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                             {
                                 if((vrel < BH_CSND_FRAC_BH_MERGE * vesc) && (bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1))
                                 {
-                                    printf(" ..BH-BH Merger: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) local.ID);
-                                    if((P[j].SwallowID == 0) && (BPP(j).BH_Mass < local.BH_Mass)) {P[j].SwallowID = local.ID;} // most massive BH swallows the other - simplifies analysis
+                                    if((P[j].SwallowID == 0) && (BPP(j).BH_Mass < local.BH_Mass)) // most massive BH swallows the other - simplifies analysis
+                                    {
+                                        printf(" ..BH-BH Merger: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) local.ID);
+                                        P[j].SwallowID = local.ID;
+                                    }
                                 }
                                 else
                                 {

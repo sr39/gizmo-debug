@@ -80,7 +80,7 @@ int rt_sourceinjection_active_check(int i)
 {
     if(PPP[i].NumNgb <= 0) return 0;
     if(PPP[i].Hsml <= 0) return 0;
-    if(PPP[i].Mass <= 0) return 0;
+    if(P[i].Mass <= 0) return 0;
     double lum[N_RT_FREQ_BINS];
     return rt_get_source_luminosity(i,-1,lum);
 }
