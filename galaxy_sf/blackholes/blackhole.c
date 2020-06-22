@@ -348,8 +348,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 /* DAA: note that we should have mdot=0 here , otherwise the mass accreted is counted twice [mdot*dt in set_blackhole_new_mass, accreted_BH_mass in blackhole_swallow_and_kick] */
 #ifdef BH_GRAVCAPTURE_GAS
     mdot = 0; /* force mdot=0 despite any earlier settings here.  If this is set, we have to wait to swallow step to eval mdot. */
-    //mdot = BlackholeTempInfo[i].mass_to_swallow_edd / dt;       /* TODO: this can still greatly exceed eddington... */
-#endif //ifdef BH_GRAVCAPTURE_GAS
+#endif
 
 
 #ifdef BH_ALPHADISK_ACCRETION
