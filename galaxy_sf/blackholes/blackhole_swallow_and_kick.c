@@ -26,7 +26,7 @@ static int N_gas_swallowed, N_star_swallowed, N_dm_swallowed, N_BH_swallowed;
 
 
 #define MASTER_FUNCTION_NAME blackhole_swallow_and_kick_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
-#define CONDITIONFUNCTION_FOR_EVALUATION if(P[i].Type==5 && P[i].SwallowID==0) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(bhsink_isactive(i) && P[i].SwallowID==0) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
 #include "../../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 
@@ -185,6 +185,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                 NEAREST_XYZ(dpos[0],dpos[1],dpos[2],-1); /*  find the closest image in the given box size  */
                 NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dvel,-1); /* wrap velocities for shearing boxes if needed */
 
+                
 #if defined(BH_RETURN_ANGMOM_TO_GAS) || defined(BH_RETURN_BFLUX)
                 double wk, dwk, u=0;
                 if(P[j].Type == 0){
@@ -211,6 +212,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     }
                 }
 #endif
+                
+                
                 /* we've found a particle to be swallowed.  This could be a BH merger, DM particle, or baryon w/ feedback */
                 if(P[j].SwallowID == local.ID && P[j].Mass > 0)
                 {   /* accreted quantities to be added [regardless of particle type] */
@@ -226,12 +229,13 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     }
 #endif
 
+                    
                     /* handle accretion/conservation of certain conserved quantities, depending on whether we are intending our sub-grid model to follow them */
                     double mcount_for_conserve; mcount_for_conserve = f_accreted * P[j].Mass;
 #if (BH_FOLLOW_ACCRETED_ANGMOM == 1) /* in this case we are only counting this if its coming from BH particles */
-                    if(P[j].Type!=5) {mcount_for_conserve=0;} else {mcount_for_conserve=BPP(j).BH_Mass;}
+                    if(P[j].Type != 5) {mcount_for_conserve=0;} else {mcount_for_conserve=BPP(j).BH_Mass;}
 #ifdef BH_ALPHADISK_ACCRETION
-                    if(P[j].Type==5) {mcount_for_conserve += BPP(j).BH_Mass_AlphaDisk;}
+                    if(P[j].Type == 5) {mcount_for_conserve += BPP(j).BH_Mass_AlphaDisk;}
 #endif
 #endif
 #ifdef GRAIN_FLUID
@@ -250,17 +254,17 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     out.accreted_J[0] += FLT(mcount_for_conserve * ( dpos[1]*dvel[2] - dpos[2]*dvel[1] ));
                     out.accreted_J[1] += FLT(mcount_for_conserve * ( dpos[2]*dvel[0] - dpos[0]*dvel[2] ));
                     out.accreted_J[2] += FLT(mcount_for_conserve * ( dpos[0]*dvel[1] - dpos[1]*dvel[0] ));
-                    if(P[j].Type==5) {for(k=0;k<3;k++) {out.accreted_J[k] += FLT(mcount_for_conserve * BPP(j).BH_Specific_AngMom[k]);}}
+                    if(P[j].Type == 5) {for(k=0;k<3;k++) {out.accreted_J[k] += FLT(mcount_for_conserve * BPP(j).BH_Specific_AngMom[k]);}}
 #endif
 
+                    
+                    
                     if(P[j].Type == 5)  /* this is a BH-BH merger */
                     {
 #ifdef BH_OUTPUT_MOREINFO
                         fprintf(FdBhMergerDetails,"%g  %u %g %2.7f %2.7f %2.7f  %u %g %2.7f %2.7f %2.7f\n", All.Time,  local.ID,local.BH_Mass,local.Pos[0],local.Pos[1],local.Pos[2],  P[j].ID,BPP(j).BH_Mass,P[j].Pos[0],P[j].Pos[1],P[j].Pos[2]); fflush(FdBhMergerDetails);
-#else
-#ifndef IO_REDUCED_MODE
+#elif !defined(IO_REDUCED_MODE)
                         fprintf(FdBlackHolesDetails,"ThisTask=%d, time=%g: id=%u swallows %u (%g %g)\n", ThisTask, All.Time, local.ID, P[j].ID, local.BH_Mass, BPP(j).BH_Mass); fflush(FdBlackHolesDetails);
-#endif
 #endif
 #ifdef BH_INCREASE_DYNAMIC_MASS
                         /* the true dynamical mass of the merging BH is P[j].Mass/BH_INCREASE_DYNAMIC_MASS unless exceeded by physical growth
@@ -289,6 +293,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     } // if(P[j].Type == 5) -- BH + BH merger
 
 
+                    
+                    
 #ifdef BH_GRAVCAPTURE_NONGAS /* DM and star particles can only be accreted ifdef BH_GRAVCAPTURE_NONGAS */
                     if((P[j].Type == 1) || (All.ComovingIntegrationOn && (P[j].Type==2||P[j].Type==3)) )
                     {   /* this is a DM particle: In this case, no kick, so just zero out the mass and 'get rid of' the particle (preferably by putting it somewhere irrelevant) */
@@ -306,6 +312,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif // #ifdef BH_GRAVCAPTURE_NONGAS -- BH + DM or Star merger
 
 
+                    
+                    
                     /* this is a gas particle: DAA: we need to see if the gas particle has to be accreted in full or not, depending on BH_WIND_KICK
                      the only difference with BH_ALPHADISK_ACCRETION should be that the mass goes first to the alphadisk */
                     if(P[j].Type == 0)
@@ -352,6 +360,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     P[j].SwallowID = 0; /* DAA: make sure it is not accreted (or ejected) by the same BH again if inactive in the next timestep */
                 } // if(P[j].SwallowID == id)  -- particles being entirely or partially swallowed!!!
 
+                
+                
 #if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
                 /* now, do any other feedback "kick" operations (which used the previous loops to calculate weights) */
                 if(mom>0 && local.Mdot>0 && local.Dt>0 && OriginallyMarkedSwallowID==0 && P[j].SwallowID==0 && P[j].Mass>0 && P[j].Type==0) // particles NOT being swallowed!
@@ -362,7 +372,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                         r=sqrt(r); for(k=0;k<3;k++) {dir[k]/=r;} /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
                         for(norm=0,k=0;k<3;k++) {norm+=dir[k]*J_dir[k];}
                         mom_wt = bh_angleweight_localcoupling(j,norm,r,h_i) / local.BH_angle_weighted_kernel_sum;
-                        if(local.BH_angle_weighted_kernel_sum<=0) mom_wt=0;
+                        if(local.BH_angle_weighted_kernel_sum<=0) {mom_wt=0;}
 
 #ifdef BH_PHOTONMOMENTUM /* inject radiation pressure: add initial L/c optical/UV coupling to the gas at the dust sublimation radius */
                         double v_kick = All.BH_Rad_MomentumFactor * mom_wt * mom / P[j].Mass;
@@ -374,7 +384,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif
 #if defined(BH_WIND_CONTINUOUS) && !defined(BH_WIND_KICK) /* inject BAL winds, this is the more standard smooth feedback model */
                         double m_wind = mom_wt * (1-All.BAL_f_accretion)/(All.BAL_f_accretion) * local.Mdot*local.Dt; /* mass to couple */
-                        if(local.BH_angle_weighted_kernel_sum<=0) m_wind=0;
+                        if(local.BH_angle_weighted_kernel_sum<=0) {m_wind=0;}
                         //1. check if (Vw-V0)*rhat <= 0   [ equivalently, check if   |Vw| <= V0*rhat ]
                         //2. if (1) is False, the wind will catch the particle, couple mass, momentum, energy, according to the equations above
                         //3. if (1) is True, the wind will not catch the particle, or will only asymptotically catch it. For the sake of mass conservation in the disk, I think it is easiest to treat this like the 'marginal' case where the wind barely catches the particle. In this case, add the mass normally, but no momentum, and no energy, giving:
@@ -414,6 +424,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     } // r > 0
                 } // (check if valid gas neighbor of interest)
 #endif // defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
+                
+                
+                
             } // for(n = 0; n < numngb; n++)
         } // while(startnode >= 0)
         if(mode == 1) {listindex++; if(listindex < NODELISTLENGTH) {startnode = DATAGET_NAME[target].NodeList[listindex]; if(startnode >= 0) {startnode = Nodes[startnode].u.d.nextnode; /* open it */}}} /* continue to open leaves if needed */
@@ -464,7 +477,7 @@ void spawn_bh_wind_feedback(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20;
-        if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (P[i].Type==5)) // basic condition: particle is a 'spawner' (sink), and code can handle the event safely without crashing.
+        if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (P[i].Type == 5)) // basic condition: particle is a 'spawner' (sink), and code can handle the event safely without crashing.
         {
             int sink_eligible_to_spawn = 0; // flag to check eligibility for spawning
             if(BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*All.BAL_wind_particle_mass) {sink_eligible_to_spawn=1;} // have 'enough' mass to spawn

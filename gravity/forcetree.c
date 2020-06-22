@@ -1953,7 +1953,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if(tSqr < min_bh_approach_time) {min_bh_approach_time = tSqr;}
                     if(tff4 < min_bh_freefall_time) {min_bh_freefall_time = tff4;}
 #ifdef SINGLE_STAR_FIND_BINARIES
-                    if (ptype==5) // only for BH particles and for non center of mass calculation
+                    if(ptype == 5) // only for BH particles and for non center of mass calculation
                     {
                         double r_p5=sqrt(r2), specific_energy = 0.5*vSqr - All.G*M_total/r_p5;
                         if(r2 < All.ForceSoftening[5]*All.ForceSoftening[5])
@@ -1971,7 +1971,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 comp_dx[0]=dx; comp_dx[1]=dy; comp_dx[2]=dz; comp_dv[0]=bh_dvx; comp_dv[1]=bh_dvy; comp_dv[2]=bh_dvz;
                             }
                         } /* specific_energy < 0 */
-                    } /* ptype==5 */
+                    } /* ptype == 5 */
 #endif //#ifdef SINGLE_STAR_FIND_BINARIES
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
                 }
@@ -1999,7 +1999,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef BH_PHOTONMOMENTUM
                     mass_bhlum=0;
-		            if(P[no].Type==5)
+		            if(P[no].Type == 5)
 		            {
 			            double bhlum_t = bh_lum_bol(P[no].BH_Mdot, P[no].BH_Mass, no);
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
@@ -2358,7 +2358,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if(tSqr < min_bh_approach_time) {min_bh_approach_time = tSqr;}
                     if(tff4 < min_bh_freefall_time) {min_bh_freefall_time = tff4;}
 #ifdef SINGLE_STAR_FIND_BINARIES
-                    if(ptype==5 && nop->N_BH==1) // only do it if we're looking at a single star in the node
+                    if(ptype == 5 && nop->N_BH == 1) // only do it if we're looking at a single star in the node
                     {
                         double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
                         if (specific_energy<0)
@@ -2371,7 +2371,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 comp_dx[0]=bh_dx; comp_dx[1]=bh_dy; comp_dx[2]=bh_dz; comp_dv[0]=bh_dvx; comp_dv[1]=bh_dvy; comp_dv[2]=bh_dvz;
                             }
                         } /* specific_energy < 0 */
-                    } /* ptype==5 */
+                    } /* ptype == 5 */
 #endif //#ifdef SINGLE_STAR_FIND_BINARIES
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
                 }
