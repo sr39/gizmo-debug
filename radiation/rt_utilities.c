@@ -500,6 +500,9 @@ int rt_get_lum_band_singlestar(int i, int mode, double *lum)
     lum[i_vec[3]] = stellar_lum_in_band(i, nu[i_vec[3]], 500.); // integrate to end of spectrum for the last band
 #else
     lum[RT_FREQ_BIN_H0] = stellar_lum_in_band(i, 13.6, 500.); // total ionizing flux
+#ifdef RT_STARBENCH_TEST
+    lum[RT_FREQ_BIN_H0] = 1e49 * (13.6*ELECTRONVOLT_IN_ERGS) / UNIT_LUM_IN_CGS;
+#endif    
 #endif
 #endif
 
