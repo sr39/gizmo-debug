@@ -2149,7 +2149,7 @@ int getrates(double rho, double temp, double ye, double yz, int compute_derivs, 
 int network_part(double temp, const struct network_data *nd, struct network_workspace *nw)
 {
   /* interpolates partition functions, given the temperature */
-  /* \TODO implement partition functions for T > 1e10 K (cf. Rauscher paper?) */
+  /* to do: implement partition functions for T > 1e10 K (cf. Rauscher paper?) */
   int index, i;
   double tempLeft, tempRight;
   double dlgLeft, dlgRight;

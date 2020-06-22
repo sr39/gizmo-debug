@@ -20,7 +20,7 @@
 
 
 #define MASTER_FUNCTION_NAME blackhole_environment_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
-#define CONDITIONFUNCTION_FOR_EVALUATION if(P[i].Type==5) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(bhsink_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
 #include "../../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 /* this structure defines the variables that need to be sent -from- the 'searching' element */
@@ -371,7 +371,7 @@ void blackhole_environment_loop(void)
 #if defined(BH_GRAVACCRETION) && (BH_GRAVACCRETION == 0)
 
 #define MASTER_FUNCTION_NAME blackhole_environment_second_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
-#define CONDITIONFUNCTION_FOR_EVALUATION if(P[i].Type==5) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(bhsink_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
 #include "../../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 /* this structure defines the variables that need to be sent -from- the 'searching' element */
@@ -416,7 +416,7 @@ int blackhole_environment_second_evaluate(int target, int mode, int *exportflag,
             if(numngb_inbox < 0) {return -1;} /* no neighbors! */
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
-                j = ngblist[n]; if((P[j].Mass <= 0)||(P[j].Hsml <= 0)||(P[j].Type==5)) {continue;} /* make sure neighbor is valid */
+                j = ngblist[n]; if((P[j].Mass <= 0)||(P[j].Hsml <= 0)||(P[j].Type == 5)) {continue;} /* make sure neighbor is valid */
                 int k; double dP[3], dv[3]; for(k=0;k<3;k++) {dP[k]=P[j].Pos[k]-local.Pos[k]; dv[k]=P[j].Vel[k]-local.Vel[k];} /* position offset */
                 NEAREST_XYZ(dP[0],dP[1],dP[2],-1);
                 NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dv,-1); /* wrap velocities for shearing boxes if needed */

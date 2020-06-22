@@ -115,10 +115,10 @@ void merge_and_split_particles(void)
 #ifdef PM_HIRES_REGION_CLIPDM
         /* here we need to check whether a low-res DM particle is surrounded by all high-res particles,
             in which case we clip its mass down or split it to prevent the most problematic contamination artifacts */
-        if(((P[i].Type==2)||(P[i].Type==3)||(P[i].Type==5))&&(TimeBinActive[P[i].TimeBin]))
+        if(((P[i].Type == 2)||(P[i].Type == 3)||(P[i].Type == 5))&&(TimeBinActive[P[i].TimeBin]))
         {
 #ifdef BLACK_HOLES
-            if(P[i].Type==5) continue;
+            if(P[i].Type == 5) continue;
 #endif
             /* do a neighbor loop ON THE SAME DOMAIN to determine the neighbors */
             int n_search_min = 32;
@@ -1007,8 +1007,8 @@ void apply_pm_hires_region_clipping_selection(int i)
 #ifdef PM_HIRES_REGION_CLIPPING
     int clip_flag = 0; // flag for clipping
     if(All.Time <= All.TimeBegin) {return;} // no clips before run properly starts
-    if(P[i].Type==5) {return;} // no clips for sinks
-    if(P[i].Type==0 && density_isactive(i)) {if((SphP[i].Density <= 0) || (PPP[i].NumNgb <= 0)) {clip_flag=1;}} // undefined density behavior
+    if(P[i].Type == 5) {return;} // no clips for sinks
+    if(P[i].Type == 0 && density_isactive(i)) {if((SphP[i].Density <= 0) || (PPP[i].NumNgb <= 0)) {clip_flag=1;}} // undefined density behavior
     if(density_isactive(i)) {if(PPP[i].Hsml >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     if(ags_density_isactive(i)) {if(PPP[i].AGS_Hsml >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip

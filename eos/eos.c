@@ -243,6 +243,15 @@ double Get_Gas_Alfven_speed_i(int i)
     return 0;
 }
 
+
+/* calculate the fast MHD wave speed in a given element */
+double Get_Gas_Fast_MHD_wavespeed_i(int i)
+{
+    double cs = Get_Gas_thermal_soundspeed_i(i), vA = Get_Gas_Alfven_speed_i(i);
+    return sqrt(cs*cs + vA*vA);    
+}
+
+
 /* calculate and return the actual B Field of a cell */
 double INLINE_FUNC Get_Gas_BField(int i_particle_id, int k_vector_component)
 {
