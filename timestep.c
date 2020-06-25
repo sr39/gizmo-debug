@@ -628,7 +628,7 @@ integertime get_timestep(int p,		/*!< particle index */
                 }
                 /* even with a fully-implicit solver, we require a CFL-like criterion on timesteps (much larger steps allowed for stability, but not accuracy) */
                 dt_courant = All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED; /* courant-type criterion, using the reduced speed of light */
-#ifdef RT_M1
+#if defined(RT_M1) || defined(RT_LOCALRAYGRID)
 #ifndef GALSF
                 dt_rad = dt_courant;
 #endif
@@ -923,7 +923,7 @@ integertime get_timestep(int p,		/*!< particle index */
 
             double L_particle = Get_Particle_Size(p);
             double dt_cour_sink = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / P[p].BH_SurroundingGasVel;
-#ifdef RT_M1
+#if defined(RT_M1) || defined(RT_LOCALRAYGRID)
 	    dt_cour_sink = DMIN(All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED, dt_cour_sink);
 #endif
             if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
