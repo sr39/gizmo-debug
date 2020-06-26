@@ -611,8 +611,7 @@ void init(void)
 #endif
         }
 #ifdef GALSF_SUBGRID_WINDS
-        if(RestartFlag == 0)
-            SphP[i].DelayTime = 0;
+        if(RestartFlag == 0) {SphP[i].DelayTime = 0;}
 #if (GALSF_SUBGRID_WIND_SCALING==1)
         SphP[i].HostHaloMass = 0;
 #endif
@@ -631,6 +630,10 @@ void init(void)
 #endif
 #ifdef COSMIC_RAYS
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRayEnergy[j] = 0;}}
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+        if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_PwrLaw_Slopes_in_Bin[j] = 0;}} // initialize a flat spectrum in each bin
+        CR_initialize_multibin_quantities(); // initialize the global variables and look-up tables //
+#endif
 #endif
 #ifdef MAGNETIC
 #if defined MHD_B_SET_IN_PARAMS

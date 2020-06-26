@@ -486,6 +486,12 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
+        case IO_COSMICRAY_SLOPES:
+#if defined(COSMIC_RAYS) && defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+            for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {SphP[offset + n].CosmicRay_PwrLaw_Slopes_in_Bin[k] = *fp++;}}
+#endif
+            break;
+
         case IO_COSMICRAY_ALFVEN:
 #ifdef COSMIC_RAYS_ALFVEN
             for(n = 0; n < pc; n++) {
