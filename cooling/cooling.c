@@ -556,7 +556,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         else
         {
             /* account for self-shielding in calculating UV background effects */
-            gJH0ne = gJH0 * local_gammamultiplier / necgs * shieldfac; // check units, should be = c_light * n_photons_vol * rt_sigma_HI[0] / necgs;
+            gJH0ne = gJH0 * local_gammamultiplier / necgs * shieldfac; // check units, should be = c_light * n_photons_vol * rt_ion_sigma_HI[0] / necgs;
             gJH0ne = DMAX(gJH0ne, EPSILON_SMALL); if(!isfinite(gJH0ne)) {gJH0ne=0;} // need traps here b/c very small numbers assigned in some newer TREECOOL versions cause a nan underflow
             gJHe0ne = gJHe0 * local_gammamultiplier / necgs * shieldfac;
             gJHe0ne = DMAX(gJHe0ne, EPSILON_SMALL); if(!isfinite(gJHe0ne)) {gJHe0ne=0;}
@@ -588,25 +588,25 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #ifdef GALSF
                     if(All.ComovingIntegrationOn) {thold=1.0e10;}
 #endif
-                    if(G_HI[k] > 0)
+                    if(rt_ion_G_HI[k] > 0)
                     {
-                        cross_section_ion = nH0 * rt_sigma_HI[k];
-                        dummy = rt_sigma_HI[k] * c_ne_time_n_photons_vol;// egy per photon x cross section x photon flux (w attenuation factors already included in flux/energy update:) * slab_averaging_function(cross_section_ion * Sigma_particle); // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt);
+                        cross_section_ion = nH0 * rt_ion_sigma_HI[k];
+                        dummy = rt_ion_sigma_HI[k] * c_ne_time_n_photons_vol;// egy per photon x cross section x photon flux (w attenuation factors already included in flux/energy update:) * slab_averaging_function(cross_section_ion * Sigma_particle); // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt);
                         if(dummy > thold*gJH0ne_0) {dummy = thold*gJH0ne_0;}
                         gJH0ne += dummy;
                     }
 #ifdef RT_CHEM_PHOTOION_HE
-                    if(G_HeI[k] > 0)
+                    if(rt_ion_G_HeI[k] > 0)
                     {
-                        cross_section_ion = nHe0 * rt_sigma_HeI[k];
-                        dummy = rt_sigma_HeI[k] * c_ne_time_n_photons_vol;// * slab_averaging_function(cross_section_ion * Sigma_particle); // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt);
+                        cross_section_ion = nHe0 * rt_ion_sigma_HeI[k];
+                        dummy = rt_ion_sigma_HeI[k] * c_ne_time_n_photons_vol;// * slab_averaging_function(cross_section_ion * Sigma_particle); // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt);
                         if(dummy > thold*gJHe0ne_0) {dummy = thold*gJHe0ne_0;}
                         gJHe0ne += dummy;
                     }
-                    if(G_HeII[k] > 0)
+                    if(rt_ion_G_HeII[k] > 0)
                     {
-                        cross_section_ion = nHep * rt_sigma_HeII[k];
-                        dummy = rt_sigma_HeII[k] * c_ne_time_n_photons_vol;// * slab_averaging_function(cross_section_ion * Sigma_particle); // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt);
+                        cross_section_ion = nHep * rt_ion_sigma_HeII[k];
+                        dummy = rt_ion_sigma_HeII[k] * c_ne_time_n_photons_vol;// * slab_averaging_function(cross_section_ion * Sigma_particle); // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt);
                         if(dummy > thold*gJHepne_0) {dummy = thold*gJHepne_0;}
                         gJHepne += dummy;
                     }
@@ -934,25 +934,25 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
                 {
                     double c_nH_time_n_photons_vol = c_light_nH * rt_return_photon_number_density(target,k); // gives photon flux
                     double cross_section_ion, kappa_ion, dummy;
-                    if(G_HI[k] > 0)
+                    if(rt_ion_G_HI[k] > 0)
                     {
-                        cross_section_ion = nH0 * rt_sigma_HI[k];
+                        cross_section_ion = nH0 * rt_ion_sigma_HI[k];
                         kappa_ion = cx_to_kappa * cross_section_ion;
-                        dummy = G_HI[k] * cross_section_ion * c_nH_time_n_photons_vol;// (egy per photon x cross section x photon flux) :: attenuation factors [already in flux/energy update]: * slab_averaging_function(kappa_ion * Sigma_particle); // egy per photon x cross section x photon flux (w attenuation factors) // * slab_averaging_function(kappa_ion * abs_per_kappa_dt);
+                        dummy = rt_ion_G_HI[k] * cross_section_ion * c_nH_time_n_photons_vol;// (egy per photon x cross section x photon flux) :: attenuation factors [already in flux/energy update]: * slab_averaging_function(kappa_ion * Sigma_particle); // egy per photon x cross section x photon flux (w attenuation factors) // * slab_averaging_function(kappa_ion * abs_per_kappa_dt);
                         Heat += dummy;
                     }
-                    if(G_HeI[k] > 0)
+                    if(rt_ion_G_HeI[k] > 0)
                     {
-                        cross_section_ion = nHe0 * rt_sigma_HeI[k];
+                        cross_section_ion = nHe0 * rt_ion_sigma_HeI[k];
                         kappa_ion = cx_to_kappa * cross_section_ion;
-                        dummy = G_HeI[k] * cross_section_ion * c_nH_time_n_photons_vol;// * slab_averaging_function(kappa_ion * Sigma_particle); // * slab_averaging_function(kappa_ion * abs_per_kappa_dt);
+                        dummy = rt_ion_G_HeI[k] * cross_section_ion * c_nH_time_n_photons_vol;// * slab_averaging_function(kappa_ion * Sigma_particle); // * slab_averaging_function(kappa_ion * abs_per_kappa_dt);
                         Heat += dummy;
                     }
-                    if(G_HeII[k] > 0)
+                    if(rt_ion_G_HeII[k] > 0)
                     {
-                        cross_section_ion = nHep * rt_sigma_HeII[k];
+                        cross_section_ion = nHep * rt_ion_sigma_HeII[k];
                         kappa_ion = cx_to_kappa * cross_section_ion;
-                        dummy = G_HeII[k] * cross_section_ion * c_nH_time_n_photons_vol;// * slab_averaging_function(kappa_ion*Sigma_particle); // * slab_averaging_function(kappa_ion * abs_per_kappa_dt);
+                        dummy = rt_ion_G_HeII[k] * cross_section_ion * c_nH_time_n_photons_vol;// * slab_averaging_function(kappa_ion*Sigma_particle); // * slab_averaging_function(kappa_ion * abs_per_kappa_dt);
                         Heat += dummy;
                     }
                 }

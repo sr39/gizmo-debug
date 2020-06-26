@@ -800,6 +800,19 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+            
+        case IO_COSMICRAY_SLOPES:    /* piecewise spectral slopes in the cosmic ray spectrum  */
+#if defined(COSMIC_RAYS) && defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    for(k=0;k<N_CR_PARTICLE_BINS;k++) {fp[k] = SphP[pindex].CosmicRay_PwrLaw_Slopes_in_Bin[k];}
+                    fp += N_CR_PARTICLE_BINS;
+                    n++;
+                }
+#endif
+            break;
+
         case IO_COSMICRAY_KAPPA:    /* local CR diffusion constant */
 #if defined(COSMIC_RAYS) && defined(COSMIC_RAYS_DIFFUSION_MODEL) && (COSMIC_RAYS_DIFFUSION_MODEL > 0)
             for(n = 0; n < pc; pindex++)
@@ -1757,6 +1770,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
 
 
         case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_SLOPES:
         case IO_COSMICRAY_KAPPA:
 #ifdef COSMIC_RAYS
             if(mode)
@@ -2031,6 +2045,7 @@ int get_values_per_blockelement(enum iofields blocknr)
             break;
 
         case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_SLOPES:
         case IO_COSMICRAY_KAPPA:
 #ifdef COSMIC_RAYS
             values = N_CR_PARTICLE_BINS;
@@ -2198,6 +2213,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_VDIV:
         case IO_VORT:
         case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_SLOPES:
         case IO_COSMICRAY_KAPPA:
         case IO_COSMICRAY_ALFVEN:
         case IO_DIVB:
@@ -2551,6 +2567,12 @@ int blockpresent(enum iofields blocknr)
 
         case IO_COSMICRAY_ENERGY:
 #ifdef COSMIC_RAYS
+            return 1;
+#endif
+            break;
+
+        case IO_COSMICRAY_SLOPES:
+#if defined(COSMIC_RAYS) && defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
             return 1;
 #endif
             break;
@@ -2991,6 +3013,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
             break;
         case IO_COSMICRAY_ENERGY:
             strncpy(label, "CREG ", 4);
+            break;
+        case IO_COSMICRAY_SLOPES:
+            strncpy(label, "CRSL ", 4);
             break;
         case IO_COSMICRAY_KAPPA:
             strncpy(label, "CRK ", 4);
