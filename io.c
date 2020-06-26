@@ -3376,6 +3376,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_COSMICRAY_ENERGY:
             strcpy(buf, "CosmicRayEnergy");
             break;
+        case IO_COSMICRAY_SLOPES:
+            strcpy(buf, "CosmicRayMomentumDistSlope");
+            break;
         case IO_COSMICRAY_KAPPA:
             strcpy(buf, "CosmicRayDiffusivity");
             break;
