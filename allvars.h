@@ -73,7 +73,7 @@
 #endif
 
 #ifndef DISABLE_SPH_PARTICLE_WAKEUP
-#if (SLOPE_LIMITER_TOLERANCE > 0)
+#if (SLOPE_LIMITER_TOLERANCE > 0) && !(defined(RT_M1) || defined(RT_LOCALRAYGRID))
 #define WAKEUP   4.1            /* allows 2 timestep bins within kernel */
 #else
 #define WAKEUP   2.1            /* allows only 1-separated timestep bins within kernel */
