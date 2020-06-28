@@ -32,7 +32,7 @@ double return_CRbin_CR_rigidity_in_GV(int target, int k_CRegy)
     double R = 1;
 #if (N_CR_PARTICLE_BINS > 1)    /* insert physics here */
 #if (N_CR_PARTICLE_BINS == 2) /* one-bin protons, one electrons */
-    double Rv={1.8 , 0.6}; R=Rv[k_CRegy]; // approximate peak energies of each from Cummings et al. 2016 Fig 15
+    double Rv[2]={1.8 , 0.6}; R=Rv[k_CRegy]; // approximate peak energies of each from Cummings et al. 2016 Fig 15
 #endif
 #if (N_CR_PARTICLE_BINS > 2) /* arbitrary numbers of bins for CR spectra, assumes binning same in e- and p */
     if(target >= 0) {R=CR_return_mean_rigidity_in_bin_in_GV(i,k_CRegy);} else {R=CR_global_rigidity_at_bin_center[k_CRegy];} // this is pre-defined globally for this bin list
@@ -47,7 +47,7 @@ double return_CRbin_CR_charge_in_e(int target, int k_CRegy)
     double Z = 1;
 #if (N_CR_PARTICLE_BINS > 1)    /* insert physics here */
 #if (N_CR_PARTICLE_BINS == 2) /* one-bin protons, one electrons */
-    double Zv={1 , -1}; Z=Zv[k_CRegy]; // proton, then e- bin
+    double Zv[2]={1 , -1}; Z=Zv[k_CRegy]; // proton, then e- bin
 #endif
 #if (N_CR_PARTICLE_BINS > 2)
     Z = CR_global_charge_in_bin[k_CRegy]; // this is pre-defined globally for this bin list
@@ -62,7 +62,7 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
     double f_bin = 1./N_CR_PARTICLE_BINS; /* uniformly distributed */
 #if (N_CR_PARTICLE_BINS > 1)    /* insert physics here */
 #if (N_CR_PARTICLE_BINS == 2) /* one-bin protons, one electrons */
-    double f_bin_v={0.95 , 0.05}; f_bin=f_bin_v[k_CRegy]; // 5% of injection into e-, roughly motivated by observed spectra and nearby SNRs
+    double f_bin_v[2]={0.95 , 0.05}; f_bin=f_bin_v[k_CRegy]; // 5% of injection into e-, roughly motivated by observed spectra and nearby SNRs
 #endif
 #if (N_CR_PARTICLE_BINS > 2) /* multi-bin spectrum for p and e-: inset assumptions about injection spectrum here! */
     double f_elec = 0.05; // fraction of the energy to put into e- as opposed to p+ at injection
