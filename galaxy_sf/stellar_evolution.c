@@ -277,7 +277,7 @@ int get_age_tracer_bin(double age)
     double binstart=log10(All.AgeTracerBinStart), binend=log10(All.AgeTracerBinEnd), log_bin_dt=(binend - binstart)/((double)NUM_AGE_TRACERS);
     if(age <= All.AgeTracerBinStart) {index=0;} /* initial bin */
         else if(age >= All.AgeTracerBinEnd) {return too_old_flag;} /* do nothing here and continue [likely only in test problems] */
-        else {index=floor((log10(age)-binstart)/log_bin_dt);} /* find bin */
+        else {index=(int) floor((log10(age)-binstart)/log_bin_dt);} /* find bin */
 #endif
     if(index<0) {PRINT_WARNING("Age tracer binary search not working index=%d age=%f",index,age); endrun(8888);} // exit if invalid result
     return index; // return valid bin

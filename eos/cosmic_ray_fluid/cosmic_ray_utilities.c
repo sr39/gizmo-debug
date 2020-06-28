@@ -15,7 +15,7 @@
 
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
 /* routine which defines the actual bin list for the multi-bin spectral CR models. note the number of entries MUST match the hard-coded N_CR_PARTICLE_BINS defined in allvars.h */
-void CR_spectrum_define_bins(int k)
+void CR_spectrum_define_bins(void)
 {
     /* note, we by default don't go to extremely low-energy proton bins since those have incredibly rapid Coulomb loss times, which without continuous injection grind the code down and just give zero energy in the bins */
     double R[N_CR_PARTICLE_BINS] = {3.16227766e-03, 1.00000000e-02, 3.16227766e-02, 1.00000000e-01, 3.16227766e-01, 1.00000000e+00, 3.16227766e+00, 1.00000000e+01, 3.16227766e+01, 1.00000000e+02, 3.16227766e+02,
@@ -35,7 +35,7 @@ double return_CRbin_CR_rigidity_in_GV(int target, int k_CRegy)
     double Rv[2]={1.8 , 0.6}; R=Rv[k_CRegy]; // approximate peak energies of each from Cummings et al. 2016 Fig 15
 #endif
 #if (N_CR_PARTICLE_BINS > 2) /* arbitrary numbers of bins for CR spectra, assumes binning same in e- and p */
-    if(target >= 0) {R=CR_return_mean_rigidity_in_bin_in_GV(i,k_CRegy);} else {R=CR_global_rigidity_at_bin_center[k_CRegy];} // this is pre-defined globally for this bin list
+    if(target >= 0) {R=CR_return_mean_rigidity_in_bin_in_GV(target,k_CRegy);} else {R=CR_global_rigidity_at_bin_center[k_CRegy];} // this is pre-defined globally for this bin list
 #endif
 #endif
     return R;
@@ -679,9 +679,9 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
     int k; for(k=0;k<N_CR_PARTICLE_BINS;k++) {Ucr_tot+=Ucr[k];} // check total energy since some fluid cells can have no CRs
     if(Ucr_tot < MIN_REAL_NUMBER) {return;} // catch - nothing to do here //
     double t=0, dt=0, E_rest_e_GeV=0.000511, f_ion=DMAX(DMIN(Get_Gas_Ionized_Fraction(target),1.),0.), b_muG=get_cell_Bfield_in_microGauss(target), U_mag_ev=0.0248342*b_muG*b_muG, U_rad_ev=get_cell_Urad_in_eVcm3(target);
-    double Ucr_i[N_CR_PARTICLE_BINS], Z[N_CR_PARTICLE_BINS], Rm[N_CR_PARTICLE_BINS], R0[N_CR_PARTICLE_BINS], Rp[N_CR_PARTICLE_BINS], E_GeV[N_CR_PARTICLE_BINS], brems_coeff[N_CR_PARTICLE_BINS], NR_key[N_CR_PARTICLE_BINS], bin_centered_rate_coeff[N_CR_PARTICLE_BINS];
+    double Ucr_i[N_CR_PARTICLE_BINS], Z[N_CR_PARTICLE_BINS], x_m[N_CR_PARTICLE_BINS], x_p[N_CR_PARTICLE_BINS], Rp[N_CR_PARTICLE_BINS], E_GeV[N_CR_PARTICLE_BINS], brems_coeff[N_CR_PARTICLE_BINS], NR_key[N_CR_PARTICLE_BINS], bin_centered_rate_coeff[N_CR_PARTICLE_BINS];
 
-    double gamma_ad_eff=4./3., adiabatic_coeff = (gamma_ad_eff-1.) * (P[i].Particle_DivVel*All.cf_a2inv) / UNIT_TIME_IN_CGS ; // coefficient for adiabatic work [compression/expansion terms]. convert to physical units [a2inv], and then cgs for units here. SIGN is flipped from usual convention since we assume convention where positive coefficients = losses, for convenience with everything else below.
+    double gamma_ad_eff=4./3., adiabatic_coeff = (gamma_ad_eff-1.) * (P[target].Particle_DivVel*All.cf_a2inv) / UNIT_TIME_IN_CGS ; // coefficient for adiabatic work [compression/expansion terms]. convert to physical units [a2inv], and then cgs for units here. SIGN is flipped from usual convention since we assume convention where positive coefficients = losses, for convenience with everything else below.
     if(All.ComovingIntegrationOn) {adiabatic_coeff += (gamma_ad_eff-1.) * (3.*All.cf_hubble_a) / UNIT_TIME_IN_CGS;} // adiabatic term from Hubble expansion (needed for cosmological integrations. also converted to physical, cgs, and sign convention we use here.
     double hadronic_coeff = 6.37e-16 * nHcgs; // coefficient for hadronic/catastrophic interactions: dEtot/dt = -(coeff) * Etot, or dPtot/dt = -(coeff) * Ptot (since all p effected are in rel limit, and works by deleting N not by lowering individual E
     double coulomb_coeff = 3.09e-16 * nHcgs * ((n_elec + 0.57*(1.-f_ion))*HYDROGEN_MASSFRAC); // default Coulomb+ionization (the two scale nearly-identically) normalization divided by GeV, b/c we need to divide the energy per CR. needs to be multiplied by ((Z*Z)/(beta*E_GeV))
@@ -724,13 +724,13 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
     double dt_target = DMIN(dtime_cgs, dt_min); // timescale for subcycling, using constraint above. limit for extreme cases where we might run into expense problems
     if(dt_target < 1.e-4*dtime_cgs) {printf("WARNING: timestep for subcycling wants to exceed limit: dt_min=%g dt_tot=%g \n",dt_min,dtime_cgs); fflush(stdout);} // print warning (diagnostic for now)
     
-    int proton_key; for(proton_key=0,proton_key<=1,proton_key++) // loop over whether we consider nuclei or electrons, first //
+    int proton_key; for(proton_key=0;proton_key<=1;proton_key++) // loop over whether we consider nuclei or electrons, first //
     {
         int n_active=0, bins_sorted[N_CR_PARTICLE_BINS]; double R0_bins[N_CR_PARTICLE_BINS];
         for(k=0;k<N_CR_PARTICLE_BINS;k++) {if((Z[k]>0 && proton_key==1) || (Z[k]<0 && proton_key==0)) {bins_sorted[n_active]=k; R0_bins[n_active]=R0[k]; n_active++;}} // bin is valid: charge matches that desired
         if(n_active<=0) {break;} // nothing to do here
         if(n_active<N_CR_PARTICLE_BINS) {for(k=n_active;k<N_CR_PARTICLE_BINS;k++) {R0_bins[k]=MAX_REAL_NUMBER;}} // set a dummy value here for sorting purposes below
-        qsort(bins_sorted, n_active, sizeof(int), R0_bins); // sort on energies from smallest-to-largest
+        //qsort(bins_sorted, n_active, sizeof(int), compare_CR_rigidity_for_sort); // sort on energies from smallest-to-largest [this is hard-coded by requiring the list go in monotonic increasing order for e and p, regardless of how the e and p are themselves ordered //
 
         double adiabatic_brems_coeff_bulk = adiabatic_coeff; // coefficient for adiabatic work [constant multiplier], can have either sign
         if(proton_key == 0) {adiabatic_brems_coeff_bulk += -brems_coeff_bulk;} // for electrons do bremstrahhlung alongside, as it just adds to the constant, but is always a loss term
@@ -740,7 +740,8 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
             dt = DMIN(dt_target , dtime_cgs - t); // set the subcycle step size
             if(dt <= 0) {break;} // we have reached the end of the timestep - exit loop
 
-            for(loss_mode=0,loss_mode<=3,loss_mode++)
+            int loss_mode; // this will determine which type[s] of losses [differentiated by their qualitative scalings] we are considering //
+            for(loss_mode=0;loss_mode<=3;loss_mode++)
             {
                 if(loss_mode==0 || loss_mode==2) {if(proton_key==0) {continue;}} // loss-modes=0,2 [Hadronic,Coulomb] use only protons, skip to next in loop
                 if(loss_mode==3) {if(proton_key==1) {continue;}} // loss-mode=3 [Compton+Synchrotron] uses only electrons
@@ -762,7 +763,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                     
                     double etot = Ucr[j]; // total energy in bin, one of our key evolved variables
                     double E_bin_NtoE = E_GeV[j]; // use this to normalize the number in a convenient unit (just to keep easier to track, units are arbitrary). save it so we don't forget below.
-                    double slope_gamma = bin_slopes[j] // get the initial slope if we evolve it and can pass it as a conserved quantity
+                    double slope_gamma = bin_slopes[j]; // get the initial slope if we evolve it and can pass it as a conserved quantity
 
                     double xm = x_m[j], xp = x_p[j], gamma_one = slope_gamma+1., xe_gamma_one = 0, xm_gamma_one = pow(xm, gamma_one), xp_gamma_one = pow(xp, gamma_one); // just for convenience below
                     double ntot = 0; // total number in bin. we use the slope we obtain to convert between number and energy, given the bin-centered values
@@ -809,7 +810,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                     {
                         double norm_fac = exp(rate_dt), x1, x0, x1_gamma_one, x0_gamma_one;
                         if(rate_dt > 0) {x1=xp; x1_gamma_one=xp_gamma_one; x0=x_to_edge; x0_gamma_one=xe_gamma_one;} else {x1=x_to_edge; x1_gamma_one=xe_gamma_one; x0=xm; x0_gamma_one=xm_gamma_one;} // this is everything that remains in bin. so if decaying, runs from x_m' to xp; if growing [rate < 0] runs from xm to x_p'
-                        if(NR_fac[j])
+                        if(NR_key[j])
                         {
                             norm_fac *= norm_fac; // exp(2*rate*dt) because of KE going as p^2
                             etot_final_inbin = etot * norm_fac * (x1_gamma_one*x1*x1 - x0_gamma_one*x0*x0) / (xp_gamma_one*xp*xp - xm_gamma_one*xm*xm); // extra power of x from extra power of p in KE
@@ -820,7 +821,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                     }
                     if(loss_mode==2) // coulomb + ion
                     {
-                        if(NR_fac[j])
+                        if(NR_key[j])
                         {
                             double norm_fac = etot * (gamma_one+2.) / (xp_gamma_one*xp*xp - xm_gamma_one*xm*xm); // get the pre-factor for the integral from numbers we already have
                             double xmin_remains = pow(3.*rate_dt, 1./3.); // sets absolute minimum value of x for which any energy remains at all, needs to be integrated only from this bound upwards
@@ -874,7 +875,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
         t += dt; // update time 
     } // loop over time
     
-    if(mode_driftkick==0) {for(k=0;k<N_CR_PARTICLE_BINS;k++) {double fac=1; if(Ucr_i[k]>0 && Ucr[k]>0) {fac=DMAX(1.e-10,DMIN(1.e10,Ucr[k]/Ucr_i[k]));} SphP[target].CosmicRayFluxPred[k] *= fac;}}
+    if(mode_driftkick==0) {for(k=0;k<N_CR_PARTICLE_BINS;k++) {double fac=1; if(Ucr_i[k]>0 && Ucr[k]>0) {fac=DMAX(1.e-10,DMIN(1.e10,Ucr[k]/Ucr_i[k]));} SphP[target].CosmicRayEnergyPred[k] *= fac;}}
 #ifdef COSMIC_RAYS_M1 /* update fluxes. these will self-adapt quickly but should feel losses as well, so we do that here */
     int kdir; for(k=0;k<N_CR_PARTICLE_BINS;k++) {double fac=1; if(Ucr_i[k]>0 && Ucr[k]>0) {fac=DMAX(1.e-2,DMIN(1.e2,Ucr[k]/Ucr_i[k]));}
         for(kdir=0;kdir<3;kdir++) {if(mode_driftkick==0) {SphP[target].CosmicRayFlux[k][kdir] *= fac; SphP[target].CosmicRayFluxPred[k][kdir] *= fac;} else {SphP[target].CosmicRayFluxPred[k][kdir] *= fac;}}}
@@ -891,13 +892,14 @@ void CR_initialize_multibin_quantities(void)
     if(ThisTask==0) {printf("Initializing global cosmic ray spectral variables:\n"); fflush(stdout);}
     int k; CR_spectrum_define_bins(); // call this to define the actual list of bins, needs to be done before basically anything else!
     double R0[N_CR_PARTICLE_BINS], Z[N_CR_PARTICLE_BINS]; for(k=0;k<N_CR_PARTICLE_BINS;k++) {R0[k]=CR_global_rigidity_at_bin_center[k]; Z[k]=CR_global_charge_in_bin[k];}
-    int proton_key; for(proton_key=0,proton_key<=1,proton_key++) // loop over whether we consider nuclei or electrons, first //
+    double R0_bins[N_CR_PARTICLE_BINS], R0_bin_m[N_CR_PARTICLE_BINS], R0_bin_p[N_CR_PARTICLE_BINS];
+    int proton_key; for(proton_key=0;proton_key<=1;proton_key++) // loop over whether we consider nuclei or electrons, first //
     {
-       int n_active=0, bins_sorted[N_CR_PARTICLE_BINS]; double R0_bins[N_CR_PARTICLE_BINS], R0_bin_m[N_CR_PARTICLE_BINS], R0_bin_p[N_CR_PARTICLE_BINS];
+       int n_active=0, bins_sorted[N_CR_PARTICLE_BINS];
        for(k=0;k<N_CR_PARTICLE_BINS;k++) {if((Z[k]>0 && proton_key==1) || (Z[k]<0 && proton_key==0)) {bins_sorted[n_active]=k; R0_bins[n_active]=R0[k]; n_active++;}} // bin is valid: charge matches that desired
        if(n_active<=0) {break;} // nothing to do here
        if(n_active<N_CR_PARTICLE_BINS) {for(k=n_active;k<N_CR_PARTICLE_BINS;k++) {R0_bins[k]=MAX_REAL_NUMBER;}} // set a dummy value here for sorting purposes below
-       qsort(bins_sorted, n_active, sizeof(int), R0_bins); // sort on energies from smallest-to-largest
+       //qsort(bins_sorted, n_active, sizeof(int), compare_CR_rigidity_for_sort); // sort on energies from smallest-to-largest [this is hard-coded by requiring the list go in monotonic increasing order for e and p, regardless of how the e and p are themselves ordered //
        for(k=0;k<n_active;k++)
        {
            int j = bins_sorted[k], j_m=j, j_p=j; // target bin and bin below/above
@@ -921,7 +923,7 @@ void CR_initialize_multibin_quantities(void)
         if(CR_check_if_bin_is_nonrelativistic(k)) {p_power_in_e = 2.; xm_e = xm*xm; xp_e = xp*xp;} // extra power of p in momentum equation accounted for here, all that's needed
         double gamma_min = -gamma_limit, gamma_max = gamma_limit, d_gamma = (gamma_max-gamma_min) / ((double)n_gamma_sample); int j;
 
-        double gamma = gamma_min, gamma_prev = gamma_min, R_index_prev=0; int j=0; // define variables for use in loop below
+        double gamma = gamma_min, gamma_prev = gamma_min, R_index_prev=0; j=0; // define variables for use in loop below
         while(gamma <= gamma_max)
         {
             double gamma_one = gamma + 1., xm_g = pow(xm, gamma_one), xp_g = pow(xp, gamma_one); // key variables needed
@@ -929,7 +931,7 @@ void CR_initialize_multibin_quantities(void)
             double R_index = (log(R / xm_e) / log(xp_e / xm_e)) * n_table; // index one would obtain from this value of R
             if((int)R_index >= j)
             {
-                double slope_gamma = gamma + (gamma-gamma_prev) * ((double j) - R_index) / (R_index - R_index_prev); // linearly interpolate between this and previous step to 'exact' gamma giving desired R
+                double slope_gamma = gamma + (gamma-gamma_prev) * (((double)j) - R_index) / (R_index - R_index_prev); // linearly interpolate between this and previous step to 'exact' gamma giving desired R
                 CR_global_slope_lut[k][j] = slope_gamma; // set the look-up-table value for use later
                 j++; // move to look for next target bin
             }
@@ -938,14 +940,14 @@ void CR_initialize_multibin_quantities(void)
             gamma += d_gamma; // augment
             // check for bad values of gamma that we wish to avoid because they can cause divergences, and just slightly dodge around them //
             double tol = 0.1*d_gamma, badval; // tolerance around the bad values
-            badval=-1; if(fabs(gamma - badval) < tol) {if(gamma<badval) {gamma=badval-tol;} else {gamma=badval+tol}}
-            badval=-2; if(fabs(gamma - badval) < tol) {if(gamma<badval) {gamma=badval-tol;} else {gamma=badval+tol}}
-            badval=-3; if(fabs(gamma - badval) < tol) {if(gamma<badval) {gamma=badval-tol;} else {gamma=badval+tol}}
+            badval=-1; if(fabs(gamma - badval) < tol) {if(gamma<badval) {gamma=badval-tol;} else {gamma=badval+tol;}}
+            badval=-2; if(fabs(gamma - badval) < tol) {if(gamma<badval) {gamma=badval-tol;} else {gamma=badval+tol;}}
+            badval=-3; if(fabs(gamma - badval) < tol) {if(gamma<badval) {gamma=badval-tol;} else {gamma=badval+tol;}}
         }
     }
     
     if(ThisTask==0) {for(k=0;k<N_CR_PARTICLE_BINS;k++) { // print outputs for users
-        printf(" .. bin=%d, charge=%g e, mass=% mp, rigidity Rmin=%g R0=%g Rmax=%g GV, energy=%g GeV, relativistic?=%d [1=Y/0=N] beta=%g gamma=%g \n",
+        printf(" .. bin=%d, charge=%g e, mass=%g mp, rigidity Rmin=%g R0=%g Rmax=%g GV, energy=%g GeV, relativistic?=%d [1=Y/0=N] beta=%g gamma=%g \n",
            k,CR_global_charge_in_bin[k],return_CRbin_CRmass_in_mp(-1,k),CR_global_min_rigidity_in_bin[k],CR_global_rigidity_at_bin_center[k],
            CR_global_max_rigidity_in_bin[k],return_CRbin_kinetic_energy_in_GeV(-1,k),CR_check_if_bin_is_nonrelativistic(k),return_CRbin_beta_factor(-1,k),
            return_CRbin_gamma_factor(-1,k)); fflush(stdout);
@@ -965,14 +967,14 @@ double CR_return_slope_from_number_and_energy_in_bin(double R, int k_bin)
     if(R >= xp_e) {return CR_global_slope_lut[k_bin][n_table-1];} // set to maximum
     if(R <= xm_e) {return CR_global_slope_lut[k_bin][0];} // set to minimum
     double n_interp = (log(R / xm_e) / log(xp_e / xm_e)) * n_table; // fraction of the way between min and max in our log-spaced table, returns 0-1
-    int n0 = (floor)n_interp, n1=n0+1;
+    int n0 = (int) floor(n_interp), n1=n0+1;
     if(n1 > n_table-1) {n1=n_table-1;}
     double slope_gamma = CR_global_slope_lut[k_bin][n0] + (n_interp-(double)n0) * (CR_global_slope_lut[k_bin][n1]-CR_global_slope_lut[k_bin][n0]);
     // check for specific bad values that will nan out and avoid them - this introduces really minimal errors
     double tol = 0.01, badval; // tolerance around the bad values
-    badval=-1; if(fabs(slope_gamma - badval) < tol) {if(slope_gamma<badval) {slope_gamma=badval-tol;} else {slope_gamma=badval+tol}}
-    badval=-2; if(fabs(slope_gamma - badval) < tol) {if(slope_gamma<badval) {slope_gamma=badval-tol;} else {slope_gamma=badval+tol}}
-    badval=-3; if(fabs(slope_gamma - badval) < tol) {if(slope_gamma<badval) {slope_gamma=badval-tol;} else {slope_gamma=badval+tol}}
+    badval=-1; if(fabs(slope_gamma - badval) < tol) {if(slope_gamma<badval) {slope_gamma=badval-tol;} else {slope_gamma=badval+tol;}}
+    badval=-2; if(fabs(slope_gamma - badval) < tol) {if(slope_gamma<badval) {slope_gamma=badval-tol;} else {slope_gamma=badval+tol;}}
+    badval=-3; if(fabs(slope_gamma - badval) < tol) {if(slope_gamma<badval) {slope_gamma=badval-tol;} else {slope_gamma=badval+tol;}}
     return slope_gamma; // ok, safe to return
 }
 
@@ -1033,7 +1035,7 @@ double CR_return_effective_number_in_bin(int target, int k_bin)
     double xm_gamma_one = pow(xm, gamma_one), xp_gamma_one = pow(xp, gamma_one);
     int NR_key = CR_check_if_bin_is_nonrelativistic(k_bin);
     double gamma_fac = 0; // factor to get total number in bin. we use the slope we obtain to convert between number and energy, given the bin-centered values
-    if(NR_key[j]) {gamma_fac = ((gamma_one + 2.) / (gamma_one)) * (xp_gamma_one - xm_gamma_one) / (xp_gamma_one*xp*xp - xm_gamma_one*xm*xm);} // non-relativistic map between E and N
+    if(NR_key[k_bin]) {gamma_fac = ((gamma_one + 2.) / (gamma_one)) * (xp_gamma_one - xm_gamma_one) / (xp_gamma_one*xp*xp - xm_gamma_one*xm*xm);} // non-relativistic map between E and N
         else {gamma_fac = ((gamma_one + 1.) / (gamma_one)) * (xp_gamma_one - xm_gamma_one) / (xp_gamma_one*xp - xm_gamma_one*xm);} // relativistic map between E and N
     return (etot / E_bin_center) * gamma_fac; // dimensional normalization. note the units are arbitrary for the E_bin_NtoE term, as long as we are consistent [we can evolve constant x N, instead of N, for convenience]
 }
@@ -1055,6 +1057,16 @@ double CR_return_mean_rigidity_in_bin_in_GV(int target, int k_bin)
     double R0 = CR_global_rigidity_at_bin_center[k_bin], xm = CR_global_min_rigidity_in_bin[k_bin] / R0, xp = CR_global_max_rigidity_in_bin[k_bin] / R0, xm_gamma_one = pow(xm, gamma_one), xp_gamma_one = pow(xp, gamma_one);
     double gamma_fac = (gamma_one/(gamma_one+1.)) * (xp_gamma_one*xp - xm_gamma_one*xm) / (xp_gamma_one - xm_gamma_one); // dimensionless term from weighted integral over the bin
     return R0 * gamma_fac; // returns value appropriately weighted over the bin
+}
+
+
+/* sort function if we need to sort CR bins by rigidity from lowest to highest for future compatibility */
+int compare_CR_rigidity_for_sort(const void *a, const void *b)
+{
+    double x = CR_global_rigidity_at_bin_center[ *(int *) a];
+    double y = CR_global_rigidity_at_bin_center[ *(int *) b];
+    if (x < y) {return -1;} else if(x > y) {return 1;}
+    return 0;
 }
 
 
