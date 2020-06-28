@@ -405,6 +405,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 /* utility routine which handles the numerically-necessary parts of the CR 'injection' for you */
 void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir)
 {
+    if(CR_energy_to_inject <= 0) {return;}
     double f_injected[N_CR_PARTICLE_BINS]; f_injected[0]=1; int k, k_CRegy; k=0;
 #if (N_CR_PARTICLE_BINS > 1) /* add a couple steps to make sure injected energy is always normalized properly! */
     double sum_in=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {f_injected[k]=CR_energy_spectrum_injection_fraction(k,source_PType,injection_velocity,0); sum_in+=f_injected[k];}
@@ -413,6 +414,7 @@ void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, i
     for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
         double dEcr = CR_energy_to_inject * f_injected[k_CRegy]; // normalized properly to sum to unity
+        if(dEcr <= 0) {continue;}
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) // update the evolved slopes with the injection spectrum slope: do a simple energy-weighted mean for the updated/mixed slope here
         SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin[k_CRegy] = (SphP[target].CosmicRayEnergy[k_CRegy]*SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin[k_CRegy] + dEcr*CR_energy_spectrum_injection_fraction(k,source_PType,injection_velocity,1)) / (SphP[target].CosmicRayEnergy[k_CRegy] + dEcr);
 #endif
@@ -640,6 +642,39 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         double eCR_0 = eCR_tmp; // save this value for below
         
         /* now need to account for the adiabatic heating/cooling of the 'fluid', here, with gamma=gamma_eff */
+        double dCR_div;
+#if 1
+        double mdivvdt = -dt_entr * P[i].Particle_DivVel*All.cf_a2inv; // get locally-estimated gas velocity divergence for cells - if using non-Lagrangian method, need to modify. take negative of this [for sign of change to energy] and multiply by timestep
+        if(All.ComovingIntegrationOn) {mdivvdt += -dt_entr * 3.*All.cf_hubble_a;} // include hubble-flow terms
+        
+        double fmult, Ui = u0 * P[i].Mass; // factor for multiplication below, and initial thermal energy
+        double d_CR = mdivvdt * (gamma_eff-1.) * eCR_tmp; // expected CR change - this is the 'PdV' part of the work, applicable in smooth flows
+        double d_Egas = mdivvdt * (GAMMA(i)-1.) * Ui; // expected gas change - in a smooth flow likewise should be entropy-conserving
+        
+        double dtI_hydro = SphP[i].DtInternalEnergy * P[i].Mass * dt_entr; // change given by hydro-step computed delta_InternalEnergy
+        if(mdivvdt * dtI_hydro > 0) // same sign from hydro and from smooth-flow-estimator, suggests we are in a smooth flow, so we'll use stronger assumptions about the effective 'entropy' here
+        {
+            double abs_limit = fabs(dtI_hydro); // in smooth flow, sum of CR+gas PdV work terms should not exceed this
+            double d_sum = fabs(d_CR + d_Egas); // sum of the terms estimated as above
+            if(d_sum > abs_limit) {fmult = abs_limit/d_sum; d_CR *= fmult; d_Egas *= fmult;} // limit to not exceed
+            
+            double limforU = -0.9*Ui; // maximum change in internal energy we will allow, to prevent negative values
+            if(Ui <= All.MinEgySpec) {limforU=0;} else {limforU = DMAX(limforU,All.MinEgySpec-Ui);} // actually more restrictive: prevent crossing the minimum enforced temperature in cooling
+            if(d_Egas < limforU) {fmult = limforU/d_Egas; d_CR *= fmult; d_Egas *= fmult;} // limit
+            
+            double limforC = -0.9*eCR_tmp; // maximum change in CR energy we will allow, to prevent negative values
+            if(d_CR < limforC) {fmult = limforC/d_CR; d_CR *= fmult; d_Egas *= fmult;} // limit
+        } else { // opposite sign, suggests numerical-diffusion dominated; in this case, we will be more conservative about the limits
+            double limforU = -0.5*Ui; // maximum change in internal energy we will allow, to prevent negative values
+            if(Ui <= All.MinEgySpec) {limforU=0;} else {limforU = DMAX(limforU, 0.5*(All.MinEgySpec-Ui));} // actually more restrictive: prevent crossing the minimum enforced temperature in cooling
+            if(d_Egas < limforU) {fmult = limforU/d_Egas; d_CR *= fmult; d_Egas *= fmult;} // limit
+            
+            double limforC = -0.5*eCR_tmp; // maximum change in CR energy we will allow, to prevent negative values
+            if(d_CR < limforC) {fmult = limforC/d_CR; d_CR *= fmult; d_Egas *= fmult;} // limit
+        }
+        dCR_div = d_CR; // set final value
+#else
+        /* old treatment here */
         double d_div = (-(gamma_eff-1.) * P[i].Particle_DivVel*All.cf_a2inv) * dt_entr;
         if(All.ComovingIntegrationOn) {d_div += (-3.*(gamma_eff-1.) * All.cf_hubble_a) * dt_entr;} /* adiabatic term from Hubble expansion (needed for cosmological integrations */
         double dCR_div = DMIN(eCR_tmp*d_div , 0.5*u0*P[i].Mass); // limit so don't take away all the gas internal energy [to negative values]
@@ -648,7 +683,9 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         dCR_div = eCR_tmp - eCR_0; // actual change that is going to be applied
         if(dCR_div < -0.5*P[i].Mass*u0) {dCR_div=-0.5*P[i].Mass*u0;} // before re-coupling, ensure this will not cause negative energies
         if(dCR_div < -0.9*eCR_00) {dCR_div=-0.9*eCR_00;} // before re-coupling, ensure this will not cause negative energies
-        if(mode==0) {SphP[i].InternalEnergy -= dCR_div/P[i].Mass;} else {SphP[i].InternalEnergyPred -= dCR_div/P[i].Mass;} // update gas
+#endif
+        double uf = DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
+        if(mode==0) {SphP[i].InternalEnergy = uf;} else {SphP[i].InternalEnergyPred = uf;} // update gas
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
         if(mode==0) {SphP[i].CosmicRayEnergy[k_CRegy] += dCR_div;} else {SphP[i].CosmicRayEnergyPred[k_CRegy] += dCR_div;} // update CRs: note if explicitly evolving spectrum, this is done separately below //
 #endif
@@ -675,11 +712,11 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
     
     /* define a bunch of general-use variables below */
     double *bin_slopes; bin_slopes=SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin;
-    double *Ucr, Ucr_tot; if(mode_driftkick==0) {Ucr=SphP[target].CosmicRayEnergy;} else {Ucr=SphP[target].CosmicRayEnergyPred;}
+    double *Ucr, Ucr_tot=0; if(mode_driftkick==0) {Ucr=SphP[target].CosmicRayEnergy;} else {Ucr=SphP[target].CosmicRayEnergyPred;}
     int k; for(k=0;k<N_CR_PARTICLE_BINS;k++) {Ucr_tot+=Ucr[k];} // check total energy since some fluid cells can have no CRs
     if(Ucr_tot < MIN_REAL_NUMBER) {return;} // catch - nothing to do here //
     double t=0, dt=0, E_rest_e_GeV=0.000511, f_ion=DMAX(DMIN(Get_Gas_Ionized_Fraction(target),1.),0.), b_muG=get_cell_Bfield_in_microGauss(target), U_mag_ev=0.0248342*b_muG*b_muG, U_rad_ev=get_cell_Urad_in_eVcm3(target);
-    double Ucr_i[N_CR_PARTICLE_BINS], Z[N_CR_PARTICLE_BINS], x_m[N_CR_PARTICLE_BINS], x_p[N_CR_PARTICLE_BINS], R0[N_CR_PARTICLE_BINS], E_GeV[N_CR_PARTICLE_BINS], brems_coeff[N_CR_PARTICLE_BINS], NR_key[N_CR_PARTICLE_BINS], bin_centered_rate_coeff[N_CR_PARTICLE_BINS];
+    double Ucr_i[N_CR_PARTICLE_BINS], Z[N_CR_PARTICLE_BINS], x_m[N_CR_PARTICLE_BINS], x_p[N_CR_PARTICLE_BINS], R0[N_CR_PARTICLE_BINS], E_GeV[N_CR_PARTICLE_BINS], NR_key[N_CR_PARTICLE_BINS], bin_centered_rate_coeff[N_CR_PARTICLE_BINS];
 
     double gamma_ad_eff=4./3., adiabatic_coeff = (gamma_ad_eff-1.) * (P[target].Particle_DivVel*All.cf_a2inv) / UNIT_TIME_IN_CGS ; // coefficient for adiabatic work [compression/expansion terms]. convert to physical units [a2inv], and then cgs for units here. SIGN is flipped from usual convention since we assume convention where positive coefficients = losses, for convenience with everything else below.
     if(All.ComovingIntegrationOn) {adiabatic_coeff += (gamma_ad_eff-1.) * (3.*All.cf_hubble_a) / UNIT_TIME_IN_CGS;} // adiabatic term from Hubble expansion (needed for cosmological integrations. also converted to physical, cgs, and sign convention we use here.
@@ -687,7 +724,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
     double coulomb_coeff = 3.09e-16 * nHcgs * ((n_elec + 0.57*(1.-f_ion))*HYDROGEN_MASSFRAC); // default Coulomb+ionization (the two scale nearly-identically) normalization divided by GeV, b/c we need to divide the energy per CR. needs to be multiplied by ((Z*Z)/(beta*E_GeV))
     double brems_coeff_0 = 1.39e-16  * n_elec * nHcgs; // coefficient for Bremsstrahlung [following Blumenthal & Gould, 1970]: dEkin/dt=4*alpha_finestruct*r_classical_elec^2*c * SUM[n_Z,ion * Z * (Z+1) * (ln[2*gamma_elec]-1/3) * E_kin . this needs to be multiplied by [DMAX(log(2.*gamma)-0.33,0)]; becomes dE/dt = -(coeff) * E, or dP/dt = -(coeff) * P [since all e- in rel limit]
     double synchIC_coeff_0 = 5.2e-20 * (U_mag_ev + U_rad_ev); // synchrotron and inverse compton scale as dE/dt=(4/3)*sigma_Thompson*c*gamma_elec^2*(U_mag+U_rad), where U_mag and U_rad are the magnetic and radiation energy densities, respectively. Ignoring Klein-Nishina corrections here, as they are negligible at <40 GeV and only a ~15% correction up to ~1e5 GeV. U_mag_ev=(B^2/8pi)/(eV/cm^(-3)), here; U_rad=U_rad/(eV/cm^-3). needs to be multiplied by gamma
-    double brems_coeff_bulk = -brems_coeff_0 * DMAX(log(2.*(0.6)/E_rest_e_GeV)-0.33,0); // 0.6 here is in GeV, where e- spectrum peaks: not important b/c log, just want typical value to know which direction to order bins for adiabatic+brems operations
+    double brems_coeff_bulk = brems_coeff_0 * DMAX(log(2.*(0.6)/E_rest_e_GeV)-0.33,0); // 0.6 here is in GeV, where e- spectrum peaks: not important b/c log, just want typical value to know which direction to order bins for adiabatic+brems operations
 
     double dt_min = dtime_cgs, dt_tmp, CourFac = 0.5; // courant-like factor for use in subcycling here //
     for(k=0;k<N_CR_PARTICLE_BINS;k++) /* initialize a bunch of variables for the different bins that we'll refer to below */
@@ -733,7 +770,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
         //qsort(bins_sorted, n_active, sizeof(int), compare_CR_rigidity_for_sort); // sort on energies from smallest-to-largest [this is hard-coded by requiring the list go in monotonic increasing order for e and p, regardless of how the e and p are themselves ordered //
 
         double adiabatic_brems_coeff_bulk = adiabatic_coeff; // coefficient for adiabatic work [constant multiplier], can have either sign
-        if(proton_key == 0) {adiabatic_brems_coeff_bulk += -brems_coeff_bulk;} // for electrons do bremstrahhlung alongside, as it just adds to the constant, but is always a loss term
+        if(proton_key == 0) {adiabatic_brems_coeff_bulk += brems_coeff_bulk;} // for electrons do bremstrahhlung alongside, as it just adds to the constant, but is always a loss term
 
         while(t < dtime_cgs)
         {
@@ -747,7 +784,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                 if(loss_mode==3) {if(proton_key==1) {continue;}} // loss-mode=3 [Compton+Synchrotron] uses only electrons
                                 
                 int order = -1; // default to -descending- energy order [for energy-loss]. but for adiabatic terms may need to use -ascending- order if energy increases
-                if(loss_mode==1) {if(adiabatic_brems_coeff_bulk > 0) {order = 1;}} // adiabatic: if net energy -gain- in this step [only step where its possible], then switch to ascending order
+                if(loss_mode==1) {if(adiabatic_brems_coeff_bulk < 0) {order = 1;}} // adiabatic: if net energy -gain- in this step [only step where its possible], then switch to ascending order
                 
                 double dn_flux=0, de_flux=0;
                 for(k=0;k<n_active;k++)
@@ -758,6 +795,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                     if(loss_mode==0) // hadronic+catastrophic losses.
                     {
                         if(E_GeV[j] > 0.78) {Ucr[j] *= exp(-DMIN(hadronic_coeff * dt, 60.));} // only >~GeV trigger threshold for collisions //
+                        dn_flux=0; de_flux=0; // make sure these are zero'd for next step
                         continue; // these -destroy- CRs, decreasing N and E identically [ignoring secondary production for now], leaving slope un-modified and -no- bin-to-bin fluxes: easy to solve, just modify total energy in the bin //
                     }
                     
@@ -778,7 +816,10 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                         if(ntot > 0 && etot > 0) {slope_gamma = CR_return_slope_from_number_and_energy_in_bin(etot/(E_bin_NtoE * ntot), j);} // get the updated slope for this bin
                         dn_flux = 0; // reset value
                         de_flux = 0; // reset value
+                        Ucr[j] = etot; // set updated energy in bin
+                        bin_slopes[j] = slope_gamma; // set updated slope [or N, if that's the conserved quantity we evolve]
                     }
+                    dn_flux=0; de_flux=0; // re-zero in case above was not triggered
                     if(etot <= 0 || ntot <= 0) {continue;} // no CRs to actually work with here [nothing injected yet]!
                     
                     double rate_prefac = 0; // coefficient for the bin-centered loss rate from this mode [-negative- loss rate = energy-gain]
@@ -871,8 +912,8 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                     bin_slopes[j] = slope_gamma; // set finalized updated slope [or N, if that's the conserved quantity we evolve]
                 } // loop over active bins
             } // loop over loss mode
+            t += dt; // update time
         } // loop over charge
-        t += dt; // update time 
     } // loop over time
     
     if(mode_driftkick==0) {for(k=0;k<N_CR_PARTICLE_BINS;k++) {double fac=1; if(Ucr_i[k]>0 && Ucr[k]>0) {fac=DMAX(1.e-10,DMIN(1.e10,Ucr[k]/Ucr_i[k]));} SphP[target].CosmicRayEnergyPred[k] *= fac;}}

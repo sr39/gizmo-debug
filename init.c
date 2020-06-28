@@ -605,7 +605,7 @@ void init(void)
 #ifdef COSMIC_RAYS
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRayEnergy[j] = 0;}}
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
-        if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_PwrLaw_Slopes_in_Bin[j] = 0;}} // initialize a flat spectrum in each bin
+        if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_PwrLaw_Slopes_in_Bin[j] = -2.5;}} // initialize a flat spectrum in each bin
 #endif
 #endif
 #ifdef MAGNETIC
