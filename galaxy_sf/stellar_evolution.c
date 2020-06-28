@@ -546,7 +546,7 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
         // model primary C production: scales off initial H+He, generally small compared to loss fraction above in SB99, large in some other models, very small for early OB winds
         {double t1=0.005, t2=0.04, t3=10., y1=1.e-6, y2=0.001, y3=0.005;
             if(t<t1) {y=y1*pow(t/t1,3);} else if(t<t2) {y=y1*pow(t/t1,log(y2/y1)/log(t2/t1));} else if(t<t3) {y=y2*pow(t/t2,log(y3/y2)/log(t3/t2));} else {y=y3;}}
-        y_H_to_C = (1.-(yields[0]+yields[1])) * y, y_He_to_C = f_He_0 * y; // simply multiple initial He by this factor to get final production
+        double y_H_to_C = (1.-(yields[0]+yields[1])) * y, y_He_to_C = f_He_0 * y; // simply multiple initial He by this factor to get final production
         yields[1] -= y_He_to_C; yields[3] += y_H_to_C + y_He_to_C; // transfer this mass fraction from H+He to C; gives stable results if 0 < f_He_0_to_C < 1
         // model S-process production: currently no S-process tracers -explicitly- followed, so we skip this step
 #else
