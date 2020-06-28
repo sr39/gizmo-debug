@@ -913,7 +913,7 @@ void CR_initialize_multibin_quantities(void)
     for(k=0;k<N_CR_PARTICLE_BINS;k++) {CR_global_min_rigidity_in_bin[k] = R0_bin_m[k]; CR_global_max_rigidity_in_bin[k] = R0_bin_p[k];} // set the variables we just defined
 
     /* ok, now we need to build the lookup tables */
-    double gamma_limit = 50.;
+    double gamma_limit = 120.;
     int n_gamma_sample = 10000, n_table = N_CR_SPECTRUM_LUT;
     for(k=0;k<N_CR_PARTICLE_BINS;k++)
     {
@@ -923,7 +923,7 @@ void CR_initialize_multibin_quantities(void)
         if(CR_check_if_bin_is_nonrelativistic(k)) {p_power_in_e = 2.; xm_e = xm*xm; xp_e = xp*xp;} // extra power of p in momentum equation accounted for here, all that's needed
         double gamma_min = -gamma_limit, gamma_max = gamma_limit, d_gamma = (gamma_max-gamma_min) / ((double)n_gamma_sample); int j;
 
-        double gamma = gamma_min, gamma_prev = gamma_min, R_index_prev=0; j=0; // define variables for use in loop below
+        double gamma = gamma_min, gamma_prev = gamma_min, R_index_prev=0; j=0; int alldone_key=0; // define variables for use in loop below
         while(gamma <= gamma_max)
         {
             double gamma_one = gamma + 1., xm_g = pow(xm, gamma_one), xp_g = pow(xp, gamma_one); // key variables needed
@@ -932,10 +932,11 @@ void CR_initialize_multibin_quantities(void)
             if((int)R_index >= j)
             {
                 double slope_gamma = gamma + (gamma-gamma_prev) * (((double)j) - R_index) / (R_index - R_index_prev); // linearly interpolate between this and previous step to 'exact' gamma giving desired R
+                if(j==1 && slope_gamma < gamma_min) {CR_global_slope_lut[k][j-1] = slope_gamma + gamma_min;}
                 CR_global_slope_lut[k][j] = slope_gamma; // set the look-up-table value for use later
                 j++; // move to look for next target bin
             }
-            if(j >= n_table) {break;} // dont need to continue loop, we've filled in all values desired here //
+            if(j >= n_table) {alldone_key=1; break;} // dont need to continue loop, we've filled in all values desired here //
             R_index_prev = R_index; gamma_prev = gamma; // save for next loop
             gamma += d_gamma; // augment
             // check for bad values of gamma that we wish to avoid because they can cause divergences, and just slightly dodge around them //
@@ -944,6 +945,7 @@ void CR_initialize_multibin_quantities(void)
             badval=-2; if(fabs(gamma - badval) < tol) {if(gamma<badval) {gamma=badval-tol;} else {gamma=badval+tol;}}
             badval=-3; if(fabs(gamma - badval) < tol) {if(gamma<badval) {gamma=badval-tol;} else {gamma=badval+tol;}}
         }
+        if(alldone_key==0 && j<n_table) {int j0=j-1; for(j=j0+1;j<n_table;j++) {CR_global_slope_lut[k][j]=CR_global_slope_lut[k][j0]+(j-j0)*DMIN(gamma_limit,fabs(gamma_limit-CR_global_slope_lut[k][j0]));}}
     }
     
     if(ThisTask==0) {for(k=0;k<N_CR_PARTICLE_BINS;k++) { // print outputs for users
