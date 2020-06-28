@@ -117,9 +117,14 @@ double TimeBin_BH_Medd[TIMEBINS];
 
 #ifdef RT_CHEM_PHOTOION
 double rt_ion_nu_min[N_RT_FREQ_BINS];
+double rt_nu_eff_eV[N_RT_FREQ_BINS];
+double rt_ion_precalc_stellar_luminosity_fraction[N_RT_FREQ_BINS];
 double rt_ion_sigma_HI[N_RT_FREQ_BINS];
 double rt_ion_sigma_HeI[N_RT_FREQ_BINS];
 double rt_ion_sigma_HeII[N_RT_FREQ_BINS];
+double rt_ion_G_HI[N_RT_FREQ_BINS];
+double rt_ion_G_HeI[N_RT_FREQ_BINS];
+double rt_ion_G_HeII[N_RT_FREQ_BINS];
 #endif
 
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)

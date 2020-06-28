@@ -1768,24 +1768,24 @@ extern peanokey *Key, *KeySorted;
 
 
 #ifdef RT_CHEM_PHOTOION
-double rt_ion_nu_min[N_RT_FREQ_BINS];
-double rt_nu_eff_eV[N_RT_FREQ_BINS];
-double rt_ion_precalc_stellar_luminosity_fraction[N_RT_FREQ_BINS];
-double rt_ion_sigma_HI[N_RT_FREQ_BINS];
-double rt_ion_sigma_HeI[N_RT_FREQ_BINS];
-double rt_ion_sigma_HeII[N_RT_FREQ_BINS];
-double rt_ion_G_HI[N_RT_FREQ_BINS];
-double rt_ion_G_HeI[N_RT_FREQ_BINS];
-double rt_ion_G_HeII[N_RT_FREQ_BINS];
+extern double rt_ion_nu_min[N_RT_FREQ_BINS];
+extern double rt_nu_eff_eV[N_RT_FREQ_BINS];
+extern double rt_ion_precalc_stellar_luminosity_fraction[N_RT_FREQ_BINS];
+extern double rt_ion_sigma_HI[N_RT_FREQ_BINS];
+extern double rt_ion_sigma_HeI[N_RT_FREQ_BINS];
+extern double rt_ion_sigma_HeII[N_RT_FREQ_BINS];
+extern double rt_ion_G_HI[N_RT_FREQ_BINS];
+extern double rt_ion_G_HeI[N_RT_FREQ_BINS];
+extern double rt_ion_G_HeII[N_RT_FREQ_BINS];
 #endif
 
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) /* define some global variables we will need to use semi-constantly to make reference to the CR spectra */
-double CR_global_min_rigidity_in_bin[N_CR_PARTICLE_BINS];
-double CR_global_max_rigidity_in_bin[N_CR_PARTICLE_BINS];
-double CR_global_rigidity_at_bin_center[N_CR_PARTICLE_BINS];
-double CR_global_charge_in_bin[N_CR_PARTICLE_BINS];
+extern double CR_global_min_rigidity_in_bin[N_CR_PARTICLE_BINS];
+extern double CR_global_max_rigidity_in_bin[N_CR_PARTICLE_BINS];
+extern double CR_global_rigidity_at_bin_center[N_CR_PARTICLE_BINS];
+extern double CR_global_charge_in_bin[N_CR_PARTICLE_BINS];
 #define N_CR_SPECTRUM_LUT 100 /*!< number of elements per bin in the look-up-tables we will pre-compute to use for inverting the energy-number relation to determine the spectral slope */
-double CR_global_slope_lut[N_CR_PARTICLE_BINS][N_CR_SPECTRUM_LUT]; /*!< holder for the actual look-up-tables */
+extern double CR_global_slope_lut[N_CR_PARTICLE_BINS][N_CR_SPECTRUM_LUT]; /*!< holder for the actual look-up-tables */
 #endif
 
 

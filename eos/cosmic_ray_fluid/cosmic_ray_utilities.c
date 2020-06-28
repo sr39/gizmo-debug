@@ -903,11 +903,11 @@ void CR_initialize_multibin_quantities(void)
        for(k=0;k<n_active;k++)
        {
            int j = bins_sorted[k], j_m=j, j_p=j; // target bin and bin below/above
-           if(j > 0) {j_m = bins_sorted[k-1];} // define previous bin 'down'
-           if(j < n_active-1) {j_p = bins_sorted[k+1];} // define next bin 'up'
+           if(k > 0) {j_m = bins_sorted[k-1];} // define previous bin 'down'
+           if(k < n_active-1) {j_p = bins_sorted[k+1];} // define next bin 'up'
            R0_bin_m[j] = sqrt(R0[j]*R0[j_m]); R0_bin_p[j] = sqrt(R0[j]*R0[j_p]); // take the bin edges at the geometric means (halfway between midpoints in log-space)
-           if(j_m==j) {R0_bin_m[j] = R0[j] * pow(R0[j]/R0[j_p], 2);} // lowest bin gets 'padded' in the small-R direction [extends 2x as far in log-space]
-           if(j_p==j) {R0_bin_p[j] = R0[j] * pow(R0[j]/R0[j_m], 2);} // highest bin gets 'padded' in the large-R direction [extends 2x as far in log-space]
+           if(j_m==j) {R0_bin_m[j] = R0[j] * pow(R0[j]/R0_bin_p[j], 2);} // lowest bin gets 'padded' in the small-R direction [extends 2x as far in log-space]
+           if(j_p==j) {R0_bin_p[j] = R0[j] * pow(R0[j]/R0_bin_m[j], 2);} // highest bin gets 'padded' in the large-R direction [extends 2x as far in log-space]
        }
     }
     for(k=0;k<N_CR_PARTICLE_BINS;k++) {CR_global_min_rigidity_in_bin[k] = R0_bin_m[k]; CR_global_max_rigidity_in_bin[k] = R0_bin_p[k];} // set the variables we just defined
@@ -947,13 +947,15 @@ void CR_initialize_multibin_quantities(void)
     }
     
     if(ThisTask==0) {for(k=0;k<N_CR_PARTICLE_BINS;k++) { // print outputs for users
-        printf(" .. bin=%d, charge=%g e, mass=%g mp, rigidity Rmin=%g R0=%g Rmax=%g GV, energy=%g GeV, relativistic?=%d [1=Y/0=N] beta=%g gamma=%g \n",
+        printf("\n .. bin=%d, charge=%g e, mass=%g mp, rigidity Rmin=%g R0=%g Rmax=%g GV, energy=%g GeV, relativistic?=%d [1=Y/0=N] beta=%g gamma=%g \n",
            k,CR_global_charge_in_bin[k],return_CRbin_CRmass_in_mp(-1,k),CR_global_min_rigidity_in_bin[k],CR_global_rigidity_at_bin_center[k],
-           CR_global_max_rigidity_in_bin[k],return_CRbin_kinetic_energy_in_GeV(-1,k),CR_check_if_bin_is_nonrelativistic(k),return_CRbin_beta_factor(-1,k),
+           CR_global_max_rigidity_in_bin[k],return_CRbin_kinetic_energy_in_GeV(-1,k),1-CR_check_if_bin_is_nonrelativistic(k),return_CRbin_beta_factor(-1,k),
            return_CRbin_gamma_factor(-1,k)); fflush(stdout);
-        printf("\n LUT for CR slopes in this bin: \n"); printf("  .. j  .. R_egy/num .. gamma \n");
-        int j; for(j=0;j<n_table;j++) {printf("  .. %d  %g %g \n",j,((double)j)/((double)n_table),CR_global_slope_lut[k][j]); fflush(stdout);}
+        printf(" .. LUT for CR slopes in this bin: \n"); printf("  .. j  .. R_egy/num .. gamma \n");
+        int j; for(j=0;j<n_table;j++) {printf("  .. %4d  %5.4g %10.3g \n",j,((double)j)/((double)n_table),CR_global_slope_lut[k][j]); fflush(stdout);}
     }}
+    
+    return;
 }
 
 

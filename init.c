@@ -29,8 +29,7 @@ void init(void)
 
 #ifdef MAGNETIC
     double gauss2gizmo = All.UnitMagneticField_in_gauss / UNIT_B_IN_GAUSS;
-    /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here;
-        [much simpler, but be sure of your conversions!] */
+    /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here; [much simpler, but be sure of your conversions!] */
 #endif
 
 #ifdef BLACK_HOLES
@@ -42,31 +41,25 @@ void init(void)
 
     if(RestartFlag == 3 && RestartSnapNum < 0)
     {
-        if(ThisTask == 0)
-            printf("Need to give the snapshot number if FOF/SUBFIND is selected for output\n");
+        if(ThisTask == 0) {printf("Need to give the snapshot number if FOF/SUBFIND is selected for output\n");}
         endrun(0);
     }
 
     if(RestartFlag == 4 && RestartSnapNum < 0)
     {
-        if(ThisTask == 0)
-            printf("Need to give the snapshot number if snapshot should be converted\n");
+        if(ThisTask == 0) {printf("Need to give the snapshot number if snapshot should be converted\n");}
         endrun(0);
     }
 
     if(RestartFlag == 5 && RestartSnapNum < 0)
     {
-        if(ThisTask == 0)
-            printf
-            ("Need to give the snapshot number if power spectrum and two-point correlation function should be calculated\n");
+        if(ThisTask == 0) {printf("Need to give the snapshot number if power spectrum and two-point correlation function should be calculated\n");}
         endrun(0);
     }
 
     if(RestartFlag == 6 && RestartSnapNum < 0)
     {
-        if(ThisTask == 0)
-            printf
-            ("Need to give the snapshot number if velocity power spectrum for the gas cells should be calculated\n");
+        if(ThisTask == 0) {printf("Need to give the snapshot number if velocity power spectrum for the gas cells should be calculated\n");}
         endrun(0);
     }
 
@@ -80,31 +73,21 @@ void init(void)
             if(RestartFlag >= 2 && RestartSnapNum >= 0)
             {
                 char fname[1000];
-
-                if(All.NumFilesPerSnapshot > 1)
-                    sprintf(fname, "%s/snapdir_%03d/%s_%03d", All.OutputDir, RestartSnapNum, All.SnapshotFileBase,
-                            RestartSnapNum);
-                else
-                    sprintf(fname, "%s%s_%03d", All.OutputDir, All.SnapshotFileBase, RestartSnapNum);
-
+                if(All.NumFilesPerSnapshot > 1) {sprintf(fname, "%s/snapdir_%03d/%s_%03d", All.OutputDir, RestartSnapNum, All.SnapshotFileBase, RestartSnapNum);}
+                    else {sprintf(fname, "%s%s_%03d", All.OutputDir, All.SnapshotFileBase, RestartSnapNum);}
                 read_ic(fname);
 
             }
-            else
-            {
-                read_ic(All.InitCondFile);
-            }
+            else {read_ic(All.InitCondFile);}
             break;
 
         default:
-            if(ThisTask == 0)
-                printf("ICFormat=%d not supported.\n", All.ICFormat);
+            if(ThisTask == 0) {printf("ICFormat=%d not supported.\n", All.ICFormat);}
             endrun(0);
     }
 
 #ifdef CHIMES_INITIALISE_IN_EQM
-    for (i = 0; i < N_gas; i++)
-      allocate_gas_abundances_memory(&(ChimesGasVars[i]), &ChimesGlobalVars);
+    for (i = 0; i < N_gas; i++) {allocate_gas_abundances_memory(&(ChimesGasVars[i]), &ChimesGlobalVars);}
 #endif
 
     All.Time = All.TimeBegin;
@@ -139,15 +122,12 @@ void init(void)
             if(!underscore)
             {
                 char buf[1000];
-                sprintf(buf, "Your input file '%s' lacks an underscore. Cannot infer next snapshot number.\n",
-                        All.InitCondFile);
+                sprintf(buf, "Your input file '%s' lacks an underscore. Cannot infer next snapshot number.\n", All.InitCondFile);
                 terminate(buf);
             }
-            else
-                All.SnapshotFileCount = atoi(underscore + 1) + 1;
+            else {All.SnapshotFileCount = atoi(underscore + 1) + 1;}
         }
-        else
-            All.SnapshotFileCount = RestartSnapNum + 1;
+        else {All.SnapshotFileCount = RestartSnapNum + 1;}
     }
 
 #ifdef OUTPUT_LINEOFSIGHT
@@ -172,32 +152,26 @@ void init(void)
 
 
 #ifdef BOX_PERIODIC
-    if(All.ComovingIntegrationOn) check_omega();
+    if(All.ComovingIntegrationOn) {check_omega();}
 #endif
-
     All.TimeLastStatistics = All.TimeBegin - All.TimeBetStatistics;
 #if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
     All.TimeNextOnTheFlyFoF = All.TimeBegin;
 #endif
 
-    for(i = 0; i < GRAVCOSTLEVELS; i++)
-        All.LevelToTimeBin[i] = 0;
+    for(i = 0; i < GRAVCOSTLEVELS; i++) {All.LevelToTimeBin[i] = 0;}
 
-    for(i = 0; i < NumPart; i++)
-        for(j = 0; j < GRAVCOSTLEVELS; j++)
-            P[i].GravCost[j] = 0;
+    for(i = 0; i < NumPart; i++) {for(j = 0; j < GRAVCOSTLEVELS; j++) {P[i].GravCost[j] = 0;}}
 
     if(All.ComovingIntegrationOn)	/*  change to new velocity variable */
-    {
-        for(i = 0; i < NumPart; i++)
-            for(j = 0; j < 3; j++)
-	    {
-                P[i].Vel[j] *= sqrt(All.Time) * All.Time;
-	    }
-    }
+        {for(i=0;i<NumPart;i++) {for(j=0;j<3;j++) {P[i].Vel[j] *= sqrt(All.Time)*All.Time;}}}
 
 #ifdef DM_SIDM
     init_self_interactions();
+#endif
+
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+    CR_initialize_multibin_quantities(); // initialize the global variables and look-up tables //
 #endif
 
     for(i = 0; i < NumPart; i++)	/*  start-up initialization */
@@ -632,7 +606,6 @@ void init(void)
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRayEnergy[j] = 0;}}
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_PwrLaw_Slopes_in_Bin[j] = 0;}} // initialize a flat spectrum in each bin
-        CR_initialize_multibin_quantities(); // initialize the global variables and look-up tables //
 #endif
 #endif
 #ifdef MAGNETIC
