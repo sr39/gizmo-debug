@@ -1784,7 +1784,7 @@ extern double CR_global_min_rigidity_in_bin[N_CR_PARTICLE_BINS];
 extern double CR_global_max_rigidity_in_bin[N_CR_PARTICLE_BINS];
 extern double CR_global_rigidity_at_bin_center[N_CR_PARTICLE_BINS];
 extern double CR_global_charge_in_bin[N_CR_PARTICLE_BINS];
-#define N_CR_SPECTRUM_LUT 100 /*!< number of elements per bin in the look-up-tables we will pre-compute to use for inverting the energy-number relation to determine the spectral slope */
+#define N_CR_SPECTRUM_LUT 101 /*!< number of elements per bin in the look-up-tables we will pre-compute to use for inverting the energy-number relation to determine the spectral slope */
 extern double CR_global_slope_lut[N_CR_PARTICLE_BINS][N_CR_SPECTRUM_LUT]; /*!< holder for the actual look-up-tables */
 #endif
 

@@ -914,7 +914,7 @@ void CR_initialize_multibin_quantities(void)
 
     /* ok, now we need to build the lookup tables */
     double gamma_limit = 120.;
-    int n_gamma_sample = 10000, n_table = N_CR_SPECTRUM_LUT;
+    int n_gamma_sample = 10000, n_table = N_CR_SPECTRUM_LUT-1;
     for(k=0;k<N_CR_PARTICLE_BINS;k++)
     {
         double xm = CR_global_min_rigidity_in_bin[k] / CR_global_rigidity_at_bin_center[k]; // dimensionless bin minimum
@@ -945,7 +945,8 @@ void CR_initialize_multibin_quantities(void)
             badval=-2; if(fabs(gamma - badval) < tol) {if(gamma<badval) {gamma=badval-tol;} else {gamma=badval+tol;}}
             badval=-3; if(fabs(gamma - badval) < tol) {if(gamma<badval) {gamma=badval-tol;} else {gamma=badval+tol;}}
         }
-        if(alldone_key==0 && j<n_table) {int j0=j-1; for(j=j0+1;j<n_table;j++) {CR_global_slope_lut[k][j]=CR_global_slope_lut[k][j0]+(j-j0)*DMIN(gamma_limit,fabs(gamma_limit-CR_global_slope_lut[k][j0]));}}
+        if(alldone_key==0 && j<n_table) {int j0=j-1; for(j=j0+1;j<N_CR_SPECTRUM_LUT;j++) {CR_global_slope_lut[k][j]=CR_global_slope_lut[k][j0]+(j-j0)*DMIN(gamma_limit,fabs(gamma_limit-CR_global_slope_lut[k][j0]));}}
+            else {CR_global_slope_lut[k][N_CR_SPECTRUM_LUT-1]=gamma_limit;} // set upper end of table value to unity
     }
     
     if(ThisTask==0) {for(k=0;k<N_CR_PARTICLE_BINS;k++) { // print outputs for users
@@ -954,7 +955,7 @@ void CR_initialize_multibin_quantities(void)
            CR_global_max_rigidity_in_bin[k],return_CRbin_kinetic_energy_in_GeV(-1,k),1-CR_check_if_bin_is_nonrelativistic(k),return_CRbin_beta_factor(-1,k),
            return_CRbin_gamma_factor(-1,k)); fflush(stdout);
         printf(" .. LUT for CR slopes in this bin: \n"); printf("  .. j  .. R_egy/num .. gamma \n");
-        int j; for(j=0;j<n_table;j++) {printf("  .. %4d  %5.4g %10.3g \n",j,((double)j)/((double)n_table),CR_global_slope_lut[k][j]); fflush(stdout);}
+        int j; for(j=0;j<N_CR_SPECTRUM_LUT;j++) {printf("  .. %4d  %5.4g %10.3g \n",j,((double)j)/((double)n_table),CR_global_slope_lut[k][j]); fflush(stdout);}
     }}
     
     return;
@@ -970,7 +971,7 @@ double CR_return_slope_from_number_and_energy_in_bin(double R, int k_bin)
     if(CR_check_if_bin_is_nonrelativistic(k_bin)) {xm_e=xm*xm; xp_e=xp*xp;} // sets bounds that this value can possibly obtain
     if(R >= xp_e) {return CR_global_slope_lut[k_bin][n_table-1];} // set to maximum
     if(R <= xm_e) {return CR_global_slope_lut[k_bin][0];} // set to minimum
-    double n_interp = (log(R / xm_e) / log(xp_e / xm_e)) * n_table; // fraction of the way between min and max in our log-spaced table, returns 0-1
+    double n_interp = (log(R / xm_e) / log(xp_e / xm_e)) * (n_table-1); // fraction of the way between min and max in our log-spaced table, returns 0-1
     int n0 = (int) floor(n_interp), n1=n0+1;
     if(n1 > n_table-1) {n1=n_table-1;}
     double slope_gamma = CR_global_slope_lut[k_bin][n0] + (n_interp-(double)n0) * (CR_global_slope_lut[k_bin][n1]-CR_global_slope_lut[k_bin][n0]);
