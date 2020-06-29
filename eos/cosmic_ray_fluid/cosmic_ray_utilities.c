@@ -433,7 +433,7 @@ void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, i
 #endif
         SphP[target].CosmicRayEnergy[k_CRegy]+=dEcr; SphP[target].CosmicRayEnergyPred[k_CRegy]+=dEcr;
 #ifdef COSMIC_RAYS_M1
-        double dir_mag=0, flux_mag=dEcr*COSMIC_RAYS_M1, dir_to_use[3]={0};
+        double dir_mag=0, flux_mag=dEcr*COSMIC_RAYS_M1, dir_to_use[3]={0}; int k;
 #ifdef MAGNETIC
         double B_dot_dir=0, Bdir[3]={0}; for(k=0;k<3;k++) {Bdir[k]=SphP[target].BPred[k]; B_dot_dir+=dir[k]*Bdir[k];} // the 'default' direction is projected onto B
         for(k=0;k<3;k++) {dir_to_use[k]=B_dot_dir*Bdir[k];} // launch -along- B, projected [with sign determined] by the intially-desired direction
@@ -599,12 +599,12 @@ double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy)
 {
     double streamfac = 0;
 #if !defined(COSMIC_RAYS_DISABLE_STREAMING) && !defined(COSMIC_RAYS_ALFVEN)
-    double vstream_0 = Get_CosmicRayStreamingVelocity(i), vA=Get_Gas_Alfven_speed_i(i); /* define naive streaming and Alfven speeds */
+    double vstream_0 = Get_CosmicRayStreamingVelocity(target), vA=Get_Gas_Alfven_speed_i(target); /* define naive streaming and Alfven speeds */
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-    vA /= Get_Gas_Ionized_Fraction(i); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
+    vA /= Get_Gas_Ionized_Fraction(target); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
     if(vA>0) {vstream_0 = DMIN(vA, vstream_0);} /* account for the fact that the loss term is always [or below] the Alfven speed, regardless of the bulk streaming speed */
-    double L_cr = Get_CosmicRayGradientLength(i,k_CRegy), v_st_eff = SphP[i].CosmicRayDiffusionCoeff[k_CRegy] / (GAMMA_COSMICRAY * L_cr + MIN_REAL_NUMBER); // maximum possible streaming speed from combined diffusivity
+    double L_cr = Get_CosmicRayGradientLength(target,k_CRegy), v_st_eff = SphP[target].CosmicRayDiffusionCoeff[k_CRegy] / (GAMMA_COSMICRAY * L_cr + MIN_REAL_NUMBER); // maximum possible streaming speed from combined diffusivity
     streamfac = fabs(GAMMA_COSMICRAY_MINUS1 * DMIN(v_st_eff, vstream_0) / L_cr); // if upper-limit to streaming is less than nominal 'default' v_stream/loss term, this should be lower too
 #endif
     return streamfac;
