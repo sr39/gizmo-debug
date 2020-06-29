@@ -745,11 +745,11 @@ void hydro_final_operations_and_cleanup(void)
                 (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
             for(k=0;k<N_CR_PARTICLE_BINS;k++)
             {
-                double streamfac = CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy);
+                double streamfac = CR_get_streaming_loss_rate_coefficient(i,k);
 #if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
-                SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * cr_stream_cool; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
+                SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * streamfac; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
 #endif
-                SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * cr_stream_cool;
+                SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * streamfac;
             }
 #endif
 
