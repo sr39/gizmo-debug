@@ -77,6 +77,7 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
     return f_bin;
 }
 
+
 /* routine which gives diffusion coefficient as a function of energy for the 'constant diffusion coefficient' models:
     current default: -extremely- simple power-law, assuming diffusion coefficient increases with CR energy per unit charge as (E/Z)^(1/2) */
 double diffusion_coefficient_constant(int target, int k_CRegy)
@@ -406,17 +407,29 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir)
 {
     if(CR_energy_to_inject <= 0) {return;}
-    double f_injected[N_CR_PARTICLE_BINS]; f_injected[0]=1; int k, k_CRegy; k=0;
+    double f_injected[N_CR_PARTICLE_BINS]; f_injected[0]=1; int k_CRegy;;
 #if (N_CR_PARTICLE_BINS > 1) /* add a couple steps to make sure injected energy is always normalized properly! */
-    double sum_in=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {f_injected[k]=CR_energy_spectrum_injection_fraction(k,source_PType,injection_velocity,0); sum_in+=f_injected[k];}
-    if(sum_in>0) {f_injected[k]/=sum_in;} else {for(k=0;k<N_CR_PARTICLE_BINS;k++) {f_injected[k]=1./N_CR_PARTICLE_BINS;}}
+    double sum_in=0.0; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {f_injected[k_CRegy]=CR_energy_spectrum_injection_fraction(k_CRegy,source_PType,injection_velocity,0); sum_in+=f_injected[k_CRegy];}
+    if(sum_in>0.0) {for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {f_injected[k_CRegy]/=sum_in;}} else {for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {f_injected[k_CRegy]=1./N_CR_PARTICLE_BINS;}}
 #endif
     for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
         double dEcr = CR_energy_to_inject * f_injected[k_CRegy]; // normalized properly to sum to unity
         if(dEcr <= 0) {continue;}
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) // update the evolved slopes with the injection spectrum slope: do a simple energy-weighted mean for the updated/mixed slope here
-        SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin[k_CRegy] = (SphP[target].CosmicRayEnergy[k_CRegy]*SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin[k_CRegy] + dEcr*CR_energy_spectrum_injection_fraction(k,source_PType,injection_velocity,1)) / (SphP[target].CosmicRayEnergy[k_CRegy] + dEcr);
+        double E_GeV = return_CRbin_kinetic_energy_in_GeV(-1, k_CRegy), egy_slopemode = 1, xm = CR_global_min_rigidity_in_bin[k_CRegy] / CR_global_rigidity_at_bin_center[k_CRegy], xp = CR_global_max_rigidity_in_bin[k_CRegy] / CR_global_rigidity_at_bin_center[k_CRegy], xm_e=xm, xp_e=xp; // values needed for bin injection parameters
+        if(CR_check_if_bin_is_nonrelativistic(k_CRegy)) {egy_slopemode=2; xm_e*=xm_e; xp_e*=xp_e;} // values needed to scale from slope injected to number and back
+        double slope_inj = CR_energy_spectrum_injection_fraction(k_CRegy,source_PType,injection_velocity,1); // spectral slope of injected CRs
+        double gamma_one = slope_inj + 1.; xm_gamma_one = pow(xm, gamma_one); xp_gamma_one = pow(xp, gamma_one); // variables below
+        double ntot_inj = (dEcr / E_GeV) * ((gamma_one + egy_slopemode) / (gamma_one)) * (xp_gamma_one - xm_gamma_one) / (xp_gamma_one*xp_e - xm_gamma_one*xm_e); // injected number in bin
+        /* // below for old method where we explicitly evolved slope instead of number - simpler bow
+        double egy_prev = SphP[target].CosmicRayEnergy[k_CRegy], etot_new = egy_prev + dEcr,
+        double slope_prev = SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin[k_CRegy]; // spectral slope of initial CRs
+        gamma_one = slope_prev + 1.; xm_gamma_one = pow(xm, gamma_one); xp_gamma_one = pow(xp, gamma_one); // variables below
+        double ntot_prev = (egy_prev / E_GeV) * ((gamma_one + egy_slopemode) / (gamma_one)) * (xp_gamma_one - xm_gamma_one) / (xp_gamma_one*xp_e - xm_gamma_one*xm_e); // CR number before injection
+        SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin[k_CRegy] = CR_return_slope_from_number_and_energy_in_bin(etot_new, ntot_prev + ntot_inj, E_GeV, k_CRegy);
+        */
+        SphP[target].CosmicRay_Number_in_Bin[k_CRegy] += ntot_inj; // simply update injected number
 #endif
         SphP[target].CosmicRayEnergy[k_CRegy]+=dEcr; SphP[target].CosmicRayEnergyPred[k_CRegy]+=dEcr;
 #ifdef COSMIC_RAYS_M1
@@ -481,17 +494,16 @@ double Get_CosmicRayGradientLength(int i, int k_CRegy)
 /* return the effective CR 'streaming' velocity for sub-grid [unresolved] models with streaming velocity set by e.g. the Alfven speed along the gradient of the CR pressure */
 double Get_CosmicRayStreamingVelocity(int i)
 {
-    /* in the weak-field (high-beta) case, the streaming velocity is approximately the sound speed */
+    /* if we don't evolve magnetic fields, we'll assume the streaming velocity is approximately the sound speed, i.e. assume beta~1 */
     double v_streaming = sqrt(convert_internalenergy_soundspeed2(i,SphP[i].InternalEnergyPred)); // thermal ion sound speed //
-#ifdef MAGNETIC
-    /* in the strong-field (low-beta) case, it's actually the Alfven velocity: interpolate between these */
+#ifdef MAGNETIC  /* since we actually evolve B-fields, it's actually the Alfven velocity: use this */
     double vA_2 = 0.0; double cs_stream = v_streaming;
     int k; for(k=0;k<3;k++) {vA_2 += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);}
     vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
     vA_2 /= Get_Gas_Ionized_Fraction(i); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
-    v_streaming = DMIN(1.0e6*cs_stream, sqrt(MIN_REAL_NUMBER*cs_stream*cs_stream + vA_2)); // limit to Alfven speed //
+    v_streaming = DMIN(1.0e6*cs_stream, sqrt(MIN_REAL_NUMBER*cs_stream*cs_stream + vA_2)); // limit to Alfven speed, but put some limiters for extreme cases //
 #endif
 #ifdef COSMIC_RAYS_M1
     v_streaming = DMIN(v_streaming , COSMIC_RAYS_M1); // limit to maximum transport speed //
@@ -582,6 +594,24 @@ double get_cell_Urad_in_eVcm3(int i)
 
 
 
+/* return pre-factor for CR streaming losses, such that loss rate dE/dt = -E * streamfac */
+double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy)
+{
+    double streamfac = 0;
+#if !defined(COSMIC_RAYS_DISABLE_STREAMING) && !defined(COSMIC_RAYS_ALFVEN)
+    double vstream_0 = Get_CosmicRayStreamingVelocity(i), vA=Get_Gas_Alfven_speed_i(i); /* define naive streaming and Alfven speeds */
+#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
+    vA /= Get_Gas_Ionized_Fraction(i); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
+#endif
+    if(vA>0) {vstream_0 = DMIN(vA, vstream_0);} /* account for the fact that the loss term is always [or below] the Alfven speed, regardless of the bulk streaming speed */
+    double L_cr = Get_CosmicRayGradientLength(i,k_CRegy), v_st_eff = SphP[i].CosmicRayDiffusionCoeff[k_CRegy] / (GAMMA_COSMICRAY * L_cr + MIN_REAL_NUMBER); // maximum possible streaming speed from combined diffusivity
+    streamfac = fabs(GAMMA_COSMICRAY_MINUS1 * DMIN(v_st_eff, vstream_0) / L_cr); // if upper-limit to streaming is less than nominal 'default' v_stream/loss term, this should be lower too
+#endif
+    return streamfac;
+}
+
+
+
 /* routine to do the drift/kick operations for CRs: mode=0 is kick, mode=1 is drift */
 #if !defined(COSMIC_RAYS_ALFVEN)
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
@@ -641,6 +671,20 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         if(mode==0) {SphP[i].CosmicRayEnergy[k_CRegy]=eCR_tmp;} else {SphP[i].CosmicRayEnergyPred[k_CRegy]=eCR_tmp;} // updated energy
         double eCR_0 = eCR_tmp; // save this value for below
         
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+        // add update for CR number if evolved explicitly //
+        if(mode==0) // only update on kicks, since we worth with a drift-conserved slope determining the ratio of N and E
+        {
+            double dN = SphP[i].DtCosmicRay_Number_in_Bin[k_CRegy]*dt_entr, n0 = SphP[i].CosmicRay_Number_in_Bin[k_CRegy], n_new = n0+dN;
+            double E_GeV = return_CRbin_kinetic_energy_in_GeV(-1, k_CRegy), xm = CR_global_min_rigidity_in_bin[k] / CR_global_rigidity_at_bin_center[k], xp = CR_global_max_rigidity_in_bin[k] / CR_global_rigidity_at_bin_center[k], xm_e=xm, xp_e=xp;
+            if(CR_check_if_bin_is_nonrelativistic(k_CRegy)) {xm_e = xm*xm; xp_e = xp*xp;} // extra power of p in energy equation accounted for here, all that's needed
+            double N_min = eCR_tmp / (E_GeV * xp_e * (1.-1.e-4)); // even with arbitrarily large slopes we cannot exceed this limit: all CRs 'piled up' at highest energy
+            double N_max = eCR_tmp / (E_GeV * xm_e * (1.+1.e-4)); // even with arbitrarily large slopes we cannot exceed this limit: all CRs 'piled up' at lowest energy
+            n_new = DMIN(DMAX(n_new,N_min),N_max); if(n_new<0 || isnan(n_new)) {n_new=0;}
+            SphP[i].CosmicRay_Number_in_Bin[k_CRegy] = n_new; // alright, updated CR number for evolution equations
+        }
+#endif
+        
         /* now need to account for the adiabatic heating/cooling of the 'fluid', here, with gamma=gamma_eff */
         double dCR_div;
 #if 1
@@ -686,7 +730,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 #endif
         double uf = DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
         if(mode==0) {SphP[i].InternalEnergy = uf;} else {SphP[i].InternalEnergyPred = uf;} // update gas
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
         if(mode==0) {SphP[i].CosmicRayEnergy[k_CRegy] += dCR_div;} else {SphP[i].CosmicRayEnergyPred[k_CRegy] += dCR_div;} // update CRs: note if explicitly evolving spectrum, this is done separately below //
 #endif
     } // loop over CR bins complete
@@ -711,22 +755,26 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
     if(dtime_cgs <= 0 || nHcgs <= 0) {return;} /* catch */
     
     /* define a bunch of general-use variables below */
-    double *bin_slopes; bin_slopes=SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin;
+    //double *bin_slopes; bin_slopes = SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin; // if directly evolving slope
+    double *ntot_evolved; ntot_evolved = SphP[target].CosmicRay_Number_in_Bin; double bin_slopes[N_CR_PARTICLE_BINS]; // if directly evolving number
     double *Ucr, Ucr_tot=0; if(mode_driftkick==0) {Ucr=SphP[target].CosmicRayEnergy;} else {Ucr=SphP[target].CosmicRayEnergyPred;}
     int k; for(k=0;k<N_CR_PARTICLE_BINS;k++) {Ucr_tot+=Ucr[k];} // check total energy since some fluid cells can have no CRs
     if(Ucr_tot < MIN_REAL_NUMBER) {return;} // catch - nothing to do here //
     double t=0, dt=0, E_rest_e_GeV=0.000511, f_ion=DMAX(DMIN(Get_Gas_Ionized_Fraction(target),1.),0.), b_muG=get_cell_Bfield_in_microGauss(target), U_mag_ev=0.0248342*b_muG*b_muG, U_rad_ev=get_cell_Urad_in_eVcm3(target);
-    double Ucr_i[N_CR_PARTICLE_BINS], Z[N_CR_PARTICLE_BINS], x_m[N_CR_PARTICLE_BINS], x_p[N_CR_PARTICLE_BINS], R0[N_CR_PARTICLE_BINS], E_GeV[N_CR_PARTICLE_BINS], NR_key[N_CR_PARTICLE_BINS], bin_centered_rate_coeff[N_CR_PARTICLE_BINS];
 
     double gamma_ad_eff=4./3., adiabatic_coeff = (gamma_ad_eff-1.) * (P[target].Particle_DivVel*All.cf_a2inv) / UNIT_TIME_IN_CGS ; // coefficient for adiabatic work [compression/expansion terms]. convert to physical units [a2inv], and then cgs for units here. SIGN is flipped from usual convention since we assume convention where positive coefficients = losses, for convenience with everything else below.
     if(All.ComovingIntegrationOn) {adiabatic_coeff += (gamma_ad_eff-1.) * (3.*All.cf_hubble_a) / UNIT_TIME_IN_CGS;} // adiabatic term from Hubble expansion (needed for cosmological integrations. also converted to physical, cgs, and sign convention we use here.
+
+    double adiabatic_coeff = calculate_effective_adiabatic_coefficient(target);
+    
+    double Ucr_i[N_CR_PARTICLE_BINS], Z[N_CR_PARTICLE_BINS], x_m[N_CR_PARTICLE_BINS], x_p[N_CR_PARTICLE_BINS], R0[N_CR_PARTICLE_BINS], E_GeV[N_CR_PARTICLE_BINS], NR_key[N_CR_PARTICLE_BINS], bin_centered_rate_coeff[N_CR_PARTICLE_BINS], streaming_coeff[N_CR_PARTICLE_BINS], brems_coeff[N_CR_PARTICLE_BINS];
     double hadronic_coeff = 6.37e-16 * nHcgs; // coefficient for hadronic/catastrophic interactions: dEtot/dt = -(coeff) * Etot, or dPtot/dt = -(coeff) * Ptot (since all p effected are in rel limit, and works by deleting N not by lowering individual E
     double coulomb_coeff = 3.09e-16 * nHcgs * ((n_elec + 0.57*(1.-f_ion))*HYDROGEN_MASSFRAC); // default Coulomb+ionization (the two scale nearly-identically) normalization divided by GeV, b/c we need to divide the energy per CR. needs to be multiplied by ((Z*Z)/(beta*E_GeV))
     double brems_coeff_0 = 1.39e-16  * n_elec * nHcgs; // coefficient for Bremsstrahlung [following Blumenthal & Gould, 1970]: dEkin/dt=4*alpha_finestruct*r_classical_elec^2*c * SUM[n_Z,ion * Z * (Z+1) * (ln[2*gamma_elec]-1/3) * E_kin . this needs to be multiplied by [DMAX(log(2.*gamma)-0.33,0)]; becomes dE/dt = -(coeff) * E, or dP/dt = -(coeff) * P [since all e- in rel limit]
     double synchIC_coeff_0 = 5.2e-20 * (U_mag_ev + U_rad_ev); // synchrotron and inverse compton scale as dE/dt=(4/3)*sigma_Thompson*c*gamma_elec^2*(U_mag+U_rad), where U_mag and U_rad are the magnetic and radiation energy densities, respectively. Ignoring Klein-Nishina corrections here, as they are negligible at <40 GeV and only a ~15% correction up to ~1e5 GeV. U_mag_ev=(B^2/8pi)/(eV/cm^(-3)), here; U_rad=U_rad/(eV/cm^-3). needs to be multiplied by gamma
-    double brems_coeff_bulk = brems_coeff_0 * DMAX(log(2.*(0.6)/E_rest_e_GeV)-0.33,0); // 0.6 here is in GeV, where e- spectrum peaks: not important b/c log, just want typical value to know which direction to order bins for adiabatic+brems operations
 
-    double dt_min = dtime_cgs, dt_tmp, CourFac = 0.5; // courant-like factor for use in subcycling here //
+    double dt_min = dtime_cgs, dt_tmp, CourFac = 0.4; // courant-like factor for use in subcycling here //
+    int sign_flip_adiabatic_terms = 0, sign_key_for_adiabatic_loop = 1; // key that tells us if the adiabatic+brems+streaming terms have a strong sign flip, in which case we need to do 2 loops instead of 1
     for(k=0;k<N_CR_PARTICLE_BINS;k++) /* initialize a bunch of variables for the different bins that we'll refer to below */
     {
         Ucr_i[k] = Ucr[k]; // save initial energy for reference at the end of this loop
@@ -736,11 +784,16 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
         NR_key[k] = CR_check_if_bin_is_nonrelativistic(k); // key to decide whether to use relativistic or non-relativistic scalings
         x_m[k] = CR_global_min_rigidity_in_bin[k] / R0[k]; // ratio of min-to-mid-bin CR rigidity or momentum, used for scaling everything below
         x_p[k] = CR_global_max_rigidity_in_bin[k] / R0[k]; // ratio of max-to-mid-bin CR rigidity or momentum, used for scaling everything below
+        bin_slopes[k] = CR_return_slope_from_number_and_energy_in_bin(Ucr[k], ntot_evolved[k], E_GeV[k], k); // initialize slopes to use below from LUT, if not directly evolving them
+
+        if(Z[k] < 0) {brems_coeff[k] = brems_coeff_0 * DMAX(log(2.*E_GeV[k]/E_rest_e_GeV)-0.33,0);} else {brems_coeff[k]=0;}
+        streaming_coeff[k] = CR_get_streaming_loss_rate_coefficient(target,k);
         
         // calculate the timestep limit from all possible bins, maximum step. note no constraint from hadronic here b/c cannot 'cross the bin'
         bin_centered_rate_coeff[k] = 0;
-        double adiab_brem_coeff = adiabatic_coeff; // do constraint from adiabatic + Bremsstrahlung
-        if(Z[k] < 0) {adiab_brem_coeff += brems_coeff_0 * DMAX(log(2.*E_GeV[k]/E_rest_e_GeV)-0.33,0);}
+        double adiab_brem_coeff = adiabatic_coeff + streaming_coeff[k] + brems_coeff[k]; // do constraint from adiabatic + Bremsstrahlung
+        if(adiab_brem_coeff < 0) {sign_key_for_adiabatic_loop=-1;} // note the net sign of this term for use below
+        if(k>0) {if(adiab_brem_coeff * (adiabatic_coeff + streaming_coeff[k-1] + brems_coeff[k-1]) < 0) {sign_flip_adiabatic_terms = 1;}} // have a sign flip, and its not negligible in magnitude //
         if(fabs(adiab_brem_coeff) > 0) {dt_tmp = CourFac * log(x_p[k]/x_m[k]) / fabs(adiab_brem_coeff); dt_min=DMIN(dt_min, dt_tmp); bin_centered_rate_coeff[k]+=adiab_brem_coeff;}
         if(Z[k] < 0) // e-: do constraint from synchrotron + IC
         {
@@ -757,7 +810,9 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
             }
         }
     }
+    if(sign_flip_adiabatic_terms==1) {sign_key_for_adiabatic_loop=-1;} // have sign-flips, so adiabatic term -must- have the oppose sign. otherwise -no- sign flips, so just follow the last sign recorded above
 
+    
     double dt_target = DMIN(dtime_cgs, dt_min); // timescale for subcycling, using constraint above. limit for extreme cases where we might run into expense problems
     if(dt_target < 1.e-4*dtime_cgs) {printf("WARNING: timestep for subcycling wants to exceed limit: dt_min=%g dt_tot=%g \n",dt_min,dtime_cgs); fflush(stdout);} // print warning (diagnostic for now)
     
@@ -765,26 +820,25 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
     {
         int n_active=0, bins_sorted[N_CR_PARTICLE_BINS]; double R0_bins[N_CR_PARTICLE_BINS];
         for(k=0;k<N_CR_PARTICLE_BINS;k++) {if((Z[k]>0 && proton_key==1) || (Z[k]<0 && proton_key==0)) {bins_sorted[n_active]=k; R0_bins[n_active]=R0[k]; n_active++;}} // bin is valid: charge matches that desired
-        if(n_active<=0) {break;} // nothing to do here
+        if(n_active<=0) {continue;} // nothing to do here
         if(n_active<N_CR_PARTICLE_BINS) {for(k=n_active;k<N_CR_PARTICLE_BINS;k++) {R0_bins[k]=MAX_REAL_NUMBER;}} // set a dummy value here for sorting purposes below
         //qsort(bins_sorted, n_active, sizeof(int), compare_CR_rigidity_for_sort); // sort on energies from smallest-to-largest [this is hard-coded by requiring the list go in monotonic increasing order for e and p, regardless of how the e and p are themselves ordered //
 
-        double adiabatic_brems_coeff_bulk = adiabatic_coeff; // coefficient for adiabatic work [constant multiplier], can have either sign
-        if(proton_key == 0) {adiabatic_brems_coeff_bulk += brems_coeff_bulk;} // for electrons do bremstrahhlung alongside, as it just adds to the constant, but is always a loss term
-
+        t = 0; // reset this before we enter the time integration loop below! //
         while(t < dtime_cgs)
         {
             dt = DMIN(dt_target , dtime_cgs - t); // set the subcycle step size
             if(dt <= 0) {break;} // we have reached the end of the timestep - exit loop
 
             int loss_mode; // this will determine which type[s] of losses [differentiated by their qualitative scalings] we are considering //
-            for(loss_mode=0;loss_mode<=3;loss_mode++)
+            for(loss_mode=0;loss_mode<=4;loss_mode++)
             {
                 if(loss_mode==0 || loss_mode==2) {if(proton_key==0) {continue;}} // loss-modes=0,2 [Hadronic,Coulomb] use only protons, skip to next in loop
                 if(loss_mode==3) {if(proton_key==1) {continue;}} // loss-mode=3 [Compton+Synchrotron] uses only electrons
-                                
+                if(loss_mode==4) {if(sign_flip_adiabatic_terms == 0) {continue;}} // adiabatic+streaming+brems term walked in same order, so we don't need to do an additional loop here
+                
                 int order = -1; // default to -descending- energy order [for energy-loss]. but for adiabatic terms may need to use -ascending- order if energy increases
-                if(loss_mode==1) {if(adiabatic_brems_coeff_bulk < 0) {order = 1;}} // adiabatic: if net energy -gain- in this step [only step where its possible], then switch to ascending order
+                if(loss_mode==1) {if(sign_key_for_adiabatic_loop < 0) {order = 1;}} // adiabatic: if net energy -gain- in this step [only step where its possible], then switch to ascending order
                 
                 double dn_flux=0, de_flux=0;
                 for(k=0;k<n_active;k++)
@@ -802,28 +856,37 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                     double etot = Ucr[j]; // total energy in bin, one of our key evolved variables
                     double E_bin_NtoE = E_GeV[j]; // use this to normalize the number in a convenient unit (just to keep easier to track, units are arbitrary). save it so we don't forget below.
                     double slope_gamma = bin_slopes[j]; // get the initial slope if we evolve it and can pass it as a conserved quantity
+                    double ntot = ntot_evolved[j]; // total number in bin [in our effective units] //
 
-                    double xm = x_m[j], xp = x_p[j], gamma_one = slope_gamma+1., xe_gamma_one = 0, xm_gamma_one = pow(xm, gamma_one), xp_gamma_one = pow(xp, gamma_one); // just for convenience below
+                    double xm = x_m[j], xp = x_p[j], gamma_one = slope_gamma+1., xe_gamma_one = 0, xm_gamma_one = 0, xp_gamma_one = 0; // just for convenience below
+                    /* // old mode below, where we directly evolve slope and derived number from it
                     double ntot = 0; // total number in bin. we use the slope we obtain to convert between number and energy, given the bin-centered values
+                    xm_gamma_one = pow(xm, gamma_one); xp_gamma_one = pow(xp, gamma_one); // variables needed for conversion below
                     if(NR_key[j]) {ntot = ((gamma_one + 2.) / (gamma_one)) * (xp_gamma_one - xm_gamma_one) / (xp_gamma_one*xp*xp - xm_gamma_one*xm*xm);} // non-relativistic map between E and N
                         else {ntot = ((gamma_one + 1.) / (gamma_one)) * (xp_gamma_one - xm_gamma_one) / (xp_gamma_one*xp - xm_gamma_one*xm);} // relativistic map between E and N
                     ntot *= (etot / E_bin_NtoE); // dimensional normalization. note the units are arbitrary for the E_bin_NtoE term, as long as we are consistent [we can evolve constant x N, instead of N, for convenience]
+                    */
                     
                     if(dn_flux!=0 && de_flux!=0) // update bin with fluxes incoming
                     {
                         ntot = ntot + dn_flux; // incoming flux of number [positive-definite]
                         etot = etot + de_flux; // incoming flux of energy [positive-definite]
-                        if(ntot > 0 && etot > 0) {slope_gamma = CR_return_slope_from_number_and_energy_in_bin(etot/(E_bin_NtoE * ntot), j);} // get the updated slope for this bin
+                        if(ntot > 0 && etot > 0) {slope_gamma = CR_return_slope_from_number_and_energy_in_bin(etot, ntot, E_bin_NtoE, j);} // get the updated slope for this bin
                         dn_flux = 0; // reset value
                         de_flux = 0; // reset value
                         Ucr[j] = etot; // set updated energy in bin
+                        ntot_evolved[j] = ntot // set updated number in bin
                         bin_slopes[j] = slope_gamma; // set updated slope [or N, if that's the conserved quantity we evolve]
                     }
                     dn_flux=0; de_flux=0; // re-zero in case above was not triggered
                     if(etot <= 0 || ntot <= 0) {continue;} // no CRs to actually work with here [nothing injected yet]!
                     
                     double rate_prefac = 0; // coefficient for the bin-centered loss rate from this mode [-negative- loss rate = energy-gain]
-                    if(loss_mode==1) {rate_prefac = adiabatic_coeff; if(proton_key == 0) {rate_prefac += brems_coeff_0 * DMAX(log(2.*E_GeV[j]/E_rest_e_GeV)-0.33,0);}} // adiabatic + brems
+                    if(loss_mode==1 || loss_mode==4) // adiabatic + brems + streaming
+                    {
+                        if(loss_mode==1) {rate_prefac = adiabatic_coeff;} // adiabatic always in mode=1
+                        if((sign_flip_adiabatic_terms==0) || (loss_mode==4)) {rate_prefac += brems_coeff[k] + streaming_coeff[k];} // no sign-flip, or in mode=4 so we do add the strictly-loss terms
+                    }
                     if(loss_mode==2) // coulomb + ion
                     {
                         rate_prefac = (Z[j]/R0[j]) * coulomb_coeff; // relativistic expression. note this is equation for p evolution, where R is rigidity, so need to be careful with Z factors, etc.
@@ -833,24 +896,24 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                     
                     if(fabs(rate_prefac) < 0.01*fabs(bin_centered_rate_coeff[j])+MIN_REAL_NUMBER) {continue;} // this loss mode is negligible here, skip it [pure optimization]
                     if(fabs(bin_centered_rate_coeff[j])*dt < 1.e-16 * Ucr[j]) {continue;} // total loss rate is so small we won't be able to track it to floating-point accuracy, skip it
-                    if(loss_mode==1) {if((rate_prefac < 0 && order == -1) || (rate_prefac > 0 && order == 1)) {continue;}} // adiabatic: make sure we are operating in correct order (will ignore bin if we have a sign switch, which is ok, since it must be nearly-null in that case
+                    if(loss_mode==1 || loss_mode==4) {if((rate_prefac < 0 && order == -1) || (rate_prefac > 0 && order == 1)) {continue;}} // adiabatic: make sure we are operating in correct order (will ignore bin if we have a sign switch, which is ok, since it must be nearly-null in that case
                     
                     double rate_dt = rate_prefac * dt; // dimensionless step size with rate prefactor times timestep
                     double x_to_edge = CR_return_new_bin_edge_from_rate(rate_dt, xm, xp, loss_mode, NR_key[j]); // returns the dimensionless 'x' representing the particles furthest from bin edge that 'reach' the edge by end of this sub-step
                     gamma_one = slope_gamma+1.; xe_gamma_one = pow(x_to_edge, gamma_one); xm_gamma_one = pow(xm, gamma_one); xp_gamma_one = pow(xp, gamma_one);
                     
                     double dn_lostfrombin = 0; // calculate the number flux integrating out to that new bin edge
-                    if(rate_prefac > 0) {dn_lostfrombin = ntot * (xe_gamma_one / xm_gamma_one - 1.) / (xp_gamma_one / xm_gamma_one - 1.);}
-                        else {dn_lostfrombin = ntot * (1 - xe_gamma_one / xp_gamma_one) / (1 - xm_gamma_one / xp_gamma_one);}
+                    if(rate_prefac < 0) {dn_lostfrombin = ntot * (1 - xe_gamma_one / xp_gamma_one) / (1 - xm_gamma_one / xp_gamma_one);}
+                        else {dn_lostfrombin = ntot * (xe_gamma_one / xm_gamma_one - 1.) / (xp_gamma_one / xm_gamma_one - 1.);}
                     
-                    double etot_final_inbin = 0; // calculate the final energy of all particles still inside bin bounds at end of the sub-step
-                    double etot_final_allparticlesfrombin = 0; // calculate the final energy of all particles that began sub-step within bin bounds [difference is net flux of energy out-of-bin]
+                    double etot_final_inbin = etot; // calculate the final energy of all particles still inside bin bounds at end of the sub-step
+                    double etot_final_allparticlesfrombin = etot; // calculate the final energy of all particles that began sub-step within bin bounds [difference is net flux of energy out-of-bin]
                     
 
-                    if(loss_mode==1) // adiabatic + brems
+                    if(loss_mode==1 || loss_mode==4) // adiabatic + brems
                     {
-                        double norm_fac = exp(rate_dt), x1, x0, x1_gamma_one, x0_gamma_one;
-                        if(rate_dt > 0) {x1=xp; x1_gamma_one=xp_gamma_one; x0=x_to_edge; x0_gamma_one=xe_gamma_one;} else {x1=x_to_edge; x1_gamma_one=xe_gamma_one; x0=xm; x0_gamma_one=xm_gamma_one;} // this is everything that remains in bin. so if decaying, runs from x_m' to xp; if growing [rate < 0] runs from xm to x_p'
+                        double norm_fac = exp(-rate_dt), x1, x0, x1_gamma_one, x0_gamma_one; // now make sure we flip the sign convention back to normal for rate
+                        if(rate_dt < 0) {x1=x_to_edge; x1_gamma_one=xe_gamma_one; x0=xm; x0_gamma_one=xm_gamma_one;} else {x1=xp; x1_gamma_one=xp_gamma_one; x0=x_to_edge; x0_gamma_one=xe_gamma_one;} // this is everything that remains in bin. so if decaying, runs from x_m' to xp; if growing [rate < 0] runs from xm to x_p'
                         if(NR_key[j])
                         {
                             norm_fac *= norm_fac; // exp(2*rate*dt) because of KE going as p^2
@@ -866,14 +929,15 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                         {
                             double norm_fac = etot * (gamma_one+2.) / (xp_gamma_one*xp*xp - xm_gamma_one*xm*xm); // get the pre-factor for the integral from numbers we already have
                             double xmin_remains = pow(3.*rate_dt, 1./3.); // sets absolute minimum value of x for which any energy remains at all, needs to be integrated only from this bound upwards
-                            int n_int=10; double xmin=DMAX(xm,xmin_remains), u_int=0, u_int_xe=0, dlnx=log(xp/xm)/n_int, exp_fac=exp(dlnx/2.), x=xmin*exp_fac, f0=CR_coulomb_energy_integrand(x,rate_dt,slope_gamma), f1, exp_fac_2=exp_fac*exp_fac;
+                            int n_int=10; double xmin=DMAX(xm,xmin_remains), u_int=0, u_int_xe=0, dlnx=log(xp/xm)/((double)n_int), exp_fac=exp(dlnx/2.), x=xmin*exp_fac, f0=CR_coulomb_energy_integrand(xmin,rate_dt,slope_gamma), f1, exp_fac_2=exp_fac*exp_fac, x0=xmin, x1;
                             while(x < xp)
                             {
-                                double x1 = DMIN(x*exp_fac, xp), x0 = x/exp_fac;
+                                x1 = DMIN(x*exp_fac, xp);
                                 f1 = CR_coulomb_energy_integrand( x1 , rate_dt, slope_gamma);
-                                double u_int_fac = dlnx * (f1 - f0) / (log(f1/f0) + MIN_REAL_NUMBER); u_int += u_int_fac;
-                                if(x0 < x_to_edge) {if(x1 > x_to_edge) {double f1_e=CR_coulomb_energy_integrand(x_to_edge,rate_dt,slope_gamma); u_int_xe+=log(x_to_edge/x0)*(f1_e-f0)/(log(f1_e/f0)+MIN_REAL_NUMBER);} else {u_int_xe+=u_int_fac;}}
-                                x *= exp_fac_2; f0 = f1;
+                                double u_int_fac = log(x1/x0) * (f1 - f0) / (log((f1+MIN_REAL_NUMBER)/(f0+MIN_REAL_NUMBER)) + MIN_REAL_NUMBER);
+                                u_int += u_int_fac;
+                                if(x0 < x_to_edge) {if(x1 > x_to_edge) {double f1_e=CR_coulomb_energy_integrand(x_to_edge,rate_dt,slope_gamma); u_int_xe+=log(x_to_edge/x0)*(f1_e-f0)/(log((f1_e+MIN_REAL_NUMBER)/(f0+MIN_REAL_NUMBER)) + MIN_REAL_NUMBER);} else {u_int_xe+=u_int_fac;}}
+                                x *= exp_fac_2; f0 = f1; x0 = x1;
                             }
                             etot_final_inbin = (u_int - u_int_xe) * norm_fac; etot_final_allparticlesfrombin = u_int * norm_fac; // normalize these appropriately
                         } else {
@@ -886,29 +950,31 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                     if(loss_mode==3) // IC + synch
                     {
                         double norm_fac = etot * (gamma_one+1.) / (xp_gamma_one*xp - xm_gamma_one*xm); // get the pre-factor for the integral from numbers we already have
-                        int n_int=10; double u_int=0, u_int_xe=0, dlnx=log(xp/xm)/n_int, exp_fac=exp(dlnx/2.), x=xm*exp_fac, f0=CR_compton_energy_integrand(x,rate_dt,slope_gamma), f1, exp_fac_2=exp_fac*exp_fac;
+                        int n_int=10; double u_int=0, u_int_xe=0, dlnx=log(xp/xm)/((double)n_int), exp_fac=exp(dlnx/2.), x=xm*exp_fac, f0=CR_compton_energy_integrand(xm,rate_dt,gamma_one), f1, exp_fac_2=exp_fac*exp_fac, x0=xm, x1;
                         while(x < xp)
                         {
-                            double x1 = DMIN(x*exp_fac, xp), x0 = x/exp_fac;
-                            f1 = CR_compton_energy_integrand( x1 , rate_dt, slope_gamma);
-                            double u_int_fac = dlnx * (f1 - f0) / (log(f1/f0) + MIN_REAL_NUMBER); u_int += u_int_fac;
-                            if(x0 < x_to_edge) {if(x1 > x_to_edge) {double f1_e=CR_compton_energy_integrand(x_to_edge,rate_dt,slope_gamma); u_int_xe+=log(x_to_edge/x0)*(f1_e-f0)/(log(f1_e/f0)+MIN_REAL_NUMBER);} else {u_int_xe+=u_int_fac;}}
-                            x *= exp_fac_2; f0 = f1;
+                            x1 = DMIN(x*exp_fac, xp);
+                            f1 = CR_compton_energy_integrand( x1 , rate_dt, gamma_one);
+                            double u_int_fac = log(x1/x0) * (f1 - f0) / (log((f1+MIN_REAL_NUMBER)/(f0+MIN_REAL_NUMBER)) + MIN_REAL_NUMBER);
+                            u_int += u_int_fac;
+                            if(x0 < x_to_edge) {if(x1 > x_to_edge) {double f1_e=CR_compton_energy_integrand(x_to_edge,rate_dt,gamma_one); u_int_xe+=log(x_to_edge/x0)*(f1_e-f0)/(log((f1_e+MIN_REAL_NUMBER)/(f0+MIN_REAL_NUMBER)) + MIN_REAL_NUMBER);} else {u_int_xe+=u_int_fac;}}
+                            x *= exp_fac_2; f0 = f1; x0 = x1;
                         }
                         etot_final_inbin = (u_int - u_int_xe) * norm_fac; etot_final_allparticlesfrombin = u_int * norm_fac; // normalize these appropriately
                     }
                     
                     
-                    dn_lostfrombin = DMIN(dn_lostfrombin , 0.9999*ntot); // limit to prevent 0's which will give nan's
-                    etot_final_inbin = DMAX(etot_final_inbin , 1.e-4*etot); // limit to prevent 0's which will give nan's
+                    dn_lostfrombin = DMIN(dn_lostfrombin , (1.0-1.e-8)*ntot); // limit to prevent 0's which will give nan's
+                    etot_final_inbin = DMAX(etot_final_inbin , 1.e-8*etot); // limit to prevent 0's which will give nan's
                     ntot = ntot - dn_lostfrombin; // update number
                     etot = etot_final_inbin; // update energy
                     
-                    if(ntot > 0 && etot > 0) {slope_gamma = CR_return_slope_from_number_and_energy_in_bin(etot/(E_bin_NtoE * ntot), j);} // get the updated slope for this bin
+                    if(ntot > 0 && etot > 0) {slope_gamma = CR_return_slope_from_number_and_energy_in_bin(etot, ntot, E_bin_NtoE, j);} // get the updated slope for this bin
 
                     dn_flux = dn_lostfrombin; // set total outgoing flux of number of particles to next bin
                     de_flux = DMAX(etot_final_allparticlesfrombin - etot_final_inbin, 0); // determine total outgoing flux of energy to next bin
                     Ucr[j] = etot; // set finalized updated energy in bin
+                    ntot_evolved[j] = ntot; // set finalized updated number in bin
                     bin_slopes[j] = slope_gamma; // set finalized updated slope [or N, if that's the conserved quantity we evolve]
                 } // loop over active bins
             } // loop over loss mode
@@ -938,7 +1004,7 @@ void CR_initialize_multibin_quantities(void)
     {
        int n_active=0, bins_sorted[N_CR_PARTICLE_BINS];
        for(k=0;k<N_CR_PARTICLE_BINS;k++) {if((Z[k]>0 && proton_key==1) || (Z[k]<0 && proton_key==0)) {bins_sorted[n_active]=k; R0_bins[n_active]=R0[k]; n_active++;}} // bin is valid: charge matches that desired
-       if(n_active<=0) {break;} // nothing to do here
+       if(n_active<=0) {continue;} // nothing to do here
        if(n_active<N_CR_PARTICLE_BINS) {for(k=n_active;k<N_CR_PARTICLE_BINS;k++) {R0_bins[k]=MAX_REAL_NUMBER;}} // set a dummy value here for sorting purposes below
        //qsort(bins_sorted, n_active, sizeof(int), compare_CR_rigidity_for_sort); // sort on energies from smallest-to-largest [this is hard-coded by requiring the list go in monotonic increasing order for e and p, regardless of how the e and p are themselves ordered //
        for(k=0;k<n_active;k++)
@@ -1005,8 +1071,9 @@ void CR_initialize_multibin_quantities(void)
 
 
 /* input value 'R' = ratio of total CR energy in the bin ('e_tot') to the total CR number times the energy of the CRs with the bin-centered rigidity ('n_tot' x 'E_cr_bin_center_list'), which is a dimensionless function of the slope, whether the bin is relativistic or not, and the bin edges relative to the bin center */
-double CR_return_slope_from_number_and_energy_in_bin(double R, int k_bin)
+double CR_return_slope_from_number_and_energy_in_bin(double energy_in_code_units, double number_effective_in_code_units, double bin_centered_energy_in_GeV, int k_bin)
 {
+    double R = energy_in_code_units / (number_effective_in_code_units * bin_centered_energy_in_GeV);
     int n_table = N_CR_SPECTRUM_LUT; // table size
     double xm = CR_global_min_rigidity_in_bin[k_bin] / CR_global_rigidity_at_bin_center[k_bin], xp = CR_global_max_rigidity_in_bin[k_bin] / CR_global_rigidity_at_bin_center[k_bin], xm_e = xm, xp_e = xp;
     if(CR_check_if_bin_is_nonrelativistic(k_bin)) {xm_e=xm*xm; xp_e=xp*xp;} // sets bounds that this value can possibly obtain
@@ -1017,7 +1084,7 @@ double CR_return_slope_from_number_and_energy_in_bin(double R, int k_bin)
     if(n1 > n_table-1) {n1=n_table-1;}
     double slope_gamma = CR_global_slope_lut[k_bin][n0] + (n_interp-(double)n0) * (CR_global_slope_lut[k_bin][n1]-CR_global_slope_lut[k_bin][n0]);
     // check for specific bad values that will nan out and avoid them - this introduces really minimal errors
-    double tol = 0.01, badval; // tolerance around the bad values
+    double tol = 0.0001, badval; // tolerance around the bad values
     badval=-1; if(fabs(slope_gamma - badval) < tol) {if(slope_gamma<badval) {slope_gamma=badval-tol;} else {slope_gamma=badval+tol;}}
     badval=-2; if(fabs(slope_gamma - badval) < tol) {if(slope_gamma<badval) {slope_gamma=badval-tol;} else {slope_gamma=badval+tol;}}
     badval=-3; if(fabs(slope_gamma - badval) < tol) {if(slope_gamma<badval) {slope_gamma=badval-tol;} else {slope_gamma=badval+tol;}}
@@ -1030,9 +1097,9 @@ double CR_return_new_bin_edge_from_rate(double rate_dt_dimless, double x_m_bin, 
 {
     if(loss_mode <= 0) {return 0;} // hadronic+catastrophic: should never be called [just should never get to this point since hadronic should be done]
     
-    if(loss_mode == 1) // adiabatic+brems
+    if(loss_mode == 1 || loss_mode == 4) // adiabatic+brems+streaming
         {if(rate_dt_dimless < 0) {return x_p_bin * exp(rate_dt_dimless);} else {return x_m_bin * exp(rate_dt_dimless);}} // return xp' or xm' depending on sign: solution to dx/dtau=(+/-)x
-    
+
     if(loss_mode == 2) // coulomb+ionization
     {
         if(NR_key) // non-relativistic Coulomb+ionization terms
@@ -1070,11 +1137,33 @@ int CR_check_if_bin_is_nonrelativistic(int k_bin) // relativistic binflag: all e
 }
 
 
-/* return number of CRs in bin; for convenience this needs to be multiplied by 1/GeV = 624.151 in cgs to get an actual 'number'; just an arbitrary units choice for now */
-double CR_return_effective_number_in_bin(int target, int k_bin)
+/* return number of CRs in bin, in our strange code units, where the 'number' has units of E_code / GeV. to convert to real number need to multiply by this but that can cause lots of overflow issues so we work with this unit */
+double CR_return_effective_number_in_bin_in_codeunits(int target, int k_bin)
 {
-    double etot = SphP[target].CosmicRayEnergyPred[k_bin];
-    double gamma_one = 1. + SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin[k_bin];
+    return SphP[target].CosmicRay_Number_in_Bin[k_bin];
+}
+
+
+/* return the CR bin spectral slope, depending on what we use as our evolved variable */
+double CR_return_spectral_slope_target(int target, int k_bin)
+{
+    //return SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin[k_bin]; // evolving slopes directly
+    return CR_return_slope_from_number_and_energy_in_bin(SphP[target].CosmicRayEnergy[k_bin], SphP[target].CosmicRay_Number_in_Bin[k_bin], return_CRbin_kinetic_energy_in_GeV(-1,k_bin), k_bin); // calculate if not evolving directly
+}
+
+
+/* return true number of CRs in bin, in actual units */
+double CR_return_true_number_in_bin(int target, int k_bin)
+{
+    return CR_return_effective_number_in_bin_in_codeunits(target,k_bin) * UNIT_ENERGY_IN_CGS / (1.0e9*ELECTRONVOLT_IN_ERGS); // does the unit conversion from Ecode/GeV to dimensionless number
+}
+
+
+/* subroutine to return the effective CR number from the bin slope and energy */
+double CR_get_number_in_bin_from_slope(int target, int k_bin, double energy, double slope)
+{
+    double etot = energy;
+    double gamma_one = 1. + slope;
     double E_bin_center = return_CRbin_kinetic_energy_in_GeV(-1, k_bin);
     double xm = CR_global_min_rigidity_in_bin[k_bin] / CR_global_rigidity_at_bin_center[k_bin];
     double xp = CR_global_max_rigidity_in_bin[k_bin] / CR_global_rigidity_at_bin_center[k_bin];
@@ -1084,14 +1173,14 @@ double CR_return_effective_number_in_bin(int target, int k_bin)
     if(NR_key) {gamma_fac = ((gamma_one + 2.) / (gamma_one)) * (xp_gamma_one - xm_gamma_one) / (xp_gamma_one*xp*xp - xm_gamma_one*xm*xm);} // non-relativistic map between E and N
         else {gamma_fac = ((gamma_one + 1.) / (gamma_one)) * (xp_gamma_one - xm_gamma_one) / (xp_gamma_one*xp - xm_gamma_one*xm);} // relativistic map between E and N
     return (etot / E_bin_center) * gamma_fac; // dimensional normalization. note the units are arbitrary for the E_bin_NtoE term, as long as we are consistent [we can evolve constant x N, instead of N, for convenience]
-}
+ }
 
 
 /* return mean kinetic energy per CR for CRs in bin */
 double CR_return_mean_energy_in_bin_in_GeV(int target, int k_bin)
 {
     double etot = SphP[target].CosmicRayEnergyPred[k_bin]; // total energy in bin
-    double ntot_GeV = CR_return_effective_number_in_bin(target, k_bin); // total number in units of GeV
+    double ntot_GeV = CR_return_effective_number_in_bin_in_codeunits(target, k_bin); // total number in units of GeV
     return etot / ntot_GeV; // this returns the mean weighted over the CR spectrum
 }
 
@@ -1099,7 +1188,8 @@ double CR_return_mean_energy_in_bin_in_GeV(int target, int k_bin)
 /* return mean rigidity in GV per CR for CRs in bin */
 double CR_return_mean_rigidity_in_bin_in_GV(int target, int k_bin)
 {
-    double gamma_one = 1. + SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin[k_bin];
+    double slope = CR_return_spectral_slope_target(target, k_bin);
+    double gamma_one = 1. + slope;
     double R0 = CR_global_rigidity_at_bin_center[k_bin], xm = CR_global_min_rigidity_in_bin[k_bin] / R0, xp = CR_global_max_rigidity_in_bin[k_bin] / R0, xm_gamma_one = pow(xm, gamma_one), xp_gamma_one = pow(xp, gamma_one);
     double gamma_fac = (gamma_one/(gamma_one+1.)) * (xp_gamma_one*xp - xm_gamma_one*xm) / (xp_gamma_one - xm_gamma_one); // dimensionless term from weighted integral over the bin
     return R0 * gamma_fac; // returns value appropriately weighted over the bin

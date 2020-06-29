@@ -790,7 +790,19 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
 #endif
 #ifdef COSMIC_RAYS
-        int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {SphP[j].CosmicRayEnergyPred[k_CRegy] = SphP[j].CosmicRayEnergy[k_CRegy] = SphP[j].DtCosmicRayEnergy[k_CRegy] = 0;} /* add CR energy here if desired */
+        int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) /* initialize CR energy and other related terms to nil */
+        {
+            SphP[j].CosmicRayEnergyPred[k_CRegy]=SphP[j].CosmicRayEnergy[k_CRegy]=SphP[j].DtCosmicRayEnergy[k_CRegy]=0;
+#ifdef COSMIC_RAYS_EVOLVE_SPECTRUM
+            SphP[j].CosmicRay_Number_in_Bin[k_CRegy]=SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy]=0;
+#endif
+#ifdef COSMIC_RAYS_M1
+            for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k_CRegy][k]=SphP[j].CosmicRayFluxPred[k_CRegy][k]=0;}
+#endif
+#ifdef COSMIC_RAYS_ALFVEN
+            for(k=0;k<3;k++) {SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k]=SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k]=SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k]=0;}
+#endif
+        } /* complete CR initialization to null */
 #endif
 
         /* now set the real hydro variables. */

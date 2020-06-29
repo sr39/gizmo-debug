@@ -605,7 +605,13 @@ void init(void)
 #ifdef COSMIC_RAYS
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRayEnergy[j] = 0;}}
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
-        if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_PwrLaw_Slopes_in_Bin[j] = -2.5;}} // initialize a flat spectrum in each bin
+        //if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_PwrLaw_Slopes_in_Bin[j] = -2.5; SphP[i].CosmicRay_Number_in_Bin[j] = 0; SphP[i].DtCosmicRay_Number_in_Bin[j] = 0;}} // initialize a flat spectrum in each bin
+        if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_Number_in_Bin[j] = 0; SphP[i].DtCosmicRay_Number_in_Bin[j] = 0;}} // initialize the number in each bin
+        if(RestartFlag == 2) { // if we don't directly evolve the slopes, we do write them out and read them in, so need to re-construct the correct number in bin from what we actually read, which was the -slope- information
+            for(j=0;j<N_CR_PARTICLE_BINS;j++) {
+                double slope_from_snapshot = SphP[i].CosmicRay_Number_in_Bin[j];
+                SphP[i].CosmicRay_Number_in_Bin[j] = CR_get_number_in_bin_from_slope(i,j,SphP[i].CosmicRayEnergy[j],slope_from_snapshot);
+            }}
 #endif
 #endif
 #ifdef MAGNETIC
