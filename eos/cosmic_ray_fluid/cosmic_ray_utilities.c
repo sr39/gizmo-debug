@@ -669,7 +669,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         if(dCR < -eCR_tmp) {dCR=-eCR_tmp;} // don't allow it to go negative
         double eCR_0, eCR_00; eCR_00 = eCR_tmp; eCR_tmp += dCR; if((eCR_tmp<0)||(isnan(eCR_tmp))) {eCR_tmp=0;} // check against energy going negative or nan
         if(mode==0) {SphP[i].CosmicRayEnergy[k_CRegy]=eCR_tmp;} else {SphP[i].CosmicRayEnergyPred[k_CRegy]=eCR_tmp;} // updated energy
-        double eCR_0 = eCR_tmp; // save this value for below
+        eCR_0 = eCR_tmp; // save this value for below
         
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
         // add update for CR number if evolved explicitly //
