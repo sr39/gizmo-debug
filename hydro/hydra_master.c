@@ -538,7 +538,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
         for(k=0;k<2;k++) {in->CosmicRayAlfvenEnergy[j][k] = SphP[i].CosmicRayAlfvenEnergyPred[j][k];}
 #endif
 #ifdef COSMIC_RAYS_EVOLVE_SPECTRUM
-        in->CR_number_to_energy_ratio = SphP[i].CosmicRayEnergy[j] / (SphP[i].CosmicRay_Number_in_Bin[j] + MIN_REAL_NUMBER);
+        in->CR_number_to_energy_ratio[j] = SphP[i].CosmicRayEnergy[j] / (SphP[i].CosmicRay_Number_in_Bin[j] + MIN_REAL_NUMBER);
 #endif
     }
 #endif

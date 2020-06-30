@@ -109,7 +109,7 @@ void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime
         if(Z > 0) /* protons here [note for now I'm using Z>0 as synonymous with protons, i.e. ignoring positrons, but we could include those if really desired */
         {
 #if (N_CR_PARTICLE_BINS > 2) /* note these are currently energy-loss expressions; for truly multi-bin, probably better to work with dp/dt, instead of dE/dt */
-            double E_GeV=return_CRbin_kinetic_energy_in_GeV(target,k_CRegy), beta=return_CRbin_beta_factor(target,k_CRegy), R_CR_GV=return_CRbin_CR_rigidity_in_GV(target,k_CRegy);
+            double E_GeV=return_CRbin_kinetic_energy_in_GeV(target,k_CRegy), beta=return_CRbin_beta_factor(target,k_CRegy);
             CR_coolrate += b_coulomb_per_GeV * ((Z*Z)/(beta*E_GeV)) * nHcgs; // all protons Coulomb-interact, can be rapid for low-E
             if(E_GeV>=0.78) {CR_coolrate += a_hadronic * nHcgs;} // only GeV CRs or higher trigger above threshold for collisions
 #else
@@ -667,7 +667,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 #endif
         if(dCR > dCRmax) {dCR=dCRmax;} // don't allow excessively large values
         if(dCR < -eCR_tmp) {dCR=-eCR_tmp;} // don't allow it to go negative
-        double eCR_00 = eCR_tmp; eCR_tmp += dCR; if((eCR_tmp<0)||(isnan(eCR_tmp))) {eCR_tmp=0;} // check against energy going negative or nan
+        double eCR_0, eCR_00; eCR_00 = eCR_tmp; eCR_tmp += dCR; if((eCR_tmp<0)||(isnan(eCR_tmp))) {eCR_tmp=0;} // check against energy going negative or nan
         if(mode==0) {SphP[i].CosmicRayEnergy[k_CRegy]=eCR_tmp;} else {SphP[i].CosmicRayEnergyPred[k_CRegy]=eCR_tmp;} // updated energy
         double eCR_0 = eCR_tmp; // save this value for below
         
@@ -764,9 +764,9 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
 
     double gamma_ad_eff=4./3., adiabatic_coeff = (gamma_ad_eff-1.) * (P[target].Particle_DivVel*All.cf_a2inv) / UNIT_TIME_IN_CGS ; // coefficient for adiabatic work [compression/expansion terms]. convert to physical units [a2inv], and then cgs for units here. SIGN is flipped from usual convention since we assume convention where positive coefficients = losses, for convenience with everything else below.
     if(All.ComovingIntegrationOn) {adiabatic_coeff += (gamma_ad_eff-1.) * (3.*All.cf_hubble_a) / UNIT_TIME_IN_CGS;} // adiabatic term from Hubble expansion (needed for cosmological integrations. also converted to physical, cgs, and sign convention we use here.
-    double adiabatic_min = 0.5*P[i].Mass*SphP[target].InternalEnergyPred / (Ucr_tot*dtime_cgs + MIN_REAL_NUMBER); if(adiabatic_coeff > adiabatic_min) {adiabatic_coeff = adiabatic_min;}
+    double adiabatic_min = 0.5*P[target].Mass*SphP[target].InternalEnergyPred / (Ucr_tot*dtime_cgs + MIN_REAL_NUMBER); if(adiabatic_coeff > adiabatic_min) {adiabatic_coeff = adiabatic_min;}
     
-    double Ucr_i[N_CR_PARTICLE_BINS], Z[N_CR_PARTICLE_BINS], x_m[N_CR_PARTICLE_BINS], x_p[N_CR_PARTICLE_BINS], R0[N_CR_PARTICLE_BINS], E_GeV[N_CR_PARTICLE_BINS], NR_key[N_CR_PARTICLE_BINS], bin_centered_rate_coeff[N_CR_PARTICLE_BINS], streaming_coeff[N_CR_PARTICLE_BINS], brems_coeff[N_CR_PARTICLE_BINS];
+    double Ucr_i[N_CR_PARTICLE_BINS], Z[N_CR_PARTICLE_BINS], x_m[N_CR_PARTICLE_BINS], x_p[N_CR_PARTICLE_BINS], R0[N_CR_PARTICLE_BINS], E_GeV[N_CR_PARTICLE_BINS], bin_centered_rate_coeff[N_CR_PARTICLE_BINS], streaming_coeff[N_CR_PARTICLE_BINS], brems_coeff[N_CR_PARTICLE_BINS]; int NR_key[N_CR_PARTICLE_BINS];
     double hadronic_coeff = 6.37e-16 * nHcgs; // coefficient for hadronic/catastrophic interactions: dEtot/dt = -(coeff) * Etot, or dPtot/dt = -(coeff) * Ptot (since all p effected are in rel limit, and works by deleting N not by lowering individual E
     double coulomb_coeff = 3.09e-16 * nHcgs * ((n_elec + 0.57*(1.-f_ion))*HYDROGEN_MASSFRAC); // default Coulomb+ionization (the two scale nearly-identically) normalization divided by GeV, b/c we need to divide the energy per CR. needs to be multiplied by ((Z*Z)/(beta*E_GeV))
     double brems_coeff_0 = 1.39e-16  * n_elec * nHcgs; // coefficient for Bremsstrahlung [following Blumenthal & Gould, 1970]: dEkin/dt=4*alpha_finestruct*r_classical_elec^2*c * SUM[n_Z,ion * Z * (Z+1) * (ln[2*gamma_elec]-1/3) * E_kin . this needs to be multiplied by [DMAX(log(2.*gamma)-0.33,0)]; becomes dE/dt = -(coeff) * E, or dP/dt = -(coeff) * P [since all e- in rel limit]
@@ -786,7 +786,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
         bin_slopes[k] = CR_return_slope_from_number_and_energy_in_bin(Ucr[k], ntot_evolved[k], E_GeV[k], k); // initialize slopes to use below from LUT, if not directly evolving them
 
         if(Z[k] < 0) {brems_coeff[k] = brems_coeff_0 * DMAX(log(2.*E_GeV[k]/E_rest_e_GeV)-0.33,0);} else {brems_coeff[k]=0;}
-        streaming_coeff[k] = CR_get_streaming_loss_rate_coefficient(target,k);
+        streaming_coeff[k] = CR_get_streaming_loss_rate_coefficient(target,k) / UNIT_TIME_IN_CGS;
         
         // calculate the timestep limit from all possible bins, maximum step. note no constraint from hadronic here b/c cannot 'cross the bin'
         bin_centered_rate_coeff[k] = 0;
@@ -1072,7 +1072,7 @@ void CR_initialize_multibin_quantities(void)
 /* input value 'R' = ratio of total CR energy in the bin ('e_tot') to the total CR number times the energy of the CRs with the bin-centered rigidity ('n_tot' x 'E_cr_bin_center_list'), which is a dimensionless function of the slope, whether the bin is relativistic or not, and the bin edges relative to the bin center */
 double CR_return_slope_from_number_and_energy_in_bin(double energy_in_code_units, double number_effective_in_code_units, double bin_centered_energy_in_GeV, int k_bin)
 {
-    double R = energy_in_code_units / (number_effective_in_code_units * bin_centered_energy_in_GeV);
+    double R = (energy_in_code_units + MIN_REAL_NUMBER) / (number_effective_in_code_units * bin_centered_energy_in_GeV + MIN_REAL_NUMBER);
     int n_table = N_CR_SPECTRUM_LUT; // table size
     double xm = CR_global_min_rigidity_in_bin[k_bin] / CR_global_rigidity_at_bin_center[k_bin], xp = CR_global_max_rigidity_in_bin[k_bin] / CR_global_rigidity_at_bin_center[k_bin], xm_e = xm, xp_e = xp;
     if(CR_check_if_bin_is_nonrelativistic(k_bin)) {xm_e=xm*xm; xp_e=xp*xp;} // sets bounds that this value can possibly obtain

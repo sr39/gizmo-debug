@@ -464,6 +464,9 @@ void begrun(void)
 #endif
     rt_set_simple_inits(RestartFlag);
 #endif
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+    CR_initialize_multibin_quantities(); // initialize the global variables and look-up tables //
+#endif
 
 
   if(All.ComovingIntegrationOn)
