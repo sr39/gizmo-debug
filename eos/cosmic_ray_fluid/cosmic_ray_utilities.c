@@ -420,7 +420,7 @@ void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, i
         double E_GeV = return_CRbin_kinetic_energy_in_GeV(-1, k_CRegy), egy_slopemode = 1, xm = CR_global_min_rigidity_in_bin[k_CRegy] / CR_global_rigidity_at_bin_center[k_CRegy], xp = CR_global_max_rigidity_in_bin[k_CRegy] / CR_global_rigidity_at_bin_center[k_CRegy], xm_e=xm, xp_e=xp; // values needed for bin injection parameters
         if(CR_check_if_bin_is_nonrelativistic(k_CRegy)) {egy_slopemode=2; xm_e*=xm_e; xp_e*=xp_e;} // values needed to scale from slope injected to number and back
         double slope_inj = CR_energy_spectrum_injection_fraction(k_CRegy,source_PType,injection_velocity,1); // spectral slope of injected CRs
-        double gamma_one = slope_inj + 1.; xm_gamma_one = pow(xm, gamma_one); xp_gamma_one = pow(xp, gamma_one); // variables below
+        double gamma_one = slope_inj + 1., xm_gamma_one = pow(xm, gamma_one), xp_gamma_one = pow(xp, gamma_one); // variables below
         double ntot_inj = (dEcr / E_GeV) * ((gamma_one + egy_slopemode) / (gamma_one)) * (xp_gamma_one - xm_gamma_one) / (xp_gamma_one*xp_e - xm_gamma_one*xm_e); // injected number in bin
         /* // below for old method where we explicitly evolved slope instead of number - simpler bow
         double egy_prev = SphP[target].CosmicRayEnergy[k_CRegy], etot_new = egy_prev + dEcr,
@@ -764,8 +764,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
 
     double gamma_ad_eff=4./3., adiabatic_coeff = (gamma_ad_eff-1.) * (P[target].Particle_DivVel*All.cf_a2inv) / UNIT_TIME_IN_CGS ; // coefficient for adiabatic work [compression/expansion terms]. convert to physical units [a2inv], and then cgs for units here. SIGN is flipped from usual convention since we assume convention where positive coefficients = losses, for convenience with everything else below.
     if(All.ComovingIntegrationOn) {adiabatic_coeff += (gamma_ad_eff-1.) * (3.*All.cf_hubble_a) / UNIT_TIME_IN_CGS;} // adiabatic term from Hubble expansion (needed for cosmological integrations. also converted to physical, cgs, and sign convention we use here.
-
-    double adiabatic_coeff = calculate_effective_adiabatic_coefficient(target);
+    double adiabatic_min = 0.5*P[i].Mass*SphP[target].InternalEnergyPred / (Ucr_tot*dtime_cgs + MIN_REAL_NUMBER); if(adiabatic_coeff > adiabatic_min) {adiabatic_coeff = adiabatic_min;}
     
     double Ucr_i[N_CR_PARTICLE_BINS], Z[N_CR_PARTICLE_BINS], x_m[N_CR_PARTICLE_BINS], x_p[N_CR_PARTICLE_BINS], R0[N_CR_PARTICLE_BINS], E_GeV[N_CR_PARTICLE_BINS], NR_key[N_CR_PARTICLE_BINS], bin_centered_rate_coeff[N_CR_PARTICLE_BINS], streaming_coeff[N_CR_PARTICLE_BINS], brems_coeff[N_CR_PARTICLE_BINS];
     double hadronic_coeff = 6.37e-16 * nHcgs; // coefficient for hadronic/catastrophic interactions: dEtot/dt = -(coeff) * Etot, or dPtot/dt = -(coeff) * Ptot (since all p effected are in rel limit, and works by deleting N not by lowering individual E
@@ -848,9 +847,9 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                     
                     if(loss_mode==0) // hadronic+catastrophic losses.
                     {
-                        if(E_GeV[j] > 0.78) {Ucr[j] *= exp(-DMIN(hadronic_coeff * dt, 60.));} // only >~GeV trigger threshold for collisions //
+                        if(E_GeV[j] > 0.78) {double fac=exp(-DMIN(hadronic_coeff*dt, 60.)); Ucr[j]*=fac; ntot_evolved[j]*=fac;} // only >~GeV trigger threshold for collisions //
                         dn_flux=0; de_flux=0; // make sure these are zero'd for next step
-                        continue; // these -destroy- CRs, decreasing N and E identically [ignoring secondary production for now], leaving slope un-modified and -no- bin-to-bin fluxes: easy to solve, just modify total energy in the bin //
+                        continue; // these -destroy- CRs, decreasing N and E identically [ignoring secondary production for now], leaving slope un-modified and -no- bin-to-bin fluxes: easy to solve, just modify total energy+number identically in the bin //
                     }
                     
                     double etot = Ucr[j]; // total energy in bin, one of our key evolved variables
@@ -875,7 +874,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                         dn_flux = 0; // reset value
                         de_flux = 0; // reset value
                         Ucr[j] = etot; // set updated energy in bin
-                        ntot_evolved[j] = ntot // set updated number in bin
+                        ntot_evolved[j] = ntot; // set updated number in bin
                         bin_slopes[j] = slope_gamma; // set updated slope [or N, if that's the conserved quantity we evolve]
                     }
                     dn_flux=0; de_flux=0; // re-zero in case above was not triggered
