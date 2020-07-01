@@ -790,31 +790,56 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
         
         // calculate the timestep limit from all possible bins, maximum step. note no constraint from hadronic here b/c cannot 'cross the bin'
         bin_centered_rate_coeff[k] = 0;
-        double adiab_brem_coeff = adiabatic_coeff + streaming_coeff[k] + brems_coeff[k]; // do constraint from adiabatic + Bremsstrahlung
+        double adiab_brem_coeff = adiabatic_coeff + streaming_coeff[k] + brems_coeff[k]; bin_centered_rate_coeff[k]+=adiab_brem_coeff; // do constraint from adiabatic + Bremsstrahlung
         if(adiab_brem_coeff < 0) {sign_key_for_adiabatic_loop=-1;} // note the net sign of this term for use below
         if(k>0) {if(adiab_brem_coeff * (adiabatic_coeff + streaming_coeff[k-1] + brems_coeff[k-1]) < 0) {sign_flip_adiabatic_terms = 1;}} // have a sign flip, and its not negligible in magnitude //
-        if(fabs(adiab_brem_coeff) > 0) {dt_tmp = CourFac * log(x_p[k]/x_m[k]) / fabs(adiab_brem_coeff); dt_min=DMIN(dt_min, dt_tmp); bin_centered_rate_coeff[k]+=adiab_brem_coeff;}
         if(Z[k] < 0) // e-: do constraint from synchrotron + IC
         {
-            double IC_sync_coeff = (E_GeV[k]/E_rest_e_GeV) * synchIC_coeff_0;
-            if(IC_sync_coeff > 0) {dt_tmp = CourFac * (1./x_m[k] - 1./x_p[k]) / IC_sync_coeff; dt_min=DMIN(dt_min, dt_tmp); bin_centered_rate_coeff[k]+=IC_sync_coeff;}
+            double IC_sync_coeff = (E_GeV[k]/E_rest_e_GeV) * synchIC_coeff_0; bin_centered_rate_coeff[k]+=IC_sync_coeff;
         } else { // p: do constraint from Coulomb + ionization
             if(NR_key[k]==1) // bin is in non-relativistic limit, use those expressions
             {
-                double A=1., Coul_coeff = ((0.88 * A*A) / (R0[k]*R0[k]*R0[k] * Z[k])) * coulomb_coeff; // non-relativistic expression. note this is equation for p evolution, where R is rigidity, so need to be careful with Z factors, etc. should be multiplied by atomic weight A^2 as well.
-                if(Coul_coeff > 0) {dt_tmp = CourFac * (x_p[k]*x_p[k]*x_p[k] - x_m[k]*x_m[k]*x_m[k]) / (3.*Coul_coeff); dt_min=DMIN(dt_min, dt_tmp); bin_centered_rate_coeff[k]+=Coul_coeff;}
+                double A=1.; if(Z[k]>1) {A=2.*Z[k];}
+                double Coul_coeff = ((0.88 * A*A) / (R0[k]*R0[k]*R0[k] * Z[k])) * coulomb_coeff; bin_centered_rate_coeff[k]+=Coul_coeff; // non-relativistic expression. note this is equation for p evolution, where R is rigidity, so need to be careful with Z factors, etc. should be multiplied by atomic weight A^2 as well.
             } else { // bin is in relativistic limit, use those expressions
-                double Coul_coeff = (Z[k]/R0[k]) * coulomb_coeff; // relativistic expression. note this is equation for p evolution, where R is rigidity, so need to be careful with Z factors, etc.
-                if(Coul_coeff > 0) {dt_tmp = CourFac * DMIN(x_p[k]-x_m[k], x_m[k]) / Coul_coeff; dt_min=DMIN(dt_min, dt_tmp); bin_centered_rate_coeff[k]+=Coul_coeff;}
+                double Coul_coeff = (Z[k]/R0[k]) * coulomb_coeff; bin_centered_rate_coeff[k]+=Coul_coeff; // relativistic expression. note this is equation for p evolution, where R is rigidity, so need to be careful with Z factors, etc.
             }
         }
     }
     if(sign_flip_adiabatic_terms==1) {sign_key_for_adiabatic_loop=-1;} // have sign-flips, so adiabatic term -must- have the oppose sign. otherwise -no- sign flips, so just follow the last sign recorded above
 
+    for(k=0;k<N_CR_PARTICLE_BINS;k++)
+    {
+       if((Ucr[k] < 1.e-10 * Ucr_tot) || (bin_centered_rate_coeff[k]==0)) {continue;} // don't bother with timestep limits if the bin contains totally negligible fraction of CR energy
+       double abs_bin_coeff_limit = 0.05 * fabs(bin_centered_rate_coeff[k]); // set threshold for fraction of rate where we need to worry about detailed subcycling: sub-dominant processes not important here. find few percent works well here.
+       double adiab_brem_coeff = fabs(adiabatic_coeff + streaming_coeff[k] + brems_coeff[k]); // do constraint from adiabatic + Bremsstrahlung
+       if(adiab_brem_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * log(x_p[k]/x_m[k]) / adiab_brem_coeff; dt_min=DMIN(dt_min, dt_tmp);}
+       if(Z[k] < 0) // e-: do constraint from synchrotron + IC
+       {
+           double IC_sync_coeff = (E_GeV[k]/E_rest_e_GeV) * synchIC_coeff_0;
+           if(IC_sync_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * (1./x_m[k] - 1./x_p[k]) / IC_sync_coeff; dt_min=DMIN(dt_min, dt_tmp);}
+       } else { // p: do constraint from Coulomb + ionization
+           if(NR_key[k]==1) // bin is in non-relativistic limit, use those expressions
+           {
+               double A=1.; if(Z[k]>1) {A=2.*Z[k];}
+               double Coul_coeff = ((0.88 * A*A) / (R0[k]*R0[k]*R0[k] * Z[k])) * coulomb_coeff; // non-relativistic expression. note this is equation for p evolution, where R is rigidity, so need to be careful with Z factors, etc. should be multiplied by atomic weight A^2 as well.
+               if(Coul_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * (x_p[k]*x_p[k]*x_p[k] - x_m[k]*x_m[k]*x_m[k]) / (3.*Coul_coeff); dt_min=DMIN(dt_min, dt_tmp); bin_centered_rate_coeff[k]+=Coul_coeff;}
+           } else { // bin is in relativistic limit, use those expressions
+               double Coul_coeff = (Z[k]/R0[k]) * coulomb_coeff; // relativistic expression. note this is equation for p evolution, where R is rigidity, so need to be careful with Z factors, etc.
+               if(Coul_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * DMIN(x_p[k]-x_m[k], x_m[k]) / Coul_coeff; dt_min=DMIN(dt_min, dt_tmp);}
+           }
+       }
+    }
+
     
     double dt_target = DMIN(dtime_cgs, dt_min); // timescale for subcycling, using constraint above. limit for extreme cases where we might run into expense problems
-    if(dt_target < 1.e-4*dtime_cgs) {printf("WARNING: timestep for subcycling wants to exceed limit: dt_min=%g dt_tot=%g \n",dt_min,dtime_cgs); fflush(stdout);} // print warning (diagnostic for now)
-    
+    if(dt_target < 1.e-4*dtime_cgs)
+    {
+        printf("WARNING: timestep for subcycling wants to exceed limit: dt_min=%g dt_tot=%g \n",dt_min,dtime_cgs);
+        printf(" ID=%llu mode=%d nH=%g ne=%g dt=%g Utot=%g hadronic_coeff=%g coulomb_coeff=%g brems_coeff_0=%g synchIC_coeff_0=%g adiabatic_coeff=%g dtmin=%g signflip=%d signkey=%d \n",P[target].ID,mode_driftkick,nHcgs,n_elec,dtime_cgs,Ucr_tot,hadronic_coeff,coulomb_coeff,brems_coeff_0,synchIC_coeff_0,adiabatic_coeff,dt_min,sign_flip_adiabatic_terms,sign_key_for_adiabatic_loop);
+        for(k=0;k<N_CR_PARTICLE_BINS;k++) {printf("  k=%d U=%g Z=%g R0=%g E=%g NR=%d xm=%g xp=%g slope=%g bremc=%g strmc=%g binratec=%g \n",k,Ucr[k],Z[k],R0[k],E_GeV[k],NR_key[k],x_m[k],x_p[k],bin_slopes[k],brems_coeff[k],streaming_coeff[k],bin_centered_rate_coeff[k]);}
+    }
+
     int proton_key; for(proton_key=0;proton_key<=1;proton_key++) // loop over whether we consider nuclei or electrons, first //
     {
         int n_active=0, bins_sorted[N_CR_PARTICLE_BINS]; double R0_bins[N_CR_PARTICLE_BINS];
@@ -1072,7 +1097,8 @@ void CR_initialize_multibin_quantities(void)
 /* input value 'R' = ratio of total CR energy in the bin ('e_tot') to the total CR number times the energy of the CRs with the bin-centered rigidity ('n_tot' x 'E_cr_bin_center_list'), which is a dimensionless function of the slope, whether the bin is relativistic or not, and the bin edges relative to the bin center */
 double CR_return_slope_from_number_and_energy_in_bin(double energy_in_code_units, double number_effective_in_code_units, double bin_centered_energy_in_GeV, int k_bin)
 {
-    double R = (energy_in_code_units + MIN_REAL_NUMBER) / (number_effective_in_code_units * bin_centered_energy_in_GeV + MIN_REAL_NUMBER);
+    if(energy_in_code_units <= 0 || isnan(energy_in_code_units || number_effective_in_code_units <= 0 || isnan(number_effective_in_code_units))) {return CR_global_slope_lut[k_bin][0];}
+    double R = energy_in_code_units / (number_effective_in_code_units * bin_centered_energy_in_GeV + MIN_REAL_NUMBER);
     int n_table = N_CR_SPECTRUM_LUT; // table size
     double xm = CR_global_min_rigidity_in_bin[k_bin] / CR_global_rigidity_at_bin_center[k_bin], xp = CR_global_max_rigidity_in_bin[k_bin] / CR_global_rigidity_at_bin_center[k_bin], xm_e = xm, xp_e = xp;
     if(CR_check_if_bin_is_nonrelativistic(k_bin)) {xm_e=xm*xm; xp_e=xp*xp;} // sets bounds that this value can possibly obtain
@@ -1096,22 +1122,26 @@ double CR_return_new_bin_edge_from_rate(double rate_dt_dimless, double x_m_bin, 
 {
     if(loss_mode <= 0) {return 0;} // hadronic+catastrophic: should never be called [just should never get to this point since hadronic should be done]
     
+    double x_e = 0;
     if(loss_mode == 1 || loss_mode == 4) // adiabatic+brems+streaming
-        {if(rate_dt_dimless < 0) {return x_p_bin * exp(rate_dt_dimless);} else {return x_m_bin * exp(rate_dt_dimless);}} // return xp' or xm' depending on sign: solution to dx/dtau=(+/-)x
+        {if(rate_dt_dimless < 0) {x_e = x_p_bin * exp(rate_dt_dimless);} else {x_e = x_m_bin * exp(rate_dt_dimless);}} // return xp' or xm' depending on sign: solution to dx/dtau=(+/-)x
 
     if(loss_mode == 2) // coulomb+ionization
     {
         if(NR_key) // non-relativistic Coulomb+ionization terms
-            {return pow(x_m_bin*x_m_bin*x_m_bin + 3.*rate_dt_dimless , 1./3.);} // solution to dx/dtau=-1/x^2
+            {x_e = pow(x_m_bin*x_m_bin*x_m_bin + 3.*rate_dt_dimless , 1./3.);} // solution to dx/dtau=-1/x^2
         else // relativistic Coulomb+ionization terms
-            {return x_m_bin + rate_dt_dimless;} // solution to dx/dtau=-1
+            {x_e = x_m_bin + rate_dt_dimless;} // solution to dx/dtau=-1
     }
 
     if(loss_mode == 3) // IC+synchrotron
-        {return x_m_bin / (1. - rate_dt_dimless * x_m_bin);} // solution for IC+synchrotron: dx/dtau=-x^2
-        
-    return 0; // catch
+        {if(rate_dt_dimless*x_m_bin < 1.) {x_e = x_m_bin / (1. - rate_dt_dimless * x_m_bin);} else {x_e = x_p_bin;}} // solution for IC+synchrotron: dx/dtau=-x^2
+    
+    if(x_e < x_m_bin) {x_e=x_m_bin;}
+    if(x_e > x_p_bin) {x_e=x_p_bin;}
+    return x_e; // catch
 }
+
 
 
 /* integrand needed for numerical evaluation of non-relativistic Coulomb loss terms */
