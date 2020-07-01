@@ -52,8 +52,8 @@ void begrun(void)
 #pragma omp parallel private(tid)
       {
 #pragma omp master
-	printf("Using %d OpenMP threads\n", omp_get_num_threads());
-	tid = omp_get_thread_num();
+          printf("Using %d OpenMP threads\n", omp_get_num_threads());
+          tid = omp_get_thread_num();
       }
 #endif
 
@@ -2102,7 +2102,7 @@ void read_parameter_file(char *fname)
                 if(strcmp("PhotonMomentum_fUV",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_fUV); continue;}
                 if(strcmp("PhotonMomentum_fOPT",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_fOPT); continue;}
 #endif
-#if defined(FIRE_CRS) // ??
+#if defined(FIRE_CRS) 
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 0)
                 if(strcmp("CosmicRayDiffusionCoeff",tag[i])==0) {*((double *)addr[i])=690.; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored diffusivity ~3e29, assuming units kpc/h and km/s (=%g) \n",tag[i],alternate_tag[i],All.CosmicRayDiffusionCoeff); continue;}
 #endif

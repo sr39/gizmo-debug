@@ -993,41 +993,20 @@ void init(void)
 }
 
 
-/*! This routine computes the mass content of the box and compares it to the
- * specified value of Omega-matter.  If discrepant, the run is terminated.
- */
+
+/*! This routine computes the mass content of the box and compares it to the specified value of Omega-matter.  If discrepant, the run is terminated. */
 #ifdef BOX_PERIODIC
 void check_omega(void)
 {
-    double mass = 0, masstot, omega;
-    int i;
-
-    for(i = 0; i < NumPart; i++)
-        mass += P[i].Mass;
-
+    double mass = 0, masstot, omega; int i;
+    for(i = 0; i < NumPart; i++) {mass += P[i].Mass;}
     MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
     omega = masstot / (boxSize_X*boxSize_Y*boxSize_Z) / (3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G));
 #ifdef GR_TABULATED_COSMOLOGY_G
     omega *= All.Gini / All.G;
 #endif
-
-    //if(fabs(omega - All.Omega0) > 1.0e-3)
-    // because of how we set up these ICs, allow a little more generous tolerance
-    if(fabs(omega - All.Omega0) > 1.0e-2)
-    {
-        if(ThisTask == 0)
-        {
-            printf("\n\nI've found something odd!\n");
-            printf
-            ("The mass content accounts only for Omega=%g,\nbut you specified Omega=%g in the parameterfile.\n",
-             omega, All.Omega0);
-            printf("\nI better stop.\n");
-
-            fflush(stdout);
-        }
-        endrun(1);
-    }
+    if(fabs(omega - All.Omega0) > 1.0e-2) // look for a 1% tolerance of omega-matter
+        {PRINT_WARNING("\n\nMass content in the ICs accounts only for Omega_M=%g,\nbut you specified Omega_M=%g in the parameterfile.\nRun will stop.\n",omega, All.Omega0); endrun(1);}
 }
 #endif
 

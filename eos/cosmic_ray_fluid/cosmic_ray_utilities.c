@@ -124,7 +124,7 @@ void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime
             CR_coolrate += 5.2e-20 * gamma * (U_mag_ev + U_rad_ev); // U_mag_ev=(B^2/8pi)/(eV/cm^(-3)), here; U_rad=U_rad/(eV/cm^-3) //
         }
         
-        /* for now, cooling is being treated as energy loss 'within the bin'. with denser bins, should allow for movement -between- bins. needs to be implemented ?? */
+        /* here, cooling is being treated as energy loss 'within the bin'. with denser bins, should allow for movement -between- bins, using the spectral method below */
         double q_CR_cool = exp(-CR_coolrate * dtime_cgs); if(CR_coolrate * dtime_cgs > 20.) {q_CR_cool = 0;}
         SphP[target].CosmicRayEnergyPred[k_CRegy] *= q_CR_cool; SphP[target].CosmicRayEnergy[k_CRegy] *= q_CR_cool;
 #ifdef COSMIC_RAYS_M1
@@ -565,13 +565,13 @@ double return_CRbin_numberdensity_in_cgs(int target, int k_CRegy)
 /* handy functoin that just returns the B-field magnitude in microGauss, physical units. purely here to save us time re-writing this */
 double get_cell_Bfield_in_microGauss(int i)
 {
-    double Bmag=0, gizmo2mugauss_2=UNIT_B_IN_GAUSS*UNIT_B_IN_GAUSS*1.e12;
+    double Bmag=0;
 #ifdef MAGNETIC
-    int k; for(k=0;k<3;k++) {double B=Get_Gas_BField(i,k)*All.cf_a2inv; Bmag+=B*B*gizmo2mugauss_2;} // actual B-field in code units
+    int k; for(k=0;k<3;k++) {double B=Get_Gas_BField(i,k)*All.cf_a2inv; Bmag+=B*B;} // actual B-field in code units
 #else
-    Bmag=2.*SphP[i].Pressure*All.cf_a3inv*gizmo2mugauss_2; // assume equipartition
+    Bmag=2.*SphP[i].Pressure*All.cf_a3inv; // assume equipartition
 #endif
-    return sqrt(DMAX(Bmag,0));
+    return UNIT_B_IN_GAUSS * sqrt(DMAX(Bmag,0)) * 1.e6; // return B in microGauss
 }
 
 
@@ -830,14 +830,15 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
            }
        }
     }
-
+    if(All.ComovingIntegrationOn) {if(Ucr_tot < 1.e-6*P[target].Mass*SphP[target].InternalEnergy) {dt_min*=10; dt_min=DMAX(dt_min,0.01*dtime_cgs);}} // allow larger slope errors when the CR energy is a negligible fraction of total
     
     double dt_target = DMIN(dtime_cgs, dt_min); // timescale for subcycling, using constraint above. limit for extreme cases where we might run into expense problems
     if(dt_target < 1.e-4*dtime_cgs)
     {
         printf("WARNING: timestep for subcycling wants to exceed limit: dt_min=%g dt_tot=%g \n",dt_min,dtime_cgs);
-        printf(" ID=%llu mode=%d nH=%g ne=%g dt=%g Utot=%g hadronic_coeff=%g coulomb_coeff=%g brems_coeff_0=%g synchIC_coeff_0=%g adiabatic_coeff=%g dtmin=%g signflip=%d signkey=%d \n",P[target].ID,mode_driftkick,nHcgs,n_elec,dtime_cgs,Ucr_tot,hadronic_coeff,coulomb_coeff,brems_coeff_0,synchIC_coeff_0,adiabatic_coeff,dt_min,sign_flip_adiabatic_terms,sign_key_for_adiabatic_loop);
+        printf(" ID=%llu mode=%d nH=%g ne=%g dt=%g Utot=%g hadronic_coeff=%g coulomb_coeff=%g brems_coeff_0=%g synchIC_coeff_0=%g (U_mag_eV=%g U_rad_eV=%g) adiabatic_coeff=%g dtmin=%g signflip=%d signkey=%d \n",P[target].ID,mode_driftkick,nHcgs,n_elec,dtime_cgs,Ucr_tot,hadronic_coeff,coulomb_coeff,brems_coeff_0,synchIC_coeff_0,U_mag_ev,U_rad_ev,adiabatic_coeff,dt_min,sign_flip_adiabatic_terms,sign_key_for_adiabatic_loop);
         for(k=0;k<N_CR_PARTICLE_BINS;k++) {printf("  k=%d U=%g Z=%g R0=%g E=%g NR=%d xm=%g xp=%g slope=%g bremc=%g strmc=%g binratec=%g \n",k,Ucr[k],Z[k],R0[k],E_GeV[k],NR_key[k],x_m[k],x_p[k],bin_slopes[k],brems_coeff[k],streaming_coeff[k],bin_centered_rate_coeff[k]);}
+        if(dt_target < 1.e-6*dtime_cgs) {dt_target=1.e-6*dtime_cgs;}
     }
 
     int proton_key; for(proton_key=0;proton_key<=1;proton_key++) // loop over whether we consider nuclei or electrons, first //
