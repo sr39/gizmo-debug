@@ -771,7 +771,8 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
     double coulomb_coeff = 3.09e-16 * nHcgs * ((n_elec + 0.57*(1.-f_ion))*HYDROGEN_MASSFRAC); // default Coulomb+ionization (the two scale nearly-identically) normalization divided by GeV, b/c we need to divide the energy per CR. needs to be multiplied by ((Z*Z)/(beta*E_GeV))
     double brems_coeff_0 = 1.39e-16  * n_elec * nHcgs; // coefficient for Bremsstrahlung [following Blumenthal & Gould, 1970]: dEkin/dt=4*alpha_finestruct*r_classical_elec^2*c * SUM[n_Z,ion * Z * (Z+1) * (ln[2*gamma_elec]-1/3) * E_kin . this needs to be multiplied by [DMAX(log(2.*gamma)-0.33,0)]; becomes dE/dt = -(coeff) * E, or dP/dt = -(coeff) * P [since all e- in rel limit]
     double synchIC_coeff_0 = 5.2e-20 * (U_mag_ev + U_rad_ev); // synchrotron and inverse compton scale as dE/dt=(4/3)*sigma_Thompson*c*gamma_elec^2*(U_mag+U_rad), where U_mag and U_rad are the magnetic and radiation energy densities, respectively. Ignoring Klein-Nishina corrections here, as they are negligible at <40 GeV and only a ~15% correction up to ~1e5 GeV. U_mag_ev=(B^2/8pi)/(eV/cm^(-3)), here; U_rad=U_rad/(eV/cm^-3). needs to be multiplied by gamma
-
+    double e_ion_coeff = 3.60e-16 * nHcgs * (1.-f_ion); // electron ionization term - note very similar to proton ionization (slightly different normalization b/c of log terms, and always in relativistic limit. see e.g. Ginzburg and Syrovatskii, 1964; Gould and Burbidge, 1965, Ramaty and Lingenfelter, 1966.
+    
     double dt_min = dtime_cgs, dt_tmp, CourFac = 0.4; // courant-like factor for use in subcycling here //
     int sign_flip_adiabatic_terms = 0, sign_key_for_adiabatic_loop = 1; // key that tells us if the adiabatic+brems+streaming terms have a strong sign flip, in which case we need to do 2 loops instead of 1
     for(k=0;k<N_CR_PARTICLE_BINS;k++) /* initialize a bunch of variables for the different bins that we'll refer to below */
@@ -796,6 +797,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
         if(Z[k] < 0) // e-: do constraint from synchrotron + IC
         {
             double IC_sync_coeff = (E_GeV[k]/E_rest_e_GeV) * synchIC_coeff_0; bin_centered_rate_coeff[k]+=IC_sync_coeff;
+            double ion_coeff = ((1.+0.07*log(E_GeV[k]))/R0[k]) * e_ion_coeff; bin_centered_rate_coeff[k]+=ion_coeff; // relativistic expression. note this is equation for p evolution, where R is rigidity, so need to be careful with Z factors, etc.
         } else { // p: do constraint from Coulomb + ionization
             if(NR_key[k]==1) // bin is in non-relativistic limit, use those expressions
             {
@@ -818,6 +820,8 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
        {
            double IC_sync_coeff = (E_GeV[k]/E_rest_e_GeV) * synchIC_coeff_0;
            if(IC_sync_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * (1./x_m[k] - 1./x_p[k]) / IC_sync_coeff; dt_min=DMIN(dt_min, dt_tmp);}
+           double ion_coeff = ((1.+0.07*log(E_GeV[k]))/R0[k]) * e_ion_coeff; bin_centered_rate_coeff[k]+=ion_coeff; // relativistic expression. note this is equation for p evolution, where R is rigidity, so need to be careful with Z factors, etc.
+           if(ion_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * DMIN(x_p[k]-x_m[k], x_m[k]) / ion_coeff; dt_min=DMIN(dt_min, dt_tmp);}
        } else { // p: do constraint from Coulomb + ionization
            if(NR_key[k]==1) // bin is in non-relativistic limit, use those expressions
            {
@@ -858,7 +862,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
             int loss_mode; // this will determine which type[s] of losses [differentiated by their qualitative scalings] we are considering //
             for(loss_mode=0;loss_mode<=4;loss_mode++)
             {
-                if(loss_mode==0 || loss_mode==2) {if(proton_key==0) {continue;}} // loss-modes=0,2 [Hadronic,Coulomb] use only protons, skip to next in loop
+                if(loss_mode==0) {if(proton_key==0) {continue;}} // loss-mode=0 [Hadronic] uses only protons, skip to next in loop
                 if(loss_mode==3) {if(proton_key==1) {continue;}} // loss-mode=3 [Compton+Synchrotron] uses only electrons
                 if(loss_mode==4) {if(sign_flip_adiabatic_terms == 0) {continue;}} // adiabatic+streaming+brems term walked in same order, so we don't need to do an additional loop here
                 
@@ -914,8 +918,13 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                     }
                     if(loss_mode==2) // coulomb + ion
                     {
-                        rate_prefac = (Z[j]/R0[j]) * coulomb_coeff; // relativistic expression. note this is equation for p evolution, where R is rigidity, so need to be careful with Z factors, etc.
-                        if(NR_key[j]) {double A=1.; rate_prefac *= 0.88 *A*A / (R0[j]*R0[j]*Z[j]*Z[j]);} // non-relativistic expression (times constant (A/(R0*Z))^2 //
+                        if(Z[k] < 0) // electron ionization losses here
+                        {
+                            rate_prefac = ((1.+0.07*log(E_GeV[k]))/R0[k]) * e_ion_coeff; // always in relativistic limit here. 1/R0 is b/c this coefficient is defined normalized to the bin center in GeV, to make the equations dimensionless
+                        } else { // proton ionization + Coulomb losses here
+                            rate_prefac = (Z[j]/R0[j]) * coulomb_coeff; // relativistic expression. note this is equation for p evolution, where R is rigidity, so need to be careful with Z factors, etc.
+                            if(NR_key[j]) {double A=1.; rate_prefac *= 0.88 *A*A / (R0[j]*R0[j]*Z[j]*Z[j]);} // non-relativistic expression (times constant (A/(R0*Z))^2 //
+                        }
                     }
                     if(loss_mode==3) {rate_prefac = (E_GeV[j]/E_rest_e_GeV) * synchIC_coeff_0;} // IC + synch
                     
