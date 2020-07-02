@@ -67,9 +67,12 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
 #if (N_CR_PARTICLE_BINS > 2) /* multi-bin spectrum for p and e-: inset assumptions about injection spectrum here! */
     double f_elec = 0.05; // fraction of the energy to put into e- as opposed to p+ at injection
     double inj_slope = 4.5; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope)
+    double R_break_e = 4.; // location of spectral break for injection e- spectrum, in GV
+    double Z=return_CRbin_CR_charge_in_e(-1,k_CRegy), R=return_CRbin_CR_rigidity_in_GV(-1,k_CRegy); // get bin-centered Z, R
+    if(Z < 0 && R < R_break_e) {inj_slope = 3.5;} // follow model injection spectra favored in Strong et al. 2011 (A+A, 534, A54), who argue the low-energy e- injection spectrum must break to a lower slope by ~1 independent of propagation and re-acceleration model
     if(return_index_in_bin) {return 2.-inj_slope;} // this is the index corresponding to our dN/dp ~ p^gamma
-    double Z=return_CRbin_CR_charge_in_e(-1,k_CRegy), R=return_CRbin_CR_rigidity_in_GV(-1,k_CRegy), EGeV=return_CRbin_kinetic_energy_in_GeV(-1,k_CRegy); // get bin-centered Z, R
-    f_bin = EGeV * pow(R , 3.-inj_slope) * log(CR_global_max_rigidity_in_bin[k_CRegy] / CR_global_min_rigidity_in_bin[k_CRegy]); // normalize accounting for slope, isotropic spectrum, logarithmic bin width [which can vary], and energy per N
+    double EGeV = return_CRbin_kinetic_energy_in_GeV(-1,k_CRegy); // get bin-centered E_GeV for normalizing total energy in bin
+    f_bin = EGeV * pow(R/R_break_e , 3.-inj_slope) * log(CR_global_max_rigidity_in_bin[k_CRegy] / CR_global_min_rigidity_in_bin[k_CRegy]); // normalize accounting for slope, isotropic spectrum, logarithmic bin width [which can vary], and energy per N
     if(Z < 0) {f_bin *= f_elec;} else {f_bin *= 1.-f_elec;} // normalize depending on e- or p+
 #endif
 #endif
@@ -84,7 +87,7 @@ double diffusion_coefficient_constant(int target, int k_CRegy)
 {
     double dimensionless_kappa_relative_to_GV_protons = 1;
 #if (N_CR_PARTICLE_BINS > 1)    /* insert physics here */
-    dimensionless_kappa_relative_to_GV_protons = pow( return_CRbin_CR_rigidity_in_GV(target,k_CRegy) , 0.5 ); // assume a quasi-empirical scaling here //
+    dimensionless_kappa_relative_to_GV_protons = pow( return_CRbin_CR_rigidity_in_GV(-1,k_CRegy) , 0.5 ); // assume a quasi-empirical scaling here //
 #endif
     return All.CosmicRayDiffusionCoeff * dimensionless_kappa_relative_to_GV_protons;
 }
