@@ -844,13 +844,7 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         double star_age = evaluate_stellar_age_Gyr(P[p].StellarAge);
         double dt_stellar_evol;
-        if(star_age<0.1)
-        {
-            dt_stellar_evol = DMAX(2.0e-4, star_age/250.); // restrict to small steps for young stars //
-        } else {
-            dt_stellar_evol = star_age/10.;
-        }
-        // PFH: temporarily modifying the terms above while Marcel studies them: turns out not to be necessary to use as strict a mass-dependent timestep, so faster to comment out //
+        dt_stellar_evol = DMAX(2.0e-4, star_age/250.); // restrict to small steps for young stars //
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         // double mcorr = 1.e-4 * (P[p].Mass*UNIT_MASS_IN_SOLAR); if(mcorr > 1) {dt_stellar_evol /= mcorr;} // don't use - ok to have multiple at low-res, but don't want too-big a jump or miss key stellar evolution
 #else

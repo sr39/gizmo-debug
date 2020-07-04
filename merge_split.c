@@ -466,6 +466,10 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
             SphP[j].CosmicRayEnergy[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRayEnergy[k_CRegy]; SphP[i].CosmicRayEnergy[k_CRegy] -= SphP[j].CosmicRayEnergy[k_CRegy];
             SphP[j].CosmicRayEnergyPred[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRayEnergyPred[k_CRegy]; SphP[i].CosmicRayEnergyPred[k_CRegy] -= SphP[j].CosmicRayEnergyPred[k_CRegy];
             SphP[j].DtCosmicRayEnergy[k_CRegy] = mass_of_new_particle * SphP[i].DtCosmicRayEnergy[k_CRegy]; SphP[i].DtCosmicRayEnergy[k_CRegy] -= SphP[j].DtCosmicRayEnergy[k_CRegy];
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+            SphP[j].CosmicRay_Number_in_Bin[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRay_Number_in_Bin[k_CRegy]; SphP[i].CosmicRay_Number_in_Bin[k_CRegy] -= SphP[j].CosmicRay_Number_in_Bin[k_CRegy];
+            SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy] = mass_of_new_particle * SphP[i].DtCosmicRay_Number_in_Bin[k_CRegy]; SphP[i].DtCosmicRay_Number_in_Bin[k_CRegy] -= SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy];
+#endif
 #ifdef COSMIC_RAYS_M1
             for(k=0;k<3;k++)
             {
@@ -752,6 +756,10 @@ void merge_particles_ij(int i, int j)
         SphP[j].CosmicRayEnergy[k_CRegy] += SphP[i].CosmicRayEnergy[k_CRegy];
         SphP[j].CosmicRayEnergyPred[k_CRegy] += SphP[i].CosmicRayEnergyPred[k_CRegy];
         SphP[j].DtCosmicRayEnergy[k_CRegy] += SphP[i].DtCosmicRayEnergy[k_CRegy];
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+        SphP[j].CosmicRay_Number_in_Bin[k_CRegy] += SphP[i].CosmicRay_Number_in_Bin[k_CRegy];
+        SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy] += SphP[i].DtCosmicRay_Number_in_Bin[k_CRegy];
+#endif
 #ifdef COSMIC_RAYS_M1
         for(k=0;k<3;k++)
         {

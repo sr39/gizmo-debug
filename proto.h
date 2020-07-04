@@ -298,18 +298,24 @@ void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime
 double CR_gas_heating(int target, double n_elec, double nHcgs);
 double return_CRbin_CRmass_in_mp(int target, int k_CRegy);
 double return_CRbin_CR_rigidity_in_GV(int target, int k_CRegy);
+double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy);
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
 void CR_spectrum_define_bins(void);
 void CR_initialize_multibin_quantities(void);
 void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, double dtime_cgs, int mode_driftkick);
-double CR_return_slope_from_number_and_energy_in_bin(double R, int bin)
-double CR_return_new_bin_edge_from_rate(double rate_dt_dimless, double x_m_bin, double x_p_bin, int loss_mode, int NR_key)
+double CR_return_slope_from_number_and_energy_in_bin(double energy_in_code_units, double number_effective_in_code_units, double bin_centered_energy_in_GeV, int k_bin);
+double CR_return_new_bin_edge_from_rate(double rate_dt_dimless, double x_m_bin, double x_p_bin, int loss_mode, int NR_key);
 double CR_coulomb_energy_integrand(double x, double tau, double slope);
 double CR_compton_energy_integrand(double x, double tau, double slope);
 int CR_check_if_bin_is_nonrelativistic(int k_bin);
-double CR_return_effective_number_in_bin(int target, int k_bin);
+double CR_return_true_number_in_bin(int target, int k_bin);
+double CR_return_effective_number_in_bin_in_codeunits(int target, int k_bin);
+double CR_return_spectral_slope_target(int target, int k_bin);
+double CR_get_number_in_bin_from_slope(int target, int k_bin, double energy, double slope);
 double CR_return_mean_energy_in_bin_in_GeV(int target, int k_bin);
 double CR_return_mean_rigidity_in_bin_in_GV(int target, int k_bin);
+int compare_CR_rigidity_for_sort(const void *a, const void *b);
+double return_CRbin_kinetic_energy_in_GeV_binvalsNRR(int k_CRegy);
 #endif
 #endif
 #ifdef EOS_ELASTIC

@@ -234,27 +234,25 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
+#if 1
+                    for(k=0;k<3;k++) {fp[k] = P[pindex].Vel[k] * sqrt(All.cf_a3inv);} // JUST write the conserved velocity here, not the drifted one in this manner //
+#else
                     integertime dt_integerstep = GET_PARTICLE_INTEGERTIME(pindex);
                     dt_hydrokick = (All.Ti_Current - (P[pindex].Ti_begstep + dt_integerstep / 2)) * UNIT_INTEGERTIME_IN_PHYSICAL;
-                    if(All.ComovingIntegrationOn) {dt_gravkick = get_gravkick_factor(P[pindex].Ti_begstep, All.Ti_Current) - get_gravkick_factor(P[pindex].Ti_begstep, P[pindex].Ti_begstep + dt_integerstep / 2);}
-                        else {dt_gravkick = dt_hydrokick;}
-
+                    if(All.ComovingIntegrationOn) {dt_gravkick = get_gravkick_factor(P[pindex].Ti_begstep, All.Ti_Current) - get_gravkick_factor(P[pindex].Ti_begstep, P[pindex].Ti_begstep + dt_integerstep / 2);} else {dt_gravkick = dt_hydrokick;}
                     for(k = 0; k < 3; k++)
                     {
                         fp[k] = P[pindex].Vel[k] + P[pindex].GravAccel[k] * dt_gravkick;
 #if (SINGLE_STAR_TIMESTEPPING > 0)
 			            if((P[pindex].Type == 5) && (P[pindex].SuperTimestepFlag >= 2)) {fp[k] += (P[pindex].COM_GravAccel[k]-P[pindex].GravAccel[k]) * dt_gravkick;}
 #endif
-                        if(P[pindex].Type == 0)
-                        {
-                            fp[k] += SphP[pindex].HydroAccel[k] * dt_hydrokick * All.cf_atime;
-                        }
+                        if(P[pindex].Type == 0) {fp[k] += SphP[pindex].HydroAccel[k] * dt_hydrokick * All.cf_atime;}
                     }
 #ifdef PMGRID
                     for(k = 0; k < 3; k++) {fp[k] += P[pindex].GravPM[k] * dt_gravkick_pm;}
 #endif
                     for(k = 0; k < 3; k++) {fp[k] *= sqrt(All.cf_a3inv);}
-
+#endif
                     n++;
                     fp += 3;
                 }
@@ -806,7 +804,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k=0;k<N_CR_PARTICLE_BINS;k++) {fp[k] = SphP[pindex].CosmicRay_PwrLaw_Slopes_in_Bin[k];}
+                    //for(k=0;k<N_CR_PARTICLE_BINS;k++) {fp[k] = SphP[pindex].CosmicRay_PwrLaw_Slopes_in_Bin[k];} // write out the saved slope
+                    for(k=0;k<N_CR_PARTICLE_BINS;k++) {fp[k] = CR_return_spectral_slope_target(pindex,k);} // calculate the slope to write out
                     fp += N_CR_PARTICLE_BINS;
                     n++;
                 }

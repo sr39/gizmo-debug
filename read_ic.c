@@ -488,7 +488,9 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 
         case IO_COSMICRAY_SLOPES:
 #if defined(COSMIC_RAYS) && defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
-            for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {SphP[offset + n].CosmicRay_PwrLaw_Slopes_in_Bin[k] = *fp++;}}
+            //for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {SphP[offset + n].CosmicRay_PwrLaw_Slopes_in_Bin[k] = *fp++;}} // read the slope directly
+            for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {
+                SphP[offset + n].CosmicRay_Number_in_Bin[k] = *fp++;}} // NOTE this still contains the SLOPE information; in init.c we convert back to number, our evolved variable!
 #endif
             break;
 
