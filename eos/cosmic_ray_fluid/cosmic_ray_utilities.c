@@ -1255,7 +1255,7 @@ double return_CRbin_kinetic_energy_in_GeV_binvalsNRR(int k_CRegy)
     double Zabs = fabs(CR_global_charge_in_bin[k_CRegy]);
     if(CR_check_if_bin_is_nonrelativistic(k_CRegy))
     {
-        double fac = 0.0008537910588247312; // converts from R_GV to E in GeV for E = p^2/(2m), assuming Z=1, m=mp
+        double fac = 0.5328928536929374; // converts from R_GV to E in GeV for E = p^2/(2m), assuming Z=1, m=mp
         if(Zabs>=1.01) {fac /= 2.*Zabs*Zabs*Zabs;} // assume A = 2.*Z
         return fac * R_GV*R_GV; // E in GeV in non-relativistic limit
     }
