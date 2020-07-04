@@ -315,6 +315,7 @@ double CR_get_number_in_bin_from_slope(int target, int k_bin, double energy, dou
 double CR_return_mean_energy_in_bin_in_GeV(int target, int k_bin);
 double CR_return_mean_rigidity_in_bin_in_GV(int target, int k_bin);
 int compare_CR_rigidity_for_sort(const void *a, const void *b);
+double return_CRbin_kinetic_energy_in_GeV_binvalsNRR(int k_CRegy);
 #endif
 #endif
 #ifdef EOS_ELASTIC

@@ -71,7 +71,7 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
     double Z=return_CRbin_CR_charge_in_e(-1,k_CRegy), R=return_CRbin_CR_rigidity_in_GV(-1,k_CRegy); // get bin-centered Z, R
     if(Z < 0 && R < R_break_e) {inj_slope = 3.5;} // follow model injection spectra favored in Strong et al. 2011 (A+A, 534, A54), who argue the low-energy e- injection spectrum must break to a lower slope by ~1 independent of propagation and re-acceleration model
     if(return_index_in_bin) {return 2.-inj_slope;} // this is the index corresponding to our dN/dp ~ p^gamma
-    double EGeV = return_CRbin_kinetic_energy_in_GeV(-1,k_CRegy); // get bin-centered E_GeV for normalizing total energy in bin
+    double EGeV = return_CRbin_kinetic_energy_in_GeV_binvalsNRR(k_CRegy); // get bin-centered E_GeV for normalizing total energy in bin
     f_bin = EGeV * pow(R/R_break_e , 3.-inj_slope) * log(CR_global_max_rigidity_in_bin[k_CRegy] / CR_global_min_rigidity_in_bin[k_CRegy]); // normalize accounting for slope, isotropic spectrum, logarithmic bin width [which can vary], and energy per N
     if(Z < 0) {f_bin *= f_elec;} else {f_bin *= 1.-f_elec;} // normalize depending on e- or p+
 #endif
@@ -420,7 +420,7 @@ void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, i
         double dEcr = CR_energy_to_inject * f_injected[k_CRegy]; // normalized properly to sum to unity
         if(dEcr <= 0) {continue;}
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) // update the evolved slopes with the injection spectrum slope: do a simple energy-weighted mean for the updated/mixed slope here
-        double E_GeV = return_CRbin_kinetic_energy_in_GeV(-1, k_CRegy), egy_slopemode = 1, xm = CR_global_min_rigidity_in_bin[k_CRegy] / CR_global_rigidity_at_bin_center[k_CRegy], xp = CR_global_max_rigidity_in_bin[k_CRegy] / CR_global_rigidity_at_bin_center[k_CRegy], xm_e=xm, xp_e=xp; // values needed for bin injection parameters
+        double E_GeV = return_CRbin_kinetic_energy_in_GeV_binvalsNRR(k_CRegy), egy_slopemode = 1, xm = CR_global_min_rigidity_in_bin[k_CRegy] / CR_global_rigidity_at_bin_center[k_CRegy], xp = CR_global_max_rigidity_in_bin[k_CRegy] / CR_global_rigidity_at_bin_center[k_CRegy], xm_e=xm, xp_e=xp; // values needed for bin injection parameters
         if(CR_check_if_bin_is_nonrelativistic(k_CRegy)) {egy_slopemode=2; xm_e*=xm_e; xp_e*=xp_e;} // values needed to scale from slope injected to number and back
         double slope_inj = CR_energy_spectrum_injection_fraction(k_CRegy,source_PType,injection_velocity,1); // spectral slope of injected CRs
         double gamma_one = slope_inj + 1., xm_gamma_one = pow(xm, gamma_one), xp_gamma_one = pow(xp, gamma_one); // variables below
@@ -679,11 +679,11 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         if(mode==0) // only update on kicks, since we worth with a drift-conserved slope determining the ratio of N and E
         {
             double dN = SphP[i].DtCosmicRay_Number_in_Bin[k_CRegy]*dt_entr, n0 = SphP[i].CosmicRay_Number_in_Bin[k_CRegy], n_new = n0+dN;
-            double E_GeV = return_CRbin_kinetic_energy_in_GeV(-1, k_CRegy), xm = CR_global_min_rigidity_in_bin[k] / CR_global_rigidity_at_bin_center[k], xp = CR_global_max_rigidity_in_bin[k] / CR_global_rigidity_at_bin_center[k], xm_e=xm, xp_e=xp;
+            double E_GeV = return_CRbin_kinetic_energy_in_GeV_binvalsNRR(k_CRegy), xm = CR_global_min_rigidity_in_bin[k] / CR_global_rigidity_at_bin_center[k], xp = CR_global_max_rigidity_in_bin[k] / CR_global_rigidity_at_bin_center[k], xm_e=xm, xp_e=xp;
             if(CR_check_if_bin_is_nonrelativistic(k_CRegy)) {xm_e = xm*xm; xp_e = xp*xp;} // extra power of p in energy equation accounted for here, all that's needed
             double N_min = eCR_tmp / (E_GeV * xp_e * (1.-1.e-4)); // even with arbitrarily large slopes we cannot exceed this limit: all CRs 'piled up' at highest energy
             double N_max = eCR_tmp / (E_GeV * xm_e * (1.+1.e-4)); // even with arbitrarily large slopes we cannot exceed this limit: all CRs 'piled up' at lowest energy
-            n_new = DMIN(DMAX(n_new,N_min),N_max); if(n_new<0 || isnan(n_new)) {n_new=0;}
+            n_new = DMIN(DMAX(n_new,N_min),N_max); if((n_new<0) || (isnan(n_new))) {n_new=0;} ???????????????
             SphP[i].CosmicRay_Number_in_Bin[k_CRegy] = n_new; // alright, updated CR number for evolution equations
         }
 #endif
@@ -783,7 +783,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
         Ucr_i[k] = Ucr[k]; // save initial energy for reference at the end of this loop
         Z[k] = CR_global_charge_in_bin[k]; // want bin-centered values, so give index = -1
         R0[k] = CR_global_rigidity_at_bin_center[k]; // want bin-centered values, so give index = -1
-        E_GeV[k] = return_CRbin_kinetic_energy_in_GeV(-1,k); // want bin-centered values, so give index = -1
+        E_GeV[k] = return_CRbin_kinetic_energy_in_GeV_binvalsNRR(k); // want bin-centered values, so give index = -1
         NR_key[k] = CR_check_if_bin_is_nonrelativistic(k); // key to decide whether to use relativistic or non-relativistic scalings
         x_m[k] = CR_global_min_rigidity_in_bin[k] / R0[k]; // ratio of min-to-mid-bin CR rigidity or momentum, used for scaling everything below
         x_p[k] = CR_global_max_rigidity_in_bin[k] / R0[k]; // ratio of max-to-mid-bin CR rigidity or momentum, used for scaling everything below
@@ -1096,7 +1096,7 @@ void CR_initialize_multibin_quantities(void)
     if(ThisTask==0) {for(k=0;k<N_CR_PARTICLE_BINS;k++) { // print outputs for users
         printf("\n .. bin=%d, charge=%g e, mass=%g mp, rigidity Rmin=%g R0=%g Rmax=%g GV, energy=%g GeV, relativistic?=%d [1=Y/0=N] beta=%g gamma=%g \n",
            k,CR_global_charge_in_bin[k],return_CRbin_CRmass_in_mp(-1,k),CR_global_min_rigidity_in_bin[k],CR_global_rigidity_at_bin_center[k],
-           CR_global_max_rigidity_in_bin[k],return_CRbin_kinetic_energy_in_GeV(-1,k),1-CR_check_if_bin_is_nonrelativistic(k),return_CRbin_beta_factor(-1,k),
+           CR_global_max_rigidity_in_bin[k],return_CRbin_kinetic_energy_in_GeV_binvalsNRR(k),1-CR_check_if_bin_is_nonrelativistic(k),return_CRbin_beta_factor(-1,k),
            return_CRbin_gamma_factor(-1,k)); fflush(stdout);
         printf(" .. LUT for CR slopes in this bin: \n"); printf("  .. j  .. R_egy/num .. gamma \n");
         int j; for(j=0;j<N_CR_SPECTRUM_LUT;j++) {printf("  .. %4d  %5.4g %10.3g \n",j,((double)j)/((double)n_table),CR_global_slope_lut[k][j]); fflush(stdout);}
@@ -1110,7 +1110,7 @@ void CR_initialize_multibin_quantities(void)
 /* input value 'R' = ratio of total CR energy in the bin ('e_tot') to the total CR number times the energy of the CRs with the bin-centered rigidity ('n_tot' x 'E_cr_bin_center_list'), which is a dimensionless function of the slope, whether the bin is relativistic or not, and the bin edges relative to the bin center */
 double CR_return_slope_from_number_and_energy_in_bin(double energy_in_code_units, double number_effective_in_code_units, double bin_centered_energy_in_GeV, int k_bin)
 {
-    if(energy_in_code_units <= 0 || isnan(energy_in_code_units || number_effective_in_code_units <= 0 || isnan(number_effective_in_code_units))) {return CR_global_slope_lut[k_bin][0];}
+    if((energy_in_code_units <= 0.) || isnan(energy_in_code_units) || (number_effective_in_code_units <= 0.) || isnan(number_effective_in_code_units)) {return CR_global_slope_lut[k_bin][0];}
     double R = energy_in_code_units / (number_effective_in_code_units * bin_centered_energy_in_GeV + MIN_REAL_NUMBER);
     int n_table = N_CR_SPECTRUM_LUT; // table size
     double xm = CR_global_min_rigidity_in_bin[k_bin] / CR_global_rigidity_at_bin_center[k_bin], xp = CR_global_max_rigidity_in_bin[k_bin] / CR_global_rigidity_at_bin_center[k_bin], xm_e = xm, xp_e = xp;
@@ -1190,7 +1190,7 @@ double CR_return_effective_number_in_bin_in_codeunits(int target, int k_bin)
 double CR_return_spectral_slope_target(int target, int k_bin)
 {
     //return SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin[k_bin]; // evolving slopes directly
-    return CR_return_slope_from_number_and_energy_in_bin(SphP[target].CosmicRayEnergy[k_bin], SphP[target].CosmicRay_Number_in_Bin[k_bin], return_CRbin_kinetic_energy_in_GeV(-1,k_bin), k_bin); // calculate if not evolving directly
+    return CR_return_slope_from_number_and_energy_in_bin(SphP[target].CosmicRayEnergy[k_bin], SphP[target].CosmicRay_Number_in_Bin[k_bin], return_CRbin_kinetic_energy_in_GeV_binvalsNRR(k_bin), k_bin); // calculate if not evolving directly
 }
 
 
@@ -1206,7 +1206,7 @@ double CR_get_number_in_bin_from_slope(int target, int k_bin, double energy, dou
 {
     double etot = energy;
     double gamma_one = 1. + slope;
-    double E_bin_center = return_CRbin_kinetic_energy_in_GeV(-1, k_bin);
+    double E_bin_center = return_CRbin_kinetic_energy_in_GeV_binvalsNRR(k_bin);
     double xm = CR_global_min_rigidity_in_bin[k_bin] / CR_global_rigidity_at_bin_center[k_bin];
     double xp = CR_global_max_rigidity_in_bin[k_bin] / CR_global_rigidity_at_bin_center[k_bin];
     double xm_gamma_one = pow(xm, gamma_one), xp_gamma_one = pow(xp, gamma_one);
@@ -1246,6 +1246,22 @@ int compare_CR_rigidity_for_sort(const void *a, const void *b)
     if (x < y) {return -1;} else if(x > y) {return 1;}
     return 0;
 }
+
+
+/* routine to return bin-centered energy using the slope approximation used in the fast cooling sub-cycling, of each bin being in the relativistic or non-relativistic regime */
+double return_CRbin_kinetic_energy_in_GeV_binvalsNRR(int k_CRegy)
+{
+    double R_GV = CR_global_rigidity_at_bin_center[k_CRegy];
+    double Zabs = fabs(CR_global_charge_in_bin[k_CRegy]);
+    if(CR_check_if_bin_is_nonrelativistic(k_CRegy))
+    {
+        double fac = 0.0008537910588247312; // converts from R_GV to E in GeV for E = p^2/(2m), assuming Z=1, m=mp
+        if(Z_abs>=1.01) {fac /= 2.*Z_abs*Z_abs*Z_abs;} // assume A = 2.*Z
+        return fac * R_GV*R_GV; // E in GeV in non-relativistic limit
+    }
+    return R_GV / Zabs; // E in GeV in relativistic limit
+}
+
 
 
 #endif
