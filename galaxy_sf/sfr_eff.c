@@ -475,6 +475,9 @@ void star_formation_parent_routine(void)
 #ifdef BH_COUNTPROGS
                 P[i].BH_CountProgs = 1;
 #endif
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+                P[i].SinkRadius = All.ForceSoftening[P[i].Type];
+#endif
                 P[i].BH_Mdot = 0;
                 P[i].DensAroundStar = SphP[i].Density;
             } else {
