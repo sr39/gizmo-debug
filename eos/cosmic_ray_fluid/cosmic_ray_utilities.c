@@ -683,7 +683,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
             if(CR_check_if_bin_is_nonrelativistic(k_CRegy)) {xm_e = xm*xm; xp_e = xp*xp;} // extra power of p in energy equation accounted for here, all that's needed
             double N_min = eCR_tmp / (E_GeV * xp_e * (1.-1.e-4)); // even with arbitrarily large slopes we cannot exceed this limit: all CRs 'piled up' at highest energy
             double N_max = eCR_tmp / (E_GeV * xm_e * (1.+1.e-4)); // even with arbitrarily large slopes we cannot exceed this limit: all CRs 'piled up' at lowest energy
-            n_new = DMIN(DMAX(n_new,N_min),N_max); if((n_new<0) || (isnan(n_new))) {n_new=0;} ???????????????
+            n_new = DMIN(DMAX(n_new,N_min),N_max); if((n_new<0) || (isnan(n_new))) {n_new=0;} 
             SphP[i].CosmicRay_Number_in_Bin[k_CRegy] = n_new; // alright, updated CR number for evolution equations
         }
 #endif
@@ -1256,7 +1256,7 @@ double return_CRbin_kinetic_energy_in_GeV_binvalsNRR(int k_CRegy)
     if(CR_check_if_bin_is_nonrelativistic(k_CRegy))
     {
         double fac = 0.0008537910588247312; // converts from R_GV to E in GeV for E = p^2/(2m), assuming Z=1, m=mp
-        if(Z_abs>=1.01) {fac /= 2.*Z_abs*Z_abs*Z_abs;} // assume A = 2.*Z
+        if(Zabs>=1.01) {fac /= 2.*Z_abs*Z_abs*Z_abs;} // assume A = 2.*Z
         return fac * R_GV*R_GV; // E in GeV in non-relativistic limit
     }
     return R_GV / Zabs; // E in GeV in relativistic limit
