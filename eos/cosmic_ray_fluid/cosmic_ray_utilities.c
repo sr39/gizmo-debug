@@ -65,7 +65,7 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
     double f_bin_v[2]={0.95 , 0.05}; f_bin=f_bin_v[k_CRegy]; // 5% of injection into e-, roughly motivated by observed spectra and nearby SNRs
 #endif
 #if (N_CR_PARTICLE_BINS > 2) /* multi-bin spectrum for p and e-: inset assumptions about injection spectrum here! */
-    double f_elec = 0.5; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give 100x lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB]
+    double f_elec = 0.05; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
     double inj_slope = 4.5; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope)
     double R_break_e = 4.; // location of spectral break for injection e- spectrum, in GV
     double Z=return_CRbin_CR_charge_in_e(-1,k_CRegy), R=return_CRbin_CR_rigidity_in_GV(-1,k_CRegy); // get bin-centered Z, R
@@ -700,7 +700,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         double min_IEgy = P[i].Mass * All.MinEgySpec; // minimum internal energy - in total units -
         
         double dtI_hydro = SphP[i].DtInternalEnergy * P[i].Mass * dt_entr; // change given by hydro-step computed delta_InternalEnergy
-        if(mdivvdt * dtI_hydro > 0) // same sign from hydro and from smooth-flow-estimator, suggests we are in a smooth flow, so we'll use stronger assumptions about the effective 'entropy' here
+        if(mdivvdt * dtI_hydro > 0 && mode == 0) // same sign from hydro and from smooth-flow-estimator, suggests we are in a smooth flow, so we'll use stronger assumptions about the effective 'entropy' here
         {
             double abs_limit = fabs(dtI_hydro); // in smooth flow, sum of CR+gas PdV work terms should not exceed this
             double d_sum = fabs(d_CR + d_Egas); // sum of the terms estimated as above
@@ -733,7 +733,8 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         if(dCR_div < -0.9*eCR_00) {dCR_div=-0.9*eCR_00;} // before re-coupling, ensure this will not cause negative energies
 #endif
         double uf = DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
-        if(mode==0) {SphP[i].InternalEnergy = uf;} else {SphP[i].InternalEnergyPred = uf;} // update gas
+        //if(mode==0) {SphP[i].InternalEnergy = uf;} else {SphP[i].InternalEnergyPred = uf;} // update gas
+        if(mode==0) {SphP[i].DtInternalEnergy += (uf-u0)/(dt_entr+MIN_REAL_NUMBER);} else {SphP[i].InternalEnergyPred = uf;} // update gas
 #if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
         if(mode==0) {SphP[i].CosmicRayEnergy[k_CRegy] += dCR_div;} else {SphP[i].CosmicRayEnergyPred[k_CRegy] += dCR_div;} // update CRs: note if explicitly evolving spectrum, this is done separately below //
 #endif
