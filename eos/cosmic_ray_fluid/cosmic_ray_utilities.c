@@ -697,6 +697,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         double fmult, Ui = u0 * P[i].Mass; // factor for multiplication below, and initial thermal energy
         double d_CR = mdivvdt * (gamma_eff-1.) * eCR_tmp; // expected CR change - this is the 'PdV' part of the work, applicable in smooth flows
         double d_Egas = mdivvdt * (GAMMA(i)-1.) * Ui; // expected gas change - in a smooth flow likewise should be entropy-conserving
+        double min_IEgy = P[i].Mass * All.MinEgySpec; // minimum internal energy - in total units -
         
         double dtI_hydro = SphP[i].DtInternalEnergy * P[i].Mass * dt_entr; // change given by hydro-step computed delta_InternalEnergy
         if(mdivvdt * dtI_hydro > 0) // same sign from hydro and from smooth-flow-estimator, suggests we are in a smooth flow, so we'll use stronger assumptions about the effective 'entropy' here
@@ -706,15 +707,15 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
             if(d_sum > abs_limit) {fmult = abs_limit/d_sum; d_CR *= fmult; d_Egas *= fmult;} // limit to not exceed
             
             double limforU = -0.9*Ui; // maximum change in internal energy we will allow, to prevent negative values
-            if(Ui <= All.MinEgySpec) {limforU=0;} else {limforU = DMAX(limforU,All.MinEgySpec-Ui);} // actually more restrictive: prevent crossing the minimum enforced temperature in cooling
-            if(d_Egas < limforU) {fmult = limforU/d_Egas; d_CR *= fmult; d_Egas *= fmult;} // limit
+            if(Ui <= min_IEgy) {limforU=0;} else {limforU = DMAX(limforU,min_IEgy-Ui);} // actually more restrictive: prevent crossing the minimum enforced temperature in cooling
+            if(-d_CR < limforU) {fmult = limforU/d_Egas; d_CR *= fmult; d_Egas *= fmult;} // limit
             
             double limforC = -0.9*eCR_tmp; // maximum change in CR energy we will allow, to prevent negative values
             if(d_CR < limforC) {fmult = limforC/d_CR; d_CR *= fmult; d_Egas *= fmult;} // limit
         } else { // opposite sign, suggests numerical-diffusion dominated; in this case, we will be more conservative about the limits
             double limforU = -0.5*Ui; // maximum change in internal energy we will allow, to prevent negative values
-            if(Ui <= All.MinEgySpec) {limforU=0;} else {limforU = DMAX(limforU, 0.5*(All.MinEgySpec-Ui));} // actually more restrictive: prevent crossing the minimum enforced temperature in cooling
-            if(d_Egas < limforU) {fmult = limforU/d_Egas; d_CR *= fmult; d_Egas *= fmult;} // limit
+            if(Ui <= min_IEgy) {limforU=0;} else {limforU = DMAX(limforU, 0.5*(min_IEgy-Ui));} // actually more restrictive: prevent crossing the minimum enforced temperature in cooling
+            if(-d_CR < limforU) {fmult = limforU/d_Egas; d_CR *= fmult; d_Egas *= fmult;} // limit
             
             double limforC = -0.5*eCR_tmp; // maximum change in CR energy we will allow, to prevent negative values
             if(d_CR < limforC) {fmult = limforC/d_CR; d_CR *= fmult; d_Egas *= fmult;} // limit
