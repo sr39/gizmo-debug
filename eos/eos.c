@@ -237,7 +237,7 @@ double INLINE_FUNC Get_Gas_thermal_soundspeed_i(int i)
 double Get_Gas_Alfven_speed_i(int i)
 {
 #if defined(MAGNETIC)
-    int k; double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Gas_BField(i,k)*All.cf_a2inv*Get_Gas_BField(i,k)*All.cf_a2inv;}
+    int k; double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Gas_BField(i,k)*All.cf_a2inv * Get_Gas_BField(i,k)*All.cf_a2inv;}
     if(bmag > 0) {return sqrt(bmag / (MIN_REAL_NUMBER + SphP[i].Density*All.cf_a3inv));}
 #endif
     return 0;

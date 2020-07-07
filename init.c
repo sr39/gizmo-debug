@@ -1216,13 +1216,7 @@ void test_id_uniqueness(void)
     for(i = 1; i < NumPart; i++)
         if(ids[i] == ids[i - 1])
         {
-#ifdef LONGIDS
-            printf("non-unique ID=%d%09d found on task=%d (i=%d NumPart=%d)\n",
-                   (int) (ids[i] / 1000000000), (int) (ids[i] % 1000000000), ThisTask, i, NumPart);
-
-#else
             printf("non-unique ID=%llu found on task=%d   (i=%d NumPart=%d)\n", (unsigned long long) ids[i], ThisTask, i, NumPart);
-#endif
             endrun(12);
         }
 
