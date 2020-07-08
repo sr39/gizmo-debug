@@ -37,6 +37,9 @@ static struct INPUT_STRUCT_NAME
 #ifdef RT_AREAWEIGHT_INJECTION
     MyDouble V_i;
 #endif
+#if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
+    MyDouble RHII;
+#endif
 }
 *DATAIN_NAME, *DATAGET_NAME;
 
@@ -65,6 +68,12 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 #endif
 #endif
     for(k=0; k<N_RT_FREQ_BINS; k++) {if(P[i].Type==0 || active_check==0) {in->Luminosity[k]=0;} else {in->Luminosity[k] = lum[k] * dt;}}
+#if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
+    double stellum = lum[RT_FREQ_BIN_H0] * UNIT_LUM_IN_CGS;
+    double rho = P[i].DensAroundStar;
+    in->RHII = 4.78e-9*pow(stellum,0.333)*pow(rho*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667);
+    in->RHII /= All.cf_atime*UNIT_LENGTH_IN_CGS;
+#endif
 }
 
 
@@ -181,10 +190,6 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 {
                     double dE = wk * local.Luminosity[k];
 #if defined(RT_INJECT_PHOTONS_DISCRETELY)
-                    SphP[j].Rad_E_gamma[k] += dE;
-#ifdef RT_EVOLVE_ENERGY
-                    SphP[j].Rad_E_gamma_Pred[k] += dE; // dump discreetly (noisier, but works smoothly with large timebin hierarchy)
-#endif
 #if defined(RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION)
                     // add discrete photon momentum from un-resolved absorption //
                     double x_abs = 2. * SphP[j].Rad_Kappa[k] * (SphP[j].Density*All.cf_a3inv) * (DMAX(2.*Get_Particle_Size(j),lmax_0)*All.cf_atime); // effective optical depth through particle
@@ -193,6 +198,36 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     if(slabfac_x>1) {slabfac_x=1;}
                     double dv = slabfac_x * dv0 * dE / P[j].Mass; // total absorbed momentum (needs multiplication by dp[kv] for directionality)
                     int kv; for(kv=0;kv<3;kv++) {P[j].Vel[kv] += dv*dp[kv]; SphP[j].VelPred[kv] += dv*dp[kv];}
+#endif
+
+#ifdef RT_REPROCESS_INJECTED_PHOTONS //conserving photon energy, put only the un-absorbed component of the current band into that band, putting the rest in its "donation" bin (ionizing->optical, all others->IR). This would happen anyway during the routine for resolved absorption, but this may more realistically handle situations where e.g. your dust destruction front is at totally unresolved scales and you don't want to spuriously ionize stuff on larger scales. Assume isotropic re-radiation, so inject only energy for the donated bin and not net flux/momentum.
+		    int donation_bin;
+		    double dE_donation;
+		    donation_bin = rt_get_donation_target_bin(k);
+#ifdef RT_CHEM_PHOTOION
+		    if((k!=RT_FREQ_BIN_H0) || (r < local.RHII)) // don't inject ionizing photons outside the Stromgren radius
+#endif
+		    {
+		        dE_donation = fabs(1-slabfac_x)*dE;
+                        dE *= slabfac_x;
+		    }
+#ifdef RT_CHEM_PHOTOION
+		    else {
+                        dE_donation = 0;
+		    }    
+#endif
+#endif
+ 
+                    SphP[j].Rad_E_gamma[k] += dE;
+#ifdef RT_REPROCESS_INJECTED_PHOTONS
+		    if(donation_bin > -1) {SphP[j].Rad_E_gamma[donation_bin] += dE_donation;}
+#endif
+#ifdef RT_EVOLVE_ENERGY
+                    SphP[j].Rad_E_gamma_Pred[k] += dE; // dump discreetly (noisier, but works smoothly with large timebin hierarchy)
+#ifdef RT_REPROCESS_INJECTED_PHOTONS
+		    if(donation_bin > -1) {SphP[j].Rad_E_gamma_Pred[donation_bin] += dE_donation;}
+#endif
+#endif
 #if defined(RT_EVOLVE_FLUX)
                     double dflux = -dE * c_light_eff / r;
                     for(kv=0;kv<3;kv++) {SphP[j].Rad_Flux[k][kv] += dflux*dp[kv]; SphP[j].Rad_Flux_Pred[k][kv] += dflux*dp[kv];}

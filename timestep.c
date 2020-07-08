@@ -636,7 +636,7 @@ integertime get_timestep(int p,		/*!< particle index */
                 for(kf=0;kf<N_RT_FREQ_BINS;kf++)
                 {
                     double dt_rt_diffusion = dt_prefac_diffusion * L_RT_diffusion*L_RT_diffusion / (MIN_REAL_NUMBER + rt_diffusion_coefficient(p,kf));
-#ifdef GALSF
+#if defined(GALSF) && !defined(SINGLE_STAR_SINK_DYNAMICS)
                     /* ignore particles where the radiation energy density is basically non-existant */
 		    if((SphP[p].Rad_E_gamma[kf] <= MIN_REAL_NUMBER) ||
 		       (SphP[p].Rad_E_gamma_Pred[kf] <= MIN_REAL_NUMBER) ||
