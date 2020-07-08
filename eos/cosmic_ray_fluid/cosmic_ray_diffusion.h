@@ -22,7 +22,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     double kappa_j = fabs(SphP[j].CosmicRayDiffusionCoeff[k_CRegy]);
     double d_scalar = scalar_i - scalar_j;
     
-    if(((kappa_i>0)||(kappa_j>0))&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>0)&&(Face_Area_Norm>0))
+    if(((kappa_i>MIN_REAL_NUMBER)||(kappa_j>MIN_REAL_NUMBER))&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>MIN_REAL_NUMBER)&&(Face_Area_Norm>MIN_REAL_NUMBER))
     {
 #ifndef COSMIC_RAYS_M1
         // NOT SPH: Now we use the more accurate finite-volume formulation, with the effective faces we have already calculated //
