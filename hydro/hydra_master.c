@@ -294,6 +294,9 @@ struct INPUT_STRUCT_NAME
 #ifdef COSMIC_RAYS_ALFVEN
     MyDouble CosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];
 #endif
+#ifdef COSMIC_RAYS_EVOLVE_SPECTRUM
+    MyDouble CR_number_to_energy_ratio[N_CR_PARTICLE_BINS];
+#endif
 #endif
 
 #ifdef GALSF_SUBGRID_WINDS
@@ -369,6 +372,9 @@ struct OUTPUT_STRUCT_NAME
 
 #ifdef COSMIC_RAYS
     MyDouble DtCosmicRayEnergy[N_CR_PARTICLE_BINS];
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+    MyDouble DtCosmicRay_Number_in_Bin[N_CR_PARTICLE_BINS];
+#endif
 #ifdef COSMIC_RAYS_ALFVEN
     MyDouble DtCosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];
 #endif
@@ -531,6 +537,9 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #ifdef COSMIC_RAYS_ALFVEN
         for(k=0;k<2;k++) {in->CosmicRayAlfvenEnergy[j][k] = SphP[i].CosmicRayAlfvenEnergyPred[j][k];}
 #endif
+#ifdef COSMIC_RAYS_EVOLVE_SPECTRUM
+        in->CR_number_to_energy_ratio[j] = SphP[i].CosmicRay_Number_in_Bin[j] / (SphP[i].CosmicRayEnergy[j] + MIN_REAL_NUMBER);
+#endif
     }
 #endif
 
@@ -612,6 +621,9 @@ static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int
     for(k=0;k<N_CR_PARTICLE_BINS;k++)
     {
         SphP[i].DtCosmicRayEnergy[k] += out->DtCosmicRayEnergy[k];
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+        SphP[i].DtCosmicRay_Number_in_Bin[k] += out->DtCosmicRay_Number_in_Bin[k];
+#endif
 #ifdef COSMIC_RAYS_ALFVEN
         int kAlf; for(kAlf=0;kAlf<2;kAlf++) {SphP[i].DtCosmicRayAlfvenEnergy[k][kAlf] += out->DtCosmicRayAlfvenEnergy[k][kAlf];}
 #endif
@@ -728,25 +740,18 @@ void hydro_final_operations_and_cleanup(void)
                 SphP[i].HydroAccel[k] /= P[i].Mass; /* we solved for momentum flux */
             }
 
-#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_STREAMING) && !defined(COSMIC_RAYS_ALFVEN)
+#if defined(COSMIC_RAYS)
             /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
                 (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
-            double vstream_0 = Get_CosmicRayStreamingVelocity(i), vA=10.*vstream_0;
-#ifdef MAGNETIC /* account for the fact that the loss term is always [or below] the Alfven speed, regardless of the bulk streaming speed */
-            vA=0; for(k=0;k<3;k++) {vA += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);}
-            vA = All.cf_afac3 * sqrt(All.cf_afac1 * vA/ (All.cf_atime * SphP[i].Density));
-#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-            vA /= Get_Gas_Ionized_Fraction(i); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
-#endif
-#endif
-            vstream_0 = DMIN(vA, vstream_0);
             for(k=0;k<N_CR_PARTICLE_BINS;k++)
             {
-                double L_cr = Get_CosmicRayGradientLength(i,k), v_st_eff = SphP[i].CosmicRayDiffusionCoeff[k] / (GAMMA_COSMICRAY * L_cr + MIN_REAL_NUMBER); // maximum possible streaming speed from combined diffusivity
-                double cr_stream_cool = fabs(GAMMA_COSMICRAY_MINUS1 * DMIN(v_st_eff, vstream_0) / L_cr); // if upper-limit to streaming is less than nominal 'default' v_stream/loss term, this should be lower too
-                SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * cr_stream_cool; SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * cr_stream_cool;
+                double streamfac = CR_get_streaming_loss_rate_coefficient(i,k);
+#if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+                SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * streamfac; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
+#endif
+                SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * streamfac;
             }
-#endif // CRs
+#endif
 
 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -948,6 +953,9 @@ void hydro_force_initial_operations_preloop(void)
             for(k=0;k<N_CR_PARTICLE_BINS;k++)
             {
                 SphP[i].DtCosmicRayEnergy[k] = 0;
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+                SphP[i].DtCosmicRay_Number_in_Bin[k] = 0;
+#endif
 #ifdef COSMIC_RAYS_ALFVEN
                 int kAlf; for(kAlf=0;kAlf<2;kAlf++) {SphP[i].DtCosmicRayAlfvenEnergy[k][kAlf] = 0;}
 #endif

@@ -414,8 +414,7 @@ static void serial_sort(char *base, size_t nmemb, size_t size, int (*compar) (co
 }
 
 
-static void msort_serial_with_tmp(char *base, size_t n, size_t s, int (*compar) (const void *, const void *),
-				  char *t)
+static void msort_serial_with_tmp(char *base, size_t n, size_t s, int (*compar) (const void *, const void *), char *t)
 {
   char *tmp;
   char *b1, *b2;

@@ -725,7 +725,7 @@ void blackhole_final_operations(void)
         else { P[n].AccretedThisTimestep = 0; }
 #endif
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-        P[n].SinkRadius = DMAX(P[n].SinkRadius, All.ForceSoftening[5]);
+        if(All.ComovingIntegrationOn) {P[n].SinkRadius = DMIN(P[n].SinkRadius, All.ForceSoftening[5]);} // update sink radius if simulation has it dynamically evolving. 
 #endif
 
         /* Correct for the mass loss due to radiation and BAL winds */
@@ -787,7 +787,7 @@ void blackhole_final_operations(void)
            } //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep: remove mass lost via winds
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
-        if (P[n].ProtoStellarStage == 6){ //Star old enough to go out with a boom
+        if(P[n].ProtoStellarStage == 6) { //Star old enough to go out with a boom
             double eps = DMIN(KERNEL_CORE_SIZE*All.ForceSoftening[P[n].Type], PPP[n].Hsml);
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             eps = DMAX(eps, P[n].SinkRadius);

@@ -90,7 +90,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
         lum[RT_FREQ_BIN_H0] = l_ion; // default to all flux into single-band
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
         int i_vec[4] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2}; // these will all be the same if not using multi-frequency module //
-        int k; for(k=0;k<4;k++) {lum[i_vec[k]] = l_ion * precalc_stellar_luminosity_fraction[i_vec[k]];} // assign flux appropriately according to pre-tabulated result //
+        int k; for(k=0;k<4;k++) {lum[i_vec[k]] = l_ion * rt_ion_precalc_stellar_luminosity_fraction[i_vec[k]];} // assign flux appropriately according to pre-tabulated result //
 #endif
     }
 #endif
@@ -142,9 +142,9 @@ double rt_kappa(int i, int k_freq)
 #ifdef RT_CHEM_PHOTOION
     /* opacity to ionizing radiation for Petkova & Springel bands. note rt_update_chemistry is where ionization is actually calculated */
     double nH_over_Density = HYDROGEN_MASSFRAC / PROTONMASS * UNIT_MASS_IN_CGS;
-    double kappa = nH_over_Density * (SphP[i].HI + MIN_REAL_NUMBER) * rt_sigma_HI[k_freq];
+    double kappa = nH_over_Density * (SphP[i].HI + MIN_REAL_NUMBER) * rt_ion_sigma_HI[k_freq];
 #if defined(RT_CHEM_PHOTOION_HE) && defined(RT_PHOTOION_MULTIFREQUENCY)
-    kappa += nH_over_Density * ((SphP[i].HeI + MIN_REAL_NUMBER) * rt_sigma_HeI[k_freq] + (SphP[i].HeII + MIN_REAL_NUMBER) * rt_sigma_HeII[k_freq]);
+    kappa += nH_over_Density * ((SphP[i].HeI + MIN_REAL_NUMBER) * rt_ion_sigma_HeI[k_freq] + (SphP[i].HeII + MIN_REAL_NUMBER) * rt_ion_sigma_HeII[k_freq]);
     if(k_freq==RT_FREQ_BIN_He0)  {return kappa;}
     if(k_freq==RT_FREQ_BIN_He1)  {return kappa;}
     if(k_freq==RT_FREQ_BIN_He2)  {return kappa;}
@@ -412,7 +412,7 @@ int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum)
     lum[RT_FREQ_BIN_H0] = l_ion; // default to putting everything into a single band //
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
     int i_vec[4] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2}; // these will all be the same if not using multi-frequency module //
-    int k; for(k=0;k<4;k++) {lum[i_vec[k]] = l_ion * precalc_stellar_luminosity_fraction[i_vec[k]];} // assign flux appropriately according to pre-tabulated result //
+    int k; for(k=0;k<4;k++) {lum[i_vec[k]] = l_ion * rt_ion_precalc_stellar_luminosity_fraction[i_vec[k]];} // assign flux appropriately according to pre-tabulated result //
 #endif
 #endif
 
@@ -517,8 +517,8 @@ int rt_get_lum_band_singlestar(int i, int mode, double *lum)
     SET_ACTIVE_RT_CHECK();
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
     int i_vec[4] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2}; // these will all be the same if not using multi-frequency module //    
-    int k; for(k=0;k<3;k++) {lum[i_vec[k]] = stellar_lum_in_band(i, nu[i_vec[k]], nu[i_vec[k+1]]);} // integrate between band boundaries, defined in global 'nu' in eV
-    lum[i_vec[3]] = stellar_lum_in_band(i, nu[i_vec[3]], 500.); // integrate to end of spectrum for the last band
+    int k; for(k=0;k<3;k++) {lum[i_vec[k]] = stellar_lum_in_band(i, rt_ion_nu_min[i_vec[k]], rt_ion_nu_min[i_vec[k+1]]);} // integrate between band boundaries, defined in global 'nu' in eV
+    lum[i_vec[3]] = stellar_lum_in_band(i, rt_ion_nu_min[i_vec[3]], 500.); // integrate to end of spectrum for the last band
 #else
     lum[RT_FREQ_BIN_H0] = stellar_lum_in_band(i, 13.6, 500.); // total ionizing flux
 #endif

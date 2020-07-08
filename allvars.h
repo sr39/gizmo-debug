@@ -236,6 +236,7 @@
 #define METALS                              /*! follow metals as passive scalars, use in cooling, etc */
 #define TURB_DIFF_METALS                    /*! explicit sub-grid diffusivity for metals/passive scalars */
 #define TURB_DIFF_METALS_LOWORDER           /*! memory-saving custom mod */
+#define STOP_WHEN_BELOW_MINTIMESTEP         /*! this is general good practice */
 
 #define GALSF_SFR_MOLECULAR_CRITERION       /*! molecular criterion for star formation */
 #if !defined(GALSF_SFR_VIRIAL_SF_CRITERION)
@@ -402,14 +403,21 @@ USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
 #define GAMMA_ALFVEN_CRS (3.0/2.0)
 #define COSMIC_RAYS_M1 (COSMIC_RAYS_ALFVEN)
 #endif
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#define COSMIC_RAYS_MULTIBIN 19     /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
+#endif
 #ifndef N_CR_PARTICLE_BINS
-#ifdef COSMIC_RAYS_MULTIBIN
-#define N_CR_PARTICLE_BINS 4
+#if defined(COSMIC_RAYS_MULTIBIN)
+#define N_CR_PARTICLE_BINS COSMIC_RAYS_MULTIBIN
 #else
 #define N_CR_PARTICLE_BINS 1
 #endif
 #endif
+#if (N_CR_PARTICLE_BINS > 2) && !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#define COSMIC_RAYS_EVOLVE_SPECTRUM
 #endif
+#endif
+
 
 #if defined(COOL_GRACKLE)
 #if !defined(COOLING)
@@ -1761,16 +1769,27 @@ extern peanokey *Key, *KeySorted;
 
 
 #ifdef RT_CHEM_PHOTOION
+double rt_ion_nu_min[N_RT_FREQ_BINS];
 double rt_nu_eff_eV[N_RT_FREQ_BINS];
-double precalc_stellar_luminosity_fraction[N_RT_FREQ_BINS];
-double nu[N_RT_FREQ_BINS];
-double rt_sigma_HI[N_RT_FREQ_BINS];
-double rt_sigma_HeI[N_RT_FREQ_BINS];
-double rt_sigma_HeII[N_RT_FREQ_BINS];
-double G_HI[N_RT_FREQ_BINS];
-double G_HeI[N_RT_FREQ_BINS];
-double G_HeII[N_RT_FREQ_BINS];
+double rt_ion_precalc_stellar_luminosity_fraction[N_RT_FREQ_BINS];
+double rt_ion_sigma_HI[N_RT_FREQ_BINS];
+double rt_ion_sigma_HeI[N_RT_FREQ_BINS];
+double rt_ion_sigma_HeII[N_RT_FREQ_BINS];
+double rt_ion_G_HI[N_RT_FREQ_BINS];
+double rt_ion_G_HeI[N_RT_FREQ_BINS];
+double rt_ion_G_HeII[N_RT_FREQ_BINS];
 #endif
+
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) /* define some global variables we will need to use semi-constantly to make reference to the CR spectra */
+double CR_global_min_rigidity_in_bin[N_CR_PARTICLE_BINS];
+double CR_global_max_rigidity_in_bin[N_CR_PARTICLE_BINS];
+double CR_global_rigidity_at_bin_center[N_CR_PARTICLE_BINS];
+double CR_global_charge_in_bin[N_CR_PARTICLE_BINS];
+#define N_CR_SPECTRUM_LUT 101 /*!< number of elements per bin in the look-up-tables we will pre-compute to use for inverting the energy-number relation to determine the spectral slope */
+double CR_global_slope_lut[N_CR_PARTICLE_BINS][N_CR_SPECTRUM_LUT]; /*!< holder for the actual look-up-tables */
+#endif
+
+
 
 extern struct topnode_data
 {
@@ -2856,6 +2875,11 @@ extern struct sph_particle_data
     MyFloat CosmicRayAlfvenEnergyPred[N_CR_PARTICLE_BINS][2];   /*!< drifted forward and backward-traveling Alfven wave-packet energies */
     MyFloat DtCosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];     /*!< time derivative fof forward and backward-traveling Alfven wave-packet energies */
 #endif
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+    MyFloat CosmicRay_Number_in_Bin[N_CR_PARTICLE_BINS];         /*!< effective number of CRs in the bin, which we evolve alongside total energy. */
+    MyFloat DtCosmicRay_Number_in_Bin[N_CR_PARTICLE_BINS];       /*!< time derivative of effective number of CRs in the bin, which we evolve alongside total energy. */
+    //MyFloat CosmicRay_PwrLaw_Slopes_in_Bin[N_CR_PARTICLE_BINS];  /*!< power-law slope "gamma" of the CR spectral distribution: dN/dp ~ p^gamma , within each energy bin. this is strictly redundant with Number as its derived from it, retained for now as a convenience function */
+#endif
 #endif
 
 #ifdef SUPER_TIMESTEP_DIFFUSION
@@ -3438,6 +3462,7 @@ enum iofields
   IO_COSMICRAY_ENERGY,
   IO_COSMICRAY_KAPPA,
   IO_COSMICRAY_ALFVEN,
+  IO_COSMICRAY_SLOPES,
   IO_DIVB,
   IO_ABVC,
   IO_AMDC,

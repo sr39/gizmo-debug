@@ -573,7 +573,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 {
                     double e0 = Esne51;
                     if(loop_iteration < 0) {e0=1;}
-                    if(feedback_type_is_SNe == 1) {e0+=1;}
+                    if(feedback_type_is_SNe == 1) {e0+=1;} else {e0=0.1;} // set to small number for non-SNe feedback
                     double n0 = SphP[j].Density*density_to_n;
                     if(n0 < 0.001) {n0=0.001;}
                     double z0 = P[j].Metallicity[0]/All.SolarAbundances[0], z0_term = 1.;
@@ -705,10 +705,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double v_cooling_lim = DMAX( vcool , dv_dp_phys ); // cooling vel can't be smaller than actual vel (note: negative dvdp here automatically returns vcool, as desired)
                     double boostfac_max = DMIN(1000. , v_ejecta_eff/v_cooling_lim); // boost factor cant exceed velocity limiter - if recession vel large, limits boost
                     if(mom_boost_fac > boostfac_max) {mom_boost_fac = boostfac_max;} // apply limiter
-                } else {
-#if !defined(SINGLE_STAR_FB_WINDS)
-                    mom_boost_fac = DMIN(boost_egycon , boost_max); // simply take minimum - nothing fancy for winds
-#endif
                 }
 
                 /* save summation values for outputs */
@@ -728,11 +724,13 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 KE_final *= 0.5 * P[j].Mass * All.cf_a2inv;
                 double E_sne_initial = pnorm * Energy_injected_codeunits;
                 double d_Egy_internal = KE_initial + E_sne_initial - KE_final;
-#if !defined(SINGLE_STAR_FB_WINDS)
-                /* if coupling radius > R_cooling, account for thermal energy loss in the post-shock medium: from Thornton et al. thermal energy scales as R^(-6.5) for R>R_cool */
-                if(d_Egy_internal < 0.5*E_sne_initial) {d_Egy_internal = 0.5*E_sne_initial;}  /* (for stellar wind module we ignore this b/c assume always trying to resolve R_cool */
-                double r_eff_ij = kernel.r - Get_Particle_Size(j);
-                if(r_eff_ij > RsneKPC) {d_Egy_internal *= RsneKPC_3 / (r_eff_ij*r_eff_ij*r_eff_ij);}
+#if !defined(SINGLE_STAR_FB_WINDS) /* (for single-star modules we ignore this b/c assume always trying to resolve R_cool) */
+                //if(feedback_type_is_SNe == 1) /* if coupling radius > R_cooling, account for thermal energy loss in the post-shock medium: from Thornton et al. thermal energy scales as R^(-6.5) for R>R_cool. only use for SNe b/c scalings [like momentum] only apply there. over-cooling if code wants to do it will easily occur next timestep. */
+                {
+                    //if(d_Egy_internal < 0.5*E_sne_initial) {d_Egy_internal = 0.5*E_sne_initial;}
+                    double r_eff_ij = kernel.r - Get_Particle_Size(j); /* get effective distance */
+                    if(r_eff_ij > RsneKPC) {d_Egy_internal *= RsneKPC_3 / (r_eff_ij*r_eff_ij*r_eff_ij);} /* rescale the coupled energy as intended for the feedback mechanism */
+                }
 #endif
                 d_Egy_internal /= P[j].Mass; // convert to specific internal energy, finally //
 #ifndef MECHANICAL_FB_MOMENTUM_ONLY
