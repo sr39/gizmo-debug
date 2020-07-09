@@ -197,24 +197,20 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     if(isnan(slabfac_x)||(slabfac_x<=0)) {slabfac_x=0;}
                     if(slabfac_x>1) {slabfac_x=1;}
                     double dv = slabfac_x * dv0 * dE / P[j].Mass; // total absorbed momentum (needs multiplication by dp[kv] for directionality)
+
                     int kv; for(kv=0;kv<3;kv++) {P[j].Vel[kv] += dv*dp[kv]; SphP[j].VelPred[kv] += dv*dp[kv];}
 
 #ifdef RT_REPROCESS_INJECTED_PHOTONS //conserving photon energy, put only the un-absorbed component of the current band into that band, putting the rest in its "donation" bin (ionizing->optical, all others->IR). This would happen anyway during the routine for resolved absorption, but this may more realistically handle situations where e.g. your dust destruction front is at totally unresolved scales and you don't want to spuriously ionize stuff on larger scales. Assume isotropic re-radiation, so inject only energy for the donated bin and not net flux/momentum.
 		    int donation_bin;
-		    double dE_donation;
+		    double dE_donation = 0;
 		    donation_bin = rt_get_donation_target_bin(k);
 #ifdef RT_CHEM_PHOTOION
-		    if((k!=RT_FREQ_BIN_H0) || (r < local.RHII)) // don't inject ionizing photons outside the Stromgren radius
+		    if((k!=RT_FREQ_BIN_H0) || (r > local.RHII)) // don't inject ionizing photons outside the Stromgren radius
 #endif
 		    {
-		        dE_donation = fabs(1-slabfac_x)*dE;
-                        dE *= slabfac_x;
+		        dE_donation = slabfac_x*dE;
+                        dE *= fabs(1-slabfac_x);
 		    }
-#ifdef RT_CHEM_PHOTOION
-		    else {
-                        dE_donation = 0;
-		    }    
-#endif
 #endif
 #if defined(RT_EVOLVE_FLUX)
                     double dflux = -dE * c_light_eff / r;
