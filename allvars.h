@@ -551,7 +551,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 #if defined(SINGLE_STAR_FB_RT_HEATING) && !(defined(RT_OTVET) || defined(RT_FLUXLIMITEDDIFFUSION) || defined(RT_M1) || defined(RT_LOCALRAYGRID))
 #define GALSF_FB_FIRE_RT_LONGRANGE  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
-#define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. make sure BH_Rad_MomentumFactor=0 to avoid launching winds this way!!!
+#define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. 
+#define RT_DISABLE_RAD_PRESSURE
 #endif
 
 #if defined(SINGLE_STAR_FB_JETS) || ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION))
