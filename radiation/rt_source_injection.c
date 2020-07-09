@@ -198,7 +198,6 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     if(slabfac_x>1) {slabfac_x=1;}
                     double dv = slabfac_x * dv0 * dE / P[j].Mass; // total absorbed momentum (needs multiplication by dp[kv] for directionality)
                     int kv; for(kv=0;kv<3;kv++) {P[j].Vel[kv] += dv*dp[kv]; SphP[j].VelPred[kv] += dv*dp[kv];}
-#endif
 
 #ifdef RT_REPROCESS_INJECTED_PHOTONS //conserving photon energy, put only the un-absorbed component of the current band into that band, putting the rest in its "donation" bin (ionizing->optical, all others->IR). This would happen anyway during the routine for resolved absorption, but this may more realistically handle situations where e.g. your dust destruction front is at totally unresolved scales and you don't want to spuriously ionize stuff on larger scales. Assume isotropic re-radiation, so inject only energy for the donated bin and not net flux/momentum.
 		    int donation_bin;
@@ -217,17 +216,6 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 		    }    
 #endif
 #endif
- 
-                    SphP[j].Rad_E_gamma[k] += dE;
-#ifdef RT_REPROCESS_INJECTED_PHOTONS
-		    if(donation_bin > -1) {SphP[j].Rad_E_gamma[donation_bin] += dE_donation;}
-#endif
-#ifdef RT_EVOLVE_ENERGY
-                    SphP[j].Rad_E_gamma_Pred[k] += dE; // dump discreetly (noisier, but works smoothly with large timebin hierarchy)
-#ifdef RT_REPROCESS_INJECTED_PHOTONS
-		    if(donation_bin > -1) {SphP[j].Rad_E_gamma_Pred[donation_bin] += dE_donation;}
-#endif
-#endif
 #if defined(RT_EVOLVE_FLUX)
                     double dflux = -dE * c_light_eff / r;
                     for(kv=0;kv<3;kv++) {SphP[j].Rad_Flux[k][kv] += dflux*dp[kv]; SphP[j].Rad_Flux_Pred[k][kv] += dflux*dp[kv];}
@@ -237,6 +225,16 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     for(kv=0;kv<N_RT_INTENSITY_BINS;kv++) {SphP[j].Rad_Intensity[k][kv] += dflux * angle_wt_Inu[N_RT_INTENSITY_BINS]; SphP[j].Rad_Intensity_Pred[k][kv] += dflux * angle_wt_Inu[N_RT_INTENSITY_BINS];}
 #endif
 #endif // local extinction-corrected version gets the 'full' thin flux above: more general formulation allows these to build up self-consistently, since we don't know what the flux 'should' be in fact
+                    SphP[j].Rad_E_gamma[k] += dE;
+#ifdef RT_REPROCESS_INJECTED_PHOTONS
+		    if(donation_bin > -1) {SphP[j].Rad_E_gamma[donation_bin] += dE_donation;}
+#endif
+#ifdef RT_EVOLVE_ENERGY
+                    SphP[j].Rad_E_gamma_Pred[k] += dE; // dump discreetly (noisier, but works smoothly with large timebin hierarchy)
+#ifdef RT_REPROCESS_INJECTED_PHOTONS
+		    if(donation_bin > -1) {SphP[j].Rad_E_gamma_Pred[donation_bin] += dE_donation;}
+#endif
+#endif                    
 #if defined(RT_EVOLVE_FLUX) // add relativistic corrections here, which should be there in general. however we will ignore [here] the 'back-reaction' term, since we're assuming the source is a star or something like that, where this would be negligible. gas self gain/loss is handled separately.
                     {int kv; for(kv=0;kv<3;kv++) {SphP[j].Rad_Flux[k][kv] += dE*local.Vel[kv]/All.cf_atime; SphP[j].Rad_Flux_Pred[k][kv] += dE*local.Vel[kv]/All.cf_atime;}}
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION

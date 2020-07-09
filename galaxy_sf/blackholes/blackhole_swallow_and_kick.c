@@ -50,6 +50,9 @@ struct INPUT_STRUCT_NAME
     MyFloat B[3];
     MyFloat kernel_norm_topass_in_swallowloop;
 #endif
+#ifdef SINGLE_STAR_FB_LOCAL_RP
+    MyFloat Luminosity;
+#endif    
 }
 *DATAIN_NAME, *DATAGET_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
@@ -81,6 +84,9 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
     for(k=0;k<3;k++) {in->B[k] = BPP(i).B[k];}
     in->kernel_norm_topass_in_swallowloop = BlackholeTempInfo[j_tempinfo].kernel_norm_topass_in_swallowloop;
 #endif
+#ifdef SINGLE_STAR_FB_LOCAL_RP
+    in->Luminosity = bh_lum_bol(in->Mdot, in->BH_Mass, i);
+#endif    
 }
 
 
@@ -155,7 +161,12 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
     double h_i=local.Hsml, hinv=1/h_i, hinv3, f_accreted; hinv3=hinv*hinv*hinv; f_accreted=0;
 #if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
     double kernel_zero,dwk; kernel_main(0.0,1.0,1.0,&kernel_zero,&dwk,-1); dwk=0;
+    double lum;
+#ifdef SINGLE_STAR_FB_LOCAL_RP
+    double mom = local.Luminosity * local.Dt / C_LIGHT_CODE, mom_wt = 0;
+#else    
     double mom = bh_lum_bol(local.Mdot, local.BH_Mass, -1) * local.Dt / C_LIGHT_CODE, mom_wt = 0;
+#endif    
 #endif
 #if defined(BH_CALC_LOCAL_ANGLEWEIGHTS) || defined(BH_WIND_KICK)
     double J_dir[3]; for(k=0;k<3;k++) {J_dir[k] = local.Jgas_in_Kernel[k];}
@@ -364,7 +375,11 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                 
 #if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
                 /* now, do any other feedback "kick" operations (which used the previous loops to calculate weights) */
+#ifdef SINGLE_STAR_FB_LOCAL_RP
+                if(mom>0 && local.Dt>0 && OriginallyMarkedSwallowID==0 && P[j].SwallowID==0 && P[j].Mass>0 && P[j].Type==0) // particles NOT being swallowed!
+#else                    
                 if(mom>0 && local.Mdot>0 && local.Dt>0 && OriginallyMarkedSwallowID==0 && P[j].SwallowID==0 && P[j].Mass>0 && P[j].Type==0) // particles NOT being swallowed!
+#endif                    
                 {
                     double r=0, dir[3]; for(k=0;k<3;k++) {dir[k]=dpos[k]; r+=dir[k]*dir[k];} // should be away from BH
                     if(r>0)
@@ -377,6 +392,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #ifdef BH_PHOTONMOMENTUM /* inject radiation pressure: add initial L/c optical/UV coupling to the gas at the dust sublimation radius */
                         double v_kick = All.BH_Rad_MomentumFactor * mom_wt * mom / P[j].Mass;
                         for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k];}
+#ifdef SINGLE_STAR_FB_LOCAL_RP
+                        SphP[j].wakeup = 1; NeedToWakeupParticles_local = 1;
+#endif                        
 #endif
 #if defined(BH_COSMIC_RAYS) && defined(BH_WIND_CONTINUOUS) /* inject cosmic rays alongside continuous wind injection */
                         double dEcr = All.BH_CosmicRay_Injection_Efficiency * mom_wt * C_LIGHT_CODE*C_LIGHT_CODE * local.Mdot*local.Dt;
