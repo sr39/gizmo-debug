@@ -2130,12 +2130,13 @@ extern struct global_data_all_processes
     double MaxHsml;           /*!< minimum allowed gas kernel length */
 
 #ifdef TURB_DRIVING
-  double TurbInjectedEnergy;
-  double TurbDissipatedEnergy;
-  double TimeBetTurbSpectrum;
-  double TimeNextTurbSpectrum;
-  int FileNumberTurbSpectrum;
-  double SetLastTime;
+    double TurbInjectedEnergy;
+    double TurbDissipatedEnergy;
+#if defined(TURB_DRIVING_SPECTRUMGRID)
+    double TimeBetTurbSpectrum;
+    double TimeNextTurbSpectrum;
+    int FileNumberTurbSpectrum;
+#endif
 #endif
 
   double SofteningGas,		/*!< for type 0 */
