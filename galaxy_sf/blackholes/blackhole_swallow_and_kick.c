@@ -512,8 +512,11 @@ void spawn_bh_wind_feedback(void)
                 {
                     if(P[j].Type==0)
                     {
-                        double dx2=(P[j].Pos[0]-P[i].Pos[0])*(P[j].Pos[0]-P[i].Pos[0]) + (P[j].Pos[1]-P[i].Pos[1])*(P[j].Pos[1]-P[i].Pos[1]) + (P[j].Pos[2]-P[i].Pos[2])*(P[j].Pos[2]-P[i].Pos[2]);
-                        if(dx2 < r2) {r2=dx2; dummy_gas_tag=j;}
+                        if((P[j].Mass>0) && (SphP[j].Density>0))
+                        {
+                            double dx2=(P[j].Pos[0]-P[i].Pos[0])*(P[j].Pos[0]-P[i].Pos[0]) + (P[j].Pos[1]-P[i].Pos[1])*(P[j].Pos[1]-P[i].Pos[1]) + (P[j].Pos[2]-P[i].Pos[2])*(P[j].Pos[2]-P[i].Pos[2]);
+                            if(dx2 < r2) {r2=dx2; dummy_gas_tag=j;}
+                        }
                     }
                 }
                 if(dummy_gas_tag >= 0)
