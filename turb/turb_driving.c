@@ -51,14 +51,21 @@ void init_turb(void)
     double kx,ky,kz,k;
     double ampl;
     
-    int ikxmax = boxSize_X * All.StKmax/2./M_PI;
+    double kmin = All.StKmin, kmax = All.StKmax;
+#if !defined(TURB_DRIVING_OLDFORMAT)
+    kmin = 2.*M_PI / All.StKmin; kmax = 2.*M_PI / All.StKmax; // convert these from spatial lengths to wavenumbers in the new convention we are using
+#endif
+
+    
+    
+    int ikxmax = boxSize_X * kmax/2./M_PI;
     int ikymax = 0;
     int ikzmax = 0;
 #if (NUMDIMS > 1)
-    ikymax = boxSize_Y * All.StKmax/2./M_PI;
+    ikymax = boxSize_Y * kmax/2./M_PI;
 #endif
 #if (NUMDIMS > 2)
-    ikzmax = boxSize_Z * All.StKmax/2./M_PI;
+    ikzmax = boxSize_Z * kmax/2./M_PI;
 #endif
     
     StNModes = 0;
@@ -72,7 +79,7 @@ void init_turb(void)
             {
                 kz = 2.*M_PI*ikz/boxSize_Z;
                 k = sqrt(kx*kx+ky*ky+kz*kz);
-                if(k>=All.StKmin && k<=All.StKmax)
+                if(k>=kmin && k<=kmax)
                 {
 #if NUMDIMS ==1
                     StNModes+=1;
@@ -88,7 +95,7 @@ void init_turb(void)
         }
     }
     
-    PRINT_STATUS(" ..using %d modes, %d %d %d\n",StNModes,ikxmax,ikymax,ikzmax);
+    PRINT_STATUS("Initializing turbulent driving, using %d modes, %d %d %d",StNModes,ikxmax,ikymax,ikzmax);
     
     StMode = (double*) mymalloc_movable(&StMode,"StModes", StNModes * 3 * sizeof(double));
     StAka = (double*) mymalloc_movable(&StAka,"StAka", StNModes * 3 * sizeof(double));
@@ -96,9 +103,14 @@ void init_turb(void)
     StAmpl = (double*) mymalloc_movable(&StAmpl,"StAmpl", StNModes * sizeof(double));
     StOUPhases = (double*) mymalloc_movable(StOUPhases,"StOUPhases", StNModes * 6 * sizeof(double));
     
-    StOUVar = sqrt(All.StEnergy/All.StDecay);
-    double kc = 0.5*(All.StKmin+All.StKmax);
+    StOUVar = sqrt(All.StEnergy/All.StDecay); // old convention, very confusing about what this variable meant: StEnergy is the "D = sigma^2 / 2" in the classic OU form, but confusing b/c this is acceleration not v for Brownian motion, so this is not an energy in any sense
+#if !defined(TURB_DRIVING_OLDFORMAT)
+    StOUVar = All.StEnergy / sqrt(8.*All.StDecay); // new convention, hoping this is more clear re: meaning of variable
+#endif
+
+    double kc = 0.5*(kmin+kmax);
     double amin = 0.;
+    double amplitude_integrated_allmodes = 0.;
     
 #if NUMDIMS == 3
     StSolWeightNorm = sqrt(3.0/3.0)*sqrt(3.0)*1.0/sqrt(1.0-2.0*All.StSolWeight+3.0*All.StSolWeight*All.StSolWeight);
@@ -125,23 +137,23 @@ void init_turb(void)
                 kz = 2.*M_PI*ikz/boxSize_Z;
                 
                 k = sqrt(kx*kx+ky*ky+kz*kz);
-                if(k>=All.StKmin && k<=All.StKmax)
+                if(k>=kmin && k<=kmax)
                 {
                     if(All.StSpectForm == 0)
                     {
-                        ampl = 1.;
+                        ampl = 1.; // uniform amplitude for all
                     }
                     else if(All.StSpectForm ==  1)
                     {
-                        ampl = 4.0*(amin-1.0)/((All.StKmax-All.StKmin)*(All.StKmax-All.StKmin))*((k-kc)*(k-kc))+1.0;
+                        ampl = 4.0*(amin-1.0)/((kmax-kmin)*(kmax-kmin))*((k-kc)*(k-kc))+1.0; // spike at kc = k_driving
                     }
                     else if(All.StSpectForm == 2)
                     {
-                        ampl = pow(All.StKmin,5./3)/pow(k,5./3);
+                        ampl = pow(k/kmin, (NUMDIMS-1.)- 5./3. ); // because this is E[vector_k] for NUMDIMS, need extra NUMDIMS-1 power term here
                     }
                     else if(All.StSpectForm == 3)
                     {
-                        ampl = pow(All.StKmin,2.)/pow(k,2.);
+                        ampl = pow(k/kmin, (NUMDIMS-1.)- 2. ); // because this is E[vector_k] for NUMDIMS, need extra NUMDIMS-1 power term here
                     }
                     else
                     {
@@ -153,31 +165,34 @@ void init_turb(void)
                     StMode[3*StNModes+0] = kx;
                     StMode[3*StNModes+1] = ky;
                     StMode[3*StNModes+2] = kz;
-                    PRINT_STATUS("Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,iky,ikz,kx,ky,kz,ampl);
+                    PRINT_STATUS("  Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,iky,ikz,kx,ky,kz,ampl);
+                    amplitude_integrated_allmodes += ampl;
                     StNModes++;
-                    
                     
 #if NUMDIMS > 1
                     StAmpl[StNModes] = ampl;
                     StMode[3*StNModes+0] = kx;
                     StMode[3*StNModes+1] = -ky;
                     StMode[3*StNModes+2] = kz;
-                    PRINT_STATUS("Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,-iky,ikz,kx,-ky,kz,ampl);
+                    PRINT_STATUS("  Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,-iky,ikz,kx,-ky,kz,ampl);
+                    amplitude_integrated_allmodes += ampl;
                     StNModes++;
-                    
+
 #if NUMDIMS > 2
                     StAmpl[StNModes] = ampl;
                     StMode[3*StNModes+0] = kx;
                     StMode[3*StNModes+1] = ky;
                     StMode[3*StNModes+2] = -kz;
-                    PRINT_STATUS("Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,iky,-ikz,kx,ky,-kz,ampl);
+                    PRINT_STATUS("  Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,iky,-ikz,kx,ky,-kz,ampl);
+                    amplitude_integrated_allmodes += ampl;
                     StNModes++;
-                    
+
                     StAmpl[StNModes] = ampl;
                     StMode[3*StNModes+0] = kx;
                     StMode[3*StNModes+1] = -ky;
                     StMode[3*StNModes+2] = -kz;
-                    PRINT_STATUS("Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,-iky,-ikz,kx,-ky,-kz,ampl);
+                    PRINT_STATUS("  Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,-iky,-ikz,kx,-ky,-kz,ampl);
+                    amplitude_integrated_allmodes += ampl;
                     StNModes++;
 #endif
 #endif
@@ -185,7 +200,10 @@ void init_turb(void)
             }
         }
     }
-    
+#if !defined(TURB_DRIVING_OLDFORMAT)
+    for(i=0; i<StNModes; i++) {StAmpl[i] /= amplitude_integrated_allmodes;} // normalize total driving amplitude across all modes here
+#endif
+
     StTPrev = -1;
     
     StRng = gsl_rng_alloc(gsl_rng_ranlxd1);
@@ -193,8 +211,6 @@ void init_turb(void)
     
     st_init_ouseq();
     st_calc_phases();
-    
-    PRINT_STATUS(" ..calling set_turb_ampl in init_turb\n");
     set_turb_ampl();
     
     StTPrev = All.Ti_Current;
@@ -211,10 +227,16 @@ void st_init_ouseq(void)
 }
 
 
+double st_return_dt_between_updates(void)
+{
+    if(All.StDtFreq > 0) {return All.StDtFreq;} else {return 0.01*All.StDecay;}
+}
+
+
 void st_update_ouseq(void)
 {
     int i;
-    double damping = exp( -All.StDtFreq/All.StDecay);
+    double damping = exp( -st_return_dt_between_updates()/All.StDecay);
     for(i = 0;i<6*StNModes;i++)
     {
         StOUPhases[i] = StOUPhases[i] * damping + StOUVar * sqrt(1.-damping*damping)*st_grn();
@@ -264,13 +286,13 @@ void st_calc_phases(void)
 
 void set_turb_ampl(void)
 {
-    int i; double delta = (All.Ti_Current - StTPrev) * UNIT_INTEGERTIME_IN_PHYSICAL;
-    double e_diss_sum=0, e_drive_sum=0, glob_diss_sum=0, glob_drive_sum=0;
-    if(delta >= All.StDtFreq)
+    double delta = (All.Ti_Current - StTPrev) * UNIT_INTEGERTIME_IN_PHYSICAL, Dt_Update=st_return_dt_between_updates();
+    if(delta >= Dt_Update)
     {
         if(delta > 0)
         {
-            PRINT_STATUS(" ..updating dudt_*\n");
+            int i; double e_diss_sum=0, e_drive_sum=0, glob_diss_sum=0, glob_drive_sum=0;
+            PRINT_STATUS(" ..updating fields tracked for following injected energy and dissipation");
             for(i=0; i < NumPart; i++)
             {
                 if(P[i].Type == 0)
@@ -293,12 +315,12 @@ void set_turb_ampl(void)
             All.TurbDissipatedEnergy += glob_diss_sum;
             All.TurbInjectedEnergy += glob_drive_sum;
         }
-        PRINT_STATUS(" ..st_update_ouseq() ... \n");
+        PRINT_STATUS(" ..updating fourier-space phase information");
         st_update_ouseq();
-        PRINT_STATUS(" ..st_calc_phases() ... \n");
+        PRINT_STATUS(" ..calculating coefficients and phases following desired projection");
         st_calc_phases();
-        StTPrev = StTPrev + All.StDtFreq / All.Timebase_interval;
-        PRINT_STATUS(" ..updated turbulent stirring field at time %f.\n", StTPrev * All.Timebase_interval);
+        StTPrev = StTPrev + Dt_Update / All.Timebase_interval;
+        PRINT_STATUS(" ..updated turbulent stirring field at time %f", StTPrev * All.Timebase_interval);
     }
 }
 
@@ -319,7 +341,7 @@ void add_turb_accel()
             double fy = 0;
             double fz = 0;
             
-            for(m = 0;m<StNModes;m++) //calc force
+            for(m=0; m<StNModes; m++) //calc force
             {
                 double kxx = StMode[3*m+0]*P[i].Pos[0];
                 double kyy = StMode[3*m+1]*P[i].Pos[1];
@@ -356,7 +378,7 @@ void add_turb_accel()
             }
         }
     }
-    PRINT_STATUS("Finished turbulent accel computation");
+    PRINT_STATUS("Finished turbulence driving (acceleration) computation");
 }
 
 

@@ -2214,6 +2214,9 @@ extern struct global_data_all_processes
     double Vertical_Gravity_Strength;
     double Vertical_Grain_Accel;
     double Vertical_Grain_Accel_Angle;
+#ifdef BOX_SHEARING
+    double Pressure_Gradient_Accel;
+#endif
 #endif
     double Grain_Internal_Density;
     double Grain_Size_Min;
@@ -3704,8 +3707,7 @@ extern int StSeed;
 extern double StOUVar;
 extern double* StOUPhases;
 
-
-//forcing field in fourie space
+//forcing field in fourier space
 extern double* StAmpl;
 extern double* StAka; //phases (real part)
 extern double* StAkb; //phases (imag part)

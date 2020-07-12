@@ -761,6 +761,13 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 
+#if defined(TURB_DRIVING)
+                /* gas cannot step larger than major updates to turbulent driving routine */
+                double dt_turb_driving = 1.9 * st_return_dt_between_updates();
+                if (dt > dt_turb_driving) {dt = dt_turb_driving;}
+#endif
+            
+
 #ifdef SUPER_TIMESTEP_DIFFUSION
             /* now use the timestep information above to limit the super-stepping timestep */
             {
@@ -950,6 +957,8 @@ integertime get_timestep(int p,		/*!< particle index */
     {double dist_rad2 = pow((P[p].Pos[0]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[1]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[2]-0.5*All.BoxSize),2.0); if(sqrt(dist_rad2)<10.) {dt=5.e-7;}}
 #endif
 #endif // BLACK_HOLES
+    
+
 
 
     /* convert the physical timestep to dloga if needed. Note: If comoving integration has not been selected, All.cf_hubble_a=1. */

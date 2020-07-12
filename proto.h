@@ -496,6 +496,7 @@ void star_formation_parent_routine(void);
 #if defined(TURB_DRIVING)
 void do_turb_driving_step_first_half(void);
 void do_turb_driving_step_second_half(void);
+double st_return_dt_between_updates(void);
 #endif
 double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h, int target);
 

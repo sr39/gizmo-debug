@@ -335,6 +335,15 @@ void init(void)
                 w0 /= sqrt((1.+tau2)*(1.+tau2*ct2)); // ensures normalization to unity with convention below //
                 A_cross_B[0]=A[1]*B[2]-A[2]*B[1]; A_cross_B[1]=A[2]*B[0]-A[0]*B[2]; A_cross_B[2]=A[0]*B[1]-A[1]*B[0];
                 for(k=0;k<3;k++) {P[i].Vel[k]=w0*(A[k] + sqrt(tau2)*A_cross_B[k] + tau2*ct*B[k]);}
+#ifdef BOX_SHEARING
+                // now add linearly the NHS drift solution for our shearing box setup
+                double v00 = -All.Pressure_Gradient_Accel / (2. * BOX_SHEARING_OMEGA_BOX_CENTER);
+                double v_K = -(P[i].Pos[0]-boxHalf_X) * BOX_SHEARING_Q*BOX_SHEARING_OMEGA_BOX_CENTER;
+                double tau_s = tS0 * P[i].Grain_Size * BOX_SHEARING_OMEGA_BOX_CENTER;
+                v00 /= (1. + tau_s*tau_s); // appears in both terms here //
+                P[i].Vel[0] += v00 * 2.*tau_s; // radial drift
+                P[i].Vel[BOX_SHEARING_PHI_COORDINATE] = v_K + v00; // azimuthal drift relative to keplerian frame
+#endif
 #endif // closes rdi_testproblem
             }
             P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0; P[i].Grain_AccelTimeMin = MAX_REAL_NUMBER;

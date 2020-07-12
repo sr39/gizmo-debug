@@ -787,7 +787,8 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
         /* note, if you want to use this routine to inject magnetic flux or cosmic rays, do this below */
 #ifdef MAGNETIC
-        SphP[j].divB = 0; double Bmag=0, Bmag_0=0; for(k=0;k<3;k++) {double B=SphP[j].B[k]*SphP[j].Density/P[j].Mass*All.cf_a2inv; Bmag+=B*B; Bmag_0+=SphP[j].B[k]*SphP[j].B[k];} // get actual Bfield
+        SphP[j].divB = 0; double Bmag=0, Bmag_0=0;
+        for(k=0;k<3;k++) {double B=SphP[j].B[k]*SphP[j].Density/P[j].Mass*All.cf_a2inv; Bmag+=B*B; Bmag_0+=SphP[j].B[k]*SphP[j].B[k];} // get actual Bfield
         double Bmag_low_rel_to_progenitor = 1.e-10 * sqrt(Bmag); // set to some extremely low value relative to cloned element
         double u_internal_new_cell = All.BAL_internal_temperature / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ); // internal energy of new wind cell
         double Bmag_low_rel_to_pressure = 1.e-3 * sqrt(2.*SphP[j].Density*All.cf_a3inv * u_internal_new_cell); // set to beta = 1e6
