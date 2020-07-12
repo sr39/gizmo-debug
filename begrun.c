@@ -1786,7 +1786,7 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "ST_Seed"); // random number seed for modes
         strcpy(alternate_tag[nt], "TurbDrive_RandomNumberSeed");
         addr[nt] = &All.StSeed;
-        id[nt++] = REAL;
+        id[nt++] = INT;
 
         /* Andreas Bauer's paper on turbulence:
          // sub-sonic (Mach~0.3) test: //
@@ -2148,8 +2148,8 @@ void read_parameter_file(char *fname)
 #if defined(TURB_DRIVING)
                 if(strcmp("ST_DtFreq",tag[i])==0) {*((double *)addr[i])=-1; printf("Tag %s (%s) not set in parameter file: defaulting to update turbulent driving fields every 0.01 coherence times (=%g) \n",tag[i],alternate_tag[i],All.StDtFreq); continue;}
                 if(strcmp("ST_AmplFac",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to assume no secondary renormalization imposed (=%g) \n",tag[i],alternate_tag[i],All.StAmplFac); continue;}
-                if(strcmp("ST_SpectForm",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to assume driving follows a Kolmogorov spectrum (=%d) \n",tag[i],alternate_tag[i],All.StSpectForm); continue;}
-                if(strcmp("ST_Seed",tag[i])==0) {*((double *)addr[i])=42.; printf("Tag %s (%s) not set in parameter file: defaulting to the answer (=%g) \n",tag[i],alternate_tag[i],All.StSeed); continue;}
+                if(strcmp("ST_SpectForm",tag[i])==0) {*((int *)addr[i])=2; printf("Tag %s (%s) not set in parameter file: defaulting to assume driving follows a Kolmogorov spectrum (=%d) \n",tag[i],alternate_tag[i],All.StSpectForm); continue;}
+                if(strcmp("ST_Seed",tag[i])==0) {*((int *)addr[i])=42; printf("Tag %s (%s) not set in parameter file: defaulting to the answer to everything (=%d) \n",tag[i],alternate_tag[i],All.StSeed); continue;}
 #endif
                 printf("ERROR. I miss a required value for tag '%s' (or alternate name '%s') in parameter file '%s'.\n", tag[i], alternate_tag[i], fname);
                 errorFlag = 1;

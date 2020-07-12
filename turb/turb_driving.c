@@ -201,7 +201,7 @@ void init_turb(void)
         }
     }
 #if !defined(TURB_DRIVING_OLDFORMAT)
-    for(i=0; i<StNModes; i++) {StAmpl[i] /= amplitude_integrated_allmodes;} // normalize total driving amplitude across all modes here
+    int i; for(i=0; i<StNModes; i++) {StAmpl[i] /= amplitude_integrated_allmodes;} // normalize total driving amplitude across all modes here
 #endif
 
     StTPrev = -1;
