@@ -268,15 +268,6 @@ integertime get_timestep(int p,		/*!< particle index */
         }
 
         ac = sqrt(ax * ax + ay * ay + az * az);	/* this is now the physical acceleration */
-#ifdef TURB_DRIVING
-        if(P[p].Type==0)
-        { /* because the turbulent acceleration is a random variable, we dont want it to catch us by surprise if it moves up, so
-            we include a safety factor here which (very crudely) approximates the maximum amplitude it could reach */
-            double a_max_safety = 1.4 * sqrt(pow(All.StKmax,NUMDIMS) * All.StEnergy / All.StDecay);
-            ac = sqrt(ac*ac + a_max_safety*a_max_safety);
-        }
-#endif
-
         *aphys = ac;
     }
     else
@@ -899,7 +890,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef BH_SEED_GROWTH_TESTS
         double dt_evol = 1.e4 / UNIT_TIME_IN_YR; // totally arbitrary hard-coding here //
 #ifdef TURB_DRIVING
-        if(dt_evol > 1.e-3*All.StDecay) {dt_evol=1.e-3*All.StDecay;}
+        if(dt_evol > 1.e-3*st_return_mode_correlation_time()) {dt_evol=1.e-3*st_return_mode_correlation_time();}
 #endif
         if(dt_accr > dt_evol) {dt_accr=dt_evol;}
 #endif

@@ -1739,53 +1739,49 @@ void read_parameter_file(char *fname)
 
 #if defined(TURB_DRIVING_SPECTRUMGRID)
         strcpy(tag[nt], "TimeBetTurbSpectrum"); // time (code) between evaluations of turb pwrspec
+        strcpy(alternate_tag[nt], "TurbDrive_TimeBetTurbSpectrum");
         addr[nt] = &All.TimeBetTurbSpectrum;
         id[nt++] = REAL;
 #endif
 
         strcpy(tag[nt], "ST_decay"); // decay time for driving-mode phase correlations
         strcpy(alternate_tag[nt], "TurbDrive_CoherenceTime");
-        addr[nt] = &All.StDecay;
+        addr[nt] = &All.TurbDriving_Global_DecayTime;
         id[nt++] = REAL;
 
         strcpy(tag[nt], "ST_energy"); // energy of driving-scale modes: sets norm of turb (?)
         strcpy(alternate_tag[nt], "TurbDrive_ApproxRMSVturb");
-        addr[nt] = &All.StEnergy;
+        addr[nt] = &All.TurbDriving_Global_AccelerationPowerVariable;
         id[nt++] = REAL;
 
         strcpy(tag[nt], "ST_DtFreq"); // time interval for driving updates (set by hand)
         strcpy(alternate_tag[nt], "TurbDrive_TimeBetweenTurbUpdates");
-        addr[nt] = &All.StDtFreq;
+        addr[nt] = &All.TurbDriving_Global_DtTurbUpdates;
         id[nt++] = REAL;
 
         strcpy(tag[nt], "ST_Kmin"); // minimum driving-k: should be ~2.*M_PI/All.BoxSize
         strcpy(alternate_tag[nt], "TurbDrive_MaxWavelength"); // should be <= BoxSize
-        addr[nt] = &All.StKmin;
+        addr[nt] = &All.TurbDriving_Global_DrivingScaleKMinVar;
         id[nt++] = REAL;
 
         strcpy(tag[nt], "ST_Kmax"); // maximum driving-k: set to couple times Kmin or more if more cascade desired
         strcpy(alternate_tag[nt], "TurbDrive_MinWavelength"); // should be < MaxWavelength
-        addr[nt] = &All.StKmax;
+        addr[nt] = &All.TurbDriving_Global_DrivingScaleKMaxVar;
         id[nt++] = REAL;
 
         strcpy(tag[nt], "ST_SolWeight"); // fractional wt of solenoidal modes (wt*curl + (1-wt)*div)
         strcpy(alternate_tag[nt], "TurbDrive_SolenoidalFraction");
-        addr[nt] = &All.StSolWeight;
-        id[nt++] = REAL;
-
-        strcpy(tag[nt], "ST_AmplFac"); // multiplies turb amplitudes
-        strcpy(alternate_tag[nt], "TurbDrive_RenormalizeAmplitudes");
-        addr[nt] = &All.StAmplFac;
+        addr[nt] = &All.TurbDriving_Global_SolenoidalFraction;
         id[nt++] = REAL;
 
         strcpy(tag[nt], "ST_SpectForm"); // driving pwr-spec: 0=Ek~const; 1=sharp-peak at kc; 2=Ek~k^(-5/3); 3=Ek~k^-2
         strcpy(alternate_tag[nt], "TurbDrive_DrivingSpectrum");
-        addr[nt] = &All.StSpectForm;
+        addr[nt] = &All.TurbDriving_Global_DrivingSpectrumKey;
         id[nt++] = INT;
 
         strcpy(tag[nt], "ST_Seed"); // random number seed for modes
         strcpy(alternate_tag[nt], "TurbDrive_RandomNumberSeed");
-        addr[nt] = &All.StSeed;
+        addr[nt] = &All.TurbDriving_Global_DrivingRandomNumberKey;
         id[nt++] = INT;
 
         /* Andreas Bauer's paper on turbulence:
@@ -2146,10 +2142,11 @@ void read_parameter_file(char *fname)
 #endif
 #endif
 #if defined(TURB_DRIVING)
-                if(strcmp("ST_DtFreq",tag[i])==0) {*((double *)addr[i])=-1; printf("Tag %s (%s) not set in parameter file: defaulting to update turbulent driving fields every 0.01 coherence times (=%g) \n",tag[i],alternate_tag[i],All.StDtFreq); continue;}
-                if(strcmp("ST_AmplFac",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to assume no secondary renormalization imposed (=%g) \n",tag[i],alternate_tag[i],All.StAmplFac); continue;}
-                if(strcmp("ST_SpectForm",tag[i])==0) {*((int *)addr[i])=2; printf("Tag %s (%s) not set in parameter file: defaulting to assume driving follows a Kolmogorov spectrum (=%d) \n",tag[i],alternate_tag[i],All.StSpectForm); continue;}
-                if(strcmp("ST_Seed",tag[i])==0) {*((int *)addr[i])=42; printf("Tag %s (%s) not set in parameter file: defaulting to the answer to everything (=%d) \n",tag[i],alternate_tag[i],All.StSeed); continue;}
+                if(strcmp("ST_DtFreq",tag[i])==0) {*((double *)addr[i])=-1; printf("Tag %s (%s) not set in parameter file: defaulting to update turbulent driving fields every 0.01 coherence times (=%g) \n",tag[i],alternate_tag[i],All.TurbDriving_Global_DtTurbUpdates); continue;}
+                if(strcmp("ST_decay",tag[i])==0) {*((double *)addr[i])=-1; printf("Tag %s (%s) not set in parameter file: defaulting to assume driving-scale mode coherence time is given by expected rms eddy turnover time ~ L_drive / rms v_turb (=%g) \n",tag[i],alternate_tag[i],All.TurbDrive_CoherenceTime); continue;}
+                if(strcmp("ST_SpectForm",tag[i])==0) {*((int *)addr[i])=2; printf("Tag %s (%s) not set in parameter file: defaulting to assume driving follows a Kolmogorov spectrum (=%d) \n",tag[i],alternate_tag[i],All.TurbDriving_Global_DrivingSpectrumKey); continue;}
+                if(strcmp("ST_Seed",tag[i])==0) {*((int *)addr[i])=42; printf("Tag %s (%s) not set in parameter file: defaulting to the answer to everything (=%d) \n",tag[i],alternate_tag[i],All.TurbDriving_Global_DrivingRandomNumberKey); continue;}
+                if(strcmp("ST_SolWeight",tag[i])==0) {*((double *)addr[i])=0.5; printf("Tag %s (%s) not set in parameter file: defaulting to assume the so-called natural mix of modes for pressure-free turbulence (=%g) \n",tag[i],alternate_tag[i],All.TurbDriving_Global_SolenoidalFraction); continue;}
 #endif
                 printf("ERROR. I miss a required value for tag '%s' (or alternate name '%s') in parameter file '%s'.\n", tag[i], alternate_tag[i], fname);
                 errorFlag = 1;

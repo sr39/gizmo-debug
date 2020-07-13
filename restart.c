@@ -267,23 +267,13 @@ void restart(int modus)
 
 #ifdef TURB_DRIVING
       byten(gsl_rng_state(StRng), gsl_rng_size(StRng), modus);
- 
 	  byten(&StNModes, sizeof(StNModes), modus);
-
-	  byten(&StOUVar, sizeof(StOUVar),modus);
 	  byten(StOUPhases, StNModes*6*sizeof(double),modus);
-
 	  byten(StAmpl, StNModes*3*sizeof(double),modus);
 	  byten(StAka, StNModes*3*sizeof(double),modus);
 	  byten(StAkb, StNModes*3*sizeof(double),modus);
 	  byten(StMode, StNModes*3*sizeof(double),modus);
-
 	  byten(&StTPrev, sizeof(StTPrev),modus);
-	  byten(&StSolWeightNorm, sizeof(StSolWeightNorm),modus);
-
-          /*byten(&StEnergyAcc, sizeof(double),modus);
-          byten(&StEnergyDeacc, sizeof(double),modus);
-          byten(&StLastStatTime, sizeof(double),modus);*/
 #endif
 
 	  /* write flags for active timebins */

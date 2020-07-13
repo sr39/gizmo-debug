@@ -1148,6 +1148,10 @@ typedef unsigned long long peanokey;
 #define  report_memory_usage(x, y) printf("Memory manager disabled.\n")
 #endif
 
+#if defined(EOS_GAMMA) && (EOS_GAMMA==1.0000000000000000)
+#undef EOS_GAMMA
+#define EOS_GAMMA (1.0001) /*<! gamma cannot be set to -exact- unity without causing errors */
+#endif
 
 #if !defined(EOS_GAMMA)
 #define EOS_GAMMA (5.0/3.0) /*!< adiabatic index of simulated gas */
@@ -2455,16 +2459,14 @@ extern struct global_data_all_processes
 #endif
 
 #ifdef TURB_DRIVING
-  double StDecay;
-  double StEnergy;
-  double StDtFreq;
-  double StKmin;
-  double StKmax;
-  double StSolWeight;
-  double StAmplFac;
-
-  int StSpectForm;
-  int StSeed;
+  double TurbDriving_Global_DecayTime;
+  double TurbDriving_Global_AccelerationPowerVariable;
+  double TurbDriving_Global_DtTurbUpdates;
+  double TurbDriving_Global_DrivingScaleKMinVar;
+  double TurbDriving_Global_DrivingScaleKMaxVar;
+  double TurbDriving_Global_SolenoidalFraction;
+  int    TurbDriving_Global_DrivingSpectrumKey;
+  int    TurbDriving_Global_DrivingRandomNumberKey;
 #endif
 
 #if defined(COOLING) && defined(COOL_GRACKLE)
@@ -3692,35 +3694,15 @@ extern int *Father;		/*!< gives parent node in tree (Prenodes array) */
 
 extern int maxThreads;
 
-#ifdef TURB_DRIVING
-//parameters
-extern double StDecay;
-extern double StEnergy;
-extern double StDtFreq;
-extern double StKmin;
-extern double StKmax;
-extern double StSolWeight;
-extern double StAmplFac;
-
-//Ornstein-Uhlenbeck variables
-extern int StSeed;
-extern double StOUVar;
-extern double* StOUPhases;
-
-//forcing field in fourier space
-extern double* StAmpl;
-extern double* StAka; //phases (real part)
-extern double* StAkb; //phases (imag part)
-extern double* StMode;
-extern int StNModes;
-
-extern integertime StTPrev;
-extern double StSolWeightNorm;
-
-extern int StSpectForm;
-
-extern gsl_rng* StRng;
-extern int FB_Seed;
+#ifdef TURB_DRIVING // other global variables for forcing field (need to be carried through all timesteps)
+extern double* StOUPhases; // random fluctuating component of the amplitudes
+extern double* StAmpl; // relative amplitude for each k
+extern double* StAka; // phases (real part)
+extern double* StAkb; // phases (imag part)
+extern double* StMode; // k vectors
+extern int StNModes; // total number of modes
+extern integertime StTPrev; // time of last update (to determine when next will be)
+extern gsl_rng* StRng; // random number generator key
 #endif
 
 

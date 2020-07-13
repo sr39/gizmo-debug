@@ -497,6 +497,12 @@ void star_formation_parent_routine(void);
 void do_turb_driving_step_first_half(void);
 void do_turb_driving_step_second_half(void);
 double st_return_dt_between_updates(void);
+double st_return_mode_correlation_time(void);
+double st_return_rms_acceleration(void);
+double st_turbdrive_get_gaussian_random_variable(void);
+void st_turbdrive_init_ouseq(void);
+void st_turbdrive_calc_phases(void);
+double st_return_driving_scale(void);
 #endif
 double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h, int target);
 
