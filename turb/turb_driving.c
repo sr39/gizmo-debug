@@ -76,8 +76,7 @@ void init_turb(void)
         }
     }
     
-    PRINT_STATUS("Initializing turbulent driving, using %d modes, %d %d %d",StNModes,ikxmax,ikymax,ikzmax);
-    
+    PRINT_STATUS("Initializing turbulent driving: max integer mode number ikx/iky/ikz = %d %d %d",ikxmax,ikymax,ikzmax);
     StMode = (double*) mymalloc_movable(&StMode,"StModes", StNModes * 3 * sizeof(double));
     StAka = (double*) mymalloc_movable(&StAka,"StAka", StNModes * 3 * sizeof(double));
     StAkb = (double*) mymalloc_movable(&StAkb,"StAkb", StNModes * 3 * sizeof(double));
@@ -111,50 +110,61 @@ void init_turb(void)
                     }
                     else if(All.TurbDriving_Global_DrivingSpectrumKey == 2)
                     {
-                        ampl = pow(k/kmin, (1.-NUMDIMS)- 5./3. ); // because this is E[vector_k] for NUMDIMS, need extra NUMDIMS-1 power term here
+                        //ampl = pow(k/kmin, (1.-NUMDIMS)- 5./3. ); // because this is E[vector_k] for NUMDIMS, need extra NUMDIMS-1 power term here
+                        ampl = pow(k/kmin, 1./3. - 0*0.5*NUMDIMS); // this should scale as the acceleration per eddy, ~v^2/L, crudely
                     }
                     else if(All.TurbDriving_Global_DrivingSpectrumKey == 3)
                     {
-                        ampl = pow(k/kmin, (1.-NUMDIMS)- 2. ); // because this is E[vector_k] for NUMDIMS, need extra NUMDIMS-1 power term here
+                        //ampl = pow(k/kmin, (1.-NUMDIMS)- 2. ); // because this is E[vector_k] for NUMDIMS, need extra NUMDIMS-1 power term here
+                        ampl = pow(k/kmin, 0. - 0*0.5*NUMDIMS); // this should scale as the acceleration per eddy, ~v^2/L, crudely
                     }
                     else
                     {
-                        terminate("unkown spectral form");
+                        terminate("unknown spectral form");
                     }
                     
                     StAmpl[StNModes] = ampl;
                     StMode[3*StNModes+0] = kx;
                     StMode[3*StNModes+1] = ky;
                     StMode[3*StNModes+2] = kz;
-                    PRINT_STATUS("  Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,iky,ikz,kx,ky,kz,ampl);
+                    PRINT_STATUS("  Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,iky,ikz,StMode[3*StNModes+0],StMode[3*StNModes+1],StMode[3*StNModes+2],StAmpl[StNModes]);
                     amplitude_integrated_allmodes += ampl*ampl;
                     StNModes++;
                     
-#if NUMDIMS > 1
-                    StAmpl[StNModes] = ampl;
-                    StMode[3*StNModes+0] = kx;
-                    StMode[3*StNModes+1] = -ky;
-                    StMode[3*StNModes+2] = kz;
-                    PRINT_STATUS("  Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,-iky,ikz,kx,-ky,kz,ampl);
-                    amplitude_integrated_allmodes += ampl*ampl;
-                    StNModes++;
+#if (NUMDIMS > 1)
+                    if(ikx>0 || iky>0) // if both of these are zero, only non-degenerate modes are the +/- z modes [ensured below]
+                    {
+                        StAmpl[StNModes] = ampl;
+                        if(iky!=0) {StMode[3*StNModes+0] = kx;} else {StMode[3*StNModes+0] = -kx;}
+                        StMode[3*StNModes+1] = -ky;
+                        StMode[3*StNModes+2] = kz;
+                        PRINT_STATUS("  Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,-iky,ikz,StMode[3*StNModes+0],StMode[3*StNModes+1],StMode[3*StNModes+2],StAmpl[StNModes]);
+                        amplitude_integrated_allmodes += ampl*ampl;
+                        StNModes++;
+                    }
 
-#if NUMDIMS > 2
-                    StAmpl[StNModes] = ampl;
-                    StMode[3*StNModes+0] = kx;
-                    StMode[3*StNModes+1] = ky;
-                    StMode[3*StNModes+2] = -kz;
-                    PRINT_STATUS("  Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,iky,-ikz,kx,ky,-kz,ampl);
-                    amplitude_integrated_allmodes += ampl*ampl;
-                    StNModes++;
+#if (NUMDIMS > 2)
+                    if((iky>0 || ikz>0) && (ikx>0 || ikz>0)) // if both of these are zero, only non-degenerate modes are the +/- x or +/- y modes [already ensured above]
+                    {
+                        StAmpl[StNModes] = ampl;
+                        if(ikz!=0) {StMode[3*StNModes+0] = kx;} else {StMode[3*StNModes+0] = -kx;}
+                        StMode[3*StNModes+1] = ky;
+                        StMode[3*StNModes+2] = -kz;
+                        PRINT_STATUS("  Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,iky,-ikz,StMode[3*StNModes+0],StMode[3*StNModes+1],StMode[3*StNModes+2],StAmpl[StNModes]);
+                        amplitude_integrated_allmodes += ampl*ampl;
+                        StNModes++;
+                    }
 
-                    StAmpl[StNModes] = ampl;
-                    StMode[3*StNModes+0] = kx;
-                    StMode[3*StNModes+1] = -ky;
-                    StMode[3*StNModes+2] = -kz;
-                    PRINT_STATUS("  Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,-iky,-ikz,kx,-ky,-kz,ampl);
-                    amplitude_integrated_allmodes += ampl*ampl;
-                    StNModes++;
+                    if((ikx>0 || iky>0) && (ikx>0 || ikz>0) && (iky>0 || ikz>0)) // if both of these are zero, only non-degenerate modes are +/- z or +/- y or +/- x modes already handled above
+                    {
+                        StAmpl[StNModes] = ampl;
+                        if(ikz==0 || iky==0) {StMode[3*StNModes+0] = -kx;} else {StMode[3*StNModes+0] = kx;}
+                        StMode[3*StNModes+1] = -ky;
+                        StMode[3*StNModes+2] = -kz;
+                        PRINT_STATUS("  Mode: %d, ikx=%d, iky=%d, ikz=%d, kx=%f, ky=%f, kz=%f, ampl=%f",StNModes,ikx,-iky,-ikz,StMode[3*StNModes+0],StMode[3*StNModes+1],StMode[3*StNModes+2],StAmpl[StNModes]);
+                        amplitude_integrated_allmodes += ampl*ampl;
+                        StNModes++;
+                    }
 #endif
 #endif
                 }
@@ -164,13 +174,14 @@ void init_turb(void)
 #if !defined(TURB_DRIVING_OLDFORMAT)
     int i; for(i=0; i<StNModes; i++) {StAmpl[i] *= sqrt(1./amplitude_integrated_allmodes);} // normalize total driving amplitude across all modes here
 #endif
-    StTPrev = -1;
-    StRng = gsl_rng_alloc(gsl_rng_ranlxd1);
-    gsl_rng_set(StRng, All.TurbDriving_Global_DrivingRandomNumberKey);
-    st_turbdrive_init_ouseq();
-    st_turbdrive_calc_phases();
-    set_turb_ampl();
-    StTPrev = All.Ti_Current;
+    StTPrev = -1; // mark some arbitrarily old time as last update of turb driving fields
+    StRng = gsl_rng_alloc(gsl_rng_ranlxd1); // allocate seed variables
+    gsl_rng_set(StRng, All.TurbDriving_Global_DrivingRandomNumberKey); // initialize seed
+    int j; for(j=0;j<100;j++) {double tmp=st_turbdrive_get_gaussian_random_variable();} // cycle past initial seed
+    st_turbdrive_init_ouseq(); // initialize variable for phases
+    st_turbdrive_calc_phases(); // initialize phases
+    set_turb_ampl(); // set initial amplitudes and calculate initial quantities needed for dissipation measures
+    StTPrev = All.Ti_Current; // mark current time as last update of turb driving fields
 }
 
 
@@ -361,11 +372,10 @@ void add_turb_accel()
 }
 
 
-/* routine to integrate the turbulent driving forces, specifically the 'TurbAccel' variables that need to be drifted and kicked */
+/* routine to integrate the turbulent driving forces, specifically the 'TurbAccel' variables that need to be drifted and kicked: note that we actually do drifting and kicking in the normal routines, this is just to integrate the dissipation rates etc used for our tracking */
 void do_turb_driving_step_first_half(void)
 {
     CPU_Step[CPU_MISC] += measure_time();
-    add_turb_accel();
     int i, j; integertime ti_step, tstart, tend; double dvel[3], dt_gravkick;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
@@ -383,7 +393,7 @@ void do_turb_driving_step_first_half(void)
 }
 
 
-/* routine to integrate the turbulent driving forces, specifically the 'TurbAccel' variables that need to be drifted and kicked */
+/* routine to integrate the turbulent driving forces, specifically the 'TurbAccel' variables that need to be drifted and kicked: note that we actually do drifting and kicking in the normal routines, this is just to integrate the dissipation rates etc used for our tracking */
 void do_turb_driving_step_second_half(void)
 {
     CPU_Step[CPU_MISC] += measure_time();

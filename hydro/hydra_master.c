@@ -867,7 +867,10 @@ void hydro_final_operations_and_cleanup(void)
         } // closes P[i].Type==0 check and so closes loop over particles i
     } // for (loop over active particles) //
 
-
+    
+#ifdef TURB_DRIVING
+    add_turb_accel(); // update turbulent driving fields and TurbAccel fields at same time as update HydroAccel, here
+#endif
 
 #ifdef NUCLEAR_NETWORK
     PRINT_STATUS("Doing nuclear network");
