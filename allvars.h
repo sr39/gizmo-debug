@@ -1543,9 +1543,9 @@ xtmp = fabs(((xtmp)>boxSize_Y)?((xtmp)-boxSize_Y):(((xtmp)<-boxSize_Y)?((xtmp)+b
 #endif
 
 #define NEAREST_XYZ(x,y,z,sign) {\
-TMP_WRAP_X_S(x,y,z,sign);\
 TMP_WRAP_Y_S(x,y,z,sign);\
-TMP_WRAP_Z_S(x,y,z,sign);} /* collect the box-wrapping terms into one function here */
+TMP_WRAP_X_S(x,y,z,sign);\
+TMP_WRAP_Z_S(x,y,z,sign);} /* note the ORDER MATTERS here for shearing boxes: Y-wrap must precede x/z wrap to allow correct re-assignment. collect the box-wrapping terms into one function here */
 
 
 
