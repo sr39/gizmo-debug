@@ -1148,11 +1148,6 @@ typedef unsigned long long peanokey;
 #define  report_memory_usage(x, y) printf("Memory manager disabled.\n")
 #endif
 
-#if defined(EOS_GAMMA) && (EOS_GAMMA==1.0000000000000000)
-#undef EOS_GAMMA
-#define EOS_GAMMA (1.0001) /*<! gamma cannot be set to -exact- unity without causing errors */
-#endif
-
 #if !defined(EOS_GAMMA)
 #define EOS_GAMMA (5.0/3.0) /*!< adiabatic index of simulated gas */
 #endif
