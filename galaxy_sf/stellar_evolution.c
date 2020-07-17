@@ -527,7 +527,7 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
         /* All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe ;; follow AGB/O star yields in more detail for the light elements */
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         /* everything except He and CNO and S-process is well-approximated by surface abundances. and CNO is conserved to high accuracy in sum for secondary production */
-        double f_H_0=1.-(yields[0]+yields[1]), f_He_0=yields[1], f_N_0=yields[2], f_C_0=yields[3], f_O_0=yields[4], f_CNO_0=f_C_0+f_N_0+f_O_0+MIN_REAL_NUMBER, y; // define initial H, He, CNO fraction
+        double f_H_0=1.-(yields[0]+yields[1]), f_He_0=yields[1], f_C_0=yields[2], f_N_0=yields[3], f_O_0=yields[4], f_CNO_0=f_C_0+f_N_0+f_O_0+MIN_REAL_NUMBER, y; // define initial H, He, CNO fraction
         double t = evaluate_stellar_age_Gyr(P[i].StellarAge), z_sol; z_sol = f_CNO_0 / (All.SolarAbundances[2]+All.SolarAbundances[3]+All.SolarAbundances[4]); // stellar population age in Gyr, and solar-scaled CNO abundance
         // model He production : this scales off of the fraction of H in IC: y here represents the yield of He produced by burning H, scales off availability
         {double t1=0.0028, t2=0.01, t3=2.3, t4=3.0, y1=0.4*DMIN(pow(z_sol+1.e-3,0.6),2.), y2=0.08, y3=0.07, y4=0.042;
@@ -537,12 +537,12 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
         {double t1=0.001, t2=0.0028, t3=0.05, t4=1.9, t5=14.0, y1=0.2*DMAX(1.e-4,DMIN(z_sol*z_sol,0.9)), y2=0.68*DMIN(pow(z_sol+1.e-3,0.1),0.9), y3=0.4, y4=0.23, y5=0.065;
             if(t<t1) {y=y1*pow(t/t1,3.5);} else if(t<t2) {y=y1*pow(t/t1,log(y2/y1)/log(t2/t1));} else if(t<t3) {y=y2*pow(t/t2,log(y3/y2)/log(t3/t2));} else if(t<t4) {y=y3*pow(t/t3,log(y4/y3)/log(t4/t3));} else if(t<t5) {y=y4*pow(t/t4,log(y5/y4)/log(t5/t4));} else {y=y5;}}
         y=DMAX(0.,DMIN(1.,y)); double frac_loss_from_C = 0.5, floss_CO = y * (f_C_0 + f_O_0), floss_C = DMIN(frac_loss_from_C * floss_CO, 0.99*f_C_0), floss_O = floss_CO - floss_C;
-        yields[2] = f_N_0 + floss_CO; yields[3] = f_C_0 - floss_C; yields[4] = f_O_0 - floss_O; // convert mass from CO to N, conserving exactly total CNO mass
+        yields[3] = f_N_0 + floss_CO; yields[2] = f_C_0 - floss_C; yields[4] = f_O_0 - floss_O; // convert mass from CO to N, conserving exactly total CNO mass
         // model primary C production: scales off initial H+He, generally small compared to loss fraction above in SB99, large in some other models, very small for early OB winds
         {double t1=0.005, t2=0.04, t3=10., y1=1.e-6, y2=0.001, y3=0.005;
             if(t<t1) {y=y1*pow(t/t1,3);} else if(t<t2) {y=y1*pow(t/t1,log(y2/y1)/log(t2/t1));} else if(t<t3) {y=y2*pow(t/t2,log(y3/y2)/log(t3/t2));} else {y=y3;}}
         double y_H_to_C = (1.-(yields[0]+yields[1])) * y, y_He_to_C = f_He_0 * y; // simply multiple initial He by this factor to get final production
-        yields[1] -= y_He_to_C; yields[3] += y_H_to_C + y_He_to_C; // transfer this mass fraction from H+He to C; gives stable results if 0 < f_He_0_to_C < 1
+        yields[1] -= y_He_to_C; yields[2] += y_H_to_C + y_He_to_C; // transfer this mass fraction from H+He to C; gives stable results if 0 < f_He_0_to_C < 1
         // model S-process production: currently no S-process tracers -explicitly- followed, so we skip this step
 
         yields[0]=0.0; for(k=2;k<=NUM_LIVE_SPECIES_FOR_COOLTABLES;k++) {yields[0]+=yields[k];} // finally, add up metals [not He!] to get actual metal yield
