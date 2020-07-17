@@ -268,15 +268,6 @@ integertime get_timestep(int p,		/*!< particle index */
         }
 
         ac = sqrt(ax * ax + ay * ay + az * az);	/* this is now the physical acceleration */
-#ifdef TURB_DRIVING
-        if(P[p].Type==0)
-        { /* because the turbulent acceleration is a random variable, we dont want it to catch us by surprise if it moves up, so
-            we include a safety factor here which (very crudely) approximates the maximum amplitude it could reach */
-            double a_max_safety = 1.4 * sqrt(pow(All.StKmax,NUMDIMS) * All.StEnergy / All.StDecay);
-            ac = sqrt(ac*ac + a_max_safety*a_max_safety);
-        }
-#endif
-
         *aphys = ac;
     }
     else
@@ -761,6 +752,13 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 
+#if defined(TURB_DRIVING)
+                /* gas cannot step larger than major updates to turbulent driving routine */
+                double dt_turb_driving = 1.9 * st_return_dt_between_updates();
+                if (dt > dt_turb_driving) {dt = dt_turb_driving;}
+#endif
+            
+
 #ifdef SUPER_TIMESTEP_DIFFUSION
             /* now use the timestep information above to limit the super-stepping timestep */
             {
@@ -892,7 +890,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef BH_SEED_GROWTH_TESTS
         double dt_evol = 1.e4 / UNIT_TIME_IN_YR; // totally arbitrary hard-coding here //
 #ifdef TURB_DRIVING
-        if(dt_evol > 1.e-3*All.StDecay) {dt_evol=1.e-3*All.StDecay;}
+        if(dt_evol > 1.e-3*st_return_mode_correlation_time()) {dt_evol=1.e-3*st_return_mode_correlation_time();}
 #endif
         if(dt_accr > dt_evol) {dt_accr=dt_evol;}
 #endif
@@ -956,6 +954,8 @@ integertime get_timestep(int p,		/*!< particle index */
     {double dist_rad2 = pow((P[p].Pos[0]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[1]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[2]-0.5*All.BoxSize),2.0); if(sqrt(dist_rad2)<10.) {dt=5.e-7;}}
 #endif
 #endif // BLACK_HOLES
+    
+
 
 
     /* convert the physical timestep to dloga if needed. Note: If comoving integration has not been selected, All.cf_hubble_a=1. */

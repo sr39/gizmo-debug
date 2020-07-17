@@ -243,16 +243,15 @@ GrackleDataFile              CloudyData_UVB=HM2012.h5    % filename for UV backg
 %-------------------------------------------------------------------------
 
 %-------------- Turbulent stirring parameters (TURB_DRIVING on)
-ST_decay       1.	    % decay time for driving-mode phase correlations
-ST_energy      0.0002   % energy of driving-scale modes: sets norm of turb
-ST_DtFreq      0.005    % time interval for driving updates (set by hand)
-ST_Kmin        6.27     % minimum driving-k: should be >=2.*M_PI/All.BoxSize
-ST_Kmax        12.57    % maximum driving-k: set to couple times Kmin or more if cascade desired
-ST_SolWeight   1.0      % fractional wt of solenoidal modes (wt*curl + (1-wt)*div)
-ST_AmplFac     1.0      % multiplies turb amplitudes
-ST_SpectForm   2        % driving pwr-spec: 0=Ek~const; 1=sharp-peak at kc; 2=Ek~k^(-5/3); 3=Ek~k^-2
-ST_Seed        42       % random number seed for modes (so you can reproduce it)
-TimeBetTurbSpectrum 0.5 % time (code units) between evaluations of turb pwrspec
+TurbDrive_ApproxRMSVturb            1.0     % driving strength: set to approximate rms turbulent velocity desired (code units)
+TurbDrive_MinWavelength             0.5     % minimum driving wavelength (code units): must be < MaxWavelength
+TurbDrive_MaxWavelength             1.0     % maximum driving wavelength (code units): must be <= BoxSize
+TurbDrive_SolenoidalFraction        1       % fraction in solenoidal modes (projection ~wt*curl + (1-wt)*div; default = 0.5)
+TurbDrive_CoherenceTime             1       % coherence/correlation time of driving (code units; default = MaxWavelength / RMSVturb)
+TurbDrive_DrivingSpectrum           2       % driving spectrum: 0=equal power all modes, 1=strongly-peaked between Max/Min, 2=Kolmogorov, 3=Burgers (default = 2)
+TurbDrive_RandomNumberSeed          42      % random integer seed for stochastic driver, for reproducibility (default = 42)
+TurbDrive_TimeBetweenTurbUpdates    0.01    % time interval (code units) for driving updates (default = 0.01*coherence time)
+TurbDrive_TimeBetTurbSpectrum       0.5     % time interval (code units) for outputting power spectra, if TURB_DRIVING_SPECTRUMGRID is on
 
 
 %-------------------------------------------------------------------------------------------------
