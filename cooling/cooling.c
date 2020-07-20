@@ -1614,7 +1614,7 @@ void selfshield_local_incident_uv_flux(void)
                 tau_nuv *= (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // if using older FIRE defaults, this was manually added instead of rolled into rt_kappa -- annoying but here for completeness //
 #endif
                 double tau_euv = 3.7e6 * surfdensity * UNIT_SURFDEN_IN_CGS; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas //
-                SphP[i].Rad_Flux_UV *= exp(-tau_nuv); // attenuate
+                SphP[i].Rad_Flux_UV *= 0.01 + 0.99/(1.0 + 0.8*tau_nuv + 0.85*tau_nuv*tau_nuv); // attenuate (for clumpy medium with 1% scattering)
                 SphP[i].Rad_Flux_EUV *= 0.01 + 0.99/(1.0 + 0.8*tau_euv + 0.85*tau_euv*tau_euv); // attenuate (for clumpy medium with 1% scattering) //
             } else {SphP[i].Rad_Flux_UV = SphP[i].Rad_Flux_EUV = 0;}
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS) // ??
