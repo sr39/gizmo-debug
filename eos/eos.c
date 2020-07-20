@@ -237,7 +237,7 @@ double INLINE_FUNC Get_Gas_thermal_soundspeed_i(int i)
 double Get_Gas_Alfven_speed_i(int i)
 {
 #if defined(MAGNETIC)
-    int k; double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Gas_BField(i,k)*All.cf_a2inv*Get_Gas_BField(i,k)*All.cf_a2inv;}
+    int k; double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Gas_BField(i,k)*All.cf_a2inv * Get_Gas_BField(i,k)*All.cf_a2inv;}
     if(bmag > 0) {return sqrt(bmag / (MIN_REAL_NUMBER + SphP[i].Density*All.cf_a3inv));}
 #endif
     return 0;
@@ -300,7 +300,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     return DMIN(1,DMAX(0, SphP[i].grH2I + SphP[i].grH2II)); // include both states of H2 tracked
 #endif
     
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) /* ?? if not tracking chemistry explicitly, return a simple estimate of H2 fraction following the KMT [Apj 2009 693, 216] model */
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) /* if not tracking chemistry explicitly, return a simple estimate of H2 fraction following the KMT [Apj 2009 693, 216] model */
     if(temperature > 3.e5) {return 0;} // approximations below not designed for high temperatures, should simply give null
     /* get neutral fraction [given by call to this program] */
     double f_neutral=DMAX(neutral_fraction,0.);

@@ -50,6 +50,9 @@ struct INPUT_STRUCT_NAME
     MyFloat B[3];
     MyFloat kernel_norm_topass_in_swallowloop;
 #endif
+#ifdef SINGLE_STAR_FB_LOCAL_RP
+    MyFloat Luminosity;
+#endif    
 }
 *DATAIN_NAME, *DATAGET_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
@@ -81,6 +84,9 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
     for(k=0;k<3;k++) {in->B[k] = BPP(i).B[k];}
     in->kernel_norm_topass_in_swallowloop = BlackholeTempInfo[j_tempinfo].kernel_norm_topass_in_swallowloop;
 #endif
+#ifdef SINGLE_STAR_FB_LOCAL_RP
+    in->Luminosity = bh_lum_bol(in->Mdot, in->BH_Mass, i);
+#endif    
 }
 
 
@@ -155,7 +161,12 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
     double h_i=local.Hsml, hinv=1/h_i, hinv3, f_accreted; hinv3=hinv*hinv*hinv; f_accreted=0;
 #if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
     double kernel_zero,dwk; kernel_main(0.0,1.0,1.0,&kernel_zero,&dwk,-1); dwk=0;
+    double lum;
+#ifdef SINGLE_STAR_FB_LOCAL_RP
+    double mom = local.Luminosity * local.Dt / C_LIGHT_CODE, mom_wt = 0;
+#else    
     double mom = bh_lum_bol(local.Mdot, local.BH_Mass, -1) * local.Dt / C_LIGHT_CODE, mom_wt = 0;
+#endif    
 #endif
 #if defined(BH_CALC_LOCAL_ANGLEWEIGHTS) || defined(BH_WIND_KICK)
     double J_dir[3]; for(k=0;k<3;k++) {J_dir[k] = local.Jgas_in_Kernel[k];}
@@ -364,7 +375,11 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                 
 #if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
                 /* now, do any other feedback "kick" operations (which used the previous loops to calculate weights) */
+#ifdef SINGLE_STAR_FB_LOCAL_RP
+                if(mom>0 && local.Dt>0 && OriginallyMarkedSwallowID==0 && P[j].SwallowID==0 && P[j].Mass>0 && P[j].Type==0) // particles NOT being swallowed!
+#else                    
                 if(mom>0 && local.Mdot>0 && local.Dt>0 && OriginallyMarkedSwallowID==0 && P[j].SwallowID==0 && P[j].Mass>0 && P[j].Type==0) // particles NOT being swallowed!
+#endif                    
                 {
                     double r=0, dir[3]; for(k=0;k<3;k++) {dir[k]=dpos[k]; r+=dir[k]*dir[k];} // should be away from BH
                     if(r>0)
@@ -377,6 +392,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #ifdef BH_PHOTONMOMENTUM /* inject radiation pressure: add initial L/c optical/UV coupling to the gas at the dust sublimation radius */
                         double v_kick = All.BH_Rad_MomentumFactor * mom_wt * mom / P[j].Mass;
                         for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k];}
+#ifdef SINGLE_STAR_FB_LOCAL_RP
+                        SphP[j].wakeup = 1; NeedToWakeupParticles_local = 1;
+#endif                        
 #endif
 #if defined(BH_COSMIC_RAYS) && defined(BH_WIND_CONTINUOUS) /* inject cosmic rays alongside continuous wind injection */
                         double dEcr = All.BH_CosmicRay_Injection_Efficiency * mom_wt * C_LIGHT_CODE*C_LIGHT_CODE * local.Mdot*local.Dt;
@@ -494,8 +512,11 @@ void spawn_bh_wind_feedback(void)
                 {
                     if(P[j].Type==0)
                     {
-                        double dx2=(P[j].Pos[0]-P[i].Pos[0])*(P[j].Pos[0]-P[i].Pos[0]) + (P[j].Pos[1]-P[i].Pos[1])*(P[j].Pos[1]-P[i].Pos[1]) + (P[j].Pos[2]-P[i].Pos[2])*(P[j].Pos[2]-P[i].Pos[2]);
-                        if(dx2 < r2) {r2=dx2; dummy_gas_tag=j;}
+                        if((P[j].Mass>0) && (SphP[j].Density>0))
+                        {
+                            double dx2=(P[j].Pos[0]-P[i].Pos[0])*(P[j].Pos[0]-P[i].Pos[0]) + (P[j].Pos[1]-P[i].Pos[1])*(P[j].Pos[1]-P[i].Pos[1]) + (P[j].Pos[2]-P[i].Pos[2])*(P[j].Pos[2]-P[i].Pos[2]);
+                            if(dx2 < r2) {r2=dx2; dummy_gas_tag=j;}
+                        }
                     }
                 }
                 if(dummy_gas_tag >= 0)
@@ -599,12 +620,12 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
 int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int num_already_spawned )
 {
     double total_mass_in_winds = BPP(i).unspawned_wind_mass;
-    int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass ); /* if we set BH_WIND_SPAWN we presumably wanted to do this in an exactly-conservative manner, which means we want to have an even number here. */
+    int n_particles_split   = (int) floor( total_mass_in_winds / All.BAL_wind_particle_mass ); /* if we set BH_WIND_SPAWN we presumably wanted to do this in an exactly-conservative manner, which means we want to have an even number here. */
     int k=0; long j;
 
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     if (P[i].ProtoStellarStage == 6){
-        n_particles_split = floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
+        n_particles_split = (int) floor( total_mass_in_winds / (2.*All.MinMassForParticleMerger) );
         if (P[i].BH_Mass == 0){ //Last batch to be spawned
             n_particles_split = SINGLE_STAR_FB_SNE_N_EJECTA; //we are going to spawn a bunch of low mass particles to take the last bit of mass away
             printf("Spawning last SN ejecta of star %llu with %g mass and %d particles \n",(unsigned long long) P[i].ID,total_mass_in_winds,n_particles_split);
@@ -784,13 +805,39 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
         /* note, if you want to use this routine to inject magnetic flux or cosmic rays, do this below */
 #ifdef MAGNETIC
-        SphP[j].divB = 0; for(k=0;k<3;k++) {SphP[j].B[k]*=1.e-10; SphP[j].BPred[k]*=1.e-10; SphP[j].DtB[k]=0;} /* add magnetic flux here if desired */
+        SphP[j].divB = 0; double Bmag=0, Bmag_0=0;
+        for(k=0;k<3;k++) {double B=SphP[j].B[k]*SphP[j].Density/P[j].Mass*All.cf_a2inv; Bmag+=B*B; Bmag_0+=SphP[j].B[k]*SphP[j].B[k];} // get actual Bfield
+        double Bmag_low_rel_to_progenitor = 1.e-10 * sqrt(Bmag); // set to some extremely low value relative to cloned element
+        double u_internal_new_cell = All.BAL_internal_temperature / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ); // internal energy of new wind cell
+        double Bmag_low_rel_to_pressure = 1.e-3 * sqrt(2.*SphP[j].Density*All.cf_a3inv * u_internal_new_cell); // set to beta = 1e6
+        Bmag = DMAX(Bmag_low_rel_to_progenitor , Bmag_low_rel_to_pressure); // pick the larger of these (still small) B-field values
+#ifdef MHD_B_SET_IN_PARAMS
+        double Bmag_IC = sqrt(All.BiniX*All.BiniX + All.BiniY*All.BiniY + All.BiniZ*All.BiniZ) * All.UnitMagneticField_in_gauss / UNIT_B_IN_GAUSS; // IC B-field sets floor as well
+        Bmag = DMAX(Bmag , 0.1 * Bmag_IC);
+#endif
+        Bmag = DMAX(Bmag, MIN_REAL_NUMBER); // floor to prevent underflow errors
+        /* add magnetic flux here to 'Bmag' if desired */
+        Bmag *= P[j].Mass / (All.cf_a2inv * SphP[j].Density); // convert back to code units
+        for(k=0;k<3;k++) {if(Bmag_0>0) {SphP[j].B[k]*=Bmag/sqrt(Bmag_0);} else {SphP[j].B[k]=Bmag;}} // assign if valid values
+        for(k=0;k<3;k++) {SphP[j].BPred[k]=SphP[j].B[k]; SphP[j].DtB[k]=0;} // set predicted = actual, derivative to null
 #ifdef DIVBCLEANING_DEDNER
         SphP[j].DtPhi = SphP[j].PhiPred = SphP[j].Phi = 0;
 #endif
 #endif
 #ifdef COSMIC_RAYS
-        int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {SphP[j].CosmicRayEnergyPred[k_CRegy] = SphP[j].CosmicRayEnergy[k_CRegy] = SphP[j].DtCosmicRayEnergy[k_CRegy] = 0;} /* add CR energy here if desired */
+        int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) /* initialize CR energy and other related terms to nil */
+        {
+            SphP[j].CosmicRayEnergyPred[k_CRegy]=SphP[j].CosmicRayEnergy[k_CRegy]=SphP[j].DtCosmicRayEnergy[k_CRegy]=0;
+#ifdef COSMIC_RAYS_EVOLVE_SPECTRUM
+            SphP[j].CosmicRay_Number_in_Bin[k_CRegy]=SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy]=0;
+#endif
+#ifdef COSMIC_RAYS_M1
+            for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k_CRegy][k]=SphP[j].CosmicRayFluxPred[k_CRegy][k]=0;}
+#endif
+#ifdef COSMIC_RAYS_ALFVEN
+            for(k=0;k<3;k++) {SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k]=SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k]=SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k]=0;}
+#endif
+        } /* complete CR initialization to null */
 #endif
 
         /* now set the real hydro variables. */

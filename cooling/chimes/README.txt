@@ -97,9 +97,6 @@ There are some Config flags that CHIMES does not currently work with, or its beh
     SphP[i].Rad_Flux_UV and SphP[i].Rad_Flux_EUV?
   - BLACK_HOLES - currently, CHIMES is not compatible with the inclusion of black holes, because when a gas particle 
     is accreted, we will need to delete the corresponding gasVariables structure (this is not currently done). 
-  - LONGIDS - the gasVars structure in CHIMES stores the particle ID as an unsigned int, which it compares to 
-    P[i].ID. However, if LONGIDS is set, then the ID in P[i].ID will be unsigned long long, not unsigned int, 
-    so CHIMES is not currently compatible with LONGIDS. 
   - RT_CHEM_PHOTOION - this is currently incompatible with CHIMES, as it uses its own routines to compute chemistry 
     abundances for the radiative transport. 
   - OUTPUTCOOLRATE - not currently compatible with CHIMES. 

@@ -268,15 +268,6 @@ integertime get_timestep(int p,		/*!< particle index */
         }
 
         ac = sqrt(ax * ax + ay * ay + az * az);	/* this is now the physical acceleration */
-#ifdef TURB_DRIVING
-        if(P[p].Type==0)
-        { /* because the turbulent acceleration is a random variable, we dont want it to catch us by surprise if it moves up, so
-            we include a safety factor here which (very crudely) approximates the maximum amplitude it could reach */
-            double a_max_safety = 1.4 * sqrt(pow(All.StKmax,NUMDIMS) * All.StEnergy / All.StDecay);
-            ac = sqrt(ac*ac + a_max_safety*a_max_safety);
-        }
-#endif
-
         *aphys = ac;
     }
     else
@@ -628,7 +619,7 @@ integertime get_timestep(int p,		/*!< particle index */
                 }
                 /* even with a fully-implicit solver, we require a CFL-like criterion on timesteps (much larger steps allowed for stability, but not accuracy) */
                 dt_courant = All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED; /* courant-type criterion, using the reduced speed of light */
-#ifdef RT_M1
+#if defined(RT_M1) || defined(RT_LOCALRAYGRID)
 #ifndef GALSF
                 dt_rad = dt_courant;
 #endif
@@ -636,7 +627,7 @@ integertime get_timestep(int p,		/*!< particle index */
                 for(kf=0;kf<N_RT_FREQ_BINS;kf++)
                 {
                     double dt_rt_diffusion = dt_prefac_diffusion * L_RT_diffusion*L_RT_diffusion / (MIN_REAL_NUMBER + rt_diffusion_coefficient(p,kf));
-#ifdef GALSF
+#if defined(GALSF) && !defined(SINGLE_STAR_SINK_DYNAMICS)
                     /* ignore particles where the radiation energy density is basically non-existant */
 		    if((SphP[p].Rad_E_gamma[kf] <= MIN_REAL_NUMBER) ||
 		       (SphP[p].Rad_E_gamma_Pred[kf] <= MIN_REAL_NUMBER) ||
@@ -761,6 +752,13 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 
+#if defined(TURB_DRIVING)
+                /* gas cannot step larger than major updates to turbulent driving routine */
+                double dt_turb_driving = 1.9 * st_return_dt_between_updates();
+                if (dt > dt_turb_driving) {dt = dt_turb_driving;}
+#endif
+            
+
 #ifdef SUPER_TIMESTEP_DIFFUSION
             /* now use the timestep information above to limit the super-stepping timestep */
             {
@@ -844,13 +842,7 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         double star_age = evaluate_stellar_age_Gyr(P[p].StellarAge);
         double dt_stellar_evol;
-        if(star_age<0.1)
-        {
-            dt_stellar_evol = DMAX(2.0e-4, star_age/250.); // restrict to small steps for young stars //
-        } else {
-            dt_stellar_evol = star_age/10.;
-        }
-        // PFH: temporarily modifying the terms above while Marcel studies them: turns out not to be necessary to use as strict a mass-dependent timestep, so faster to comment out //
+        dt_stellar_evol = DMAX(2.0e-4, star_age/250.); // restrict to small steps for young stars //
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         // double mcorr = 1.e-4 * (P[p].Mass*UNIT_MASS_IN_SOLAR); if(mcorr > 1) {dt_stellar_evol /= mcorr;} // don't use - ok to have multiple at low-res, but don't want too-big a jump or miss key stellar evolution
 #else
@@ -898,7 +890,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef BH_SEED_GROWTH_TESTS
         double dt_evol = 1.e4 / UNIT_TIME_IN_YR; // totally arbitrary hard-coding here //
 #ifdef TURB_DRIVING
-        if(dt_evol > 1.e-3*All.StDecay) {dt_evol=1.e-3*All.StDecay;}
+        if(dt_evol > 1.e-3*st_return_mode_correlation_time()) {dt_evol=1.e-3*st_return_mode_correlation_time();}
 #endif
         if(dt_accr > dt_evol) {dt_accr=dt_evol;}
 #endif
@@ -923,10 +915,16 @@ integertime get_timestep(int p,		/*!< particle index */
 
             double L_particle = Get_Particle_Size(p);
             double dt_cour_sink = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / P[p].BH_SurroundingGasVel;
-#ifdef RT_M1
+#if defined(RT_M1) || defined(RT_LOCALRAYGRID)
 	    dt_cour_sink = DMIN(All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED, dt_cour_sink);
 #endif
             if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
+
+#if defined(SINGLE_STAR_FB_LOCAL_RP) || defined(SINGLE_STAR_FB_RAD)
+            double rad_acc = bh_lum_bol(BPP(p).BH_Mdot, BPP(p).BH_Mass, p) / C_LIGHT_CODE / (2*All.MinMassForParticleMerger); // effective acceleration due to momentum injection at the scale of the cell
+            double dt_radacc = sqrt(0.1 * eps / rad_acc);
+            if(dt > dt_radacc && dt_radacc > 0) dt = 1.01 * dt_radacc;
+#endif                    
         }
         if(P[p].StellarAge == All.Time)
         {   // want a brand new sink to be on the lowest occupied timebin
@@ -956,6 +954,8 @@ integertime get_timestep(int p,		/*!< particle index */
     {double dist_rad2 = pow((P[p].Pos[0]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[1]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[2]-0.5*All.BoxSize),2.0); if(sqrt(dist_rad2)<10.) {dt=5.e-7;}}
 #endif
 #endif // BLACK_HOLES
+    
+
 
 
     /* convert the physical timestep to dloga if needed. Note: If comoving integration has not been selected, All.cf_hubble_a=1. */
@@ -976,27 +976,16 @@ integertime get_timestep(int p,		/*!< particle index */
         if(P[p].Type == 0)
         {
             double ahydro = sqrt(SphP[p].HydroAccel[0]*SphP[p].HydroAccel[0] + SphP[p].HydroAccel[1]*SphP[p].HydroAccel[1] + SphP[p].HydroAccel[2]*SphP[p].HydroAccel[2]);
-#ifndef LONGIDS
-            PRINT_WARNING("Part-ID=%d  dt=%g dtc=%g ac=%g agrav=%g ahydro=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g m=%g type=%d\n",
-                          (int) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type], P[p].Mass,P[p].Type);
-#else
-            PRINT_WARNING("Part-ID=%llu  dt=%g dtc=%g ac=%g agrav=%g ahydro=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g m=%g type=%d\n",
-                          (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type], P[p].Mass,P[p].Type);
-#endif // ndef LONGIDS
-#ifdef SINGLE_STAR_STARFORGE_DEFAULTS //extra info for single star runs
-            PRINT_WARNING("Part-ID=%llu min_dist_to_bh=%g cs_est=%g u_int=%g Pressure=%g",  (MyIDType) P[p].ID, P[p].min_dist_to_bh, sqrt(convert_internalenergy_soundspeed2(p, SphP[p].InternalEnergy)), SphP[p].InternalEnergy, SphP[p].Pressure);
-#endif
+            PRINT_WARNING("\n Cell-ID=%llu  dt_desired=%g dt_Courant=%g dt_Accel=%g\n accel_tot=%g accel_grav=%g accel_hydro=%g Pos_xyz=(%g|%g|%g) Vel_xyz=(%g|%g|%g)\n Hsml=%g Density=%g InternalEnergy=%g dtInternalEnergy=%g divV=%g Pressure=%g Cs_Eff=%g vAlfven=%g f_ion=%g\n csnd_for_signalspeed=%g eps_forcesoftening=%g mass=%g type=%d condition_number=%g Nngb=%g\n NVT=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g\n",
+                          (unsigned long long) P[p].ID, dt, dt_courant * All.cf_hubble_a, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a,
+                          ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].Vel[0], P[p].Vel[1], P[p].Vel[2],
+                          PPP[p].Hsml, SphP[p].Density, SphP[p].InternalEnergy, SphP[p].DtInternalEnergy, P[p].Particle_DivVel, SphP[p].Pressure, Get_Gas_effective_soundspeed_i(p), Get_Gas_Alfven_speed_i(p), Get_Gas_Ionized_Fraction(p),
+                          csnd, All.SofteningTable[P[p].Type], P[p].Mass, P[p].Type, SphP[p].ConditionNumber, PPP[p].NumNgb,
+                          SphP[p].NV_T[0][0],SphP[p].NV_T[0][1],SphP[p].NV_T[0][2],SphP[p].NV_T[1][0],SphP[p].NV_T[1][1],SphP[p].NV_T[1][2],SphP[p].NV_T[2][0],SphP[p].NV_T[2][1],SphP[p].NV_T[2][2]);
         }
         else // if(P[p].Type == 0)
         {
-#ifndef LONGIDS
-            PRINT_WARNING("Part-ID=%d  dt=%g ac=%g agrav=%g xyz=(%g|%g|%g) type=%d\n", (int) P[p].ID, dt, ac, agrav, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],P[p].Type);
-#else
-            PRINT_WARNING("Part-ID=%llu  dt=%g ac=%g agrav=%g xyz=(%g|%g|%g) type=%d\n", (MyIDType) P[p].ID, dt, ac, agrav, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],P[p].Type);
-#endif // ndef LONGIDS
-#ifdef SINGLE_STAR_STARFORGE_DEFAULTS //extra info for single star runs
-            PRINT_WARNING("Part-ID=%llu min_dist_to_bh=%g DensAroundStar=%g BH_Mdot=%g min_bh_approach_time=%g min_bh_freefall_time=%g BH_SurroundingGasVel=%g BH_dr_to_NearestGasNeighbor=%g\n", (MyIDType) P[p].ID, P[p].min_dist_to_bh, P[p].DensAroundStar, P[p].BH_Mdot, P[p].min_bh_approach_time, P[p].min_bh_freefall_time, P[p].BH_SurroundingGasVel, P[p].BH_dr_to_NearestGasNeighbor);
-#endif
+            PRINT_WARNING("Part-ID=%llu  dt=%g ac=%g agrav=%g xyz=(%g|%g|%g) type=%d\n", (unsigned long long) P[p].ID, dt, ac, agrav, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],P[p].Type);
         }
         fflush(stdout); fprintf(stderr, "\n @ fflush \n");
 #ifdef STOP_WHEN_BELOW_MINTIMESTEP
@@ -1012,8 +1001,7 @@ integertime get_timestep(int p,		/*!< particle index */
 
     if(!(ti_step > 0 && ti_step < TIMEBASE))
     {
-        printf("\nError: A timestep of size zero was assigned on the integer timeline, no here!!!\n"
-               "We better stop.\n"
+        printf("\nError: A timestep of size zero was assigned on the integer timeline. Code must stop.\n"
                "Task=%d Part-ID=%llu dt=%g dtc=%g dtv=%g dtdis=%g tibase=%g ti_step=%lld ac=%g xyz=(%g|%g|%g) tree=(%g|%g|%g)\n\n",
                ThisTask, (unsigned long long) P[p].ID, dt, dt_courant, dt_divv, dt_displacement,
                All.Timebase_interval, (long long) ti_step, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].GravAccel[0], P[p].GravAccel[1], P[p].GravAccel[2]);

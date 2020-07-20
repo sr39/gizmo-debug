@@ -280,7 +280,7 @@ double Get_CosmicRayGradientLength(int i, int k_CRegy);
 double Get_CosmicRayStreamingVelocity(int i);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
 double CR_cooling_and_gas_heating(int target, double n_elec, double nH_cgs, double dtime_cgs, int mode);
-double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, double shock_vel);
+double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, double shock_vel, int return_index_in_bin);
 void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir);
 double Get_AlfvenMachNumber_Local(int i, double vA_idealMHD_codeunits, int use_shear_corrected_vturb_flag);
 double diffusion_coefficient_constant(int target, int k_CRegy);
@@ -298,6 +298,25 @@ void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime
 double CR_gas_heating(int target, double n_elec, double nHcgs);
 double return_CRbin_CRmass_in_mp(int target, int k_CRegy);
 double return_CRbin_CR_rigidity_in_GV(int target, int k_CRegy);
+double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy);
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+void CR_spectrum_define_bins(void);
+void CR_initialize_multibin_quantities(void);
+void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, double dtime_cgs, int mode_driftkick);
+double CR_return_slope_from_number_and_energy_in_bin(double energy_in_code_units, double number_effective_in_code_units, double bin_centered_energy_in_GeV, int k_bin);
+double CR_return_new_bin_edge_from_rate(double rate_dt_dimless, double x_m_bin, double x_p_bin, int loss_mode, int NR_key);
+double CR_coulomb_energy_integrand(double x, double tau, double slope);
+double CR_compton_energy_integrand(double x, double tau, double slope);
+int CR_check_if_bin_is_nonrelativistic(int k_bin);
+double CR_return_true_number_in_bin(int target, int k_bin);
+double CR_return_effective_number_in_bin_in_codeunits(int target, int k_bin);
+double CR_return_spectral_slope_target(int target, int k_bin);
+double CR_get_number_in_bin_from_slope(int target, int k_bin, double energy, double slope);
+double CR_return_mean_energy_in_bin_in_GeV(int target, int k_bin);
+double CR_return_mean_rigidity_in_bin_in_GV(int target, int k_bin);
+int compare_CR_rigidity_for_sort(const void *a, const void *b);
+double return_CRbin_kinetic_energy_in_GeV_binvalsNRR(int k_CRegy);
+#endif
 #endif
 #ifdef EOS_ELASTIC
 void elastic_body_update_driftkick(int i, double dt_entr, int mode);
@@ -477,6 +496,13 @@ void star_formation_parent_routine(void);
 #if defined(TURB_DRIVING)
 void do_turb_driving_step_first_half(void);
 void do_turb_driving_step_second_half(void);
+double st_return_dt_between_updates(void);
+double st_return_mode_correlation_time(void);
+double st_return_rms_acceleration(void);
+double st_turbdrive_get_gaussian_random_variable(void);
+void st_turbdrive_init_ouseq(void);
+void st_turbdrive_calc_phases(void);
+double st_return_driving_scale(void);
 #endif
 double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h, int target);
 
@@ -767,6 +793,7 @@ double chimes_ion_luminosity(double stellar_age, double stellar_mass);
 int rt_get_source_luminosity_chimes(int i, int mode, double *lum, double *chimes_lum_G0, double *chimes_lum_ion);
 #endif
 int rt_get_source_luminosity(int i, int mode, double *lum);
+int rt_get_donation_target_bin(int bin);
 int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum);
 int rt_get_lum_band_agn(int i, int mode, double *lum);
 int rt_get_lum_band_singlestar(int i, int mode, double *lum);

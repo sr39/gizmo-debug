@@ -53,15 +53,15 @@ double rt_DoHeating(int i, double dt)
     {
         n_photons_vol = rt_return_photon_number_density(i,j);
                 
-        if(nu[j] >= 13.6)
-            rate += nHI * c_light * rt_sigma_HI[j] * G_HI[j] * n_photons_vol;
+        if(rt_ion_nu_min[j] >= 13.6)
+            rate += nHI * c_light * rt_ion_sigma_HI[j] * rt_ion_G_HI[j] * n_photons_vol;
         
 #ifdef RT_CHEM_PHOTOION_HE
-        if(nu[j] >= 24.6)
-            rate += nHeI * c_light * rt_sigma_HeI[j] * G_HeI[j] * n_photons_vol;
+        if(rt_ion_nu_min[j] >= 24.6)
+            rate += nHeI * c_light * rt_ion_sigma_HeI[j] * rt_ion_G_HeI[j] * n_photons_vol;
         
-        if(nu[j] >= 54.4)
-            rate += nHeII * c_light * rt_sigma_HeII[j] * G_HeII[j] * n_photons_vol;
+        if(rt_ion_nu_min[j] >= 54.4)
+            rate += nHeII * c_light * rt_ion_sigma_HeII[j] * rt_ion_G_HeII[j] * n_photons_vol;
 #endif
     }
     return rate / (SphP[i].Density * All.cf_a3inv);

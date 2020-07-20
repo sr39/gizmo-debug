@@ -29,8 +29,7 @@ void init(void)
 
 #ifdef MAGNETIC
     double gauss2gizmo = All.UnitMagneticField_in_gauss / UNIT_B_IN_GAUSS;
-    /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here;
-        [much simpler, but be sure of your conversions!] */
+    /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here; [much simpler, but be sure of your conversions!] */
 #endif
 
 #ifdef BLACK_HOLES
@@ -42,31 +41,25 @@ void init(void)
 
     if(RestartFlag == 3 && RestartSnapNum < 0)
     {
-        if(ThisTask == 0)
-            printf("Need to give the snapshot number if FOF/SUBFIND is selected for output\n");
+        if(ThisTask == 0) {printf("Need to give the snapshot number if FOF/SUBFIND is selected for output\n");}
         endrun(0);
     }
 
     if(RestartFlag == 4 && RestartSnapNum < 0)
     {
-        if(ThisTask == 0)
-            printf("Need to give the snapshot number if snapshot should be converted\n");
+        if(ThisTask == 0) {printf("Need to give the snapshot number if snapshot should be converted\n");}
         endrun(0);
     }
 
     if(RestartFlag == 5 && RestartSnapNum < 0)
     {
-        if(ThisTask == 0)
-            printf
-            ("Need to give the snapshot number if power spectrum and two-point correlation function should be calculated\n");
+        if(ThisTask == 0) {printf("Need to give the snapshot number if power spectrum and two-point correlation function should be calculated\n");}
         endrun(0);
     }
 
     if(RestartFlag == 6 && RestartSnapNum < 0)
     {
-        if(ThisTask == 0)
-            printf
-            ("Need to give the snapshot number if velocity power spectrum for the gas cells should be calculated\n");
+        if(ThisTask == 0) {printf("Need to give the snapshot number if velocity power spectrum for the gas cells should be calculated\n");}
         endrun(0);
     }
 
@@ -80,31 +73,21 @@ void init(void)
             if(RestartFlag >= 2 && RestartSnapNum >= 0)
             {
                 char fname[1000];
-
-                if(All.NumFilesPerSnapshot > 1)
-                    sprintf(fname, "%s/snapdir_%03d/%s_%03d", All.OutputDir, RestartSnapNum, All.SnapshotFileBase,
-                            RestartSnapNum);
-                else
-                    sprintf(fname, "%s%s_%03d", All.OutputDir, All.SnapshotFileBase, RestartSnapNum);
-
+                if(All.NumFilesPerSnapshot > 1) {sprintf(fname, "%s/snapdir_%03d/%s_%03d", All.OutputDir, RestartSnapNum, All.SnapshotFileBase, RestartSnapNum);}
+                    else {sprintf(fname, "%s%s_%03d", All.OutputDir, All.SnapshotFileBase, RestartSnapNum);}
                 read_ic(fname);
 
             }
-            else
-            {
-                read_ic(All.InitCondFile);
-            }
+            else {read_ic(All.InitCondFile);}
             break;
 
         default:
-            if(ThisTask == 0)
-                printf("ICFormat=%d not supported.\n", All.ICFormat);
+            if(ThisTask == 0) {printf("ICFormat=%d not supported.\n", All.ICFormat);}
             endrun(0);
     }
 
 #ifdef CHIMES_INITIALISE_IN_EQM
-    for (i = 0; i < N_gas; i++)
-      allocate_gas_abundances_memory(&(ChimesGasVars[i]), &ChimesGlobalVars);
+    for (i = 0; i < N_gas; i++) {allocate_gas_abundances_memory(&(ChimesGasVars[i]), &ChimesGlobalVars);}
 #endif
 
     All.Time = All.TimeBegin;
@@ -139,15 +122,12 @@ void init(void)
             if(!underscore)
             {
                 char buf[1000];
-                sprintf(buf, "Your input file '%s' lacks an underscore. Cannot infer next snapshot number.\n",
-                        All.InitCondFile);
+                sprintf(buf, "Your input file '%s' lacks an underscore. Cannot infer next snapshot number.\n", All.InitCondFile);
                 terminate(buf);
             }
-            else
-                All.SnapshotFileCount = atoi(underscore + 1) + 1;
+            else {All.SnapshotFileCount = atoi(underscore + 1) + 1;}
         }
-        else
-            All.SnapshotFileCount = RestartSnapNum + 1;
+        else {All.SnapshotFileCount = RestartSnapNum + 1;}
     }
 
 #ifdef OUTPUT_LINEOFSIGHT
@@ -172,32 +152,26 @@ void init(void)
 
 
 #ifdef BOX_PERIODIC
-    if(All.ComovingIntegrationOn) check_omega();
+    if(All.ComovingIntegrationOn) {check_omega();}
 #endif
-
     All.TimeLastStatistics = All.TimeBegin - All.TimeBetStatistics;
 #if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
     All.TimeNextOnTheFlyFoF = All.TimeBegin;
 #endif
 
-    for(i = 0; i < GRAVCOSTLEVELS; i++)
-        All.LevelToTimeBin[i] = 0;
+    for(i = 0; i < GRAVCOSTLEVELS; i++) {All.LevelToTimeBin[i] = 0;}
 
-    for(i = 0; i < NumPart; i++)
-        for(j = 0; j < GRAVCOSTLEVELS; j++)
-            P[i].GravCost[j] = 0;
+    for(i = 0; i < NumPart; i++) {for(j = 0; j < GRAVCOSTLEVELS; j++) {P[i].GravCost[j] = 0;}}
 
     if(All.ComovingIntegrationOn)	/*  change to new velocity variable */
-    {
-        for(i = 0; i < NumPart; i++)
-            for(j = 0; j < 3; j++)
-	    {
-                P[i].Vel[j] *= sqrt(All.Time) * All.Time;
-	    }
-    }
+        {for(i=0;i<NumPart;i++) {for(j=0;j<3;j++) {P[i].Vel[j] *= sqrt(All.Time)*All.Time;}}}
 
 #ifdef DM_SIDM
     init_self_interactions();
+#endif
+
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+    CR_initialize_multibin_quantities(); // initialize the global variables and look-up tables //
 #endif
 
     for(i = 0; i < NumPart; i++)	/*  start-up initialization */
@@ -341,7 +315,7 @@ void init(void)
                 rho_gas_expected = 1; /* guess for the gas density here [set custom for e.g. stratified problems */
                 tS0 = 0.626657 * P[i].Grain_Size * sqrt(GAMMA_DEFAULT) / rho_gas_expected; /* stopping time [Epstein] for driftvel->0 */
                 A[GRAV_DIRECTION_RDI]=cos(acc_ang)*All.Vertical_Grain_Accel - All.Vertical_Gravity_Strength; A[0]=sin(acc_ang)*All.Vertical_Grain_Accel; /* define angles/direction of external acceleration */
-                amag=sqrt(A[0]*A[0]+A[1]*A[1]+A[2]*A[2]); A[0]/=amag; A[1]/=amag; A[2]/=amag;
+                amag=sqrt(A[0]*A[0]+A[1]*A[1]+A[2]*A[2]+MIN_REAL_NUMBER); A[0]/=amag; A[1]/=amag; A[2]/=amag;
                 a0 = tS0 * amag / (1.+All.Dust_to_Gas_Mass_Ratio); /* acc * tS0 / (1+mu) */
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
                 a0 *= All.Grain_Size_Max / P[i].Grain_Size;
@@ -360,7 +334,16 @@ void init(void)
 #endif
                 w0 /= sqrt((1.+tau2)*(1.+tau2*ct2)); // ensures normalization to unity with convention below //
                 A_cross_B[0]=A[1]*B[2]-A[2]*B[1]; A_cross_B[1]=A[2]*B[0]-A[0]*B[2]; A_cross_B[2]=A[0]*B[1]-A[1]*B[0];
-                for(k=0;k<3;k++) {P[i].Vel[0]=w0*(A[k] + sqrt(tau2)*A_cross_B[k] + tau2*ct*B[k]);}
+                for(k=0;k<3;k++) {P[i].Vel[k]=w0*(A[k] + sqrt(tau2)*A_cross_B[k] + tau2*ct*B[k]);}
+#ifdef BOX_SHEARING
+                // now add linearly the NHS drift solution for our shearing box setup
+                double v00 = -All.Pressure_Gradient_Accel / (2. * BOX_SHEARING_OMEGA_BOX_CENTER);
+                double v_K = -(P[i].Pos[0]-boxHalf_X) * BOX_SHEARING_Q*BOX_SHEARING_OMEGA_BOX_CENTER;
+                double tau_s = tS0 * P[i].Grain_Size * BOX_SHEARING_OMEGA_BOX_CENTER;
+                v00 /= (1. + tau_s*tau_s); // appears in both terms here //
+                P[i].Vel[0] += v00 * 2.*tau_s; // radial drift
+                P[i].Vel[BOX_SHEARING_PHI_COORDINATE] = v_K + v00; // azimuthal drift relative to keplerian frame
+#endif
 #endif // closes rdi_testproblem
             }
             P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0; P[i].Grain_AccelTimeMin = MAX_REAL_NUMBER;
@@ -611,8 +594,7 @@ void init(void)
 #endif
         }
 #ifdef GALSF_SUBGRID_WINDS
-        if(RestartFlag == 0)
-            SphP[i].DelayTime = 0;
+        if(RestartFlag == 0) {SphP[i].DelayTime = 0;}
 #if (GALSF_SUBGRID_WIND_SCALING==1)
         SphP[i].HostHaloMass = 0;
 #endif
@@ -631,6 +613,15 @@ void init(void)
 #endif
 #ifdef COSMIC_RAYS
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRayEnergy[j] = 0;}}
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+        //if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_PwrLaw_Slopes_in_Bin[j] = -2.5; SphP[i].CosmicRay_Number_in_Bin[j] = 0; SphP[i].DtCosmicRay_Number_in_Bin[j] = 0;}} // initialize a flat spectrum in each bin
+        if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_Number_in_Bin[j] = 0; SphP[i].DtCosmicRay_Number_in_Bin[j] = 0;}} // initialize the number in each bin
+        if(RestartFlag == 2) { // if we don't directly evolve the slopes, we do write them out and read them in, so need to re-construct the correct number in bin from what we actually read, which was the -slope- information
+            for(j=0;j<N_CR_PARTICLE_BINS;j++) {
+                double slope_from_snapshot = SphP[i].CosmicRay_Number_in_Bin[j];
+                SphP[i].CosmicRay_Number_in_Bin[j] = CR_get_number_in_bin_from_slope(i,j,SphP[i].CosmicRayEnergy[j],slope_from_snapshot);
+            }}
+#endif
 #endif
 #ifdef MAGNETIC
 #if defined MHD_B_SET_IN_PARAMS
@@ -1011,41 +1002,20 @@ void init(void)
 }
 
 
-/*! This routine computes the mass content of the box and compares it to the
- * specified value of Omega-matter.  If discrepant, the run is terminated.
- */
+
+/*! This routine computes the mass content of the box and compares it to the specified value of Omega-matter.  If discrepant, the run is terminated. */
 #ifdef BOX_PERIODIC
 void check_omega(void)
 {
-    double mass = 0, masstot, omega;
-    int i;
-
-    for(i = 0; i < NumPart; i++)
-        mass += P[i].Mass;
-
+    double mass = 0, masstot, omega; int i;
+    for(i = 0; i < NumPart; i++) {mass += P[i].Mass;}
     MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
     omega = masstot / (boxSize_X*boxSize_Y*boxSize_Z) / (3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G));
 #ifdef GR_TABULATED_COSMOLOGY_G
     omega *= All.Gini / All.G;
 #endif
-
-    //if(fabs(omega - All.Omega0) > 1.0e-3)
-    // because of how we set up these ICs, allow a little more generous tolerance
-    if(fabs(omega - All.Omega0) > 1.0e-2)
-    {
-        if(ThisTask == 0)
-        {
-            printf("\n\nI've found something odd!\n");
-            printf
-            ("The mass content accounts only for Omega=%g,\nbut you specified Omega=%g in the parameterfile.\n",
-             omega, All.Omega0);
-            printf("\nI better stop.\n");
-
-            fflush(stdout);
-        }
-        endrun(1);
-    }
+    if(fabs(omega - All.Omega0) > 1.0e-2) // look for a 1% tolerance of omega-matter
+        {PRINT_WARNING("\n\nMass content in the ICs accounts only for Omega_M=%g,\nbut you specified Omega_M=%g in the parameterfile.\nRun will stop.\n",omega, All.Omega0); endrun(1);}
 }
 #endif
 
@@ -1255,13 +1225,7 @@ void test_id_uniqueness(void)
     for(i = 1; i < NumPart; i++)
         if(ids[i] == ids[i - 1])
         {
-#ifdef LONGIDS
-            printf("non-unique ID=%d%09d found on task=%d (i=%d NumPart=%d)\n",
-                   (int) (ids[i] / 1000000000), (int) (ids[i] % 1000000000), ThisTask, i, NumPart);
-
-#else
             printf("non-unique ID=%llu found on task=%d   (i=%d NumPart=%d)\n", (unsigned long long) ids[i], ThisTask, i, NumPart);
-#endif
             endrun(12);
         }
 

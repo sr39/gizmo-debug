@@ -73,7 +73,7 @@
 #endif
 
 #ifndef DISABLE_SPH_PARTICLE_WAKEUP
-#if (SLOPE_LIMITER_TOLERANCE > 0)
+#if (SLOPE_LIMITER_TOLERANCE > 0) && !(defined(RT_M1) || defined(RT_LOCALRAYGRID))
 #define WAKEUP   4.1            /* allows 2 timestep bins within kernel */
 #else
 #define WAKEUP   2.1            /* allows only 1-separated timestep bins within kernel */
@@ -236,6 +236,7 @@
 #define METALS                              /*! follow metals as passive scalars, use in cooling, etc */
 #define TURB_DIFF_METALS                    /*! explicit sub-grid diffusivity for metals/passive scalars */
 #define TURB_DIFF_METALS_LOWORDER           /*! memory-saving custom mod */
+#define STOP_WHEN_BELOW_MINTIMESTEP         /*! this is general good practice */
 
 #define GALSF_SFR_MOLECULAR_CRITERION       /*! molecular criterion for star formation */
 #if !defined(GALSF_SFR_VIRIAL_SF_CRITERION)
@@ -402,14 +403,21 @@ USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
 #define GAMMA_ALFVEN_CRS (3.0/2.0)
 #define COSMIC_RAYS_M1 (COSMIC_RAYS_ALFVEN)
 #endif
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#define COSMIC_RAYS_MULTIBIN 19     /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
+#endif
 #ifndef N_CR_PARTICLE_BINS
-#ifdef COSMIC_RAYS_MULTIBIN
-#define N_CR_PARTICLE_BINS 4
+#if defined(COSMIC_RAYS_MULTIBIN)
+#define N_CR_PARTICLE_BINS COSMIC_RAYS_MULTIBIN
 #else
 #define N_CR_PARTICLE_BINS 1
 #endif
 #endif
+#if (N_CR_PARTICLE_BINS > 2) && !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#define COSMIC_RAYS_EVOLVE_SPECTRUM
 #endif
+#endif
+
 
 #if defined(COOL_GRACKLE)
 #if !defined(COOLING)
@@ -483,7 +491,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1
 #endif
-#if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_RAD))
+#if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_LOCAL_RP))
 #define SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION 2 //we are using the protostellar evolution model from ORION
 #endif
 #ifdef SINGLE_STAR_FB_RAD
@@ -543,7 +551,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 #if defined(SINGLE_STAR_FB_RT_HEATING) && !(defined(RT_OTVET) || defined(RT_FLUXLIMITEDDIFFUSION) || defined(RT_M1) || defined(RT_LOCALRAYGRID))
 #define GALSF_FB_FIRE_RT_LONGRANGE  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
-#define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. make sure BH_Rad_MomentumFactor=0 to avoid launching winds this way!!!
+#define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. 
+#define RT_DISABLE_RAD_PRESSURE
 #endif
 
 #if defined(SINGLE_STAR_FB_JETS) || ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION))
@@ -559,6 +568,16 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #define SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT 6 //determines the maximum number of ejecta particles spawned per timestep, see below
 #define SINGLE_STAR_FB_SNE_N_EJECTA (4*(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)*((SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)+1)) //Maximum number of ejecta particles spawned per timestep
+#endif
+#endif
+
+#if defined(SINGLE_STAR_FB_LOCAL_RP) // use standard angle-weighted local coupling to impart photon momentum from stars
+#define BH_CALC_LOCAL_ANGLEWEIGHTS
+#if !defined(BH_PHOTONMOMENTUM)
+#define BH_PHOTONMOMENTUM
+#endif
+#if !defined(RT_DISABLE_RAD_PRESSURE)
+#define RT_DISABLE_RAD_PRESSURE // we only want the local short-ranged photon momentum, since SF sims can easily get into the badly non-photon-conserving limit where LEBRON fluxes are less accurate
 #endif
 #endif
 
@@ -1140,7 +1159,6 @@ typedef unsigned long long peanokey;
 #define  report_memory_usage(x, y) printf("Memory manager disabled.\n")
 #endif
 
-
 #if !defined(EOS_GAMMA)
 #define EOS_GAMMA (5.0/3.0) /*!< adiabatic index of simulated gas */
 #endif
@@ -1536,9 +1554,9 @@ xtmp = fabs(((xtmp)>boxSize_Y)?((xtmp)-boxSize_Y):(((xtmp)<-boxSize_Y)?((xtmp)+b
 #endif
 
 #define NEAREST_XYZ(x,y,z,sign) {\
-TMP_WRAP_X_S(x,y,z,sign);\
 TMP_WRAP_Y_S(x,y,z,sign);\
-TMP_WRAP_Z_S(x,y,z,sign);} /* collect the box-wrapping terms into one function here */
+TMP_WRAP_X_S(x,y,z,sign);\
+TMP_WRAP_Z_S(x,y,z,sign);} /* note the ORDER MATTERS here for shearing boxes: Y-wrap must precede x/z wrap to allow correct re-assignment. collect the box-wrapping terms into one function here */
 
 
 
@@ -1761,16 +1779,27 @@ extern peanokey *Key, *KeySorted;
 
 
 #ifdef RT_CHEM_PHOTOION
+double rt_ion_nu_min[N_RT_FREQ_BINS];
 double rt_nu_eff_eV[N_RT_FREQ_BINS];
-double precalc_stellar_luminosity_fraction[N_RT_FREQ_BINS];
-double nu[N_RT_FREQ_BINS];
-double rt_sigma_HI[N_RT_FREQ_BINS];
-double rt_sigma_HeI[N_RT_FREQ_BINS];
-double rt_sigma_HeII[N_RT_FREQ_BINS];
-double G_HI[N_RT_FREQ_BINS];
-double G_HeI[N_RT_FREQ_BINS];
-double G_HeII[N_RT_FREQ_BINS];
+double rt_ion_precalc_stellar_luminosity_fraction[N_RT_FREQ_BINS];
+double rt_ion_sigma_HI[N_RT_FREQ_BINS];
+double rt_ion_sigma_HeI[N_RT_FREQ_BINS];
+double rt_ion_sigma_HeII[N_RT_FREQ_BINS];
+double rt_ion_G_HI[N_RT_FREQ_BINS];
+double rt_ion_G_HeI[N_RT_FREQ_BINS];
+double rt_ion_G_HeII[N_RT_FREQ_BINS];
 #endif
+
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) /* define some global variables we will need to use semi-constantly to make reference to the CR spectra */
+double CR_global_min_rigidity_in_bin[N_CR_PARTICLE_BINS];
+double CR_global_max_rigidity_in_bin[N_CR_PARTICLE_BINS];
+double CR_global_rigidity_at_bin_center[N_CR_PARTICLE_BINS];
+double CR_global_charge_in_bin[N_CR_PARTICLE_BINS];
+#define N_CR_SPECTRUM_LUT 101 /*!< number of elements per bin in the look-up-tables we will pre-compute to use for inverting the energy-number relation to determine the spectral slope */
+double CR_global_slope_lut[N_CR_PARTICLE_BINS][N_CR_SPECTRUM_LUT]; /*!< holder for the actual look-up-tables */
+#endif
+
+
 
 extern struct topnode_data
 {
@@ -2100,12 +2129,13 @@ extern struct global_data_all_processes
     double MaxHsml;           /*!< minimum allowed gas kernel length */
 
 #ifdef TURB_DRIVING
-  double TurbInjectedEnergy;
-  double TurbDissipatedEnergy;
-  double TimeBetTurbSpectrum;
-  double TimeNextTurbSpectrum;
-  int FileNumberTurbSpectrum;
-  double SetLastTime;
+    double TurbInjectedEnergy;
+    double TurbDissipatedEnergy;
+#if defined(TURB_DRIVING_SPECTRUMGRID)
+    double TimeBetTurbSpectrum;
+    double TimeNextTurbSpectrum;
+    int FileNumberTurbSpectrum;
+#endif
 #endif
 
   double SofteningGas,		/*!< for type 0 */
@@ -2175,9 +2205,9 @@ extern struct global_data_all_processes
     double PhotonMomentum_fUV;
     double PhotonMomentum_fOPT;
 #endif
+#endif
 #ifdef BH_PHOTONMOMENTUM
     double BH_Rad_MomentumFactor;
-#endif
 #endif
 
 
@@ -2194,6 +2224,9 @@ extern struct global_data_all_processes
     double Vertical_Gravity_Strength;
     double Vertical_Grain_Accel;
     double Vertical_Grain_Accel_Angle;
+#ifdef BOX_SHEARING
+    double Pressure_Gradient_Accel;
+#endif
 #endif
     double Grain_Internal_Density;
     double Grain_Size_Min;
@@ -2432,16 +2465,14 @@ extern struct global_data_all_processes
 #endif
 
 #ifdef TURB_DRIVING
-  double StDecay;
-  double StEnergy;
-  double StDtFreq;
-  double StKmin;
-  double StKmax;
-  double StSolWeight;
-  double StAmplFac;
-
-  int StSpectForm;
-  int StSeed;
+  double TurbDriving_Global_DecayTime;
+  double TurbDriving_Global_AccelerationPowerVariable;
+  double TurbDriving_Global_DtTurbUpdates;
+  double TurbDriving_Global_DrivingScaleKMinVar;
+  double TurbDriving_Global_DrivingScaleKMaxVar;
+  double TurbDriving_Global_SolenoidalFraction;
+  int    TurbDriving_Global_DrivingSpectrumKey;
+  int    TurbDriving_Global_DrivingRandomNumberKey;
 #endif
 
 #if defined(COOLING) && defined(COOL_GRACKLE)
@@ -2855,6 +2886,11 @@ extern struct sph_particle_data
     MyFloat CosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];       /*!< forward and backward-traveling Alfven wave-packet energies */
     MyFloat CosmicRayAlfvenEnergyPred[N_CR_PARTICLE_BINS][2];   /*!< drifted forward and backward-traveling Alfven wave-packet energies */
     MyFloat DtCosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];     /*!< time derivative fof forward and backward-traveling Alfven wave-packet energies */
+#endif
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+    MyFloat CosmicRay_Number_in_Bin[N_CR_PARTICLE_BINS];         /*!< effective number of CRs in the bin, which we evolve alongside total energy. */
+    MyFloat DtCosmicRay_Number_in_Bin[N_CR_PARTICLE_BINS];       /*!< time derivative of effective number of CRs in the bin, which we evolve alongside total energy. */
+    //MyFloat CosmicRay_PwrLaw_Slopes_in_Bin[N_CR_PARTICLE_BINS];  /*!< power-law slope "gamma" of the CR spectral distribution: dN/dp ~ p^gamma , within each energy bin. this is strictly redundant with Number as its derived from it, retained for now as a convenience function */
 #endif
 #endif
 
@@ -3438,6 +3474,7 @@ enum iofields
   IO_COSMICRAY_ENERGY,
   IO_COSMICRAY_KAPPA,
   IO_COSMICRAY_ALFVEN,
+  IO_COSMICRAY_SLOPES,
   IO_DIVB,
   IO_ABVC,
   IO_AMDC,
@@ -3663,36 +3700,15 @@ extern int *Father;		/*!< gives parent node in tree (Prenodes array) */
 
 extern int maxThreads;
 
-#ifdef TURB_DRIVING
-//parameters
-extern double StDecay;
-extern double StEnergy;
-extern double StDtFreq;
-extern double StKmin;
-extern double StKmax;
-extern double StSolWeight;
-extern double StAmplFac;
-
-//Ornstein-Uhlenbeck variables
-extern int StSeed;
-extern double StOUVar;
-extern double* StOUPhases;
-
-
-//forcing field in fourie space
-extern double* StAmpl;
-extern double* StAka; //phases (real part)
-extern double* StAkb; //phases (imag part)
-extern double* StMode;
-extern int StNModes;
-
-extern integertime StTPrev;
-extern double StSolWeightNorm;
-
-extern int StSpectForm;
-
-extern gsl_rng* StRng;
-extern int FB_Seed;
+#ifdef TURB_DRIVING // other global variables for forcing field (need to be carried through all timesteps)
+extern double* StOUPhases; // random fluctuating component of the amplitudes
+extern double* StAmpl; // relative amplitude for each k
+extern double* StAka; // phases (real part)
+extern double* StAkb; // phases (imag part)
+extern double* StMode; // k vectors
+extern int StNModes; // total number of modes
+extern integertime StTPrev; // time of last update (to determine when next will be)
+extern gsl_rng* StRng; // random number generator key
 #endif
 
 

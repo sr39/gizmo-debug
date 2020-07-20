@@ -90,7 +90,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
         lum[RT_FREQ_BIN_H0] = l_ion; // default to all flux into single-band
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
         int i_vec[4] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2}; // these will all be the same if not using multi-frequency module //
-        int k; for(k=0;k<4;k++) {lum[i_vec[k]] = l_ion * precalc_stellar_luminosity_fraction[i_vec[k]];} // assign flux appropriately according to pre-tabulated result //
+        int k; for(k=0;k<4;k++) {lum[i_vec[k]] = l_ion * rt_ion_precalc_stellar_luminosity_fraction[i_vec[k]];} // assign flux appropriately according to pre-tabulated result //
 #endif
     }
 #endif
@@ -142,9 +142,9 @@ double rt_kappa(int i, int k_freq)
 #ifdef RT_CHEM_PHOTOION
     /* opacity to ionizing radiation for Petkova & Springel bands. note rt_update_chemistry is where ionization is actually calculated */
     double nH_over_Density = HYDROGEN_MASSFRAC / PROTONMASS * UNIT_MASS_IN_CGS;
-    double kappa = nH_over_Density * (SphP[i].HI + MIN_REAL_NUMBER) * rt_sigma_HI[k_freq];
+    double kappa = nH_over_Density * (SphP[i].HI + MIN_REAL_NUMBER) * rt_ion_sigma_HI[k_freq];
 #if defined(RT_CHEM_PHOTOION_HE) && defined(RT_PHOTOION_MULTIFREQUENCY)
-    kappa += nH_over_Density * ((SphP[i].HeI + MIN_REAL_NUMBER) * rt_sigma_HeI[k_freq] + (SphP[i].HeII + MIN_REAL_NUMBER) * rt_sigma_HeII[k_freq]);
+    kappa += nH_over_Density * ((SphP[i].HeI + MIN_REAL_NUMBER) * rt_ion_sigma_HeI[k_freq] + (SphP[i].HeII + MIN_REAL_NUMBER) * rt_ion_sigma_HeII[k_freq]);
     if(k_freq==RT_FREQ_BIN_He0)  {return kappa;}
     if(k_freq==RT_FREQ_BIN_He1)  {return kappa;}
     if(k_freq==RT_FREQ_BIN_He2)  {return kappa;}
@@ -257,8 +257,29 @@ double rt_kappa(int i, int k_freq)
     return 0;
 }
 
-
-
+int rt_get_donation_target_bin(int bin){
+    int donation_target_bin = -1;
+#if defined(RT_CHEM_PHOTOION) && defined(RT_OPTICAL_NIR)
+    /* assume absorbed ionizing photons are re-emitted via recombination into optical-NIR bins. valid if recombination time is fast.
+       more accurately, this should be separately calculated in the cooling rates, and gas treated as a source */
+    if(bin==RT_FREQ_BIN_H0) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
+#ifdef RT_PHOTOION_MULTIFREQUENCY
+    if(bin==RT_FREQ_BIN_He0) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
+    if(bin==RT_FREQ_BIN_He1) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
+    if(bin==RT_FREQ_BIN_He2) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
+#endif
+#endif
+#if defined(RT_PHOTOELECTRIC) && defined(RT_INFRARED)
+    if(bin==RT_FREQ_BIN_PHOTOELECTRIC) {donation_target_bin=RT_FREQ_BIN_INFRARED;} /* this is direct dust absorption, re-radiated in IR */
+#endif
+#if defined(RT_NUV) && defined(RT_INFRARED)
+    if(bin==RT_FREQ_BIN_NUV) {donation_target_bin=RT_FREQ_BIN_INFRARED;} /* this is direct dust absorption, re-radiated in IR */
+#endif
+#if defined(RT_OPTICAL_NIR) && defined(RT_INFRARED)
+    if(bin==RT_FREQ_BIN_OPTICAL_NIR) {donation_target_bin=RT_FREQ_BIN_INFRARED;} /* this is direct dust absorption, re-radiated in IR */
+#endif
+    return donation_target_bin;
+}
 
 
 /***********************************************************************************************************/
@@ -391,7 +412,7 @@ int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum)
     lum[RT_FREQ_BIN_H0] = l_ion; // default to putting everything into a single band //
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
     int i_vec[4] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2}; // these will all be the same if not using multi-frequency module //
-    int k; for(k=0;k<4;k++) {lum[i_vec[k]] = l_ion * precalc_stellar_luminosity_fraction[i_vec[k]];} // assign flux appropriately according to pre-tabulated result //
+    int k; for(k=0;k<4;k++) {lum[i_vec[k]] = l_ion * rt_ion_precalc_stellar_luminosity_fraction[i_vec[k]];} // assign flux appropriately according to pre-tabulated result //
 #endif
 #endif
 
@@ -496,8 +517,8 @@ int rt_get_lum_band_singlestar(int i, int mode, double *lum)
     SET_ACTIVE_RT_CHECK();
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
     int i_vec[4] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2}; // these will all be the same if not using multi-frequency module //    
-    int k; for(k=0;k<3;k++) {lum[i_vec[k]] = stellar_lum_in_band(i, nu[i_vec[k]], nu[i_vec[k+1]]);} // integrate between band boundaries, defined in global 'nu' in eV
-    lum[i_vec[3]] = stellar_lum_in_band(i, nu[i_vec[3]], 500.); // integrate to end of spectrum for the last band
+    int k; for(k=0;k<3;k++) {lum[i_vec[k]] = stellar_lum_in_band(i, rt_ion_nu_min[i_vec[k]], rt_ion_nu_min[i_vec[k+1]]);} // integrate between band boundaries, defined in global 'nu' in eV
+    lum[i_vec[3]] = stellar_lum_in_band(i, rt_ion_nu_min[i_vec[3]], 500.); // integrate to end of spectrum for the last band
 #else
     lum[RT_FREQ_BIN_H0] = stellar_lum_in_band(i, 13.6, 500.); // total ionizing flux
 #ifdef RT_STARBENCH_TEST
@@ -784,26 +805,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             }
 #endif
             
-            int donation_target_bin = -1; // frequency into which the photons will be deposited, if any //
-#if defined(RT_CHEM_PHOTOION) && defined(RT_OPTICAL_NIR)
-            /* assume absorbed ionizing photons are re-emitted via recombination into optical-NIR bins. valid if recombination time is fast.
-             more accurately, this should be separately calculated in the cooling rates, and gas treated as a source */
-            if(kf==RT_FREQ_BIN_H0) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
-#ifdef RT_PHOTOION_MULTIFREQUENCY
-            if(kf==RT_FREQ_BIN_He0) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
-            if(kf==RT_FREQ_BIN_He1) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
-            if(kf==RT_FREQ_BIN_He2) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
-#endif
-#endif
-#if defined(RT_PHOTOELECTRIC) && defined(RT_INFRARED)
-            if(kf==RT_FREQ_BIN_PHOTOELECTRIC) {donation_target_bin=RT_FREQ_BIN_INFRARED;} /* this is direct dust absorption, re-radiated in IR */
-#endif
-#if defined(RT_NUV) && defined(RT_INFRARED)
-            if(kf==RT_FREQ_BIN_NUV) {donation_target_bin=RT_FREQ_BIN_INFRARED;} /* this is direct dust absorption, re-radiated in IR */
-#endif
-#if defined(RT_OPTICAL_NIR) && defined(RT_INFRARED)
-            if(kf==RT_FREQ_BIN_OPTICAL_NIR) {donation_target_bin=RT_FREQ_BIN_INFRARED;} /* this is direct dust absorption, re-radiated in IR */
-#endif
+	    int donation_target_bin = rt_get_donation_target_bin(kf); // frequency into which the photons will be deposited, if any //
 #ifdef RT_INFRARED
             if(donation_target_bin==RT_FREQ_BIN_INFRARED) {E_abs_tot += de_abs/(MIN_REAL_NUMBER + dt_entr);} /* donor bin is yourself in the IR - all self-absorption is re-emitted */
             if(kf==RT_FREQ_BIN_INFRARED) {ef = e0 + total_de_dt * dt_entr;} /* donor bin is yourself in the IR - all self-absorption is re-emitted */
@@ -1162,7 +1164,7 @@ double stellar_lum_in_band(int i, double E_lower, double E_upper)
 {
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
     double r_sol = P[i].ProtoStellarRadius_inSolar, l_sol = P[i].StarLuminosity_Solar;
-    if(P[i].ProtoStellarStage < 5) {if(E_lower < 0.1) {return l_sol/UNIT_LUM_IN_SOLAR;} else {return 0;}} // protostars [stage < 5] are only allowed to radiate in the broad-IR band, not higher wavelengths
+    //    if(P[i].ProtoStellarStage < 5) {if(E_lower < 0.1) {return l_sol/UNIT_LUM_IN_SOLAR;} else {return 0;}} // protostars [stage < 5] are only allowed to radiate in the broad-IR band, not higher wavelengths
 #elif defined(SINGLE_STAR_SINK_DYNAMICS) // use generic fits based on mass
     double l_sol=bh_lum_bol(0,P[i].Mass,i)*UNIT_LUM_IN_SOLAR, m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR, r_sol=pow(m_sol,0.738); // L/Lsun, M/Msun, R/Rsun
 #else
