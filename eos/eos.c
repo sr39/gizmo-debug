@@ -303,7 +303,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) /* if not tracking chemistry explicitly, return a simple estimate of H2 fraction following the KMT [Apj 2009 693, 216] model */
     if(temperature > 3.e5) {return 0;} // approximations below not designed for high temperatures, should simply give null
     /* get neutral fraction [given by call to this program] */
-    double f_neutral=DMAX(neutral_fraction,0.);
+    double f_neutral=DMIN(DMAX(neutral_fraction,0.),1.);
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING)
     if(SphP[i].DelayTimeHII > 0) {return 0;} // force gas flagged as in HII regions to have zero molecular fraction
 #endif
@@ -326,7 +326,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     urad_G0 += urad_from_uvb_in_G0; // include whatever is contributed from the meta-galactic background, fed into this routine
     urad_G0 = DMIN(DMAX( urad_G0 , 1.e-3 ) , 1.e10 ); // limit values, because otherwise exponential self-shielding approximation easily artificially gives 0 incident field
     /* get estimate of mass column density integrated away from this location for self-shielding */
-    double surface_density_Msun_pc2 = 0.05 * evaluate_NH_from_GradRho(SphP[i].Gradients.Density,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS / 0.000208854; // approximate column density with Sobolev or Treecol methods as appropriate; converts to M_solar/pc^2
+    double surface_density_Msun_pc2 = 0.05 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS / 0.000208854; // approximate column density with Sobolev or Treecol methods as appropriate; converts to M_solar/pc^2
     /* 0.05 above is in testing, based on calculations by Laura Keating: represents a plausible re-scaling of the shielding length for sub-grid clumping */
     /* get estimate of local density and clumping factor */
     double nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS; // get nH defined as in KMT [number of nucleons per cm^3]

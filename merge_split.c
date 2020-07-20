@@ -493,7 +493,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
         double norm=0, dp[3]; int m; dp[0]=dp[1]=dp[2]=0;
         for(k = 0; k < NUMDIMS; k++)
         {
-            for(m = 0; m < NUMDIMS; m++) {dp[k] += SphP[i].NV_T[k][m];} //dp[k] = SphP[i].Gradients.Density[k]; //unstable
+            for(m = 0; m < NUMDIMS; m++) {dp[k] += SphP[i].NV_T[k][m];} 
             norm += dp[k] * dp[k];
         }
         if(norm > 0)
