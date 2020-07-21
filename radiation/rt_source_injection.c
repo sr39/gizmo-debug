@@ -38,7 +38,7 @@ static struct INPUT_STRUCT_NAME
     MyDouble V_i;
 #endif
 #if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
-    MyDouble RHII;
+    MyDouble Dt;
 #endif
 }
 *DATAIN_NAME, *DATAGET_NAME;
@@ -69,10 +69,7 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 #endif
     for(k=0; k<N_RT_FREQ_BINS; k++) {if(P[i].Type==0 || active_check==0) {in->Luminosity[k]=0;} else {in->Luminosity[k] = lum[k] * dt;}}
 #if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
-    double stellum = lum[RT_FREQ_BIN_H0] * UNIT_LUM_IN_CGS;
-    double rho = P[i].DensAroundStar;
-    in->RHII = 4.78e-9*pow(stellum,0.333)*pow(rho*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667);
-    in->RHII /= All.cf_atime*UNIT_LENGTH_IN_CGS;
+    in->Dt = dt;
 #endif
 }
 
@@ -162,11 +159,10 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 		if(u>0) kernel_main(u, hinv3, hinv4, &wk, &dwk, 1);
 		double hinv_j = 1./PPP[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j; /* note these lines and many below assume 3D sims! */
 		double wk_j = 0, dwk_j = 0, u_j = r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = P[j].Mass / SphP[j].Density;
-
 		if(u_j<1) {kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);} else {wk_j=dwk_j=0;}
 		if(local.V_i<0 || isnan(local.V_i)) {local.V_i=0;}           	       
 		if(V_j<0 || isnan(V_j)) {V_j=0;}
-		double sph_area = fabs(local.V_i*local.V_i*dwk + V_j*V_j*dwk_j); // effective face area //
+		double sph_area = fabs(local.V_i*local.V_i*dwk + V_j*V_j*dwk_j); // effective face area //                
 		wk = (1 - 1/sqrt(1 + sph_area / (M_PI*r2))) / local.KernelSum_Around_RT_Source; // corresponding geometric weight //
 #else
                 double wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;
@@ -201,11 +197,16 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     int kv; for(kv=0;kv<3;kv++) {P[j].Vel[kv] += dv*dp[kv]; SphP[j].VelPred[kv] += dv*dp[kv];}
 
 #ifdef RT_REPROCESS_INJECTED_PHOTONS //conserving photon energy, put only the un-absorbed component of the current band into that band, putting the rest in its "donation" bin (ionizing->optical, all others->IR). This would happen anyway during the routine for resolved absorption, but this may more realistically handle situations where e.g. your dust destruction front is at totally unresolved scales and you don't want to spuriously ionize stuff on larger scales. Assume isotropic re-radiation, so inject only energy for the donated bin and not net flux/momentum.
-		    int donation_bin;
 		    double dE_donation = 0;
-		    donation_bin = rt_get_donation_target_bin(k);
+		    int donation_bin = rt_get_donation_target_bin(k);
 #ifdef RT_CHEM_PHOTOION
-		    if((k!=RT_FREQ_BIN_H0) || (r > local.RHII)) // don't inject ionizing photons outside the Stromgren radius
+                    // figure out if we have enough photons to carve a Stromgren sphere through this cell. If yes, inject ionizing radiation, otherwise more accurate to downgrade it to model an unresolved HII region
+                    double RHII, stellum;
+                    if(k==RT_FREQ_BIN_H0){
+                        if(local.Dt > 0) {stellum = local.Luminosity[k] / RT_SPEEDOFLIGHT_REDUCTION / local.Dt * UNIT_LUM_IN_CGS;} else {stellum = 0;}
+                        RHII = 4.01e-9*pow(stellum,0.333)*pow(SphP[j].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667) / UNIT_LENGTH_IN_CGS;
+                    }
+                    if(k!=RT_FREQ_BIN_H0 || DMAX(r, Get_Particle_Size(j))*All.cf_atime > RHII)// don't inject ionizing photons outside the Stromgren radius
 #endif
 		    {
 		        dE_donation = slabfac_x*dE;
