@@ -162,7 +162,6 @@ double rt_kappa(int i, int k_freq)
     double dust_fac = 1.;    
 #if defined(RT_INFRARED) && (defined(RT_LYMAN_WERNER) || defined(RT_PHOTOELECTRIC) || defined(RT_OPTICAL_NIR) || defined(RT_NUV)) // any RT bands that care about dust opacity  (except IR, handled separately with detailed fits)
     double Tdust = get_equilibrium_dust_temperature_estimate(i, 0.); 
-#endif    
     /* dust_fac = 1 - sigmoid_sqrt(Tdust/1500.); // smooth taper (reaches ~1% at 10^4K), in case some implicit solve involving temperature and opacity requires continuity to converge */
     /* dust_fac = DMAX(0, dust_fac); */
     if(Tdust > 1500) dust_fac = 0;
