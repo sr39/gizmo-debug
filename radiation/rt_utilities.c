@@ -138,7 +138,6 @@ double rt_kappa(int i, int k_freq)
 #endif
     return MIN_REAL_NUMBER + SphP[i].Interpolated_Opacity[k_freq]; /* this is calculated in a different routine, just return it now */
 #endif
-
 #ifdef RT_CHEM_PHOTOION
     /* opacity to ionizing radiation for Petkova & Springel bands. note rt_update_chemistry is where ionization is actually calculated */
     double nH_over_Density = HYDROGEN_MASSFRAC / PROTONMASS * UNIT_MASS_IN_CGS;
@@ -158,6 +157,22 @@ double rt_kappa(int i, int k_freq)
 #ifdef METALS
     if(i>=0) {Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];}
 #endif
+
+// compute factor to account for how dust sublimation eliminates dust opacity above 1500K)
+    double dust_fac = 1.;
+#if defined(RT_LYMAN_WERNER) || defined(RT_PHOTOELECTRIC) || defined(RT_OPTICAL_NIR) || defined(RT_NUV) || defined(GALSF_FB_FIRE_RT_LONGRANGE) // any RT bands that care about dust opacity  (except IR, handled separately with detailed fits)
+    double Tdust;
+#if defined(RT_INFRARED) // we evolve Tdust self-consistently, so use that
+    Tdust = SphP[i].Dust_Temperature;
+#else
+    Tdust = 0.59*(GAMMA(i)-1.)*U_TO_TEMP_UNITS*SphP[i].InternalEnergyPred; // use gas temperature as estimate
+#endif    
+    /* dust_fac = 1 - sigmoid_sqrt(Tdust/1500.); // smooth taper (reaches ~1% at 10^4K), in case some implicit solve involving temperature and opacity requires continuity to converge */
+    /* dust_fac = DMAX(0, dust_fac); */
+    if(Tdust > 1500) dust_fac = 0;
+#endif
+
+    
 #ifdef RT_FREEFREE /* pure (grey, non-relativistic) Thompson scattering opacity + free-free absorption opacity */
     if(k_freq==RT_FREQ_BIN_FREEFREE)
     {
@@ -178,29 +193,29 @@ double rt_kappa(int i, int k_freq)
     /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
     double kappa_HHe=0.35; if(i>=0) {kappa_HHe=0.02 + 0.35*SphP[i].Ne;}
-    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return DMAX(kappa_HHe, 1800.*(1.e-2 + Zfac)) * fac;} // floored at Thomson/neutral H opacities
-    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return DMAX(kappa_HHe, 180.*(1.e-3 + Zfac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]
-    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return DMAX(kappa_HHe, 10.*(1.e-3 + Zfac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]
+    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return DMAX(kappa_HHe, 1800.*(1.e-2 + Zfac * dust_fac)) * fac;} // floored at Thomson/neutral H opacities
+    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return DMAX(kappa_HHe, 180.*(1.e-3 + Zfac * dust_fac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]
+    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return DMAX(kappa_HHe, 10.*(1.e-3 + Zfac * dust_fac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]
 #endif
-    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return (1800.) * fac;}
-    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return (180.)  * fac;}
-    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return (10.) * fac * (0.1 + Zfac);}
+    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return (1800.) * fac * dust_fac;}
+    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return (180.)  * fac * dust_fac;}
+    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return (10.) * fac * (0.1 + Zfac * dust_fac);}
 #endif
 #ifdef RT_PHOTOELECTRIC
     /* opacity comes primarily from dust (ignoring H2 molecular opacities here) */
-    if(k_freq==RT_FREQ_BIN_PHOTOELECTRIC) {return 2000. * DMAX(1.e-4,Zfac) * fac;}
+    if(k_freq==RT_FREQ_BIN_PHOTOELECTRIC) {return 2000. * DMAX(1.e-4,Zfac * dust_fac) * fac;}
 #endif
 #ifdef RT_LYMAN_WERNER
     /* opacity from molecular H2 and dust (dominant at higher-metallicity) should be included */
-    if(k_freq==RT_FREQ_BIN_LYMAN_WERNER) {return 2400.*Zfac * fac;} // just dust term for now
+    if(k_freq==RT_FREQ_BIN_LYMAN_WERNER) {return 2400.*Zfac * fac * dust_fac;} // just dust term for now
 #endif
 #ifdef RT_NUV
     /* opacity comes primarily from dust */
-    if(k_freq==RT_FREQ_BIN_NUV) {return 1800.*Zfac * fac;}
+    if(k_freq==RT_FREQ_BIN_NUV) {return 1800.*Zfac * fac * dust_fac;}
 #endif
 #ifdef RT_OPTICAL_NIR
     /* opacity comes primarily from dust */
-    if(k_freq==RT_FREQ_BIN_OPTICAL_NIR) {return 180.*Zfac * fac;}
+    if(k_freq==RT_FREQ_BIN_OPTICAL_NIR) {return 180.*Zfac * fac * dust_fac;}
 #endif
 #ifdef RT_INFRARED
     /* IR with dust opacity */
