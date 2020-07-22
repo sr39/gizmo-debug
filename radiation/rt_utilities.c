@@ -159,13 +159,9 @@ double rt_kappa(int i, int k_freq)
 #endif
 
 // compute factor to account for how dust sublimation eliminates dust opacity above 1500K)
-    double dust_fac = 1.;
-#if defined(RT_LYMAN_WERNER) || defined(RT_PHOTOELECTRIC) || defined(RT_OPTICAL_NIR) || defined(RT_NUV) // any RT bands that care about dust opacity  (except IR, handled separately with detailed fits)
-    double Tdust;
-#if defined(RT_INFRARED) // we evolve Tdust self-consistently, so use that
-    Tdust = SphP[i].Dust_Temperature;
-#else
-    Tdust = 0.59*(GAMMA(i)-1.)*U_TO_TEMP_UNITS*SphP[i].InternalEnergyPred; // use gas temperature as estimate
+    double dust_fac = 1.;    
+#if defined(RT_INFRARED) && (defined(RT_LYMAN_WERNER) || defined(RT_PHOTOELECTRIC) || defined(RT_OPTICAL_NIR) || defined(RT_NUV)) // any RT bands that care about dust opacity  (except IR, handled separately with detailed fits)
+    double Tdust = get_equilibrium_dust_temperature_estimate(i, 0.); 
 #endif    
     /* dust_fac = 1 - sigmoid_sqrt(Tdust/1500.); // smooth taper (reaches ~1% at 10^4K), in case some implicit solve involving temperature and opacity requires continuity to converge */
     /* dust_fac = DMAX(0, dust_fac); */
