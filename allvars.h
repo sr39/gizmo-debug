@@ -73,7 +73,7 @@
 #endif
 
 #ifndef DISABLE_SPH_PARTICLE_WAKEUP
-#if (SLOPE_LIMITER_TOLERANCE > 0) && !(defined(RT_M1) || defined(RT_LOCALRAYGRID))
+#if (SLOPE_LIMITER_TOLERANCE > 0)
 #define WAKEUP   4.1            /* allows 2 timestep bins within kernel */
 #else
 #define WAKEUP   2.1            /* allows only 1-separated timestep bins within kernel */
@@ -498,6 +498,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_M1
 #define RT_SOURCES 32
 #define RT_SPEEDOFLIGHT_REDUCTION 1e-4
+#define RT_AREAWEIGHT_INJECTION
+#define RT_REPROCESS_INJECTED_PHOTONS
 #define RT_OPTICAL_NIR
 #define RT_NUV
 #define RT_PHOTOELECTRIC
