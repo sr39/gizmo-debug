@@ -680,7 +680,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     {
         SphP[target].Ne = n_elec;
 #ifdef OUTPUT_MOLECULAR_FRACTION
-        SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, pow(10.,logT), DMIN(DMAX(nH0,0),1), sqrt(shieldfac)*(gJH0/2.29e-10) , 1);
+        SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, pow(10.,logT), nH0, n_elec, sqrt(shieldfac)*(gJH0/2.29e-10));
 #endif
     }
 
@@ -872,11 +872,10 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             double Lambda_H2_thin = pow(10., DMAX(-103. + 97.59*logT - 48.05*logT*logT + 10.8*logT*logT*logT - 0.9032*logT*logT*logT*logT , -50.)); // sub-critical H2 cooling rate from H2-H collisions, H2-H2 is similar, but for most conditions, this should give us roughly the correct number here [per H2 molecule]
             double Lambda_H2_thick = (6.7e-19*exp(-DMIN(5.86/T3,EXPmax)) + 1.6e-18*exp(-DMIN(11.7/T3,EXPmax)) + 3.e-24*exp(-DMIN(0.51/T3,EXPmax)) + 9.5e-22*pow(T3,3.76)*exp(-DMIN(0.0022/(T3*T3*T3),EXPmax))/(1.+0.12*pow(T3,2.1))) / nHcgs; // super-critical H2-H cooling rate [per H2 molecule]
             double Lambda_HD_thin = ((1.555e-25 + 1.272e-26*pow(T,0.77))*exp(-DMIN(128./T,EXPmax)) + (2.406e-25 + 1.232e-26*pow(T,0.92))*exp(-DMIN(255./T,EXPmax))) * exp(-DMIN(T3*T3/25.,EXPmax)); // optically-thin HD cooling rate [assuming all D locked into HD at temperatures where this is relevant], per molecule
-            double f_not_strongly_ionized = DMIN(DMAX(nH0,0),1); // fraction not being ionized or otherwise exposed to -very- strong radiation which would suppress cooling even from e.g. C+ [hence 1-shieldfac appearing, not just nH0]
-            double f_molec = 0.5 * Get_Gas_Molecular_Mass_Fraction(target, T, f_not_strongly_ionized, sqrt(shieldfac)*(gJH0/2.29e-10) , 1); // [0.5*f_molec for H2/HD cooling b/c cooling rates above are per molecule, not per nucleon]
-            double f_HD = DMIN(0.00126*f_molec , 4.0e-5); // ratio of HD molecules to H2 molecules: in low limit, HD easier to form so saturates at about 0.13% of H2 molecules, following Galli & Palla 1998, but obviously cannot exceed the cosmic ratio of D/H=4e-5
+            double f_molec = 0.5 * Get_Gas_Molecular_Mass_Fraction(target, T, nH0, n_elec, sqrt(shieldfac)*(gJH0/2.29e-10)); // [0.5*f_molec for H2/HD cooling b/c cooling rates above are per molecule, not per nucleon]
+            double f_HD = DMIN(0.00126*f_molec , 4.0e-5*nH0); // ratio of HD molecules to H2 molecules: in low limit, HD easier to form so saturates at about 0.13% of H2 molecules, following Galli & Palla 1998, but obviously cannot exceed the cosmic ratio of D/H=4e-5
             double nH_over_ncrit = Lambda_H2_thin / Lambda_H2_thick , Lambda_HD = f_HD * Lambda_HD_thin / (1. + (f_HD/f_molec)*nH_over_ncrit), Lambda_H2 = f_molec * Lambda_H2_thin / (1. + nH_over_ncrit); // correct cooling rates for densities above critical
-            LambdaMol = f_not_strongly_ionized * Lambda_Metals + Lambda_H2 + Lambda_HD; // combine to get total cooling rate: scale to estimate of neutral fraction [use min[nH0,1-shieldfac] b/c this should be more sensitive to radiation, so if shieldfac is high, this will be low, even if nH0 big]
+            LambdaMol = nH0 * Lambda_Metals + Lambda_H2 + Lambda_HD; // combine to get total cooling rate: scale to estimate of neutral fraction [use min[nH0,1-shieldfac] b/c this should be more sensitive to radiation, so if shieldfac is high, this will be low, even if nH0 big]
 #endif
             LambdaMol *= truncation_factor;
             Lambda += LambdaMol;
@@ -1121,7 +1120,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     if(target>=0){SphP[target].NetHeatingRateQ = Q;}
 #endif
 #ifdef OUTPUT_MOLECULAR_FRACTION
-    if(target>0) {SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, T, DMIN(DMAX(nH0,0),1), sqrt(shieldfac)*(gJH0/2.29e-10) , 1);;}
+    if(target>0) {SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, T, nH0, n_elec, sqrt(shieldfac)*(gJH0/2.29e-10));}
 #endif
 
 #ifndef COOLING_OPERATOR_SPLIT
