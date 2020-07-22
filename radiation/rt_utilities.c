@@ -160,7 +160,7 @@ double rt_kappa(int i, int k_freq)
 
 // compute factor to account for how dust sublimation eliminates dust opacity above 1500K)
     double dust_fac = 1.;
-#if defined(RT_LYMAN_WERNER) || defined(RT_PHOTOELECTRIC) || defined(RT_OPTICAL_NIR) || defined(RT_NUV) || defined(GALSF_FB_FIRE_RT_LONGRANGE) // any RT bands that care about dust opacity  (except IR, handled separately with detailed fits)
+#if defined(RT_LYMAN_WERNER) || defined(RT_PHOTOELECTRIC) || defined(RT_OPTICAL_NIR) || defined(RT_NUV) // any RT bands that care about dust opacity  (except IR, handled separately with detailed fits)
     double Tdust;
 #if defined(RT_INFRARED) // we evolve Tdust self-consistently, so use that
     Tdust = SphP[i].Dust_Temperature;
@@ -193,9 +193,9 @@ double rt_kappa(int i, int k_freq)
     /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
     double kappa_HHe=0.35; if(i>=0) {kappa_HHe=0.02 + 0.35*SphP[i].Ne;}
-    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return DMAX(kappa_HHe, 1800.*(1.e-2 + Zfac * dust_fac)) * fac;} // floored at Thomson/neutral H opacities
-    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return DMAX(kappa_HHe, 180.*(1.e-3 + Zfac * dust_fac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]
-    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return DMAX(kappa_HHe, 10.*(1.e-3 + Zfac * dust_fac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]
+    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return DMAX(kappa_HHe, 1800.*(1.e-2 + Zfac)) * fac;} // floored at Thomson/neutral H opacities
+    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return DMAX(kappa_HHe, 180.*(1.e-3 + Zfac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]
+    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return DMAX(kappa_HHe, 10.*(1.e-3 + Zfac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]
 #endif
     if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return (1800.) * fac * dust_fac;}
     if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return (180.)  * fac * dust_fac;}
