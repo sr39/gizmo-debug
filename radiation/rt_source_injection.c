@@ -34,9 +34,6 @@ static struct INPUT_STRUCT_NAME
 {
     MyDouble Pos[3]; MyFloat Hsml, KernelSum_Around_RT_Source, Luminosity[N_RT_FREQ_BINS], Vel[3];
     int NodeList[NODELISTLENGTH];
-#ifdef RT_AREAWEIGHT_INJECTION
-    MyDouble V_i;
-#endif
 #if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
     MyDouble Dt;
 #endif
@@ -51,12 +48,6 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
     in->Hsml = PPP[i].Hsml;
     //if(P[i].Type==0) {in->KernelSum_Around_RT_Source = SphP[i].Density;} else {in->KernelSum_Around_RT_Source = P[i].DensAroundStar;}
     in->KernelSum_Around_RT_Source = P[i].KernelSum_Around_RT_Source;
-#ifdef RT_AREAWEIGHT_INJECTION
-    in->V_i = 4.*M_PI/3. * PPP[i].Hsml * PPP[i].Hsml * PPP[i].Hsml / (All.DesNumNgb);
-#ifdef BLACK_HOLES
-    if(P[i].Type == 5) in->V_i /= All.BlackHoleNgbFactor;
-#endif
-#endif
     /* luminosity is set to zero here for gas particles because their self-illumination is handled trivially in a single loop, earlier */
     double lum[N_RT_FREQ_BINS];
     int active_check = rt_get_source_luminosity(i,0,lum);
@@ -155,15 +146,15 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 // calculate kernel quantities //
                 r = sqrt(r2); c_light_eff = C_LIGHT_CODE_REDUCED;
 #ifdef RT_AREAWEIGHT_INJECTION
-		double u=r*hinv, wk, dwk;
-		if(u>0) kernel_main(u, hinv3, hinv4, &wk, &dwk, 1);
-		double hinv_j = 1./PPP[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j; /* note these lines and many below assume 3D sims! */
-		double wk_j = 0, dwk_j = 0, u_j = r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = P[j].Mass / SphP[j].Density;
-		if(u_j<1) {kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);} else {wk_j=dwk_j=0;}
-		if(local.V_i<0 || isnan(local.V_i)) {local.V_i=0;}           	       
-		if(V_j<0 || isnan(V_j)) {V_j=0;}
-		double sph_area = fabs(local.V_i*local.V_i*dwk + V_j*V_j*dwk_j); // effective face area //                
-		wk = (1 - 1/sqrt(1 + sph_area / (M_PI*r2))) / local.KernelSum_Around_RT_Source; // corresponding geometric weight //
+		        double u=r*hinv, wk, dwk;
+		        if(u>0) {kernel_main(u, hinv3, hinv4, &wk, &dwk, 1);}
+		        double hinv_j = 1./PPP[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j; /* note these lines and many below assume 3D sims! */
+		        double wk_j = 0, dwk_j = 0, u_j = r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = P[j].Mass / SphP[j].Density;
+		        if(u_j<1) {kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);} else {wk_j=dwk_j=0;}
+		        if(local.V_i<0 || isnan(local.V_i)) {local.V_i=0;}           	       
+		        if(V_j<0 || isnan(V_j)) {V_j=0;}
+		        double sph_area = fabs(local.V_i*local.V_i*dwk + V_j*V_j*dwk_j); // effective face area //
+		        wk = (1 - 1/sqrt(1 + sph_area / (M_PI*r2))) / local.KernelSum_Around_RT_Source; // corresponding geometric weight //
 #else
                 double wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;
 #endif
@@ -193,7 +184,6 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     if(isnan(slabfac_x)||(slabfac_x<=0)) {slabfac_x=0;}
                     if(slabfac_x>1) {slabfac_x=1;}
                     double dv = slabfac_x * dv0 * dE / P[j].Mass; // total absorbed momentum (needs multiplication by dp[kv] for directionality)
-
                     int kv; for(kv=0;kv<3;kv++) {P[j].Vel[kv] += dv*dp[kv]; SphP[j].VelPred[kv] += dv*dp[kv];}
 
 #ifdef RT_REPROCESS_INJECTED_PHOTONS //conserving photon energy, put only the un-absorbed component of the current band into that band, putting the rest in its "donation" bin (ionizing->optical, all others->IR). This would happen anyway during the routine for resolved absorption, but this may more realistically handle situations where e.g. your dust destruction front is at totally unresolved scales and you don't want to spuriously ionize stuff on larger scales. Assume isotropic re-radiation, so inject only energy for the donated bin and not net flux/momentum.

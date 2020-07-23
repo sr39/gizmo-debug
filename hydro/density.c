@@ -118,9 +118,6 @@ static struct INPUT_STRUCT_NAME
 #endif
   int NodeList[NODELISTLENGTH];
   int Type;
-#ifdef RT_AREAWEIGHT_INJECTION
-  MyDouble V_i;
-#endif
 }
  *DATAIN_NAME, *DATAGET_NAME;
 
@@ -141,16 +138,7 @@ void hydrokerneldensity_particle2in(struct INPUT_STRUCT_NAME *in, int i, int loo
         in->DelayTime = SphP[i].DelayTime;
 #endif
     }
-#ifdef RT_AREAWEIGHT_INJECTION
-    if((1<<P[i].Type) & RT_SOURCES){
-      in->V_i = 4.*M_PI/3. * PPP[i].Hsml * PPP[i].Hsml * PPP[i].Hsml / (All.DesNumNgb);
-#ifdef BLACK_HOLES
-      if(P[i].Type == 5) in->V_i /= All.BlackHoleNgbFactor;
-#endif
-    }
-#endif
 }
-
 
 /*! this structure defines the variables that need to be sent -back to- the 'searching' element */
 static struct OUTPUT_STRUCT_NAME
@@ -325,21 +313,8 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if(local.Type == 0 && kernel.r==0) {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * SphP[j].VelPred[kv];}} // just the self-contribution //
 #endif
 #if defined(RT_SOURCE_INJECTION)
-                    if((1 << local.Type) & (RT_SOURCES)){
-#if defined(RT_AREAWEIGHT_INJECTION)
-			double hinv_j = 1./PPP[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j; /* note these lines and many below assume 3D sims! */
-			double wk_j = 0, dwk_j = 0, u_j = kernel.r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = P[j].Mass / SphP[j].Density;
-			if(u_j<1) {kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);} else {wk_j=dwk_j=0;}
-		        if(local.V_i<0 || isnan(local.V_i)) {local.V_i=0;}           	       
-		        if(V_j<0 || isnan(V_j)) {V_j=0;}
-		        double sph_area = fabs(local.V_i*local.V_i*kernel.dwk + V_j*V_j*dwk_j); // effective face area //
-		        wk = (1 - 1/sqrt(1 + sph_area / (M_PI*kernel.r*kernel.r))); // corresponding geometric weight //
-			out.KernelSum_Around_RT_Source += wk;
-#else
-		        out.KernelSum_Around_RT_Source += 1.-u*u;
+                    if((1 << local.Type) & (RT_SOURCES)) {out.KernelSum_Around_RT_Source += 1.-u*u;}
 #endif
-		    }
-#endif //RT_SOURCE_INJECTION
                     out.DhsmlNgb += -(NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
 #ifdef HYDRO_SPH
                     double mass_eff = mass_j;
