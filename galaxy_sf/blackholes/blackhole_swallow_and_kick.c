@@ -161,12 +161,11 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
     double h_i=local.Hsml, hinv=1/h_i, hinv3, f_accreted; hinv3=hinv*hinv*hinv; f_accreted=0;
 #if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
     double kernel_zero,dwk; kernel_main(0.0,1.0,1.0,&kernel_zero,&dwk,-1); dwk=0;
-    double lum;
 #ifdef SINGLE_STAR_FB_LOCAL_RP
     double mom = local.Luminosity * local.Dt / C_LIGHT_CODE, mom_wt = 0;
 #else    
     double mom = bh_lum_bol(local.Mdot, local.BH_Mass, -1) * local.Dt / C_LIGHT_CODE, mom_wt = 0;
-#endif    
+#endif
 #endif
 #if defined(BH_CALC_LOCAL_ANGLEWEIGHTS) || defined(BH_WIND_KICK)
     double J_dir[3]; for(k=0;k<3;k++) {J_dir[k] = local.Jgas_in_Kernel[k];}
@@ -375,11 +374,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                 
 #if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
                 /* now, do any other feedback "kick" operations (which used the previous loops to calculate weights) */
-#ifdef SINGLE_STAR_FB_LOCAL_RP
                 if(mom>0 && local.Dt>0 && OriginallyMarkedSwallowID==0 && P[j].SwallowID==0 && P[j].Mass>0 && P[j].Type==0) // particles NOT being swallowed!
-#else                    
-                if(mom>0 && local.Mdot>0 && local.Dt>0 && OriginallyMarkedSwallowID==0 && P[j].SwallowID==0 && P[j].Mass>0 && P[j].Type==0) // particles NOT being swallowed!
-#endif                    
                 {
                     double r=0, dir[3]; for(k=0;k<3;k++) {dir[k]=dpos[k]; r+=dir[k]*dir[k];} // should be away from BH
                     if(r>0)

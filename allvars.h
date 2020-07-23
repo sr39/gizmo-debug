@@ -498,7 +498,6 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_M1
 #define RT_SOURCES 32
 #define RT_SPEEDOFLIGHT_REDUCTION 1e-4
-#define RT_AREAWEIGHT_INJECTION
 #define RT_REPROCESS_INJECTED_PHOTONS
 #define RT_OPTICAL_NIR
 #define RT_NUV
@@ -574,7 +573,6 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 
 #if defined(SINGLE_STAR_FB_LOCAL_RP) // use standard angle-weighted local coupling to impart photon momentum from stars
-#define BH_CALC_LOCAL_ANGLEWEIGHTS
 #if !defined(BH_PHOTONMOMENTUM)
 #define BH_PHOTONMOMENTUM
 #endif

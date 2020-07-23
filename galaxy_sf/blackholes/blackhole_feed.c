@@ -293,11 +293,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                             } // swallowID < localID
 #endif // BH_SWALLOWGAS
 #if defined(BH_CALC_LOCAL_ANGLEWEIGHTS) /* calculate the angle-weighting for the photon momentum */
-#if defined(SINGLE_STAR_FB_LOCAL_RP)                            
                             if((local.Dt>0)&&(r>0)&&(P[j].SwallowID==0)&&(P[j].Mass>0)&&(P[j].Type==0))
-#else
-                            if((local.Mdot>0)&&(local.Dt>0)&&(r>0)&&(P[j].SwallowID==0)&&(P[j].Mass>0)&&(P[j].Type==0))
-#endif                                
                             { /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
                                 norm=0; for(k=0;k<3;k++) {norm+=(dpos[k]/r)*J_dir[k];}
                                 out.BH_angle_weighted_kernel_sum += bh_angleweight_localcoupling(j,norm,r,h_i);

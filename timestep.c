@@ -615,7 +615,7 @@ integertime get_timestep(int p,		/*!< particle index */
                         double dt_radacc = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMIN(All.ForceSoftening[0], PPP[p].Hsml) / radacc);
                         if(dt_radacc < dt_rad) {dt_rad = dt_radacc;}
                     }
-#endif         
+#endif
                 }
                 /* even with a fully-implicit solver, we require a CFL-like criterion on timesteps (much larger steps allowed for stability, but not accuracy) */
                 dt_courant = All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED; /* courant-type criterion, using the reduced speed of light */              
@@ -629,18 +629,20 @@ integertime get_timestep(int p,		/*!< particle index */
 		       (SphP[p].Rad_E_gamma_Pred[kf] <= MIN_REAL_NUMBER) ||
 		       (SphP[p].Rad_E_gamma[kf] < 1.e-5*P[p].Mass*SphP[p].InternalEnergy)) {dt_rt_diffusion = 1.e10 * dt;}
                     if(dt_rt_diffusion < dt_rad) dt_rad = dt_rt_diffusion;
-                }                
+                }
                 if(dt_rad > 1.e3*dt_courant) {dt_rad = 1.e3*dt_courant;}
                 if(dt_courant > dt_rad) {dt_rad = dt_courant;}
-#ifdef RT_CHEM_PHOTOION
+#if defined(RT_CHEM_PHOTOION)
                 /* since we're allowing rather large timesteps above in special conditions, make sure this doesn't overshoot the recombination time for the opacity to
-                    change, which can happen particularly for ionizing photons */                    
-                double ne_cgs = (SphP[p].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
-                double dt_recombination = All.CourantFac * (3.3e12/ne_cgs) / UNIT_TIME_IN_CGS;
-                double dt_change = 1.e10*dt; if((SphP[p].Rad_E_gamma[RT_FREQ_BIN_H0] > 0)&&(fabs(SphP[p].Dt_Rad_E_gamma[RT_FREQ_BIN_H0])>0)) {dt_change = SphP[p].Rad_E_gamma[RT_FREQ_BIN_H0] / fabs(SphP[p].Dt_Rad_E_gamma[RT_FREQ_BIN_H0]);}
-                dt_recombination = DMIN(DMAX(dt_recombination,dt_change), DMAX(dt_courant,dt_rad));
-                if(dt_recombination < dt_rad) {dt_rad = dt_recombination;}
-#endif                                               
+                    change, which can happen particularly for ionizing photons */
+                if(kf==RT_FREQ_BIN_H0)
+                {
+                    double ne_cgs = (SphP[p].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
+                    double dt_recombination = All.CourantFac * (3.3e12/ne_cgs) / UNIT_TIME_IN_CGS;
+                    double dt_change = 1.e10*dt; if((SphP[p].Rad_E_gamma[kf] > 0)&&(fabs(SphP[p].Dt_Rad_E_gamma[kf])>0)) {dt_change = SphP[p].Rad_E_gamma[kf] / fabs(SphP[p].Dt_Rad_E_gamma[kf]);}
+                    dt_recombination = DMIN(DMAX(dt_recombination,dt_change), DMAX(dt_courant,dt_rad));
+                    if(dt_recombination < dt_rad) {dt_rad = dt_recombination;}
+                }
 #endif
                 if(dt_courant < dt_rad) {dt_rad = dt_courant;}
                 if(dt_rad < dt) dt = dt_rad;
