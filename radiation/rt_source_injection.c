@@ -37,6 +37,9 @@ static struct INPUT_STRUCT_NAME
 #ifdef RT_AREAWEIGHT_INJECTION
     MyDouble V_i;
 #endif
+#if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
+    MyDouble Dt;
+#endif
 }
 *DATAIN_NAME, *DATAGET_NAME;
 
@@ -65,6 +68,9 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 #endif
 #endif
     for(k=0; k<N_RT_FREQ_BINS; k++) {if(P[i].Type==0 || active_check==0) {in->Luminosity[k]=0;} else {in->Luminosity[k] = lum[k] * dt;}}
+#if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
+    in->Dt = dt;
+#endif
 }
 
 
@@ -153,11 +159,10 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 		if(u>0) kernel_main(u, hinv3, hinv4, &wk, &dwk, 1);
 		double hinv_j = 1./PPP[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j; /* note these lines and many below assume 3D sims! */
 		double wk_j = 0, dwk_j = 0, u_j = r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = P[j].Mass / SphP[j].Density;
-
 		if(u_j<1) {kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);} else {wk_j=dwk_j=0;}
 		if(local.V_i<0 || isnan(local.V_i)) {local.V_i=0;}           	       
 		if(V_j<0 || isnan(V_j)) {V_j=0;}
-		double sph_area = fabs(local.V_i*local.V_i*dwk + V_j*V_j*dwk_j); // effective face area //
+		double sph_area = fabs(local.V_i*local.V_i*dwk + V_j*V_j*dwk_j); // effective face area //                
 		wk = (1 - 1/sqrt(1 + sph_area / (M_PI*r2))) / local.KernelSum_Around_RT_Source; // corresponding geometric weight //
 #else
                 double wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;
@@ -181,10 +186,6 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 {
                     double dE = wk * local.Luminosity[k];
 #if defined(RT_INJECT_PHOTONS_DISCRETELY)
-                    SphP[j].Rad_E_gamma[k] += dE;
-#ifdef RT_EVOLVE_ENERGY
-                    SphP[j].Rad_E_gamma_Pred[k] += dE; // dump discreetly (noisier, but works smoothly with large timebin hierarchy)
-#endif
 #if defined(RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION)
                     // add discrete photon momentum from un-resolved absorption //
                     double x_abs = 2. * SphP[j].Rad_Kappa[k] * (SphP[j].Density*All.cf_a3inv) * (DMAX(2.*Get_Particle_Size(j),lmax_0)*All.cf_atime); // effective optical depth through particle
@@ -192,7 +193,26 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     if(isnan(slabfac_x)||(slabfac_x<=0)) {slabfac_x=0;}
                     if(slabfac_x>1) {slabfac_x=1;}
                     double dv = slabfac_x * dv0 * dE / P[j].Mass; // total absorbed momentum (needs multiplication by dp[kv] for directionality)
+
                     int kv; for(kv=0;kv<3;kv++) {P[j].Vel[kv] += dv*dp[kv]; SphP[j].VelPred[kv] += dv*dp[kv];}
+
+#ifdef RT_REPROCESS_INJECTED_PHOTONS //conserving photon energy, put only the un-absorbed component of the current band into that band, putting the rest in its "donation" bin (ionizing->optical, all others->IR). This would happen anyway during the routine for resolved absorption, but this may more realistically handle situations where e.g. your dust destruction front is at totally unresolved scales and you don't want to spuriously ionize stuff on larger scales. Assume isotropic re-radiation, so inject only energy for the donated bin and not net flux/momentum.
+		    double dE_donation = 0;
+		    int donation_bin = rt_get_donation_target_bin(k);
+#ifdef RT_CHEM_PHOTOION
+                    // figure out if we have enough photons to carve a Stromgren sphere through this cell. If yes, inject ionizing radiation, otherwise more accurate to downgrade it to model an unresolved HII region
+                    double RHII, stellum;
+                    if(k==RT_FREQ_BIN_H0){
+                        if(local.Dt > 0) {stellum = local.Luminosity[k] / RT_SPEEDOFLIGHT_REDUCTION / local.Dt * UNIT_LUM_IN_CGS;} else {stellum = 0;}
+                        RHII = 4.01e-9*pow(stellum,0.333)*pow(SphP[j].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667) / UNIT_LENGTH_IN_CGS;
+                    }
+                    if(k!=RT_FREQ_BIN_H0 || DMAX(r, Get_Particle_Size(j))*All.cf_atime > RHII)// don't inject ionizing photons outside the Stromgren radius
+#endif
+		    {
+		        dE_donation = slabfac_x*dE;
+                        dE *= fabs(1-slabfac_x);
+		    }
+#endif
 #if defined(RT_EVOLVE_FLUX)
                     double dflux = -dE * c_light_eff / r;
                     for(kv=0;kv<3;kv++) {SphP[j].Rad_Flux[k][kv] += dflux*dp[kv]; SphP[j].Rad_Flux_Pred[k][kv] += dflux*dp[kv];}
@@ -202,6 +222,16 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     for(kv=0;kv<N_RT_INTENSITY_BINS;kv++) {SphP[j].Rad_Intensity[k][kv] += dflux * angle_wt_Inu[N_RT_INTENSITY_BINS]; SphP[j].Rad_Intensity_Pred[k][kv] += dflux * angle_wt_Inu[N_RT_INTENSITY_BINS];}
 #endif
 #endif // local extinction-corrected version gets the 'full' thin flux above: more general formulation allows these to build up self-consistently, since we don't know what the flux 'should' be in fact
+                    SphP[j].Rad_E_gamma[k] += dE;
+#ifdef RT_REPROCESS_INJECTED_PHOTONS
+		    if(donation_bin > -1) {SphP[j].Rad_E_gamma[donation_bin] += dE_donation;}
+#endif
+#ifdef RT_EVOLVE_ENERGY
+                    SphP[j].Rad_E_gamma_Pred[k] += dE; // dump discreetly (noisier, but works smoothly with large timebin hierarchy)
+#ifdef RT_REPROCESS_INJECTED_PHOTONS
+		    if(donation_bin > -1) {SphP[j].Rad_E_gamma_Pred[donation_bin] += dE_donation;}
+#endif
+#endif                    
 #if defined(RT_EVOLVE_FLUX) // add relativistic corrections here, which should be there in general. however we will ignore [here] the 'back-reaction' term, since we're assuming the source is a star or something like that, where this would be negligible. gas self gain/loss is handled separately.
                     {int kv; for(kv=0;kv<3;kv++) {SphP[j].Rad_Flux[k][kv] += dE*local.Vel[kv]/All.cf_atime; SphP[j].Rad_Flux_Pred[k][kv] += dE*local.Vel[kv]/All.cf_atime;}}
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION

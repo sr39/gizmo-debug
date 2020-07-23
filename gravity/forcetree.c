@@ -2663,7 +2663,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef BH_PHOTONMOMENTUM /* divide out PhotoMom_coupled_frac here b/c we have our own BH_Rad_Mom factor, and don't want to double-count */
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
                 Rad_Flux[RT_FREQ_BIN_FIRE_IR][0]+=mass_bhlum*fac_flux*dx_stellarlum; Rad_Flux[RT_FREQ_BIN_FIRE_IR][1]+=mass_bhlum*fac_flux*dy_stellarlum; Rad_Flux[RT_FREQ_BIN_FIRE_IR][2]+=mass_bhlum*fac_flux*dz_stellarlum;
-#else
+#elif !(defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_LOCAL_RP))
                 lum_force_fac += (All.BH_Rad_MomentumFactor / (MIN_REAL_NUMBER + All.PhotonMomentum_Coupled_Fraction)) * mass_bhlum * fac_stellum[N_RT_FREQ_BINS-1];
 #endif
 #endif

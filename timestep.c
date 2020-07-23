@@ -615,47 +615,38 @@ integertime get_timestep(int p,		/*!< particle index */
                         double dt_radacc = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMIN(All.ForceSoftening[0], PPP[p].Hsml) / radacc);
                         if(dt_radacc < dt_rad) {dt_rad = dt_radacc;}
                     }
-#endif
+#endif         
                 }
                 /* even with a fully-implicit solver, we require a CFL-like criterion on timesteps (much larger steps allowed for stability, but not accuracy) */
-                dt_courant = All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED; /* courant-type criterion, using the reduced speed of light */
-#if defined(RT_M1) || defined(RT_LOCALRAYGRID)
-#ifndef GALSF
-                dt_rad = dt_courant;
-#endif
+                dt_courant = All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED; /* courant-type criterion, using the reduced speed of light */              
+#if defined(GALSF) && !defined(SINGLE_STAR_SINK_DYNAMICS) // custom hacks for FIRE-RT tests; can override CFL condition with diffusion timestep certain limits
                 double L_RT_diffusion = L_particle*All.cf_atime;
                 for(kf=0;kf<N_RT_FREQ_BINS;kf++)
                 {
                     double dt_rt_diffusion = dt_prefac_diffusion * L_RT_diffusion*L_RT_diffusion / (MIN_REAL_NUMBER + rt_diffusion_coefficient(p,kf));
-#ifdef GALSF
                     /* ignore particles where the radiation energy density is basically non-existant */
 		    if((SphP[p].Rad_E_gamma[kf] <= MIN_REAL_NUMBER) ||
 		       (SphP[p].Rad_E_gamma_Pred[kf] <= MIN_REAL_NUMBER) ||
 		       (SphP[p].Rad_E_gamma[kf] < 1.e-5*P[p].Mass*SphP[p].InternalEnergy)) {dt_rt_diffusion = 1.e10 * dt;}
-#endif
                     if(dt_rt_diffusion < dt_rad) dt_rad = dt_rt_diffusion;
-                }
+                }                
                 if(dt_rad > 1.e3*dt_courant) {dt_rad = 1.e3*dt_courant;}
                 if(dt_courant > dt_rad) {dt_rad = dt_courant;}
-#if defined(RT_CHEM_PHOTOION)
+#ifdef RT_CHEM_PHOTOION
                 /* since we're allowing rather large timesteps above in special conditions, make sure this doesn't overshoot the recombination time for the opacity to
-                    change, which can happen particularly for ionizing photons */
-                if(kf==RT_FREQ_BIN_H0)
-                {
-                    double ne_cgs = (SphP[p].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
-                    double dt_recombination = All.CourantFac * (3.3e12/ne_cgs) / UNIT_TIME_IN_CGS;
-                    double dt_change = 1.e10*dt; if((SphP[p].Rad_E_gamma[kf] > 0)&&(fabs(SphP[p].Dt_Rad_E_gamma[kf])>0)) {dt_change = SphP[p].Rad_E_gamma[kf] / fabs(SphP[p].Dt_Rad_E_gamma[kf]);}
-                    dt_recombination = DMIN(DMAX(dt_recombination,dt_change), DMAX(dt_courant,dt_rad));
-                    if(dt_recombination < dt_rad) {dt_rad = dt_recombination;}
-                }
+                    change, which can happen particularly for ionizing photons */                    
+                double ne_cgs = (SphP[p].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
+                double dt_recombination = All.CourantFac * (3.3e12/ne_cgs) / UNIT_TIME_IN_CGS;
+                double dt_change = 1.e10*dt; if((SphP[p].Rad_E_gamma[RT_FREQ_BIN_H0] > 0)&&(fabs(SphP[p].Dt_Rad_E_gamma[RT_FREQ_BIN_H0])>0)) {dt_change = SphP[p].Rad_E_gamma[RT_FREQ_BIN_H0] / fabs(SphP[p].Dt_Rad_E_gamma[RT_FREQ_BIN_H0]);}
+                dt_recombination = DMIN(DMAX(dt_recombination,dt_change), DMAX(dt_courant,dt_rad));
+                if(dt_recombination < dt_rad) {dt_rad = dt_recombination;}
+#endif                                               
 #endif
-#else
                 if(dt_courant < dt_rad) {dt_rad = dt_courant;}
-#endif
                 if(dt_rad < dt) dt = dt_rad;
             }
-#endif
-
+#endif // RADTRANSFER
+            
 
 #ifdef VISCOSITY
             {
@@ -919,6 +910,12 @@ integertime get_timestep(int p,		/*!< particle index */
 	    dt_cour_sink = DMIN(All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED, dt_cour_sink);
 #endif
             if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
+
+#if defined(SINGLE_STAR_FB_LOCAL_RP) || (defined(SINGLE_STAR_FB_RAD) && defined(RT_RAD_PRESSURE_FORCES))
+            double rad_acc = bh_lum_bol(BPP(p).BH_Mdot, BPP(p).BH_Mass, p) / C_LIGHT_CODE / (2*All.MinMassForParticleMerger); // effective acceleration due to momentum injection at the scale of the cell
+            double dt_radacc = sqrt(0.1 * eps / rad_acc);
+            if(dt > dt_radacc && dt_radacc > 0) dt = 1.01 * dt_radacc;
+#endif                    
         }
         if(P[p].StellarAge == All.Time)
         {   // want a brand new sink to be on the lowest occupied timebin

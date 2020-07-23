@@ -138,7 +138,6 @@ double rt_kappa(int i, int k_freq)
 #endif
     return MIN_REAL_NUMBER + SphP[i].Interpolated_Opacity[k_freq]; /* this is calculated in a different routine, just return it now */
 #endif
-
 #ifdef RT_CHEM_PHOTOION
     /* opacity to ionizing radiation for Petkova & Springel bands. note rt_update_chemistry is where ionization is actually calculated */
     double nH_over_Density = HYDROGEN_MASSFRAC / PROTONMASS * UNIT_MASS_IN_CGS;
@@ -158,6 +157,17 @@ double rt_kappa(int i, int k_freq)
 #ifdef METALS
     if(i>=0) {Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];}
 #endif
+
+// compute factor to account for how dust sublimation eliminates dust opacity above 1500K)
+    double dust_fac = 1.;    
+#if defined(RT_INFRARED) && (defined(RT_LYMAN_WERNER) || defined(RT_PHOTOELECTRIC) || defined(RT_OPTICAL_NIR) || defined(RT_NUV)) // any RT bands that care about dust opacity  (except IR, handled separately with detailed fits)
+    double Tdust = get_equilibrium_dust_temperature_estimate(i, 0.); 
+    /* dust_fac = 1 - sigmoid_sqrt(Tdust/1500.); // smooth taper (reaches ~1% at 10^4K), in case some implicit solve involving temperature and opacity requires continuity to converge */
+    /* dust_fac = DMAX(0, dust_fac); */
+    if(Tdust > 1500) dust_fac = 0;
+#endif
+
+    
 #ifdef RT_FREEFREE /* pure (grey, non-relativistic) Thompson scattering opacity + free-free absorption opacity */
     if(k_freq==RT_FREQ_BIN_FREEFREE)
     {
@@ -182,25 +192,25 @@ double rt_kappa(int i, int k_freq)
     if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return DMAX(kappa_HHe, 180.*(1.e-3 + Zfac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]
     if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return DMAX(kappa_HHe, 10.*(1.e-3 + Zfac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]
 #endif
-    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return (1800.) * fac;}
-    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return (180.)  * fac;}
-    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return (10.) * fac * (0.1 + Zfac);}
+    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return (1800.) * fac * dust_fac;}
+    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return (180.)  * fac * dust_fac;}
+    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return (10.) * fac * (0.1 + Zfac * dust_fac);}
 #endif
 #ifdef RT_PHOTOELECTRIC
     /* opacity comes primarily from dust (ignoring H2 molecular opacities here) */
-    if(k_freq==RT_FREQ_BIN_PHOTOELECTRIC) {return 2000. * DMAX(1.e-4,Zfac) * fac;}
+    if(k_freq==RT_FREQ_BIN_PHOTOELECTRIC) {return 2000. * DMAX(1.e-4,Zfac * dust_fac) * fac;}
 #endif
 #ifdef RT_LYMAN_WERNER
     /* opacity from molecular H2 and dust (dominant at higher-metallicity) should be included */
-    if(k_freq==RT_FREQ_BIN_LYMAN_WERNER) {return 2400.*Zfac * fac;} // just dust term for now
+    if(k_freq==RT_FREQ_BIN_LYMAN_WERNER) {return 2400.*Zfac * fac * dust_fac;} // just dust term for now
 #endif
 #ifdef RT_NUV
     /* opacity comes primarily from dust */
-    if(k_freq==RT_FREQ_BIN_NUV) {return 1800.*Zfac * fac;}
+    if(k_freq==RT_FREQ_BIN_NUV) {return 1800.*Zfac * fac * dust_fac;}
 #endif
 #ifdef RT_OPTICAL_NIR
     /* opacity comes primarily from dust */
-    if(k_freq==RT_FREQ_BIN_OPTICAL_NIR) {return 180.*Zfac * fac;}
+    if(k_freq==RT_FREQ_BIN_OPTICAL_NIR) {return 180.*Zfac * fac * dust_fac;}
 #endif
 #ifdef RT_INFRARED
     /* IR with dust opacity */
@@ -257,8 +267,29 @@ double rt_kappa(int i, int k_freq)
     return 0;
 }
 
-
-
+int rt_get_donation_target_bin(int bin){
+    int donation_target_bin = -1;
+#if defined(RT_CHEM_PHOTOION) && defined(RT_OPTICAL_NIR)
+    /* assume absorbed ionizing photons are re-emitted via recombination into optical-NIR bins. valid if recombination time is fast.
+       more accurately, this should be separately calculated in the cooling rates, and gas treated as a source */
+    if(bin==RT_FREQ_BIN_H0) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
+#ifdef RT_PHOTOION_MULTIFREQUENCY
+    if(bin==RT_FREQ_BIN_He0) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
+    if(bin==RT_FREQ_BIN_He1) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
+    if(bin==RT_FREQ_BIN_He2) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
+#endif
+#endif
+#if defined(RT_PHOTOELECTRIC) && defined(RT_INFRARED)
+    if(bin==RT_FREQ_BIN_PHOTOELECTRIC) {donation_target_bin=RT_FREQ_BIN_INFRARED;} /* this is direct dust absorption, re-radiated in IR */
+#endif
+#if defined(RT_NUV) && defined(RT_INFRARED)
+    if(bin==RT_FREQ_BIN_NUV) {donation_target_bin=RT_FREQ_BIN_INFRARED;} /* this is direct dust absorption, re-radiated in IR */
+#endif
+#if defined(RT_OPTICAL_NIR) && defined(RT_INFRARED)
+    if(bin==RT_FREQ_BIN_OPTICAL_NIR) {donation_target_bin=RT_FREQ_BIN_INFRARED;} /* this is direct dust absorption, re-radiated in IR */
+#endif
+    return donation_target_bin;
+}
 
 
 /***********************************************************************************************************/
@@ -500,6 +531,9 @@ int rt_get_lum_band_singlestar(int i, int mode, double *lum)
     lum[i_vec[3]] = stellar_lum_in_band(i, rt_ion_nu_min[i_vec[3]], 500.); // integrate to end of spectrum for the last band
 #else
     lum[RT_FREQ_BIN_H0] = stellar_lum_in_band(i, 13.6, 500.); // total ionizing flux
+#ifdef RT_STARBENCH_TEST
+    lum[RT_FREQ_BIN_H0] = 1e49 * (rt_nu_eff_eV[RT_FREQ_BIN_H0]*ELECTRONVOLT_IN_ERGS) / UNIT_LUM_IN_CGS;
+#endif    
 #endif
 #endif
 
@@ -781,26 +815,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             }
 #endif
             
-            int donation_target_bin = -1; // frequency into which the photons will be deposited, if any //
-#if defined(RT_CHEM_PHOTOION) && defined(RT_OPTICAL_NIR)
-            /* assume absorbed ionizing photons are re-emitted via recombination into optical-NIR bins. valid if recombination time is fast.
-             more accurately, this should be separately calculated in the cooling rates, and gas treated as a source */
-            if(kf==RT_FREQ_BIN_H0) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
-#ifdef RT_PHOTOION_MULTIFREQUENCY
-            if(kf==RT_FREQ_BIN_He0) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
-            if(kf==RT_FREQ_BIN_He1) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
-            if(kf==RT_FREQ_BIN_He2) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
-#endif
-#endif
-#if defined(RT_PHOTOELECTRIC) && defined(RT_INFRARED)
-            if(kf==RT_FREQ_BIN_PHOTOELECTRIC) {donation_target_bin=RT_FREQ_BIN_INFRARED;} /* this is direct dust absorption, re-radiated in IR */
-#endif
-#if defined(RT_NUV) && defined(RT_INFRARED)
-            if(kf==RT_FREQ_BIN_NUV) {donation_target_bin=RT_FREQ_BIN_INFRARED;} /* this is direct dust absorption, re-radiated in IR */
-#endif
-#if defined(RT_OPTICAL_NIR) && defined(RT_INFRARED)
-            if(kf==RT_FREQ_BIN_OPTICAL_NIR) {donation_target_bin=RT_FREQ_BIN_INFRARED;} /* this is direct dust absorption, re-radiated in IR */
-#endif
+	    int donation_target_bin = rt_get_donation_target_bin(kf); // frequency into which the photons will be deposited, if any //
 #ifdef RT_INFRARED
             if(donation_target_bin==RT_FREQ_BIN_INFRARED) {E_abs_tot += de_abs/(MIN_REAL_NUMBER + dt_entr);} /* donor bin is yourself in the IR - all self-absorption is re-emitted */
             if(kf==RT_FREQ_BIN_INFRARED) {ef = e0 + total_de_dt * dt_entr;} /* donor bin is yourself in the IR - all self-absorption is re-emitted */
@@ -1159,7 +1174,7 @@ double stellar_lum_in_band(int i, double E_lower, double E_upper)
 {
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
     double r_sol = P[i].ProtoStellarRadius_inSolar, l_sol = P[i].StarLuminosity_Solar;
-    if(P[i].ProtoStellarStage < 5) {if(E_lower < 0.1) {return l_sol/UNIT_LUM_IN_SOLAR;} else {return 0;}} // protostars [stage < 5] are only allowed to radiate in the broad-IR band, not higher wavelengths
+    //    if(P[i].ProtoStellarStage < 5) {if(E_lower < 0.1) {return l_sol/UNIT_LUM_IN_SOLAR;} else {return 0;}} // protostars [stage < 5] are only allowed to radiate in the broad-IR band, not higher wavelengths
 #elif defined(SINGLE_STAR_SINK_DYNAMICS) // use generic fits based on mass
     double l_sol=bh_lum_bol(0,P[i].Mass,i)*UNIT_LUM_IN_SOLAR, m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR, r_sol=pow(m_sol,0.738); // L/Lsun, M/Msun, R/Rsun
 #else

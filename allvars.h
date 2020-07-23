@@ -73,7 +73,7 @@
 #endif
 
 #ifndef DISABLE_SPH_PARTICLE_WAKEUP
-#if (SLOPE_LIMITER_TOLERANCE > 0) && !(defined(RT_M1) || defined(RT_LOCALRAYGRID))
+#if (SLOPE_LIMITER_TOLERANCE > 0)
 #define WAKEUP   4.1            /* allows 2 timestep bins within kernel */
 #else
 #define WAKEUP   2.1            /* allows only 1-separated timestep bins within kernel */
@@ -491,13 +491,15 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1
 #endif
-#if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_RAD))
+#if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_LOCAL_RP))
 #define SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION 2 //we are using the protostellar evolution model from ORION
 #endif
 #ifdef SINGLE_STAR_FB_RAD
 #define RT_M1
 #define RT_SOURCES 32
 #define RT_SPEEDOFLIGHT_REDUCTION 1e-4
+#define RT_AREAWEIGHT_INJECTION
+#define RT_REPROCESS_INJECTED_PHOTONS
 #define RT_OPTICAL_NIR
 #define RT_NUV
 #define RT_PHOTOELECTRIC
@@ -551,7 +553,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 #if defined(SINGLE_STAR_FB_RT_HEATING) && !(defined(RT_OTVET) || defined(RT_FLUXLIMITEDDIFFUSION) || defined(RT_M1) || defined(RT_LOCALRAYGRID))
 #define GALSF_FB_FIRE_RT_LONGRANGE  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
-#define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. make sure BH_Rad_MomentumFactor=0 to avoid launching winds this way!!!
+#define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. 
+#define RT_DISABLE_RAD_PRESSURE
 #endif
 
 #if defined(SINGLE_STAR_FB_JETS) || ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION))
@@ -567,6 +570,16 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #define SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT 6 //determines the maximum number of ejecta particles spawned per timestep, see below
 #define SINGLE_STAR_FB_SNE_N_EJECTA (4*(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)*((SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)+1)) //Maximum number of ejecta particles spawned per timestep
+#endif
+#endif
+
+#if defined(SINGLE_STAR_FB_LOCAL_RP) // use standard angle-weighted local coupling to impart photon momentum from stars
+#define BH_CALC_LOCAL_ANGLEWEIGHTS
+#if !defined(BH_PHOTONMOMENTUM)
+#define BH_PHOTONMOMENTUM
+#endif
+#if !defined(RT_DISABLE_RAD_PRESSURE)
+#define RT_DISABLE_RAD_PRESSURE // we only want the local short-ranged photon momentum, since SF sims can easily get into the badly non-photon-conserving limit where LEBRON fluxes are less accurate
 #endif
 #endif
 
@@ -2194,9 +2207,9 @@ extern struct global_data_all_processes
     double PhotonMomentum_fUV;
     double PhotonMomentum_fOPT;
 #endif
+#endif
 #ifdef BH_PHOTONMOMENTUM
     double BH_Rad_MomentumFactor;
-#endif
 #endif
 
 
