@@ -304,6 +304,9 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     if(SphP[i].DelayTimeHII > 0) {return 0;} // force gas flagged as in HII regions to have zero molecular fraction
 #endif
 
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) /* set default module we will use here */
+#define MOLECULAR_FRACTION_LOCALEQM
+#endif
     
 #if defined(MOLECULAR_FRACTION_LOCALEQM) || defined(MOLECULAR_FRACTION_KMT) || defined(MOLECULAR_FRACTION_GNEDINDRAINE) || defined(COOLING) // here are some of the 'fancy' molecular fraction estimators which need various additional properties
     double T=1, nH_cgs=1, Z_Zsol=1, urad_G0=1, xH0=1, x_e=0; // initialize definitions of some variables used below to prevent compiler warnings
@@ -331,14 +334,11 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     //urad_G0 = DMIN(DMAX( urad_G0 , 1.e-3 ) , 1.e10 ); // limit values, because otherwise exponential self-shielding approximation easily artificially gives 0 incident field
     urad_G0 = DMIN(DMAX( urad_G0 , 1.e-10 ) , 1.e10 ); // limit values, because otherwise exponential self-shielding approximation easily artificially gives 0 incident field
 #endif
-    
-    
-//#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) /* if not tracking chemistry explicitly, return a simple estimate of H2 fraction following the KMT [Apj 2009 693, 216] model */
-
+        
 #if defined(MOLECULAR_FRACTION_LOCALEQM)
     /* take eqm of dot[nH2] = a_H2*rho_dust*nHI [dust formation] + a_GP*nHI*ne [gas-phase formation] + b_3B*nHI*nHI*(nHI+nH2/8) [3-body collisional form] - b_H2HI*nHI*nH2 [collisional dissociation]
         - b_H2H2*nH2*nH2 [collisional mol-mol dissociation] - Gamma_H2^LW * nH2 [photodissociation] - Gamma_H2^+ [photoionization] - xi_H2*nH2 [CR ionization/dissociation] */
-    double sqrt_T=sqrt(T), nH0=xH0*nH_cgs, n_e=x_e*nH_cgs, EXPmax=90.; // define some variables for below, including neutral H number density, free electron number, etc.
+    double fH2=0, sqrt_T=sqrt(T), nH0=xH0*nH_cgs, n_e=x_e*nH_cgs, EXPmax=40.; // define some variables for below, including neutral H number density, free electron number, etc.
     double a_Z  = (9.e-19 * T / (1. + 0.04*sqrt_T + 0.002*T + 8.e-6*T*T)) * (0.5*Z_Zsol) * nH_cgs * nH0; // dust formation
     double a_GP = (1.833e-21 * pow(T,0.88)) * nH0 * n_e; // gas-phase formation
     double b_3B = (6.0e-32/sqrt(sqrt_T) + 2.0e-31/sqrt_T) * nH0 * nH0 * nH0; // 3-body collisional formation
@@ -351,10 +351,10 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     double x_b = (a_GP + a_Z + 2.*b_3B + b_H2HI + G_LW + xi_cr_H2); // terms linear in f [note sign, pulling the -sign out here] -- positive-definite
     double x_c = (a_GP + a_Z + b_3B); // terms independent of f -- positive-definite
     double y_a = x_a / (x_c + MIN_REAL_NUMBER), y_b = x_b / (x_c + MIN_REAL_NUMBER), z_a = 4. * y_a / (y_b*y_b + MIN_REAL_NUMBER); // convenient to convert to dimensionless variable needed for checking definite-ness
-    if(z_a>1) {fH2=1;} else {if(fabs(z_a)<0.1) {fH2=y_b*(1.+z_a/4.*(1.+z_a/2.));} else {fH2=2.*y_b*(1.-sqrt(1.-z_a))/z_a;}} // checking limits of terms for accuracy
+    if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // checking limits of terms for accuracy
     if(!isfinite(fH2)) {fH2=0;} // check vs nans
     if(fH2>1) {fH2=1;} else if(fH2<0) {fH2=0;} // check physical limits (if eqm >1 or <0, set to obvious floor/ceiling value
-    return fH2; // return answer
+    return xH0 * fH2; // return answer
 #endif
 
 #if defined(MOLECULAR_FRACTION_KMT)
@@ -374,8 +374,8 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     double fH2 = 1. - pow(1.+q*q*q , -1./3.); // full KMT expression [unlike log-approximation, this extrapolates physically at low-q]
     if(q<0.2) {fH2 = q*q*q * (1. - 2.*q*q*q/3.)/3.;} // catch low-q limit more accurately [prevent roundoff error problems]
     if(q>10.) {fH2 = 1. - 1./q;} // catch high-q limit more accurately [prevent roundoff error problems]
-    fH2 = DMIN(1,DMAX(0, fH2 * xH0)); // multiple by neutral fraction, as this is ultimately the fraction of the -neutral- gas in H2
-    return fH2;
+    fH2 = DMIN(1,DMAX(0, fH2)); // multiple by neutral fraction, as this is ultimately the fraction of the -neutral- gas in H2
+    return xH0 * fH2;
 #endif
     
 #if (SINGLE_STAR_SINK_FORMATION & 256) || defined(GALSF_SFR_MOLECULAR_CRITERION) /* estimate f_H2 with Krumholz & Gnedin 2010 fitting function, assuming simple scalings of radiation field, clumping, and other factors with basic gas properties so function only of surface density and metallicity, truncated at low values (or else it gives non-sensical answers) */

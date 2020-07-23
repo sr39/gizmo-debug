@@ -400,7 +400,7 @@ double chimes_convert_u_to_temp(double u, double rho, int target)
 double convert_u_to_temp(double u, double rho, int target, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess, double *mu_guess)
 {
     int iter = 0;
-    double temp, temp_old, temp_old_old = 0, temp_new, max = 0, ne_old;
+    double temp, temp_old, temp_old_old = 0, temp_new, max = 0, ne_old, mu_old;
     double u_input = u, rho_input = rho, temp_guess;
     temp_guess = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS;
     *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp_guess, rho, nH0_guess, ne_guess, 0., target);
@@ -409,13 +409,15 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
     do
     {
         ne_old = *ne_guess;
+        mu_old = *mu_guess;
         find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess);
         temp_old = temp;
         temp_new = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS * (*mu_guess);
 
-        max = DMAX(max, temp_new * (*mu_guess) * HYDROGEN_MASSFRAC * fabs((*ne_guess - ne_old) / (temp_new - temp_old + 1.0)));
+        //max = DMAX(max, temp_new * (*mu_guess) * HYDROGEN_MASSFRAC * fabs((*ne_guess - ne_old) / (temp_new - temp_old + 1.0))); // old iteration: hardwired assumption that ne is only varying quanity in mu, and that Tmin ~ 1e4 or so
+        max = DMAX(max , temp_new / (*mu_guess) * fabs(*mu_guess - mu_old) / (fabs(temp_new - temp_old) + 1.e-4*(All.MinGasTemp+0.1))); // newer - more flexible mu, and dimensionless T dependence
         temp = temp_old + (temp_new - temp_old) / (1 + max);
-        if(fabs(temp-temp_old_old)/(temp+temp_old_old) < 1.e-4) {double wt=get_random_number(12*iter+340*ThisTask+5435*target); temp=(wt*temp_old + (1.-wt)*temp_new);}
+        if(fabs(temp-temp_old_old)/(temp+temp_old_old) < 1.e-3) {double wt=get_random_number(12*iter+340*ThisTask+5435*target); temp=(wt*temp_old + (1.-wt)*temp_new);}
         temp_old_old = temp_old;
         iter++;
         if(iter > (MAXITER - 10)) {printf("-> temp=%g/%g/%g ne=%g/%g mu=%g rho=%g max=%g iter=%d target=%d \n", temp,temp_new,temp_old,*ne_guess,ne_old, (*mu_guess) ,rho,max,iter,target);}
@@ -1613,8 +1615,10 @@ void selfshield_local_incident_uv_flux(void)
                 tau_nuv *= (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // if using older FIRE defaults, this was manually added instead of rolled into rt_kappa -- annoying but here for completeness //
 #endif
                 double tau_euv = 3.7e6 * surfdensity * UNIT_SURFDEN_IN_CGS; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas //
-                SphP[i].Rad_Flux_UV *= 0.01 + 0.99/(1.0 + 0.8*tau_nuv + 0.85*tau_nuv*tau_nuv); // attenuate (for clumpy medium with 1% scattering)
-                SphP[i].Rad_Flux_EUV *= 0.01 + 0.99/(1.0 + 0.8*tau_euv + 0.85*tau_euv*tau_euv); // attenuate (for clumpy medium with 1% scattering) //
+                SphP[i].Rad_Flux_UV *= exp(-DMIN(tau_nuv,90.)); // attenuate [important in newer modules depending on UV flux to fully-attenuate down to << 1e-6 in dense gas]
+                //SphP[i].Rad_Flux_UV *= 0.01 + 0.99/(1.0 + 0.8*tau_nuv + 0.85*tau_nuv*tau_nuv); // attenuate (for clumpy medium with hard-minimum 1% scattering)
+                //SphP[i].Rad_Flux_EUV *= exp(-DMIN(tau_euv,90.)); // attenuate [important in newer modules depending on UV flux to fully-attenuate down to << 1e-6 in dense gas]
+                SphP[i].Rad_Flux_EUV *= 0.01 + 0.99/(1.0 + 0.8*tau_euv + 0.85*tau_euv*tau_euv); // attenuate (for clumpy medium with hard-minimum 1% scattering) //
             } else {SphP[i].Rad_Flux_UV = SphP[i].Rad_Flux_EUV = 0;}
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS) // ??
             if(SphP[i].DelayTimeHII > 0)
