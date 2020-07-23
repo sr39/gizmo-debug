@@ -196,8 +196,12 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                         if(local.Dt > 0) {stellum = local.Luminosity[k] / RT_SPEEDOFLIGHT_REDUCTION / local.Dt * UNIT_LUM_IN_CGS;} else {stellum = 0;}
                         RHII = 4.01e-9*pow(stellum,0.333)*pow(SphP[j].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667) / UNIT_LENGTH_IN_CGS;
                     }
+                    
                     if(k!=RT_FREQ_BIN_H0 || DMAX(r, Get_Particle_Size(j))*All.cf_atime > RHII)// don't inject ionizing photons outside the Stromgren radius
 #endif
+#ifdef RT_INFRARED
+                    if(k!=RT_FREQ_BIN_INFRARED) //IR just reprocesses to IR, so don't change dE if we're doing IR here
+#endif                        
 		    {
 		        dE_donation = slabfac_x*dE;
                         dE *= fabs(1-slabfac_x);
