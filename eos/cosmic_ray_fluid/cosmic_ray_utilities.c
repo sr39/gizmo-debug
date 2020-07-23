@@ -213,13 +213,13 @@ void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime
 #if (N_CR_PARTICLE_BINS > 2) /* note these are currently energy-loss expressions; for truly multi-bin, probably better to work with dp/dt, instead of dE/dt */
             double E_GeV=return_CRbin_kinetic_energy_in_GeV(target,k_CRegy), beta=return_CRbin_beta_factor(target,k_CRegy);
             CR_coolrate += b_coulomb_per_GeV * ((Z*Z)/(beta*E_GeV)) * nHcgs; // all protons Coulomb-interact, can be rapid for low-E
-            if(E_GeV>=0.78) {CR_coolrate += a_hadronic * nHcgs;} // only GeV CRs or higher trigger above threshold for collisions
+            if(E_GeV>=0.28) {CR_coolrate += a_hadronic * nHcgs;} // only GeV CRs or higher trigger above threshold for collisions
 #else
             CR_coolrate = (0.87*a_hadronic + 0.53*b_coulomb_per_GeV) * nHcgs; /* for N<=2, assume a universal spectral shape, the factor here corrects for the fraction above-threshold for hadronic interactions, and 0.53 likewise for averaging  */
 #endif
         } else { /* electrons here: note for electrons and positrons, always in the relativistic limit, don't need to worry about beta << 1 limits */
             /* bremsstrahlung [folllowing Blumenthal & Gould, 1970]: dEkin/dt=4*alpha_finestruct*r_classical_elec^2*c * SUM[n_Z,ion * Z * (Z+1) * (ln[2*gamma_elec]-1/3) * E_kin */
-            double E_GeV=return_CRbin_kinetic_energy_in_GeV(target,k_CRegy), E_rest=0.000511, gamma=E_GeV/E_rest;
+            double E_GeV=return_CRbin_kinetic_energy_in_GeV(target,k_CRegy), E_rest=0.000511, gamma=1.+E_GeV/E_rest;
             CR_coolrate += n_elec * nHcgs * 1.39e-16 * DMAX(log(2.*gamma)-0.33,0);
             /* synchrotron and inverse compton scale as dE/dt=(4/3)*sigma_Thompson*c*gamma_elec^2*(U_mag+U_rad), where U_mag and U_rad are the magnetic and radiation energy densities, respectively. Ignoring Klein-Nishina corrections here, as they are negligible at <40 GeV and only a ~15% correction up to ~1e5 GeV */
             double b_muG = get_cell_Bfield_in_microGauss(target), U_mag_ev=0.0248342*b_muG*b_muG, U_rad_ev = get_cell_Urad_in_eVcm3(target);
@@ -301,7 +301,7 @@ double CR_gas_heating(int target, double n_elec, double nHcgs)
 #if (N_CR_PARTICLE_BINS > 2)
             double E_GeV = return_CRbin_kinetic_energy_in_GeV(target,k_CRegy), beta = return_CRbin_beta_factor(target,k_CRegy);
             e_heat += b_coulomb_per_GeV * ((Z*Z)/(beta*E_GeV)) * e_cr_units; // all protons Coulomb-heat, can be rapid for low-E
-            if(E_GeV>=0.78) {e_heat += f_heat_hadronic * a_hadronic * e_cr_units;} // only GeV CRs or higher trigger above threshold for collisions
+            if(E_GeV>=0.28) {e_heat += f_heat_hadronic * a_hadronic * e_cr_units;} // only GeV CRs or higher trigger above threshold for collisions
 #else
             e_heat += (0.87*f_heat_hadronic*a_hadronic + 0.53*b_coulomb_per_GeV) * e_cr_units; /* for N<=2, assume a universal spectral shape, the factor here corrects for the fraction above-threshold for hadronic interactions, and 0.53 likewise for averaging  */
 #endif
@@ -777,11 +777,12 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
     double hadronic_coeff = 6.37e-16 * nHcgs; // coefficient for hadronic/catastrophic interactions: dEtot/dt = -(coeff) * Etot, or dPtot/dt = -(coeff) * Ptot (since all p effected are in rel limit, and works by deleting N not by lowering individual E
     double coulomb_coeff = 3.09e-16 * nHcgs * ((n_elec + 0.57*(1.-f_ion))*HYDROGEN_MASSFRAC); // default Coulomb+ionization (the two scale nearly-identically) normalization divided by GeV, b/c we need to divide the energy per CR. needs to be multiplied by ((Z*Z)/(beta*E_GeV))
     double brems_coeff_0 = 1.39e-16  * n_elec * nHcgs; // coefficient for Bremsstrahlung [following Blumenthal & Gould, 1970]: dEkin/dt=4*alpha_finestruct*r_classical_elec^2*c * SUM[n_Z,ion * Z * (Z+1) * (ln[2*gamma_elec]-1/3) * E_kin . this needs to be multiplied by [DMAX(log(2.*gamma)-0.33,0)]; becomes dE/dt = -(coeff) * E, or dP/dt = -(coeff) * P [since all e- in rel limit]
-    double synchIC_coeff_0 = 5.2e-20 * (U_mag_ev + U_rad_ev); // synchrotron and inverse compton scale as dE/dt=(4/3)*sigma_Thompson*c*gamma_elec^2*(U_mag+U_rad), where U_mag and U_rad are the magnetic and radiation energy densities, respectively. Ignoring Klein-Nishina corrections here, as they are negligible at <40 GeV and only a ~15% correction up to ~1e5 GeV. U_mag_ev=(B^2/8pi)/(eV/cm^(-3)), here; U_rad=U_rad/(eV/cm^-3). needs to be multiplied by gamma
+    double synchIC_coeff_0 = 5.2e-20 * (U_mag_ev + U_rad_ev); // synchrotron and inverse compton scale as dp/dt=(4/3)*sigma_Thompson*c*gamma_elec^2*(U_mag+U_rad), where U_mag and U_rad are the magnetic and radiation energy densities, respectively. Ignoring Klein-Nishina corrections here, as they are negligible at <40 GeV and only a ~15% correction up to ~1e5 GeV. U_mag_ev=(B^2/8pi)/(eV/cm^(-3)), here; U_rad=U_rad/(eV/cm^-3). needs to be multiplied by gamma
     double e_ion_coeff = 3.60e-16 * nHcgs * (1.-f_ion); // electron ionization term - note very similar to proton ionization (slightly different normalization b/c of log terms, and always in relativistic limit. see e.g. Ginzburg and Syrovatskii, 1964; Gould and Burbidge, 1965, Ramaty and Lingenfelter, 1966.
     
-    double dt_min = dtime_cgs, dt_tmp, CourFac = 0.4; // courant-like factor for use in subcycling here //
+    double dt_min=dtime_cgs, dt_min_e=dt_min, dt_min_p=dt_min, dt_tmp, CourFac=0.4; // courant-like factor for use in subcycling here //
     int sign_flip_adiabatic_terms = 0, sign_key_for_adiabatic_loop = 1; // key that tells us if the adiabatic+brems+streaming terms have a strong sign flip, in which case we need to do 2 loops instead of 1
+    double min_R_e=MAX_REAL_NUMBER, min_R_p=MAX_REAL_NUMBER; // record the minimum bin for e and p, for use in timestepping and limiting below (need to know if we're in the smallest bin)
     for(k=0;k<N_CR_PARTICLE_BINS;k++) /* initialize a bunch of variables for the different bins that we'll refer to below */
     {
         Ucr_i[k] = Ucr[k]; // save initial energy for reference at the end of this loop
@@ -792,8 +793,9 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
         x_m[k] = CR_global_min_rigidity_in_bin[k] / R0[k]; // ratio of min-to-mid-bin CR rigidity or momentum, used for scaling everything below
         x_p[k] = CR_global_max_rigidity_in_bin[k] / R0[k]; // ratio of max-to-mid-bin CR rigidity or momentum, used for scaling everything below
         bin_slopes[k] = CR_return_slope_from_number_and_energy_in_bin(Ucr[k], ntot_evolved[k], E_GeV[k], k); // initialize slopes to use below from LUT, if not directly evolving them
-
-        if(Z[k] < 0) {brems_coeff[k] = brems_coeff_0 * DMAX(log(2.*E_GeV[k]/E_rest_e_GeV)-0.33,0);} else {brems_coeff[k]=0;}
+        if(Z[k] < 0) {if(R0[k]<min_R_e) {min_R_e=R0[k];}} else {if(R0[k]<min_R_p) {min_R_p=R0[k];}} // record minimum rigidity to use in limits applied below
+        
+        if(Z[k] < 0) {brems_coeff[k] = brems_coeff_0 * DMAX(log(2.*(1.+E_GeV[k]/E_rest_e_GeV))-0.33,0);} else {brems_coeff[k]=0;}
         streaming_coeff[k] = CR_get_streaming_loss_rate_coefficient(target,k) / UNIT_TIME_IN_CGS;
         
         // calculate the timestep limit from all possible bins, maximum step. note no constraint from hadronic here b/c cannot 'cross the bin'
@@ -819,37 +821,38 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
 
     for(k=0;k<N_CR_PARTICLE_BINS;k++)
     {
-       if((Ucr[k] < 1.e-10 * Ucr_tot) || (bin_centered_rate_coeff[k]==0)) {continue;} // don't bother with timestep limits if the bin contains totally negligible fraction of CR energy
-       double abs_bin_coeff_limit = 0.05 * fabs(bin_centered_rate_coeff[k]); // set threshold for fraction of rate where we need to worry about detailed subcycling: sub-dominant processes not important here. find few percent works well here.
-       double adiab_brem_coeff = fabs(adiabatic_coeff + streaming_coeff[k] + brems_coeff[k]); // do constraint from adiabatic + Bremsstrahlung
-       if(adiab_brem_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * log(x_p[k]/x_m[k]) / adiab_brem_coeff; dt_min=DMIN(dt_min, dt_tmp);}
-       if(Z[k] < 0) // e-: do constraint from synchrotron + IC
-       {
+        if((Ucr[k] < 1.e-10 * Ucr_tot) || (bin_centered_rate_coeff[k]==0)) {continue;} // don't bother with timestep limits if the bin contains totally negligible fraction of CR energy
+        if(Z[k] < 0) {if(R0[k] <= 1.01*min_R_e) {continue;}} else {if(R0[k] <= 1.01*min_R_p) {continue;}} // don't need to apply the same timestep in the smallest bin, so long as regulated by the bin above it, since we'll just cool to 0 here in finite time and that's ok
+        double abs_bin_coeff_limit = 0.05 * fabs(bin_centered_rate_coeff[k]); // set threshold for fraction of rate where we need to worry about detailed subcycling: sub-dominant processes not important here. find few percent works well here.
+        double adiab_brem_coeff = fabs(adiabatic_coeff + streaming_coeff[k] + brems_coeff[k]); // do constraint from adiabatic + Bremsstrahlung
+        if(adiab_brem_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * log(x_p[k]/x_m[k]) / adiab_brem_coeff; if(Z[k]<0) {dt_min_e=DMIN(dt_min_e, dt_tmp);} else {dt_min_p=DMIN(dt_min_p, dt_tmp);}}
+        if(Z[k] < 0) // e-: do constraint from synchrotron + IC
+        {
            double IC_sync_coeff = (E_GeV[k]/E_rest_e_GeV) * synchIC_coeff_0;
-           if(IC_sync_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * (1./x_m[k] - 1./x_p[k]) / IC_sync_coeff; dt_min=DMIN(dt_min, dt_tmp);}
+           if(IC_sync_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * (1./x_m[k] - 1./x_p[k]) / IC_sync_coeff; dt_min_e=DMIN(dt_min_e, dt_tmp);}
            double ion_coeff = ((1.+0.07*log(E_GeV[k]))/R0[k]) * e_ion_coeff; bin_centered_rate_coeff[k]+=ion_coeff; // relativistic expression. note this is equation for p evolution, where R is rigidity, so need to be careful with Z factors, etc.
-           if(ion_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * DMIN(x_p[k]-x_m[k], x_m[k]) / ion_coeff; dt_min=DMIN(dt_min, dt_tmp);}
-       } else { // p: do constraint from Coulomb + ionization
+           if(ion_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * DMIN(x_p[k]-x_m[k], x_m[k]) / ion_coeff; dt_min_e=DMIN(dt_min_e, dt_tmp);}
+        } else { // p: do constraint from Coulomb + ionization
            if(NR_key[k]==1) // bin is in non-relativistic limit, use those expressions
            {
                double A=1.; if(Z[k]>1) {A=2.*Z[k];}
                double Coul_coeff = ((0.88 * A*A) / (R0[k]*R0[k]*R0[k] * Z[k])) * coulomb_coeff; // non-relativistic expression. note this is equation for p evolution, where R is rigidity, so need to be careful with Z factors, etc. should be multiplied by atomic weight A^2 as well.
-               if(Coul_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * (x_p[k]*x_p[k]*x_p[k] - x_m[k]*x_m[k]*x_m[k]) / (3.*Coul_coeff); dt_min=DMIN(dt_min, dt_tmp); bin_centered_rate_coeff[k]+=Coul_coeff;}
+               if(Coul_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * (x_p[k]*x_p[k]*x_p[k] - x_m[k]*x_m[k]*x_m[k]) / (3.*Coul_coeff); dt_min_p=DMIN(dt_min_p, dt_tmp); bin_centered_rate_coeff[k]+=Coul_coeff;}
            } else { // bin is in relativistic limit, use those expressions
                double Coul_coeff = (Z[k]/R0[k]) * coulomb_coeff; // relativistic expression. note this is equation for p evolution, where R is rigidity, so need to be careful with Z factors, etc.
-               if(Coul_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * DMIN(x_p[k]-x_m[k], x_m[k]) / Coul_coeff; dt_min=DMIN(dt_min, dt_tmp);}
+               if(Coul_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * DMIN(x_p[k]-x_m[k], x_m[k]) / Coul_coeff; dt_min_p=DMIN(dt_min_p, dt_tmp);}
            }
-       }
+        }
     }
-    if(All.ComovingIntegrationOn) {if(Ucr_tot < 1.e-6*P[target].Mass*SphP[target].InternalEnergy) {dt_min*=10; dt_min=DMAX(dt_min,0.01*dtime_cgs);}} // allow larger slope errors when the CR energy is a negligible fraction of total
+    if(All.ComovingIntegrationOn) {if(Ucr_tot < 1.e-6*P[target].Mass*SphP[target].InternalEnergy) {dt_min_e*=10.; dt_min_p*=10.; dt_min_e=DMAX(dt_min_e,0.01*dtime_cgs); dt_min_p=DMAX(dt_min_p,0.01*dtime_cgs);}} // allow larger slope errors when the CR energy is a negligible fraction of total
     
-    double dt_target = DMIN(dtime_cgs, dt_min); // timescale for subcycling, using constraint above. limit for extreme cases where we might run into expense problems
+    double dt_target = DMIN(dtime_cgs, DMIN(dt_min_e,dt_min_p)); // timescale for subcycling, using constraint above. limit for extreme cases where we might run into expense problems
     if(dt_target < 1.e-4*dtime_cgs)
     {
-        printf("WARNING: timestep for subcycling wants to exceed limit: dt_min=%g dt_tot=%g \n",dt_min,dtime_cgs);
-        printf(" ID=%llu mode=%d nH=%g ne=%g dt=%g Utot=%g hadronic_coeff=%g coulomb_coeff=%g brems_coeff_0=%g synchIC_coeff_0=%g (U_mag_eV=%g U_rad_eV=%g) adiabatic_coeff=%g dtmin=%g signflip=%d signkey=%d \n",P[target].ID,mode_driftkick,nHcgs,n_elec,dtime_cgs,Ucr_tot,hadronic_coeff,coulomb_coeff,brems_coeff_0,synchIC_coeff_0,U_mag_ev,U_rad_ev,adiabatic_coeff,dt_min,sign_flip_adiabatic_terms,sign_key_for_adiabatic_loop);
+        printf("WARNING: timestep for subcycling wants to exceed limit: dt_min_e/p=%g/%g dt_tot=%g \n",dt_min_e,dt_min_p,dtime_cgs);
+        printf(" ID=%llu mode=%d nH=%g ne=%g dt=%g Utot=%g hadronic_coeff=%g coulomb_coeff=%g brems_coeff_0=%g synchIC_coeff_0=%g (U_mag_eV=%g U_rad_eV=%g) adiabatic_coeff=%g dtmin=%g signflip=%d signkey=%d \n",P[target].ID,mode_driftkick,nHcgs,n_elec,dtime_cgs,Ucr_tot,hadronic_coeff,coulomb_coeff,brems_coeff_0,synchIC_coeff_0,U_mag_ev,U_rad_ev,adiabatic_coeff,DMIN(dt_min_e,dt_min_p),sign_flip_adiabatic_terms,sign_key_for_adiabatic_loop);
         for(k=0;k<N_CR_PARTICLE_BINS;k++) {printf("  k=%d U=%g Z=%g R0=%g E=%g NR=%d xm=%g xp=%g slope=%g bremc=%g strmc=%g binratec=%g \n",k,Ucr[k],Z[k],R0[k],E_GeV[k],NR_key[k],x_m[k],x_p[k],bin_slopes[k],brems_coeff[k],streaming_coeff[k],bin_centered_rate_coeff[k]);}
-        if(dt_target < 1.e-6*dtime_cgs) {dt_target=1.e-6*dtime_cgs;}
+        if(dt_target < 1.e-6*dtime_cgs) {dt_min_e=DMAX(dt_min_e,1.e-6*dtime_cgs); dt_min_p=DMAX(dt_min_p,1.e-6*dtime_cgs);}
     }
 
     int proton_key; for(proton_key=0;proton_key<=1;proton_key++) // loop over whether we consider nuclei or electrons, first //
@@ -861,6 +864,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
         //qsort(bins_sorted, n_active, sizeof(int), compare_CR_rigidity_for_sort); // sort on energies from smallest-to-largest [this is hard-coded by requiring the list go in monotonic increasing order for e and p, regardless of how the e and p are themselves ordered //
 
         t = 0; // reset this before we enter the time integration loop below! //
+        if(proton_key==0) {dt_target = DMIN(dtime_cgs, dt_min_e);} else {dt_target = DMIN(dtime_cgs, dt_min_p);} // allow separate timesteps for e and p, since there is no direct exchange between them in the subcycle below
         while(t < dtime_cgs)
         {
             dt = DMIN(dt_target , dtime_cgs - t); // set the subcycle step size
@@ -884,7 +888,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                     
                     if(loss_mode==0) // hadronic+catastrophic losses.
                     {
-                        if(E_GeV[j] > 0.78) {double fac=exp(-DMIN(hadronic_coeff*dt, 60.)); Ucr[j]*=fac; ntot_evolved[j]*=fac;} // only >~GeV trigger threshold for collisions //
+                        if(E_GeV[j] > 0.28) {double fac=exp(-DMIN(hadronic_coeff*dt, 60.)); Ucr[j]*=fac; ntot_evolved[j]*=fac;} // only >~GeV trigger threshold for collisions //
                         dn_flux=0; de_flux=0; // make sure these are zero'd for next step
                         continue; // these -destroy- CRs, decreasing N and E identically [ignoring secondary production for now], leaving slope un-modified and -no- bin-to-bin fluxes: easy to solve, just modify total energy+number identically in the bin //
                     }
@@ -903,19 +907,9 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                     ntot *= (etot / E_bin_NtoE); // dimensional normalization. note the units are arbitrary for the E_bin_NtoE term, as long as we are consistent [we can evolve constant x N, instead of N, for convenience]
                     */
                     
-                    if(dn_flux!=0 && de_flux!=0) // update bin with fluxes incoming
-                    {
-                        ntot = ntot + dn_flux; // incoming flux of number [positive-definite]
-                        etot = etot + de_flux; // incoming flux of energy [positive-definite]
-                        if(ntot > 0 && etot > 0) {slope_gamma = CR_return_slope_from_number_and_energy_in_bin(etot, ntot, E_bin_NtoE, j);} // get the updated slope for this bin
-                        dn_flux = 0; // reset value
-                        de_flux = 0; // reset value
-                        Ucr[j] = etot; // set updated energy in bin
-                        ntot_evolved[j] = ntot; // set updated number in bin
-                        bin_slopes[j] = slope_gamma; // set updated slope [or N, if that's the conserved quantity we evolve]
-                    }
-                    dn_flux=0; de_flux=0; // re-zero in case above was not triggered
-                    if(etot <= 0 || ntot <= 0) {continue;} // no CRs to actually work with here [nothing injected yet]!
+                    double dn_flux_fromprevbin = dn_flux, de_flux_fromprevbin = de_flux; // fluxes coming from the last bin. note these have -already- been cooled, so don't want to double-count that operation, hence we add them at the end of the sub-step
+                    dn_flux = 0; de_flux = 0; // reset these, they will be re-defined below but in case we skip the relevant loop they need to be zeroed
+                    if((etot <= 0 && de_flux_fromprevbin <= 0) || (ntot <= 0 && dn_flux_fromprevbin <= 0)) {continue;} // no CRs to actually work with here [nothing injected yet]!
                     
                     double rate_prefac = 0; // coefficient for the bin-centered loss rate from this mode [-negative- loss rate = energy-gain]
                     if(loss_mode==1 || loss_mode==4) // adiabatic + brems + streaming
@@ -935,87 +929,92 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                     }
                     if(loss_mode==3) {rate_prefac = (E_GeV[j]/E_rest_e_GeV) * synchIC_coeff_0;} // IC + synch
                     
-                    if(fabs(rate_prefac) < 0.01*fabs(bin_centered_rate_coeff[j])+MIN_REAL_NUMBER) {continue;} // this loss mode is negligible here, skip it [pure optimization]
-                    if(fabs(bin_centered_rate_coeff[j])*dt < 1.e-16 * Ucr[j]) {continue;} // total loss rate is so small we won't be able to track it to floating-point accuracy, skip it
-                    if(loss_mode==1 || loss_mode==4) {if((rate_prefac < 0 && order == -1) || (rate_prefac > 0 && order == 1)) {continue;}} // adiabatic: make sure we are operating in correct order (will ignore bin if we have a sign switch, which is ok, since it must be nearly-null in that case
+                    int do_cooling_ops = 0; // option to skip the cooling subcycle part of the step here:
+                    if(fabs(rate_prefac) < 0.01*fabs(bin_centered_rate_coeff[j])+MIN_REAL_NUMBER) {do_cooling_ops=0;} // this loss mode is negligible here, skip it [pure optimization]
+                    if(fabs(bin_centered_rate_coeff[j])*dt < 1.e-16 * Ucr[j]) {do_cooling_ops=0;} // total loss rate is so small we won't be able to track it to floating-point accuracy, skip it
+                    if(loss_mode==1 || loss_mode==4) {if((rate_prefac < 0 && order == -1) || (rate_prefac > 0 && order == 1)) {do_cooling_ops=0;}} // adiabatic: make sure we are operating in correct order (will ignore bin if we have a sign switch, which is ok, since it must be nearly-null in that case
                     
-                    double rate_dt = rate_prefac * dt; // dimensionless step size with rate prefactor times timestep
-                    double x_to_edge = CR_return_new_bin_edge_from_rate(rate_dt, xm, xp, loss_mode, NR_key[j]); // returns the dimensionless 'x' representing the particles furthest from bin edge that 'reach' the edge by end of this sub-step
-                    gamma_one = slope_gamma+1.; xe_gamma_one = pow(x_to_edge, gamma_one); xm_gamma_one = pow(xm, gamma_one); xp_gamma_one = pow(xp, gamma_one);
-                    
-                    double dn_lostfrombin = 0; // calculate the number flux integrating out to that new bin edge
-                    if(rate_prefac < 0) {dn_lostfrombin = ntot * (1 - xe_gamma_one / xp_gamma_one) / (1 - xm_gamma_one / xp_gamma_one);}
-                        else {dn_lostfrombin = ntot * (xe_gamma_one / xm_gamma_one - 1.) / (xp_gamma_one / xm_gamma_one - 1.);}
-                    
-                    double etot_final_inbin = etot; // calculate the final energy of all particles still inside bin bounds at end of the sub-step
-                    double etot_final_allparticlesfrombin = etot; // calculate the final energy of all particles that began sub-step within bin bounds [difference is net flux of energy out-of-bin]
-                    
-
-                    if(loss_mode==1 || loss_mode==4) // adiabatic + brems
+                    if(do_cooling_ops) // enter the 'cooling' (bin-to-bin flux calculations) portion of the subcycle
                     {
-                        double norm_fac = exp(-rate_dt), x1, x0, x1_gamma_one, x0_gamma_one; // now make sure we flip the sign convention back to normal for rate
-                        if(rate_dt < 0) {x1=x_to_edge; x1_gamma_one=xe_gamma_one; x0=xm; x0_gamma_one=xm_gamma_one;} else {x1=xp; x1_gamma_one=xp_gamma_one; x0=x_to_edge; x0_gamma_one=xe_gamma_one;} // this is everything that remains in bin. so if decaying, runs from x_m' to xp; if growing [rate < 0] runs from xm to x_p'
-                        if(NR_key[j])
+                        double rate_dt = rate_prefac * dt; // dimensionless step size with rate prefactor times timestep
+                        double x_to_edge = CR_return_new_bin_edge_from_rate(rate_dt, xm, xp, loss_mode, NR_key[j]); // returns the dimensionless 'x' representing the particles furthest from bin edge that 'reach' the edge by end of this sub-step
+                        gamma_one = slope_gamma+1.; xe_gamma_one = pow(x_to_edge, gamma_one); xm_gamma_one = pow(xm, gamma_one); xp_gamma_one = pow(xp, gamma_one);
+                        
+                        double dn_lostfrombin = 0; // calculate the number flux integrating out to that new bin edge
+                        if(rate_prefac < 0) {dn_lostfrombin = ntot * (1 - xe_gamma_one / xp_gamma_one) / (1 - xm_gamma_one / xp_gamma_one);}
+                            else {dn_lostfrombin = ntot * (xe_gamma_one / xm_gamma_one - 1.) / (xp_gamma_one / xm_gamma_one - 1.);}
+                        
+                        double etot_final_inbin = etot; // calculate the final energy of all particles still inside bin bounds at end of the sub-step
+                        double etot_final_allparticlesfrombin = etot; // calculate the final energy of all particles that began sub-step within bin bounds [difference is net flux of energy out-of-bin]
+                        
+                        if(loss_mode==1 || loss_mode==4) // adiabatic + brems
                         {
-                            norm_fac *= norm_fac; // exp(2*rate*dt) because of KE going as p^2
-                            etot_final_inbin = etot * norm_fac * (x1_gamma_one*x1*x1 - x0_gamma_one*x0*x0) / (xp_gamma_one*xp*xp - xm_gamma_one*xm*xm); // extra power of x from extra power of p in KE
-                        } else {
-                            etot_final_inbin = etot * norm_fac * (x1_gamma_one*x1 - x0_gamma_one*x0) / (xp_gamma_one*xp - xm_gamma_one*xm); // relativistic limit expression
+                            double norm_fac = exp(-rate_dt), x1, x0, x1_gamma_one, x0_gamma_one; // now make sure we flip the sign convention back to normal for rate
+                            if(rate_dt < 0) {x1=x_to_edge; x1_gamma_one=xe_gamma_one; x0=xm; x0_gamma_one=xm_gamma_one;} else {x1=xp; x1_gamma_one=xp_gamma_one; x0=x_to_edge; x0_gamma_one=xe_gamma_one;} // this is everything that remains in bin. so if decaying, runs from x_m' to xp; if growing [rate < 0] runs from xm to x_p'
+                            if(NR_key[j])
+                            {
+                                norm_fac *= norm_fac; // exp(2*rate*dt) because of KE going as p^2
+                                etot_final_inbin = etot * norm_fac * (x1_gamma_one*x1*x1 - x0_gamma_one*x0*x0) / (xp_gamma_one*xp*xp - xm_gamma_one*xm*xm); // extra power of x from extra power of p in KE
+                            } else {
+                                etot_final_inbin = etot * norm_fac * (x1_gamma_one*x1 - x0_gamma_one*x0) / (xp_gamma_one*xp - xm_gamma_one*xm); // relativistic limit expression
+                            }
+                            etot_final_allparticlesfrombin = etot * norm_fac; // easy because all particles lose the same fractional energy
                         }
-                        etot_final_allparticlesfrombin = etot * norm_fac; // easy because all particles lose the same fractional energy
-                    }
-                    if(loss_mode==2) // coulomb + ion
-                    {
-                        if(NR_key[j])
+                        if(loss_mode==2) // coulomb + ion
                         {
-                            double norm_fac = etot * (gamma_one+2.) / (xp_gamma_one*xp*xp - xm_gamma_one*xm*xm); // get the pre-factor for the integral from numbers we already have
-                            double xmin_remains = pow(3.*rate_dt, 1./3.); // sets absolute minimum value of x for which any energy remains at all, needs to be integrated only from this bound upwards
-                            int n_int=10; double xmin=DMAX(xm,xmin_remains), u_int=0, u_int_xe=0, dlnx=log(xp/xm)/((double)n_int), exp_fac=exp(dlnx/2.), x=xmin*exp_fac, f0=CR_coulomb_energy_integrand(xmin,rate_dt,slope_gamma), f1, exp_fac_2=exp_fac*exp_fac, x0=xmin, x1;
+                            if(NR_key[j])
+                            {
+                                double norm_fac = etot * (gamma_one+2.) / (xp_gamma_one*xp*xp - xm_gamma_one*xm*xm); // get the pre-factor for the integral from numbers we already have
+                                double xmin_remains = pow(3.*rate_dt, 1./3.); // sets absolute minimum value of x for which any energy remains at all, needs to be integrated only from this bound upwards
+                                int n_int=10; double xmin=DMAX(xm,xmin_remains), u_int=0, u_int_xe=0, dlnx=log(xp/xm)/((double)n_int), exp_fac=exp(dlnx/2.), x=xmin*exp_fac, f0=CR_coulomb_energy_integrand(xmin,rate_dt,slope_gamma), f1, exp_fac_2=exp_fac*exp_fac, x0=xmin, x1;
+                                while(x < xp)
+                                {
+                                    x1 = DMIN(x*exp_fac, xp);
+                                    f1 = CR_coulomb_energy_integrand( x1 , rate_dt, slope_gamma);
+                                    double u_int_fac = log(x1/x0) * (f1 - f0) / (log((f1+MIN_REAL_NUMBER)/(f0+MIN_REAL_NUMBER)) + MIN_REAL_NUMBER);
+                                    u_int += u_int_fac;
+                                    if(x0 < x_to_edge) {if(x1 > x_to_edge) {double f1_e=CR_coulomb_energy_integrand(x_to_edge,rate_dt,slope_gamma); u_int_xe+=log(x_to_edge/x0)*(f1_e-f0)/(log((f1_e+MIN_REAL_NUMBER)/(f0+MIN_REAL_NUMBER)) + MIN_REAL_NUMBER);} else {u_int_xe+=u_int_fac;}}
+                                    x *= exp_fac_2; f0 = f1; x0 = x1;
+                                }
+                                etot_final_inbin = (u_int - u_int_xe) * norm_fac; etot_final_allparticlesfrombin = u_int * norm_fac; // normalize these appropriately
+                            } else {
+                                double d_egy_fac = rate_dt * ntot * E_bin_NtoE; // re-normalizes ntot correctly back in our chosen units to the -same- units as etot, for use below
+                                etot_final_inbin = etot * (xp_gamma_one*xp - xe_gamma_one*x_to_edge) / (xp_gamma_one*xp - xm_gamma_one*xm)
+                                    - d_egy_fac * (xp_gamma_one - xe_gamma_one) / (xp_gamma_one - xm_gamma_one); // relativistic limit expression: accounts both for particles leaving the bin [first term] and total energy lost by all particles that stay in the bin [second term]
+                                etot_final_allparticlesfrombin = etot - d_egy_fac; // easy because all particles lose the same absolute energy
+                            }
+                        }
+                        if(loss_mode==3) // IC + synch
+                        {
+                            double norm_fac = etot * (gamma_one+1.) / (xp_gamma_one*xp - xm_gamma_one*xm); // get the pre-factor for the integral from numbers we already have
+                            int n_int=10; double u_int=0, u_int_xe=0, dlnx=log(xp/xm)/((double)n_int), exp_fac=exp(dlnx/2.), x=xm*exp_fac, f0=CR_compton_energy_integrand(xm,rate_dt,gamma_one), f1, exp_fac_2=exp_fac*exp_fac, x0=xm, x1;
                             while(x < xp)
                             {
                                 x1 = DMIN(x*exp_fac, xp);
-                                f1 = CR_coulomb_energy_integrand( x1 , rate_dt, slope_gamma);
+                                f1 = CR_compton_energy_integrand( x1 , rate_dt, gamma_one);
                                 double u_int_fac = log(x1/x0) * (f1 - f0) / (log((f1+MIN_REAL_NUMBER)/(f0+MIN_REAL_NUMBER)) + MIN_REAL_NUMBER);
                                 u_int += u_int_fac;
-                                if(x0 < x_to_edge) {if(x1 > x_to_edge) {double f1_e=CR_coulomb_energy_integrand(x_to_edge,rate_dt,slope_gamma); u_int_xe+=log(x_to_edge/x0)*(f1_e-f0)/(log((f1_e+MIN_REAL_NUMBER)/(f0+MIN_REAL_NUMBER)) + MIN_REAL_NUMBER);} else {u_int_xe+=u_int_fac;}}
+                                if(x0 < x_to_edge) {if(x1 > x_to_edge) {double f1_e=CR_compton_energy_integrand(x_to_edge,rate_dt,gamma_one); u_int_xe+=log(x_to_edge/x0)*(f1_e-f0)/(log((f1_e+MIN_REAL_NUMBER)/(f0+MIN_REAL_NUMBER)) + MIN_REAL_NUMBER);} else {u_int_xe+=u_int_fac;}}
                                 x *= exp_fac_2; f0 = f1; x0 = x1;
                             }
                             etot_final_inbin = (u_int - u_int_xe) * norm_fac; etot_final_allparticlesfrombin = u_int * norm_fac; // normalize these appropriately
-                        } else {
-                            double d_egy_fac = rate_dt * ntot * E_bin_NtoE; // re-normalizes ntot correctly back in our chosen units to the -same- units as etot, for use below
-                            etot_final_inbin = etot * (xp_gamma_one*xp - xe_gamma_one*x_to_edge) / (xp_gamma_one*xp - xm_gamma_one*xm)
-                                - d_egy_fac * (xp_gamma_one - xe_gamma_one) / (xp_gamma_one - xm_gamma_one); // relativistic limit expression: accounts both for particles leaving the bin [first term] and total energy lost by all particles that stay in the bin [second term]
-                            etot_final_allparticlesfrombin = etot - d_egy_fac; // easy because all particles lose the same absolute energy
                         }
-                    }
-                    if(loss_mode==3) // IC + synch
-                    {
-                        double norm_fac = etot * (gamma_one+1.) / (xp_gamma_one*xp - xm_gamma_one*xm); // get the pre-factor for the integral from numbers we already have
-                        int n_int=10; double u_int=0, u_int_xe=0, dlnx=log(xp/xm)/((double)n_int), exp_fac=exp(dlnx/2.), x=xm*exp_fac, f0=CR_compton_energy_integrand(xm,rate_dt,gamma_one), f1, exp_fac_2=exp_fac*exp_fac, x0=xm, x1;
-                        while(x < xp)
-                        {
-                            x1 = DMIN(x*exp_fac, xp);
-                            f1 = CR_compton_energy_integrand( x1 , rate_dt, gamma_one);
-                            double u_int_fac = log(x1/x0) * (f1 - f0) / (log((f1+MIN_REAL_NUMBER)/(f0+MIN_REAL_NUMBER)) + MIN_REAL_NUMBER);
-                            u_int += u_int_fac;
-                            if(x0 < x_to_edge) {if(x1 > x_to_edge) {double f1_e=CR_compton_energy_integrand(x_to_edge,rate_dt,gamma_one); u_int_xe+=log(x_to_edge/x0)*(f1_e-f0)/(log((f1_e+MIN_REAL_NUMBER)/(f0+MIN_REAL_NUMBER)) + MIN_REAL_NUMBER);} else {u_int_xe+=u_int_fac;}}
-                            x *= exp_fac_2; f0 = f1; x0 = x1;
-                        }
-                        etot_final_inbin = (u_int - u_int_xe) * norm_fac; etot_final_allparticlesfrombin = u_int * norm_fac; // normalize these appropriately
-                    }
-                    
-                    
-                    dn_lostfrombin = DMIN(dn_lostfrombin , (1.0-1.e-8)*ntot); // limit to prevent 0's which will give nan's
-                    etot_final_inbin = DMAX(etot_final_inbin , 1.e-8*etot); // limit to prevent 0's which will give nan's
-                    ntot = ntot - dn_lostfrombin; // update number
-                    etot = etot_final_inbin; // update energy
-                    
+                        
+                        dn_lostfrombin = DMIN(dn_lostfrombin , (1.0-1.e-8)*ntot); // limit to prevent 0's which will give nan's
+                        etot_final_inbin = DMAX(etot_final_inbin , 1.e-8*etot); // limit to prevent 0's which will give nan's
+                        dn_flux = dn_lostfrombin; // set total outgoing flux of number of particles to next bin
+                        de_flux = DMAX(etot_final_allparticlesfrombin - etot_final_inbin, 0); // determine total outgoing flux of energy to next bin
+
+                        ntot -= dn_lostfrombin; // update number
+                        etot = etot_final_inbin; // update energy
+                    } // close the bin-to-bin flux calculation portion of the subcycle
+
+                    ntot += dn_flux_fromprevbin; // update the bin with the -already cooled- CRs from the previous bin
+                    etot += de_flux_fromprevbin; // update the bin with the -already cooled- CRs from the previous bin
                     if(ntot > 0 && etot > 0) {slope_gamma = CR_return_slope_from_number_and_energy_in_bin(etot, ntot, E_bin_NtoE, j);} // get the updated slope for this bin
 
-                    dn_flux = dn_lostfrombin; // set total outgoing flux of number of particles to next bin
-                    de_flux = DMAX(etot_final_allparticlesfrombin - etot_final_inbin, 0); // determine total outgoing flux of energy to next bin
-                    Ucr[j] = etot; // set finalized updated energy in bin
                     ntot_evolved[j] = ntot; // set finalized updated number in bin
+                    Ucr[j] = etot; // set finalized updated energy in bin
                     bin_slopes[j] = slope_gamma; // set finalized updated slope [or N, if that's the conserved quantity we evolve]
                 } // loop over active bins
             } // loop over loss mode
