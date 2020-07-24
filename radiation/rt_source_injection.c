@@ -148,12 +148,9 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 
                 /* calculate the kernel weight used to apply photons to the neighbor */
 #ifdef RT_AREAWEIGHT_INJECTION
-		        double u=r*hinv, wk, dwk;
-		        if(u>0) {kernel_main(u, hinv3, hinv4, &wk, &dwk, 1);}
-		        double hinv_j = 1./PPP[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j; /* note these lines and many below assume 3D sims! */
-		        double wk_j = 0, dwk_j = 0, u_j = r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = P[j].Mass / SphP[j].Density;
-		        if(u_j<1) {kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);} else {wk_j=dwk_j=0;}
-		        if(local.V_i<0 || isnan(local.V_i)) {local.V_i=0;}           	       
+		        double u=r*hinv, wk=0, dwk=0, wk_j=0, dwk_j=0, hinv_j=1./PPP[j].Hsml, u_j=r*hinv_j, hinv3_j=hinv_j*hinv_j*hinv_j, hinv4_j=hinv_j*hinv3_j, V_j=P[j].Mass/SphP[j].Density; /* note these assume 3D sims! */
+                if(u<1) {kernel_main(u, hinv3, hinv4, &wk, &dwk, 1);}
+		        if(u_j<1) {kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);}
 		        if(V_j<0 || isnan(V_j)) {V_j=0;}
 		        double sph_area = fabs(local.V_i*local.V_i*dwk + V_j*V_j*dwk_j); // effective face area //
 		        wk = (1 - 1/sqrt(1 + sph_area / (M_PI*r2))) / local.KernelSum_Around_RT_Source; // corresponding geometric weight //
