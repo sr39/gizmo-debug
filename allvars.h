@@ -499,6 +499,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_SOURCES 32
 #define RT_SPEEDOFLIGHT_REDUCTION 1e-4
 #define RT_REPROCESS_INJECTED_PHOTONS
+#define BH_ANGLEWEIGHT_PHOTON_INJECTION
 #define RT_OPTICAL_NIR
 #define RT_NUV
 #define RT_PHOTOELECTRIC
@@ -1669,7 +1670,7 @@ extern double TimeBin_BH_mass[TIMEBINS];
 extern double TimeBin_BH_dynamicalmass[TIMEBINS];
 extern double TimeBin_BH_Mdot[TIMEBINS];
 extern double TimeBin_BH_Medd[TIMEBINS];
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_ANGLEWEIGHT_PHOTON_INJECTION)
 #define BH_CALC_LOCAL_ANGLEWEIGHTS
 #endif
 #if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NONGAS) || defined(BH_CALC_LOCAL_ANGLEWEIGHTS) || defined(BH_DYNFRICTION)
@@ -2667,6 +2668,9 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_WAKEUP_GAS /* force all gas within the interaction radius of a sink to timestep at the same rate */
     int LowestBHTimeBin;
 #endif
+#ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION
+    MyFloat BH_angle_weighted_kernel_sum;
+#endif     
 #ifdef BH_FOLLOW_ACCRETED_ANGMOM
     MyFloat BH_Specific_AngMom[3];
 #endif

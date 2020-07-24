@@ -238,28 +238,6 @@ void calculate_non_standard_physics(void)
 #endif
 
 
-#ifdef RADTRANSFER
-    CPU_Step[CPU_MISC] += measure_time();
-#if defined(RT_SOURCE_INJECTION)
-    int flag; flag=1;
-#if !defined(RT_INJECT_PHOTONS_DISCRETELY)
-    flag = Flag_FullStep; /* for continous injection, requires all sources and gas be active synchronously or else 2x-counts */
-#endif
-    if(flag) {rt_source_injection();} /* source injection into neighbor gas particles (only on full timesteps) */
-#endif
-#if defined(RT_DIFFUSION_CG) /* use the CG method to solve the RT diffusion equation implicitly for all particles; do only on full timesteps, requires synchronous timestepping right now */
-    if(Flag_FullStep) {All.Radiation_Ti_endstep = All.Ti_Current; rt_diffusion_cg_solve(); All.Radiation_Ti_begstep = All.Radiation_Ti_endstep;}
-#endif
-#if defined(RT_CHEM_PHOTOION) && (!defined(COOLING) || defined(RT_COOLING_PHOTOHEATING_OLDFORMAT))
-    rt_update_chemistry(); /* chemistry updated at sub-stepping as well */
-#ifndef IO_REDUCED_MODE
-    if(Flag_FullStep) {rt_write_chemistry_stats();}
-#endif
-#endif
-    MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_RTNONFLUXOPS] += measure_time();
-#endif // RADTRANSFER block
-
-
 #ifdef BLACK_HOLES /***** black hole accretion and feedback *****/
     CPU_Step[CPU_MISC] += measure_time();
     blackhole_accretion();
@@ -282,6 +260,26 @@ void calculate_non_standard_physics(void)
         if(All.ComovingIntegrationOn) {All.TimeNextOnTheFlyFoF *= All.TimeBetOnTheFlyFoF;} else {All.TimeNextOnTheFlyFoF += All.TimeBetOnTheFlyFoF;}}
 #endif
 
+#ifdef RADTRANSFER
+    CPU_Step[CPU_MISC] += measure_time();
+#if defined(RT_SOURCE_INJECTION)
+    int flag; flag=1;
+#if !defined(RT_INJECT_PHOTONS_DISCRETELY)
+    flag = Flag_FullStep; /* for continous injection, requires all sources and gas be active synchronously or else 2x-counts */
+#endif
+    if(flag) {rt_source_injection();} /* source injection into neighbor gas particles (only on full timesteps) */
+#endif
+#if defined(RT_DIFFUSION_CG) /* use the CG method to solve the RT diffusion equation implicitly for all particles; do only on full timesteps, requires synchronous timestepping right now */
+    if(Flag_FullStep) {All.Radiation_Ti_endstep = All.Ti_Current; rt_diffusion_cg_solve(); All.Radiation_Ti_begstep = All.Radiation_Ti_endstep;}
+#endif
+#if defined(RT_CHEM_PHOTOION) && (!defined(COOLING) || defined(RT_COOLING_PHOTOHEATING_OLDFORMAT))
+    rt_update_chemistry(); /* chemistry updated at sub-stepping as well */
+#ifndef IO_REDUCED_MODE
+    if(Flag_FullStep) {rt_write_chemistry_stats();}
+#endif
+#endif
+    MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_RTNONFLUXOPS] += measure_time();
+#endif // RADTRANSFER block
 
 #ifdef COOLING	/**** radiative cooling and chemistry  *****/
     cooling_parent_routine(); // master cooling and chemistry subroutine //

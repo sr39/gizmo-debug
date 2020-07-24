@@ -642,7 +642,7 @@ void blackhole_final_operations(void)
     int i, k, n, bin; double dt, mass_disk, mdot_disk, MgasBulge, MstarBulge, r0; k=0;
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
     int count_bhelim=0, tot_bhelim;
-#endif
+#endif 
 
 #ifdef BH_REPOSITION_ON_POTMIN
     for(n = FirstActiveParticle; n >= 0; n = NextActiveParticle[n])
@@ -810,6 +810,10 @@ void blackhole_final_operations(void)
         BPP(n).unspawned_wind_mass += dm_wind;
         if(BPP(n).unspawned_wind_mass>MaxUnSpanMassBH) {MaxUnSpanMassBH=BPP(n).unspawned_wind_mass;}
 #endif
+
+#ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION
+        P[n].BH_angle_weighted_kernel_sum = BlackholeTempInfo[i].BH_angle_weighted_kernel_sum;
+#endif            
 
         /* dump the results to the 'blackhole_details' files */
         mass_disk=0; mdot_disk=0; MgasBulge=0; MstarBulge=0; r0 = PPP[n].Hsml * All.cf_atime;

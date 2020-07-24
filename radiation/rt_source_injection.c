@@ -37,6 +37,9 @@ static struct INPUT_STRUCT_NAME
 #if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
     MyDouble Dt;
 #endif
+#ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION
+    MyDouble BH_angle_weighted_kernel_sum;
+#endif
 }
 *DATAIN_NAME, *DATAGET_NAME;
 
@@ -61,6 +64,9 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
     for(k=0; k<N_RT_FREQ_BINS; k++) {if(P[i].Type==0 || active_check==0) {in->Luminosity[k]=0;} else {in->Luminosity[k] = lum[k] * dt;}}
 #if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
     in->Dt = dt;
+#endif
+#ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION
+    in->BH_angle_weighted_kernel_sum = P[i].BH_angle_weighted_kernel_sum;
 #endif
 }
 
@@ -131,7 +137,11 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
     {
         while(startnode >= 0)
         {
+#ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION // we want the 2-way search to ensure overlapping diffuse gas gets radiation
+            numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+#else            
             numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+#endif            
             if(numngb_inbox < 0) {return -1;}
             for(n = 0; n < numngb_inbox; n++)
             {
@@ -143,20 +153,14 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 NEAREST_XYZ(dp[0],dp[1],dp[2],1); /* find the closest image in the given box size  */
                 double r2=0, r, c_light_eff; for(k=0;k<3;k++) {r2 += dp[k]*dp[k];}
                 if(r2<=0) {continue;} // same particle //
+#ifndef BH_ANGLEWEIGHT_PHOTON_INJECTION                
                 if(r2>=h2) {continue;} // outside kernel //
+#endif                
                 r = sqrt(r2); c_light_eff = C_LIGHT_CODE_REDUCED; // useful variables for below
                 
                 /* calculate the kernel weight used to apply photons to the neighbor */
-#ifdef RT_AREAWEIGHT_INJECTION
-		        double u=r*hinv, wk, dwk;
-		        if(u>0) {kernel_main(u, hinv3, hinv4, &wk, &dwk, 1);}
-		        double hinv_j = 1./PPP[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j; /* note these lines and many below assume 3D sims! */
-		        double wk_j = 0, dwk_j = 0, u_j = r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = P[j].Mass / SphP[j].Density;
-		        if(u_j<1) {kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);} else {wk_j=dwk_j=0;}
-		        if(local.V_i<0 || isnan(local.V_i)) {local.V_i=0;}           	       
-		        if(V_j<0 || isnan(V_j)) {V_j=0;}
-		        double sph_area = fabs(local.V_i*local.V_i*dwk + V_j*V_j*dwk_j); // effective face area //
-		        wk = (1 - 1/sqrt(1 + sph_area / (M_PI*r2))) / local.KernelSum_Around_RT_Source; // corresponding geometric weight //
+#ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION // use the angle-weighted coupling
+                double wk = bh_angleweight_localcoupling(j,0,r,local.Hsml) / local.BH_angle_weighted_kernel_sum;
 #else
                 double wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;
 #endif
@@ -239,8 +243,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     
 #endif // RT_INJECT_PHOTONS_DISCRETELY
                 }
-                
-                
+                                
 #if defined(SINGLE_STAR_FB_RAD)
                 SphP[j].wakeup = 1; NeedToWakeupParticles_local = 1; // this module works better if we send a wakeup whenever we inject
 #endif
