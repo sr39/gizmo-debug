@@ -179,7 +179,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     MyIDType *ip;
     int *ip_int;
     float *fp_single;
-    double dt_gravkick, dt_hydrokick;
 #ifdef OUTPUT_COOLRATE
     double tcool, u;
 #endif
@@ -237,6 +236,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #if 1
                     for(k=0;k<3;k++) {fp[k] = P[pindex].Vel[k] * sqrt(All.cf_a3inv);} // JUST write the conserved velocity here, not the drifted one in this manner //
 #else
+                    double dt_gravkick, dt_hydrokick;
                     integertime dt_integerstep = GET_PARTICLE_INTEGERTIME(pindex);
                     dt_hydrokick = (All.Ti_Current - (P[pindex].Ti_begstep + dt_integerstep / 2)) * UNIT_INTEGERTIME_IN_PHYSICAL;
                     if(All.ComovingIntegrationOn) {dt_gravkick = get_gravkick_factor(P[pindex].Ti_begstep, All.Ti_Current) - get_gravkick_factor(P[pindex].Ti_begstep, P[pindex].Ti_begstep + dt_integerstep / 2);} else {dt_gravkick = dt_hydrokick;}

@@ -177,7 +177,7 @@ void init_turb(void)
     StTPrev = -1; // mark some arbitrarily old time as last update of turb driving fields
     StRng = gsl_rng_alloc(gsl_rng_ranlxd1); // allocate seed variables
     gsl_rng_set(StRng, All.TurbDriving_Global_DrivingRandomNumberKey); // initialize seed
-    int j; for(j=0;j<100;j++) {double tmp=st_turbdrive_get_gaussian_random_variable();} // cycle past initial seed
+    int j; for(j=0;j<100;j++) {double tmp; tmp=st_turbdrive_get_gaussian_random_variable();} // cycle past initial seed
     st_turbdrive_init_ouseq(); // initialize variable for phases
     st_turbdrive_calc_phases(); // initialize phases
     set_turb_ampl(); // set initial amplitudes and calculate initial quantities needed for dissipation measures
