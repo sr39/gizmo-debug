@@ -356,7 +356,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 
     /* now comes the tricky bit -- need to account for the -molecular- self-shielding [depends on fH2, not just the dust external shielding already accounted for */
     double xb0 = a_GP + a_Z + 2.*b_3B + b_H2HI + xi_cr_H2;
-    if(fH2 > 1.e-10 && fH2 < 0.99 && G_LW > 0.5*xb0) // fH2 is non-trivial, and the radiation term is significant, so we need to think about molecular self-shielding
+    if(fH2 > 1.e-10 && fH2 < 0.99 && G_LW > 0.1*xb0) // fH2 is non-trivial, and the radiation term is significant, so we need to think about molecular self-shielding
     {
         double fH2_min = fH2; // we have just calculated fH2 with -no- molecular self-shielding, so this number can only go up from here
         // calculate a bundle of variables we will need below, to account for the velocity-gradient Sobolev approximation and slab attenuation of G0 //
@@ -375,7 +375,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
         z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
         fH2_max = DMAX(0,DMIN(1,fH2)); // this serves as an upper-limit for f
         
-        if(fH2_max > 1.5*fH2_min)
+        if(fH2_max > 1.1*fH2_min)
         {
             f_tmp = fH2_max; // re-calculate the maximally-shielded case
             x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=xb0+y_ss*G_LW; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding
