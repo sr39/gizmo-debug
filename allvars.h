@@ -933,6 +933,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 
 
+
+
 /*------- Things that are always recommended -------*/
 
 
@@ -1242,6 +1244,12 @@ typedef unsigned long long peanokey;
 #define HIIRegion_Temp (1.0e4) /* temperature (in K) of heated gas */
 #endif
 
+
+#ifdef CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT
+#ifndef OUTPUT_MOLECULAR_FRACTION
+#define OUTPUT_MOLECULAR_FRACTION
+#endif
+#endif
 
 
 #ifdef METALS

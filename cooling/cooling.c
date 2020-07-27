@@ -1637,6 +1637,7 @@ void selfshield_local_incident_uv_flux(void)
 /* subroutine to update the molecular fraction using our implicit solver for a simple --single-species-- network (just H2) */
 void update_explicit_molecular_fraction(int i, double dtime_cgs)
 {
+    if(dtime_cgs <= 0) {return;}
 #ifdef CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT
     // first define a number of environmental variables that are fixed over this update step
     double fH2_initial = SphP[i].MolecularMassFraction_perNeutralH; // initial molecular fraction per H atom, entering this subroutine, needed for update below

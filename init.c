@@ -954,6 +954,16 @@ void init(void)
         savepositions(RestartSnapNum);
         endrun(0);
     }
+    
+
+#if defined(CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT)
+    if(RestartFlag == 2) // should have read in SphP[i].MolecularMassFraction_perNeutralH
+    {
+        SphP[i].MolecularMassFraction_perNeutralH = DMIN(1,DMAX(0,SphP[i].MolecularMassFraction_perNeutralH));
+        SphP[i].MolecularMassFraction = DMIN(1,DMAX(0, 1.-SphP[i].Ne/1.25)) * SphP[i].MolecularMassFraction_perNeutralH;
+    }
+#endif
+    
 
 #ifdef CHIMES_INITIALISE_IN_EQM
     if (RestartFlag != 1)
