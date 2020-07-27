@@ -725,7 +725,7 @@ void blackhole_final_operations(void)
         else { P[n].AccretedThisTimestep = 0; }
 #endif
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-        if(All.ComovingIntegrationOn) {P[n].SinkRadius = DMIN(P[n].SinkRadius, All.ForceSoftening[5]);} // update sink radius if simulation has it dynamically evolving. 
+        if(All.ComovingIntegrationOn) {P[n].SinkRadius = DMIN(P[n].SinkRadius, All.SofteningTable[5]);} // update sink radius if simulation has it dynamically evolving. 
 #endif
 
         /* Correct for the mass loss due to radiation and BAL winds */
