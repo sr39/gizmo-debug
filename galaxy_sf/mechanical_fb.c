@@ -391,7 +391,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* inject the post-shock energy and momentum (convert to specific units as needed first) */
                 e_shock *= 1 / P[j].Mass;
                 SphP[j].InternalEnergy += e_shock;
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) 
                 double uion = HIIRegion_Temp / (0.59*(5./3.-1.)*U_TO_TEMP_UNITS);
                 if(SphP[j].InternalEnergy > uion) {SphP[j].Ne = 1.0 + 2.0*yhelium(j);} /* reset ionized fraction and treat as fully-ionized from the shock */
 #endif
@@ -402,7 +402,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double m_cooling = 4.18879*pnorm*SphP[j].Density*RsneKPC*RsneKPC*RsneKPC;
                 /* apply limiter for energy conservation */
                 double mom_boost_fac = 1 + sqrt(DMIN(mj_preshock , m_cooling) / m_ej_input);
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS) // ??
+#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS) 
                 if(loop_iteration > 0) {mom_boost_fac=1;} /* no unresolved PdV component for winds+r-process */
 #endif
                 /* save summation values for outputs */
@@ -578,8 +578,12 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     if(n0 < 0.001) {n0=0.001;}
                     double z0 = P[j].Metallicity[0]/All.SolarAbundances[0], z0_term = 1.;
                     if(z0 < 0.01) {z0 = 0.01;}
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+                    double nz_dep = pow(n0, 0.14) * pow(z0, 0.12); // updated fit from Martizzi et al. 2015 for Z-dependence, using more detailed cooling fits. newer fits from there and Walsh+Naab, etc, bracket around this slope for the n-dependence. normalization ranges from this value to factor ~2-3 lower, depending on various assumptions
+#else
                     if(z0 < 1.) {z0_term = z0*sqrt(z0);} else {z0_term = z0;}
-                    double nz_dep  = pow(n0 * z0_term , 0.14);;
+                    double nz_dep  = pow(n0 * z0_term , 0.14);
+#endif
                     v_cooling = 210. * DMAX(nz_dep,0.5) / UNIT_VEL_IN_KMS;
                     m_cooling = 4.56e36 * e0 / (nz_dep*nz_dep * UNIT_MASS_IN_CGS);
                     RsneKPC = pow( 0.238732 * m_cooling/SphP[j].Density , 1./3. );
@@ -737,7 +741,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(d_Egy_internal > 0)
                 {
                     SphP[j].InternalEnergy += d_Egy_internal; SphP[j].InternalEnergyPred += d_Egy_internal; E_coupled += d_Egy_internal;
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) 
                     double uion = HIIRegion_Temp / (0.59*(5./3.-1.)*U_TO_TEMP_UNITS);
                     if(SphP[j].InternalEnergy > uion) {SphP[j].Ne = 1.0 + 2.0*yhelium(j);} /* reset ionized fraction and treat as fully-ionized from the shock */
 #endif

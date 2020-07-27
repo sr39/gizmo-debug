@@ -99,8 +99,11 @@ void do_the_cooling_for_particle(int i)
 
     if((dtime>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
     {
+#ifdef CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT
+        update_explicit_molecular_fraction(i, 0.5*dtime*UNIT_TIME_IN_CGS); // if we're doing the H2 explicitly with this particular model, we update it in two half-steps before and after the main cooling step
+#endif
         double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
         double uion=HIIRegion_Temp/(0.59*(5./3.-1.)*U_TO_TEMP_UNITS); if(SphP[i].DelayTimeHII>0) {if(uold<uion) {uold=uion;}} /* u_old should be >= ionized temp if used here [unless using newer model] */
 #endif
 
@@ -139,7 +142,7 @@ void do_the_cooling_for_particle(int i)
 #endif
 
 
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ?? /* for older model, set internal energy to minimum level if marked as ionized by stars */
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) /* for older model, set internal energy to minimum level if marked as ionized by stars */
         if(SphP[i].DelayTimeHII > 0)
         {
             if(unew<uion) {unew=uion; if(SphP[i].DtInternalEnergy<0) SphP[i].DtInternalEnergy=0;}
@@ -186,6 +189,9 @@ void do_the_cooling_for_particle(int i)
         SphP[i].DtInternalEnergy = 0;
 #endif
 
+#ifdef CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT
+        update_explicit_molecular_fraction(i, 0.5*dtime*UNIT_TIME_IN_CGS); // if we're doing the H2 explicitly with this particular model, we update it in two half-steps before and after the main cooling step
+#endif
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) /* count off time which has passed since ionization 'clock' */
         if(SphP[i].DelayTimeHII > 0) {SphP[i].DelayTimeHII -= dtime;}
         if(SphP[i].DelayTimeHII < 0) {SphP[i].DelayTimeHII = 0;}
@@ -387,40 +393,79 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
 
 
 #ifdef CHIMES
-/* This function converts thermal energy to temperature, using the mean molecular weight computed
- * from the non-equilibrium CHIMES abundances. */
+/* This function converts thermal energy to temperature, using the mean molecular weight computed from the non-equilibrium CHIMES abundances. */
 double chimes_convert_u_to_temp(double u, double rho, int target)
 {
   return u * (GAMMA(target)-1) * PROTONMASS * ((double) calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars)) / BOLTZMANN;
 }
 
 #else  // CHIMES
+
 /* this function determines the electron fraction, and hence the mean molecular weight. With it arrives at a self-consistent temperature.
  * Ionization abundances and the rates for the emission are also computed */
 double convert_u_to_temp(double u, double rho, int target, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess, double *mu_guess)
 {
     int iter = 0;
-    double temp, temp_old, temp_old_old = 0, temp_new, max = 0, ne_old, mu_old;
-    double u_input = u, rho_input = rho, temp_guess;
-    temp_guess = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS;
-    *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp_guess, rho, nH0_guess, ne_guess, 0., target);
-    temp = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS * (*mu_guess);
+    double temp, temp_old, temp_old_old = 0, temp_new, prefac_fun_old, prefac_fun, fac, err_old, err_new, T_bracket_errneg = 0, T_bracket_errpos = 0, T_bracket_min = 0, T_bracket_max = 1.e20, bracket_sign = 0; // double max = 0;
+    double u_input = u, rho_input = rho, temp_guess, temp_upper_bound = 1.e20, temp_lower_bound = 0;
+    double T_0 = u * PROTONMASS / BOLTZMANN; // this is the dimensional temperature, which since u is fixed is -frozen- in this calculation: we can work dimensionlessly below
+    temp_guess = (GAMMA(target)-1) * T_0; // begin assuming mu ~ 1
+    *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp_guess, rho, nH0_guess, ne_guess, 0., target); // get mu with that temp
+    prefac_fun = (GAMMA(target)-1) * (*mu_guess); // dimensionless pre-factor determining the temperature
+    err_new = prefac_fun - temp_guess / T_0; // define initial error from this iteration
+    if(err_new < 0) {T_bracket_errneg = temp_guess;} else {T_bracket_errpos = temp_guess;}
+    temp = prefac_fun * T_0; // re-calculate temo with the new mu
 
     do
     {
-        ne_old = *ne_guess;
-        mu_old = *mu_guess;
-        find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess);
-        temp_old = temp;
-        temp_new = (GAMMA(target)-1) / BOLTZMANN * u * PROTONMASS * (*mu_guess);
+        //qfun_old = *ne_guess; // guess for ne
+        //qfun_old = *mu_guess; // guess for mu
+        prefac_fun_old = prefac_fun;
+        err_old = err_new; // error from previous timestep
+        find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess); // all the thermo variables for this T
+        prefac_fun = (GAMMA(target)-1) * (*mu_guess); // new value of the dimensionless pre-factor we need to solve
+        temp_old = temp; // guess for T we just used
+        temp_new = prefac_fun * T_0; // updated temp using the new values from the iteration of find_abundances_and_rates above
+        err_new = (temp_new - temp_old) / T_0; // new error
+        if(T_bracket_errpos == 0) {if(err_new > 0) {T_bracket_errpos = temp_old;} else {T_bracket_errneg = temp_old;}} // update the bracket values to the new T while its error still reflects here
+        if(T_bracket_errneg == 0) {if(err_new < 0) {T_bracket_errneg = temp_old;} else {T_bracket_errpos = temp_old;}} // update the bracket values to the new T while its error still reflects here
+        if(T_bracket_errneg > 0 && T_bracket_errpos > 0)
+        {
+            if(bracket_sign == 0) {if(T_bracket_errpos > T_bracket_errneg) {bracket_sign=1;} else {bracket_sign=-1;}}
+            if(err_new > 0) {
+                if(bracket_sign > 0) {T_bracket_errpos = DMIN(T_bracket_errpos, temp_old); /* Tpos>Tneg */} else {T_bracket_errpos = DMAX(T_bracket_errpos, temp_old); /* Tpos<Tneg */}
+            } else {
+                if(bracket_sign > 0) {T_bracket_errneg = DMAX(T_bracket_errneg, temp_old); /* Tpos>Tneg */} else {T_bracket_errneg = DMIN(T_bracket_errneg, temp_old); /* Tpos<Tneg */}
+            } /* update bracket values if we can */
+            if(bracket_sign > 0) {T_bracket_max=T_bracket_errpos; T_bracket_min=T_bracket_errneg;} else {T_bracket_max=T_bracket_errneg; T_bracket_min=T_bracket_errpos;}
+        }
 
-        //max = DMAX(max, temp_new * (*mu_guess) * HYDROGEN_MASSFRAC * fabs((*ne_guess - ne_old) / (temp_new - temp_old + 1.0))); // old iteration: hardwired assumption that ne is only varying quanity in mu, and that Tmin ~ 1e4 or so
-        max = DMAX(max , temp_new / (*mu_guess) * fabs(*mu_guess - mu_old) / (fabs(temp_new - temp_old) + 1.e-4*(All.MinGasTemp+0.1))); // newer - more flexible mu, and dimensionless T dependence
-        temp = temp_old + (temp_new - temp_old) / (1 + max);
+        //max = DMAX(max, temp_new * (*mu_guess) * HYDROGEN_MASSFRAC * fabs((*ne_guess - qfun_old) / (temp_new - temp_old + 1.0))); // old iteration: hardwired assumption that ne is only varying quanity in mu, and that Tmin ~ 1e4 or so
+        //max = DMAX(max , temp_new / (*mu_guess) * fabs(*mu_guess - qfun_old) / (fabs(temp_new - temp_old) + 1.e-4*(All.MinGasTemp+0.1))); // newer - more flexible mu, and dimensionless T dependence
+        //temp = temp_old + (temp_new - temp_old) / (1 + max);
+        
+        if(fabs(prefac_fun-prefac_fun_old) < 1.e-4 || fabs(temp_new-temp_old)/(temp_new+temp_old) < 1.e-4) {break;} // break pre-emptively if we'll trigger a nan below
+        fac = (prefac_fun-prefac_fun_old)*T_0 / (temp_old-temp_old_old); // numerical derivative factor: want to use this to limit for convergence
+
+        if(fac > 1) {fac = 1;} // don't allow us to move in the opposite direction from the new evaluation (should 'guess' in the direction of T_new-T_old) -- this tells us Newton-Raphson/Secant-type method fails here, so we simply follow the iteration to t_new
+        if(fac > 0.9) {fac=0.9;} // don't allow us to 'jump' by a factor >10 times the temperature difference (arbitrary choice, slows convergence a bit but helps limit bad overshoot)
+        if(fac < -9999.) {fac=-9999.;} // don't allow smaller step than 1e-4 times the temperature difference (since that's below our error tolerance anyways)
+
+        temp = temp_old + (temp_new - temp_old) * 1./(1. - fac); // standard Newton-Raphson-type (technically Secant method) iteration
+        if(temp < 0.5*temp_old) {temp = 0.5*temp_old;} // limiter to prevent un-physical overshoot before we have bracketing established
+        if(temp > 3.0*temp_old) {temp = 3.0*temp_old;} // limiter to prevent un-physical overshoot before we have bracketing established
+
+        temp = temp_old + (temp_new - temp_old) * 1./(1. - fac); // standard Newton-Raphson iteration
+        
+        if(T_bracket_errneg > 0 && T_bracket_errpos > 0) // if have bracketing and this wants to go outside brackets, revert to bisection
+        {
+            if(temp >= T_bracket_max || temp <= T_bracket_min) {temp = sqrt(T_bracket_min*T_bracket_max);} // bisect (in log-space)
+        }
+        
         if(fabs(temp-temp_old_old)/(temp+temp_old_old) < 1.e-3) {double wt=get_random_number(12*iter+340*ThisTask+5435*target); temp=(wt*temp_old + (1.-wt)*temp_new);}
         temp_old_old = temp_old;
         iter++;
-        if(iter > (MAXITER - 10)) {printf("-> temp=%g/%g/%g ne=%g/%g mu=%g rho=%g max=%g iter=%d target=%d \n", temp,temp_new,temp_old,*ne_guess,ne_old, (*mu_guess) ,rho,max,iter,target);}
+        if(iter > (MAXITER - 10)) {printf("-> temp_next/new/old/oldold=%g/%g/%g/%g ne=%g mu=%g rho=%g iter=%d target=%d err_new/prev=%g/%g gamma_minus_1_mu_new/prev=%g/%g Brackets: Error_bracket_positive=%g Error_bracket_negative=%g T_bracket_Min/Max=%g/%g fac_for_SecantDT=%g \n", temp,temp_new,temp_old,temp_old_old,*ne_guess, (*mu_guess) ,rho,iter,target,err_new,err_old,prefac_fun,prefac_fun_old,T_bracket_errpos,T_bracket_errneg,T_bracket_min,T_bracket_max,fac); fflush(stdout);}
     }
     while(
           ((fabs(temp - temp_old) > 0.25 * temp) ||
@@ -436,6 +481,9 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
     return temp;
 }
 #endif // CHIMES
+
+
+
 
 #ifndef CHIMES
 /* this function computes the actual ionization states, relative abundances, and returns the ionization/recombination rates if needed */
@@ -484,36 +532,10 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         if(logT < 3.8) {*ne_guess = 0.1;}
         if(logT < 2) {*ne_guess = 1.e-10;}
     }
-
-    /* account for non-local UV background */
-    double local_gammamultiplier=1;
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
-    if((target >= 0) && (gJH0 > 0))
-    {
-        local_gammamultiplier = SphP[target].Rad_Flux_EUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
-        local_gammamultiplier = 1 + local_gammamultiplier/gJH0;
-        if(!isfinite(local_gammamultiplier)) {local_gammamultiplier=1;}
-        local_gammamultiplier=DMAX(1.,DMIN(1.e20, local_gammamultiplier));
-    }
-#endif
     /* CAFG: this is the density that we should use for UV background threshold */
+    double local_gammamultiplier = return_local_gammamultiplier(target); // account for local UVB terms in some expressions below
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
-    if(shieldfac < 0)
-    {
-        double NH_SS_z; if(gJH0>0) {NH_SS_z = NH_SS*pow(local_gammamultiplier*gJH0/1.0e-12,0.66)*pow(10.,0.173*(logT-4.));} else {NH_SS_z = NH_SS*pow(10.,0.173*(logT-4.));}
-        double q_SS = nHcgs/NH_SS_z;
-#ifdef COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
-        shieldfac = 0.98 / pow(1 + pow(q_SS,1.64), 2.28) + 0.02 / pow(1 + q_SS*(1.+1.e-4*nHcgs*nHcgs*nHcgs*nHcgs), 0.84); // from Rahmati et al. 2012: gives gentler cutoff at high densities. but we need to modify it with the extra 1+(nHcgs/10)^4 denominator term since at very high nH, this cuts off much too-slowly (as nH^-0.84), which means UVB heating can be stronger than molecular cooling even at densities >> 1e4
-#else
-        shieldfac = 1./(1.+q_SS*(1.+q_SS/2.*(1.+q_SS/3.*(1.+q_SS/4.*(1.+q_SS/5.*(1.+q_SS/6.*q_SS)))))); // this is exp(-q) down to ~1e-5, then a bit shallower, but more than sufficient approximation here //
-#endif
-#ifdef GALSF_EFFECTIVE_EQS
-        shieldfac = 1; // self-shielding is implicit in the sub-grid model already //
-#endif
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ??
-        if(target>=0) {if(SphP[target].DelayTimeHII > 0) {shieldfac = 1;}} // newer HII region model irradiates and removes shielding for regions, but allows cooling function to evolve //
-#endif
-    }
+    if(shieldfac < 0) {shieldfac = return_uvb_shieldfac(target, local_gammamultiplier*gJH0/1.0e-12, nHcgs, logT);} // if < 0, that's a key to tell us this needs to be recalculated
     n_elec = *ne_guess; if(!isfinite(n_elec)) {n_elec=1;}
     neold = n_elec; niter = 0;
     double dt = 0, fac_noneq_cgs = 0, necgs = n_elec * nHcgs; /* more initialized quantities */
@@ -681,7 +703,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     if(target >= 0) /* if this is a cell, update some of its thermodynamic stored quantities */
     {
         SphP[target].Ne = n_elec;
-#ifdef OUTPUT_MOLECULAR_FRACTION
+#if defined(OUTPUT_MOLECULAR_FRACTION)
         SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, pow(10.,logT), nH0, n_elec, sqrt(shieldfac)*(gJH0/2.29e-10));
 #endif
     }
@@ -759,32 +781,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         Z = Zsol;
     }
 #endif
-    double local_gammamultiplier=1;
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
-    if((target >= 0) && (gJH0 > 0))
-    {
-        local_gammamultiplier = SphP[target].Rad_Flux_EUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
-        local_gammamultiplier = 1 + local_gammamultiplier/gJH0;
-        if(!isfinite(local_gammamultiplier)) {local_gammamultiplier=1;}
-        local_gammamultiplier=DMAX(1.,DMIN(1.e20, local_gammamultiplier));
-    }
-#endif
-
-    /* CAFG: if density exceeds NH_SS, ignore ionizing background. */
-    if(J_UV != 0) {NH_SS_z=NH_SS*pow(local_gammamultiplier*gJH0/1.0e-12,0.66)*pow(10.,0.173*(logT-4.));} else {NH_SS_z=NH_SS*pow(10.,0.173*(logT-4.));}
-    double q_SS = nHcgs/NH_SS_z;
-#ifdef COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
-    shieldfac = 0.98 / pow(1 + pow(q_SS,1.64), 2.28) + 0.02 / pow(1 + q_SS*(1.+1.e-4*nHcgs*nHcgs*nHcgs*nHcgs), 0.84); // from Rahmati et al. 2012: gives gentler cutoff at high densities. but we need to modify it with the extra 1+(nHcgs/10)^4 denominator term since at very high nH, this cuts off much too-slowly (as nH^-0.84), which means UVB heating can be stronger than molecular cooling even at densities >> 1e4
-#else
-    shieldfac = 1./(1.+q_SS*(1.+q_SS/2.*(1.+q_SS/3.*(1.+q_SS/4.*(1.+q_SS/5.*(1.+q_SS/6.*q_SS)))))); // this is exp(-q) down to ~1e-5, then a bit shallower, but more than sufficient approximation here //
-#endif
-#ifdef GALSF_EFFECTIVE_EQS
-    shieldfac = 1; // self-shielding is implicit in the sub-grid model already //
-#endif
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) // ??
-    if(target>=0) {if(SphP[target].DelayTimeHII > 0) {shieldfac = 1;}} // newer HII region model irradiates and removes shielding for regions, but allows cooling function to evolve //
-#endif
-
+    double local_gammamultiplier = return_local_gammamultiplier(target);
+    shieldfac = return_uvb_shieldfac(target, local_gammamultiplier*gJH0/1.0e-12, nHcgs, logT);
+    
 #ifdef BH_COMPTON_HEATING
     double AGN_LambdaPre = 0, AGN_T_Compton; AGN_T_Compton = 2.0e7; /* approximate from Sazonov et al. */
     if(target >= 0) {AGN_LambdaPre = 4.488e-34 * SphP[target].Rad_Flux_AGN * UNIT_FLUX_IN_CGS;} /* convert physical code units to cgs; need to convert to relevant pre-factor for heating rate:  sigma_T x 4*k_B/(me*c^2) in CGS, just pre-computed here for convenience */
@@ -792,10 +791,10 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 
 #if defined(COOL_LOW_TEMPERATURES)
     double Tdust = 30., LambdaDust = 0.; /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS)  // ??
+#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS)
     Tdust = get_equilibrium_dust_temperature_estimate(target, shieldfac);
 #endif
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_FB_RT_HEATING) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_FB_RT_HEATING)
     Tdust = DMIN(DMAX(10., 2.73/All.cf_atime),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
 #endif
 #endif
@@ -819,7 +818,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 
 #ifdef COOL_METAL_LINES_BY_SPECIES
         /* can restrict to low-densities where not self-shielded, but let shieldfac (in ne) take care of this self-consistently */
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         if(J_UV != 0)
 #else
         if((J_UV != 0)&&(logT > 4.00))
@@ -831,7 +830,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             /* (sorry, -- dont -- multiply by nH^2 here b/c that's how everything is normalized in this function) */
             LambdaMetal *= n_elec;
             /* (modified now to correct out tabulated ne so that calculated ne can be inserted; ni not used b/c it should vary species-to-species */
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
             if(logT<2) {LambdaMetal *= exp(-DMIN((2.-logT)*(2.-logT)/0.1,40.));}
             if(LambdaMetal > 0) {Lambda += LambdaMetal;}
 #else
@@ -856,7 +855,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             Z_sol = Z[0] / All.SolarAbundances[0]; /* use actual metallicity for this */
 #endif
             LambdaMol *= (1+Z_sol)*(0.001 + 0.1*nHcgs/(1.+nHcgs) + 0.09*nHcgs/(1.+0.1*nHcgs) + Z_sol*Z_sol/(1.0+nHcgs)); // gives very crude estimate of metal-dependent terms //
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
             double column = evaluate_NH_from_GradRho(P[target].GradRho,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs
             double Z_C = DMAX(1.e-6, Z[2]/All.SolarAbundances[2]), sqrt_T=sqrt(T), ncrit_CO=1.9e4*sqrt_T, Sigma_crit_CO=3.0e-5*T/Z_C, T3=T/1.e3, EXPmax=90.; // carbon abundance (relative to solar), critical density and column
             double f_Cplus_CCO=1./(1.+nHcgs/3.e3), photoelec=1; // very crude estimate used to transition between C+ cooling curve and C/CO [nearly-identical] cooling curves above C+ critical density, where C+ rate rapidly declines
@@ -974,7 +973,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
                 double rhofac = rho / (1000.*COSMIC_BARYON_DENSITY_CGS);
                 if(rhofac < 0.2) {prefac_CR=0;} else {if(rhofac > 200.) {prefac_CR=1;} else {prefac_CR=exp(-1./(rhofac*rhofac));}}} // in cosmological runs, turn off CR heating for any gas with density unless it's >1000 times the cosmic mean density
             double cr_zeta=1.e-16, e_per_cr_ioniz=8.8e-12; // either high background (zeta=1e-16), with softer spectrum (5.5eV per ionization), following e.g. van Dishoeck & Black (1986); or equivalently lower rate with higher ~20eV per ionization per Goldsmith & Langer (1978); this is formally degenerate here. however both produce ~3-10x higher rates than more modern estimates (basically in both cases, assuming a CR energy density of ~2-5 eV/cm^3, instead of more modern ~0.5-2 eV/cm^3
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
             cr_zeta=1.e-17; e_per_cr_ioniz=3.0e-11; // follow e.g. Glover+Jappsen 2007, Le Teuff et al. 2000, gives about a 3x lower CR heating rate compared to older numbers above
 #endif
             Heat += prefac_CR * cr_zeta * (1. + 1.68*n_elec*HYDROGEN_MASSFRAC) / (1.e-2 + nHcgs) * e_per_cr_ioniz; // final result
@@ -996,7 +995,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 
 #if defined(COOL_LOW_TEMPERATURES)
         if(LambdaDust>0) {Heat += LambdaDust;} /* Dust collisional heating (Tdust > Tgas) */
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         if(LambdaMetal<0) {Heat -= LambdaMetal;} // potential net heating from low-temperature gas-phase metal line absorption //
 #endif
 #endif
@@ -1620,7 +1619,7 @@ void selfshield_local_incident_uv_flux(void)
                 //SphP[i].Rad_Flux_EUV *= exp(-DMIN(tau_euv,90.)); // attenuate [important in newer modules depending on UV flux to fully-attenuate down to << 1e-6 in dense gas]
                 SphP[i].Rad_Flux_EUV *= 0.01 + 0.99/(1.0 + 0.8*tau_euv + 0.85*tau_euv*tau_euv); // attenuate (for clumpy medium with hard-minimum 1% scattering) //
             } else {SphP[i].Rad_Flux_UV = SphP[i].Rad_Flux_EUV = 0;}
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS)
             if(SphP[i].DelayTimeHII > 0)
             {   /* assign typical strong HII region flux + enough flux to maintain cell fully-ionized, regardless (x'safety-factor') */
                 double flux_compactHII = 1.e4 + 3. * 0.12 * pow(P[i].Mass*UNIT_MASS_IN_SOLAR, 1./3.)*pow(SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, 5./3.);
@@ -1631,6 +1630,128 @@ void selfshield_local_incident_uv_flux(void)
     }
 }
 #endif
+
+
+
+
+/* subroutine to update the molecular fraction using our implicit solver for a simple --single-species-- network (just H2) */
+void update_explicit_molecular_fraction(int i, double dtime_cgs)
+{
+#ifdef CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT
+    // first define a number of environmental variables that are fixed over this update step
+    double fH2_initial = SphP[i].MolecularMassFraction_perNeutralH; // initial molecular fraction per H atom, entering this subroutine, needed for update below
+    double n_e=1, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, u0=SphP[i].InternalEnergyPred;
+    temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &n_e, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties [will assume fixed value of fH2 at previous update value]
+    double T=1, nH_cgs=1, Z_Zsol=1, urad_G0=1, xH0=1, x_e=0, nH_cgs=rho*UNIT_DENSITY_IN_NHCGS; // initialize definitions of some variables used below to prevent compiler warnings
+    Z_Zsol=1; urad_G0=1; // initialize metal and radiation fields. will assume solar-Z and spatially-uniform Habing field for incident FUV radiation unless reset below.
+    if(temperature > 3.e5) {return 0;} else {T=temperature;} // approximations below not designed for high temperatures, should simply give null
+    xH0 = DMIN(DMAX(nh0, 0.),1.); // get neutral fraction [given by call to this program]
+    if(xH0 <= MIN_REAL_NUMBER) {return 0;} // no neutral gas, no molecules!
+    x_e = DMIN(DMAX(n_e, 0.),2.); // get free electron ratio [number per H nucleon]
+    double gamma_12=return_local_gammamultiplier(i)*gJH0/1.0e-12, shieldfac=return_uvb_shieldfac(i,gamma_12,nH_cgs,log10(T)), urad_from_uvb_in_G0=sqrt(shieldfac)*(gJH0/2.29e-10); // estimate UVB contribution if we have partial shielding, to full photo-dissociation rates //
+#ifdef METALS
+    Z_Zsol = P[i].Metallicity[0]/All.SolarAbundances[0]; // metallicity in solar units [scale to total Z, since this mixes dust and C opacity], and enforce a low-Z floor to prevent totally unphysical behaviors at super-low Z [where there is still finite opacity in reality; e.g. Kramer's type and other opacities enforce floor around ~1e-3]
+#endif
+    /* get incident radiation field from whatever module we are using to track it */
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
+    urad_G0 = DMAX(SphP[i].Rad_Flux_UV, 1.e-10); // note this is ALREADY self-shielded by dust, so we need to be careful about 2x-counting the self-shielding approximation below; hence limit this to a rather sizeable value  //
+#endif
+#if defined(RT_PHOTOELECTRIC) || defined(RT_LYMAN_WERNER)
+    int whichbin = RT_FREQ_BIN_LYMAN_WERNER;
+#if !defined(RT_LYMAN_WERNER)
+    whichbin = RT_FREQ_BIN_PHOTOELECTRIC; // use photo-electric bin as proxy (very close) if don't evolve LW explicitly
+#endif
+    urad_G0 = SphP[i].Rad_E_gamma[whichbin] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_CGS / 3.9e-14; // convert to Habing field //
+#endif
+    urad_G0 += urad_from_uvb_in_G0; // include whatever is contributed from the meta-galactic background, fed into this routine
+    urad_G0 = DMIN(DMAX( urad_G0 , 1.e-10 ) , 1.e10 ); // limit values, because otherwise exponential self-shielding approximation easily artificially gives 0 incident field
+#endif
+    // define a number of variables needed in the shielding module
+    double dx_cell = Get_Particle_Size(i) * All.cf_atime; // cell size
+    double surface_density_H2_0 = 5.e14 * PROTONMASS, x_exp_fac=0.00085, w0=0.2; // characteristic cgs column for -molecular line- self-shielding
+    double surface_density_local = xH0 * SphP[i].Density * All.cf_a3inv * dx_cell * UNIT_SURFDEN_IN_CGS; // this is -just- the [neutral] depth through the local cell/slab. that's closer to what we want here, since G0 is -already- attenuated in the pre-processing step!
+    double v_thermal_rms = 0.111*sqrt(T); // sqrt(3*kB*T/2*mp), since want rms thermal speed of -molecular H2- in kms
+    double dv2=0; int j,k; for(j=0;j<3;j++) {for(k=0;k<3;k++) {double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
+        if(All.ComovingIntegrationOn) {if(j==k) {vt += All.cf_hubble_a;}} /* add hubble-flow correction */
+        dv2 += vt*vt;}} // calculate magnitude of the velocity shear across cell from || grad -otimes- v ||^(1/2)
+    double dv_turb=sqrt(dv2)*dx_cell*UNIT_VEL_IN_KMS; // delta-velocity across cell
+    double x00 = surface_density_local / surface_density_H2_0, x01 = x00 / (sqrt(1. + 3.*dv_turb*dv_turb/(v_thermal_rms*v_thermal_rms)) * sqrt(2.)*v_thermal_rms), y_ss, x_ss_1, x_ss_sqrt, fH2_tmp, fH2_max, Q_max, Q_min, Q_initial, Q_0, Q_1, fH2_0, fH2_1, fH2_new; // variable needed below. note the x01 term corrects following Gnedin+Draine 2014 for the velocity gradient at the sonic scale, assuming a Burgers-type spectrum [their Eq. 3]
+
+    /* evolve dot[nH2]/nH0 = d_dt[fH2[neutral]] = (1/nH0) * (a_H2*rho_dust*nHI [dust formation] + a_GP*nHI*ne [gas-phase formation] + b_3B*nHI*nHI*(nHI+nH2/8) [3-body collisional form] - b_H2HI*nHI*nH2 [collisional dissociation]
+        - b_H2H2*nH2*nH2 [collisional mol-mol dissociation] - Gamma_H2^LW * nH2 [photodissociation] - Gamma_H2^+ [photoionization] - xi_H2*nH2 [CR ionization/dissociation] ) */
+    double fH2=0, sqrt_T=sqrt(T), nH0=xH0*nH_cgs, n_e=x_e*nH_cgs, EXPmax=40.; int iter=0; // define some variables for below, including neutral H number density, free electron number, etc.
+    double a_Z  = (9.e-19 * T / (1. + 0.04*sqrt_T + 0.002*T + 8.e-6*T*T)) * (0.5*Z_Zsol) * nH_cgs; // dust formation
+    double a_GP = (1.833e-21 * pow(T,0.88)) * n_e; // gas-phase formation
+    double b_3B = (6.0e-32/sqrt(sqrt_T) + 2.0e-31/sqrt_T) * nH0 * nH0; // 3-body collisional formation
+    double b_H2HI = (7.073e-19 * pow(T,2.012) * exp(-DMIN(5.179e4/T,EXPmax)) / pow(1. + 2.130e-5*T , 3.512)) * (nH0/2.); // collisional dissociation
+    double b_H2H2 = (5.996e-30 * pow(T,4.1881) * exp(-DMIN(5.466e4/T,EXPmax)) / pow(1. + 6.761e-6*T , 5.6881)) * (nH0/2.) * (1./2.); // collisional mol-mol dissociation
+    double G_LW = 3.3e-11 * urad_G0 * (1./2.); // photo-dissociation (+ionization); note we're assuming a spectral shape identical to the MW background mean, scaling by G0
+    double xi_cr_H2 = (7.525e-16) * (1./2.); // CR dissociation (+ionization)
+
+    // want to solve the implicit equation: f_f = f_0 + g[f_f]*dt, where g[f_f] = df_dt evaluated at f=f_f, so root-find: dt*g[f_f] + f_0-f_f = 0
+    // can write this as a quadtratic: x_a*f^2 - xb0*f - xb_LW*f + x_c = 0, where xb_LW is a non-linear function of f accounting for the H2 self-shielding terms
+    double G_LW_dt_unshielded = G_LW * dtime_cgs; // LW term without shielding, multiplied by timestep for dimensions needed below
+    double x_a = (b_3B + b_H2HI - b_H2H2) * dtime_cgs; // terms quadratic in f -- this term can in principle be positive or negative, usually positive
+    double x_b_0 = (a_GP + a_Z + 2.*b_3B + b_H2HI + xi_cr_H2) * dtime_cgs + 1.; // terms linear in f [note sign, pulling the -sign out here] -- positive-definite
+    double x_c = (a_GP + a_Z + b_3B) * dtime_cgs + fH2_initial; // terms independent of f -- positive-definite
+    double y_a = x_a / (x_c + MIN_REAL_NUMBER), x_b, y_b, z_a; // convenient to convert to dimensionless variable needed for checking definite-ness
+    // use the previous-timestep value of fH2 to guess the shielding term and then compute the resulting fH2
+    fH2_tmp=fH2_initial; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding
+    Q_initial = 1 + y_a*fH2_tmp*fH2_tmp - y_b*fH2_tmp; // value of the function we are trying to zero, with the previous value of fH2
+    z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
+    
+    /* now comes the tricky bit -- need to account for non-linear part of the solution for the molecular line self-shielding [depends on fH2, not just the dust external shielding already accounted for */
+    if((fH2 > 1.e-10) && (fH2 < 1) && (G_LW_dt_unshielded > 0.1*xb0)) // fH2 is non-trivial, and the radiation term is significant, so to get an accurate update we need to invoke a non-linear solver here
+    {
+        // set updated guess values
+        fH2_tmp=fH2; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // calculate all the terms we need to solve for the zeros of this function
+        fH2_1 = fH2; Q_1 = 1 + y_a*fH2_tmp*fH2_tmp - y_b*fH2_tmp; // value of the function we are trying to zero, with the updated value of fH2
+        
+        // set lower values for bracketing
+        x_b=x_b_0+G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // recalculate all terms that depend on the shielding
+        fH2_min = DMAX(0,DMIN(1,fH2)); // this serves as a lower-limit for fH2
+        fH2_tmp=fH2_min; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // calculate all the terms we need to solve for the zeros of this function
+        Q_min = 1 + y_a*fH2_tmp*fH2_tmp - y_b*fH2_tmp; // value of the function we are trying to zero, with the updated value of fH2
+
+        // set upper values for bracketing
+        fH2_tmp=1.; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding
+        z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
+        fH2_max = DMAX(0,DMIN(1,fH2)); // this serves as an upper-limit for fH2
+        fH2_tmp=fH2_max; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // calculate all the terms we need to solve for the zeros of this function
+        Q_max = 1 + y_a*fH2_tmp*fH2_tmp - y_b*fH2_tmp; // value of the function we are trying to zero, with the updated value of fH2
+
+        if(fH2_1 < fH2_min) {fH2 = fH2_min;} // hitting lower bound already, set to that value and exit
+        else if(fH2_1 > fH2_max) {fH2 = fH2_max;} // hitting upper bound already, set to that value and exit
+        else if(Q_min*Q_max >= 0) // bracketing indicates that in this timestep, we will move fully to one or the other limit -- so do that, and don't need to iterate!
+            {if(fabs(Q_min) < fabs(Q_max)) {if(fabs(Q_min) < fabs(Q_1)) {fH2 = fH2_min;}} else {if(fabs(Q_max) < fabs(Q_1)) {fH2 = fH2_max;}}} // decide if Qmin/max corresponds more closely to desired zero, so move to fH2 matching that value
+        else if(fH2_max > 1.01*fH2_min) // worth attempting to iterate
+        {
+            Q_0 = Q_initial; fH2_0 = fH2_initial; // first iteration step is already done in all the above
+            fH2 = exp( (log(fH2_0)*Q_1 - log(fH2_1)*Q_0) / (Q_1-Q_0) ); // do a Newton-Raphson step in log[f_H2] space now that we have good initial brackets
+            if(fH2 > fH2_max) // ok we overshot the upper limit, test if bracketing works between fH2 and fH2_max, otherwise just use fH2_max
+                {if(Q_1*Q_max < 0) {fH2 = exp( (log(fH2_max)*Q_1 - log(fH2_1)*Q_max) / (Q_1-Q_max) );} else {fH2=fH2_max;}}
+            else if(fH2 < fH2_min)
+                {if(Q_1*Q_min < 0) {fH2 = exp( (log(fH2_min)*Q_1 - log(fH2_1)*Q_min) / (Q_1-Q_min) );} else {fH2=fH2_min;}}
+            else while(1)
+            {
+                    fH2_tmp=fH2_1; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // calculate all the terms we need to solve for the zeros of this function
+                    Q_1 = 1 + y_a*fH2_tmp*fH2_tmp - y_b*fH2_tmp; // value of the function we are trying to zero, with the updated value of fH2
+                    //if(Q_1*Q_0 >= 0) {break;} // no longer bracketing, end while loop
+                    fH2_new = exp( (log(fH2_0)*Q_1 - log(fH2_1)*Q_0) / (Q_1-Q_0) ); fH2_0=fH2_1; Q_0=Q_1; fH2_1=fH2_new; // update guess and previous values //
+                    iter++; // count iterations
+                    if(fabs(fH2_1-fH2_0) < 0.01*(0.5*(fH2_1+fH2_0))) {break;} // converged well enough for our purposes!
+                    if((y_ss > 0.95) || (y_ss*G_LW_dt_unshielded < 0.1*x_b)) {break;} // negligible shielding, or converged to point where external LW is not dominant dissociator so no further iteration needed
+                    if((fH2 > 0.95*fH2_max) || (fH2 > 0.99) || (fH2 < 1.e-10) || (fH2 < 1.05*fH2_min) || (iter > 10)) {break;} // approached physical limits or bounds of validity, or end of iteration cycle
+            } // end of convergence iteration to find solution for fmol
+        } // opened plausible iteration clause
+    } // opened self-shielding clause [attempting to bracket]
+    if(!isfinite(fH2)) {fH2=0;} else {if(fH2>1) {fH2=1;} else if(fH2<0) {fH2=0;}} // check vs nans, valid values
+    SphP[i].MolecularMassFraction_perNeutralH = fH2; // record variable -- this will be used for the next update, meanwhile the total fraction will be used in various routines through the code
+    SphP[i].MolecularMassFraction = xH0 * SphP[i].MolecularMassFraction_perNeutralH; // record variable -- this is largely what is needed below
+#endif
+}
+
+
 
 
 
@@ -1685,7 +1806,7 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
     if(target >= 0) {*ne_guess=SphP[target].Ne; *nH0_guess = DMAX(0,DMIN(1,1.-( *ne_guess / 1.2 )));} else {*ne_guess=1.; *nH0_guess=0.;}
     rho *= UNIT_DENSITY_IN_CGS; u *= UNIT_SPECEGY_IN_CGS;   /* convert to physical cgs units */
     double temp = convert_u_to_temp(u, rho, target, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess);
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS) // ??
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS)
     if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target); *nH0_guess=0; nHe0_guess=0;}} /* fully ionized [if using older model] */
     *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp, rho, nH0_guess, ne_guess, 0, target);
 #endif
@@ -1693,6 +1814,42 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
 #endif
 }
 
+
+
+/* function to return the local multiplier relative to the UVB model to account in some local RHD models for local ionizing sources */
+double return_local_gammamultiplier(int target)
+{
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
+    if((target >= 0) && (gJH0 > 0))
+    {
+        local_gammamultiplier = SphP[target].Rad_Flux_EUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
+        local_gammamultiplier = 1 + local_gammamultiplier / gJH0; // this needs to live here in cooling.c where gJH0 is declared as a global shared variable!
+        if(!isfinite(local_gammamultiplier)) {local_gammamultiplier=1;}
+        return DMAX(1., DMIN(1.e20, local_gammamultiplier));
+    }
+#endif
+    return 1;
+}
+
+
+/* function to attenuate the UVB to model self-shielding in optically-thin simulations */
+double return_uvb_shieldfac(int target, double gamma_12, double nHcgs, double logT)
+{
+#ifdef GALSF_EFFECTIVE_EQS
+    return 1; // self-shielding is implicit in the sub-grid model already //
+#endif
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) 
+    if(target>=0) {if(SphP[target].DelayTimeHII > 0) {return 1;}} // newer HII region model irradiates and removes shielding for regions, but allows cooling function to evolve //
+#endif
+    double NH_SS_z;
+    if(gamma_12>0) {NH_SS_z = NH_SS*pow(gamma_12,0.66)*pow(10.,0.173*(logT-4.));} else {NH_SS_z = NH_SS*pow(10.,0.173*(logT-4.));}
+    double q_SS = nHcgs/NH_SS_z;
+#ifdef COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
+    return 0.98 / pow(1 + pow(q_SS,1.64), 2.28) + 0.02 / pow(1 + q_SS*(1.+1.e-4*nHcgs*nHcgs*nHcgs*nHcgs), 0.84); // from Rahmati et al. 2012: gives gentler cutoff at high densities. but we need to modify it with the extra 1+(nHcgs/10)^4 denominator term since at very high nH, this cuts off much too-slowly (as nH^-0.84), which means UVB heating can be stronger than molecular cooling even at densities >> 1e4
+#else
+    return 1./(1.+q_SS*(1.+q_SS/2.*(1.+q_SS/3.*(1.+q_SS/4.*(1.+q_SS/5.*(1.+q_SS/6.*q_SS)))))); // this is exp(-q) down to ~1e-5, then a bit shallower, but more than sufficient approximation here //
+#endif
+}
 
 
 

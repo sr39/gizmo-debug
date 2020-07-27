@@ -657,7 +657,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_MOLECULARFRACTION:
-#ifdef OUTPUT_MOLECULAR_FRACTION
+#if defined(OUTPUT_MOLECULAR_FRACTION)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -2477,7 +2477,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_MOLECULARFRACTION:
-#ifdef OUTPUT_MOLECULAR_FRACTION
+#if defined(OUTPUT_MOLECULAR_FRACTION)
             return 1;
 #endif
             break;

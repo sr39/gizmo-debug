@@ -373,7 +373,7 @@ void init(void)
         All.SolarAbundances[8]=6.44e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4); PS=7.16->3.31e-4
         All.SolarAbundances[9]=1.01e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4); PS=6.38->6.87e-5
         All.SolarAbundances[10]=1.73e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3); PS=7.54->1.38e-3
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // new default abundances; using Asplund et al. 2009 proto-solar abundances ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // new default abundances; using Asplund et al. 2009 proto-solar abundances
         All.SolarAbundances[0]=0.0142; if(NUM_METAL_SPECIES>=10) {
             All.SolarAbundances[1]=0.27030; All.SolarAbundances[2]=2.53e-3; All.SolarAbundances[3]=7.41e-4; All.SolarAbundances[4]=6.13e-3; All.SolarAbundances[5]=1.34e-3;
             All.SolarAbundances[6]=7.57e-4; All.SolarAbundances[7]=7.12e-4; All.SolarAbundances[8]=3.31e-4; All.SolarAbundances[9]=6.87e-5; All.SolarAbundances[10]=1.38e-3;}
@@ -580,6 +580,10 @@ void init(void)
 #ifdef COOLING
 #ifndef CHIMES
             SphP[i].Ne = 1.0;
+#endif
+#if defined(CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT)
+            SphP[i].MolecularMassFraction = 0.0;
+            SphP[i].MolecularMassFraction_perNeutralH = 0.0;
 #endif
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING

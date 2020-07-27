@@ -253,7 +253,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                     if(numngb>0)
                     {
                         int ngb_list_touse[numngb]; for(n=0; n<numngb; n++) {ngb_list_touse[n]=Ngblist[n];}
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) 
                         qsort(ngb_list_touse, numngb, sizeof(int), compare_densities_for_sort); // sort on densities before processing, so ionize least-dense-first
 #endif
                         for(n = 0; n < numngb; n++)
@@ -269,7 +269,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                 if(SphP[j].InternalEnergy<SphP[j].InternalEnergyPred) {u=SphP[j].InternalEnergy;} else {u=SphP[j].InternalEnergyPred;}
                                 if(SphP[j].DelayTimeHII > 0) {already_ionized=1;}
 #if !defined(CHIMES_HII_REGIONS)
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) 
                                 if((SphP[i].Ne>0.8) || (u>5.*uion)) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
 #else
                                 if(u>uion) {already_ionized=1;}
@@ -299,7 +299,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                 } // if((r<=RHII)&&(already_ionized==0)&&(mionized<mionizable))
 
                                 /* if nearest un-ionized particle, mark as such */
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) 
                                 if((SphP[j].Density<rnearest)&&(already_ionized==0)) {rnearest = SphP[j].Density; jnearest = j;} // rank by density, not distance
 #else
                                 if((r<rnearest)&&(already_ionized==0)) {rnearest = r; jnearest = j;}
@@ -393,7 +393,7 @@ int do_the_local_ionization(int target, double dt, int source)
 
 #else
 
-#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) 
     SphP[target].InternalEnergy = DMAX(SphP[target].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
     SphP[target].InternalEnergyPred = SphP[target].InternalEnergy; /* full reset of the internal energy */
 #else

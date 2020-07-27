@@ -908,7 +908,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 
-#if defined(EOS_SUBSTELLAR_ISM)
+#if defined(EOS_SUBSTELLAR_ISM) || defined(CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT)
 #define EOS_GAMMA_VARIABLE
 #endif
 
@@ -3049,11 +3049,14 @@ extern struct sph_particle_data
 #endif
 
 #ifdef CONDUCTION
-    MyFloat Kappa_Conduction;           /*!< conduction coefficient */
+    MyFloat Kappa_Conduction;                   /*!< conduction coefficient */
 #endif
 
-#ifdef OUTPUT_MOLECULAR_FRACTION
-    MyFloat MolecularMassFraction;      /*!< holder for molecular mass fraction for sims where we evaluate it on-the-fly and wish to save it [different from detailed chemistry modules] */
+#if defined(OUTPUT_MOLECULAR_FRACTION) || defined(CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT)
+    MyFloat MolecularMassFraction;              /*!< holder for molecular mass fraction for sims where we evaluate it on-the-fly and wish to save it [different from detailed chemistry modules] */
+#if defined(CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT)
+    MyFloat MolecularMassFraction_perNeutralH;  /*! molecular mass fraction -of-the-neutral-gas-, which we retain as a separate variable since we have a hybrid model here using implicit updates for the ionization fraction */
+#endif
 #endif
 
 #ifdef MHD_NON_IDEAL

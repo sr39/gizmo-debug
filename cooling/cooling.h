@@ -14,6 +14,8 @@
  */
 
 double ThermalProperties(double u, double rho, int target, double *mu_guess, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess);
+double return_uvb_shieldfac(int target, double gamma_12, double nHcgs, double logT);
+double return_local_gammamultiplier(int target);
 void   InitCool(void);
 #ifndef CHIMES 
 void   InitCoolMemory(void);

@@ -159,6 +159,15 @@ double get_pressure(int i)
       but for more general functionality, we want this index here to be appropriately variable. */
 double gamma_eos(int i)
 {
+#ifdef CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT
+    if(i >= 0) {
+        if(P[i].Type==0) {
+            double fH = HYDROGEN_MASSFRAC, f = SphP[i].MolecularMassFraction, xe = SphP[i].Ne; // use the variables below to update the EOS as needed
+            return (fH*((1.-f)/1. + f/2.) + (1.-fH)/4.) / (fH*((1.-f + xe)/(1.*(5./3.-1.)) + f/(2.*(7./5.-1.))) + (1.-fH)/(4.*(5./3.-1.))); // assume He is atomic, H has a mass fraction f molecular
+        }
+    }
+#endif
+    
 #ifdef EOS_SUBSTELLAR_ISM
     if(i>=0) {
         if(P[i].Type==0) {
@@ -299,6 +308,10 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 #if (COOL_GRACKLE_CHEMISTRY >= 2) // Use GRACKLE explicitly-tracked H2 [using the molecular network if this is valid]
     return DMIN(1,DMAX(0, SphP[i].grH2I + SphP[i].grH2II)); // include both states of H2 tracked
 #endif
+    
+#if defined(CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT) // use our simple 1-species network for explicitly-evolved H2 fraction
+    return DMIN(1, DMAX(0, SphP[i].MolecularMassFraction));
+#endif
 
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING)
     if(SphP[i].DelayTimeHII > 0) {return 0;} // force gas flagged as in HII regions to have zero molecular fraction
@@ -320,7 +333,6 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 #endif
     /* get incident radiation field from whatever module we are using to track it */
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
-    //urad_G0 = DMAX(SphP[i].Rad_Flux_UV, 0.01); // note this is ALREADY self-shielded, so we need to be careful about 2x-counting the self-shielding approximation below; hence limit this to a rather sizeable value  //
     urad_G0 = DMAX(SphP[i].Rad_Flux_UV, 1.e-10); // note this is ALREADY self-shielded, so we need to be careful about 2x-counting the self-shielding approximation below; hence limit this to a rather sizeable value  //
 #endif
 #if defined(RT_PHOTOELECTRIC) || defined(RT_LYMAN_WERNER)
@@ -331,7 +343,6 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     urad_G0 = SphP[i].Rad_E_gamma[whichbin] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_CGS / 3.9e-14; // convert to Habing field //
 #endif
     urad_G0 += urad_from_uvb_in_G0; // include whatever is contributed from the meta-galactic background, fed into this routine
-    //urad_G0 = DMIN(DMAX( urad_G0 , 1.e-3 ) , 1.e10 ); // limit values, because otherwise exponential self-shielding approximation easily artificially gives 0 incident field
     urad_G0 = DMIN(DMAX( urad_G0 , 1.e-10 ) , 1.e10 ); // limit values, because otherwise exponential self-shielding approximation easily artificially gives 0 incident field
 #endif
         
