@@ -523,7 +523,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
             
         case IO_MOLECULARFRACTION:
-#if defined(CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT)
+#if defined(COOL_MOLECFRAC_NONEQM)
             for (n = 0; n < pc; n++) {SphP[offset + n].MolecularMassFraction_perNeutralH = *fp++;}
 #endif
             break;
@@ -597,7 +597,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_CHIMES_STAR_SIGMA:
         case IO_DENS_AROUND_STAR:
         case IO_DELAY_TIME_HII:
-        case IO_MOLECULARFRACTION:
         case IO_CHIMES_FLUX_G0:
         case IO_CHIMES_FLUX_ION:
             break;

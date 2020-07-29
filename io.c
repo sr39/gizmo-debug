@@ -661,7 +661,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-#if defined(CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT)
+#if defined(COOL_MOLECFRAC_NONEQM)
                     *fp++ = (MyOutputFloat) SphP[pindex].MolecularMassFraction_perNeutralH; /* more useful to output this particular value, rather than fH2 */
 #else
                     double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp; u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy); // needs to be in code units

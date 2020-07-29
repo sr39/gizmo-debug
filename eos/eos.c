@@ -159,7 +159,7 @@ double get_pressure(int i)
       but for more general functionality, we want this index here to be appropriately variable. */
 double gamma_eos(int i)
 {
-#ifdef CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT
+#ifdef COOL_MOLECFRAC_NONEQM
     if(i >= 0) {
         if(P[i].Type==0) {
             double fH = HYDROGEN_MASSFRAC, f = SphP[i].MolecularMassFraction, xe = SphP[i].Ne; // use the variables below to update the EOS as needed
@@ -309,7 +309,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     return DMIN(1,DMAX(0, SphP[i].grH2I + SphP[i].grH2II)); // include both states of H2 tracked
 #endif
     
-#if defined(CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT) // use our simple 1-species network for explicitly-evolved H2 fraction
+#if defined(COOL_MOLECFRAC_NONEQM) // use our simple 1-species network for explicitly-evolved H2 fraction
     return DMIN(1, DMAX(0, SphP[i].MolecularMassFraction));
 #endif
 
@@ -318,10 +318,10 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 #endif
 
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) /* set default module we will use here */
-#define MOLECULAR_FRACTION_LOCALEQM
+#define COOL_MOLECFRAC_LOCALEQM
 #endif
     
-#if defined(MOLECULAR_FRACTION_LOCALEQM) || defined(MOLECULAR_FRACTION_KMT) || defined(MOLECULAR_FRACTION_GNEDINDRAINE) || defined(COOLING) // here are some of the 'fancy' molecular fraction estimators which need various additional properties
+#if defined(COOL_MOLECFRAC_LOCALEQM) || defined(COOL_MOLECFRAC_KMT) || defined(COOL_MOLECFRAC_GD) // here are some of the 'fancy' molecular fraction estimators which need various additional properties
     double T=1, nH_cgs=1, Z_Zsol=1, urad_G0=1, xH0=1, x_e=0; // initialize definitions of some variables used below to prevent compiler warnings
     if(temperature > 3.e5) {return 0;} else {T=temperature;} // approximations below not designed for high temperatures, should simply give null
     xH0 = DMIN(DMAX(neutral_fraction,0.),1.); // get neutral fraction [given by call to this program]
@@ -347,7 +347,11 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 #endif
         
     
-#if defined(MOLECULAR_FRACTION_LOCALEQM)
+#if defined(COOL_MOLECFRAC_LOCALEQM)
+    /* estimate local equilibrium molecular fraction actually using the real formation and destruction rates. expressions for the different rate terms
+        as used here are collected in Nickerson, Teyssier, & Rosdahl et al. 2018. Expression for the line self-shielding here
+        including turbulent and cell line blanketing terms comes from Gnedin & Draine 2014. below solves this all exactly, using the temperature, metallicity,
+        density, ionization states, FUV incident radiation field, and column densities in the simulations. */
     /* take eqm of dot[nH2] = a_H2*rho_dust*nHI [dust formation] + a_GP*nHI*ne [gas-phase formation] + b_3B*nHI*nHI*(nHI+nH2/8) [3-body collisional form] - b_H2HI*nHI*nH2 [collisional dissociation]
         - b_H2H2*nH2*nH2 [collisional mol-mol dissociation] - Gamma_H2^LW * nH2 [photodissociation] - Gamma_H2^+ [photoionization] - xi_H2*nH2 [CR ionization/dissociation] */
     double fH2=0, sqrt_T=sqrt(T), nH0=xH0*nH_cgs, n_e=x_e*nH_cgs, EXPmax=40.; // define some variables for below, including neutral H number density, free electron number, etc.
@@ -424,7 +428,9 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 #endif
 
     
-#if defined(MOLECULAR_FRACTION_KMT)
+#if defined(COOL_MOLECFRAC_KMT)
+    /* use the simpler Kumholz, McKee, & Tumlinson 2009 sub-grid model for molecular fractions in equilibrium, which is a function modeling spherical clouds
+        of internally uniform properties exposed to incident radiation. Depends on column density, metallicity, and incident FUV field. */
     /* get estimate of mass column density integrated away from this location for self-shielding */
     double surface_density_Msun_pc2_infty = 0.05 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS / 0.000208854; // approximate column density with Sobolev or Treecol methods as appropriate; converts to M_solar/pc^2
     /* 0.05 above is in testing, based on calculations by Laura Keating: represents a plausible re-scaling of the shielding length for sub-grid clumping */
@@ -445,6 +451,23 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     return xH0 * fH2;
 #endif
     
+
+#if defined(COOL_MOLECFRAC_GD)
+    /* use the sub-grid final expression calibrated to ~60pc resolution simulations with equilibrium molecular chemistry and post-processing radiative
+        transfer from Gnedin & Draine 2014 (Eqs. 5-7) */
+    double S_slab = Get_Particle_Size(i) * All.cf_atime * UNIT_LENGTH_IN_PC / 100.; // slab size in units of 100 pc
+    double D_star = 0.17 * (2. + S_slab*S_slab*S_slab*S_slab*S_slab) / (1. + S_slab*S_slab*S_slab*S_slab*S_slab); // intermediate variable
+    double U_star = 9. * D_star / S_slab, n_star = 14. * sqrt(D_star) / S_slab; // intermediate variables
+    double g_eff = sqrt(D_star*D_star + Z_Zsol*Z_Zsol); // intermediate variable parameterizing the dust-to-gas ratio here [assuming the dust-to-gas ratio relative to solar scales linearly with metallicity, giving Z_Zsol = their D_MW parameter]
+    double Lambda_incident = log(1. + pow(0.05/g_eff + urad_G0, 2./3.) * pow(g_eff, 1./3.) / U_star); // intermediate variable parameterizing the incident radiation, takes input UV radiation field relative to MW
+    double nHalf = n_star * Lambda_incident / g_eff; // intermediate variable
+    double w_x = 0.8 + sqrt(Lambda_incident) / pow(S_slab, 1./3.); // intermediate variable
+    double x_f = w_x * log(nH_cgs / nHalf); // intermediate variable
+    fH2 = 1./(1. + exp(-x_f*(1.-0.02*x_f+0.001*x_f*x_f)));
+    return xH0 * fH2;
+#endif
+    
+    
 #if (SINGLE_STAR_SINK_FORMATION & 256) || defined(GALSF_SFR_MOLECULAR_CRITERION) /* estimate f_H2 with Krumholz & Gnedin 2010 fitting function, assuming simple scalings of radiation field, clumping, and other factors with basic gas properties so function only of surface density and metallicity, truncated at low values (or else it gives non-sensical answers) */
     double clumping_factor=1, fH2_kg=0, tau_fmol = (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]) * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * 434.78 * UNIT_SURFDEN_IN_CGS; // convert units for surface density. also limit to Z>=0.1, where their fits were actually good, or else get unphysically low molecular fractions
     if(tau_fmol>0) {double y = 0.756 * (1 + 3.1*pow(P[i].Metallicity[0]/All.SolarAbundances[0],0.365)) / clumping_factor; // this assumes all the equilibrium scalings of radiation field, density, SFR, etc, to get a trivial expression
@@ -452,9 +475,10 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     return fH2_kg * neutral_fraction;
 #endif
     
+    
 #if defined(COOLING) /* if none of the above is set, default to a wildly-oversimplified scaling set by fits to the temperature below which gas at a given density becomes molecular from cloud simulations in Glover+Clark 2012 */
     double T_mol = DMAX(1.,DMIN(8000., SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS));
-    return neutral_fraction / (1. + T*T/(T_mol*T_mol));
+    return neutral_fraction / (1. + temperature*temperature/(T_mol*T_mol));
 #endif
     
     return 0; // catch //

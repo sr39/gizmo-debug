@@ -581,7 +581,7 @@ void init(void)
 #ifndef CHIMES
             SphP[i].Ne = 1.0;
 #endif
-#if defined(CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT)
+#if defined(COOL_MOLECFRAC_NONEQM)
             SphP[i].MolecularMassFraction = 0.0;
             SphP[i].MolecularMassFraction_perNeutralH = 0.0;
 #endif
@@ -956,7 +956,7 @@ void init(void)
     }
     
 
-#if defined(CHEM_EVOLVE_MOLECULAR_FRACTION_EXPLICIT)
+#if defined(COOL_MOLECFRAC_NONEQM)
     if(RestartFlag == 2) // should have read in SphP[i].MolecularMassFraction_perNeutralH
     {
         SphP[i].MolecularMassFraction_perNeutralH = DMIN(1,DMAX(0,SphP[i].MolecularMassFraction_perNeutralH));

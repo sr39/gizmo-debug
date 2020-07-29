@@ -59,7 +59,7 @@ void radiation_pressure_winds_consolidated(void)
                 dv_imparted_perpart_guess += (dE_over_c/P[i].Mass) * tau_IR_guess; // estimate of additional IR term [1+tau_IR]*L/c assumed here as coupling //
                 double prob = dv_imparted_perpart_guess / delta_v_imparted_rp; prob *= 2000.; // need to include a buffer for errors in the estimates above
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-                delta_v_imparted_rp = 4. * DMAX( v_grav_guess , v_wind_threshold ); // because of re-written layer below [where this is distributed to many cells], call this less often
+                delta_v_imparted_rp = 2. * DMAX( v_grav_guess , v_wind_threshold ); // because of re-written layer below [where this is distributed to many cells], call this less often
                 prob = dv_imparted_perpart_guess / delta_v_imparted_rp; // chance of kick
                 if(prob < 1 && prob > 0) {dE_over_c /= prob;} // if assigning low-probability, need to up-weight the kick to statistically couple the right momentum
 #endif

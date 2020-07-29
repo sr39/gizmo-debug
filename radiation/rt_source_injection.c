@@ -175,6 +175,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     double dE = wk * local.Luminosity[k];
                     
 #if !defined(RT_INJECT_PHOTONS_DISCRETELY)
+                    #pragma omp atomic
                     SphP[j].Rad_Je[k] += dE; // inject photons as a source term, terms like fluxes, intensities, etc, will all be calculated later
                     continue; // move on -- don't need any of the operations below
 #endif
