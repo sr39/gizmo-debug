@@ -13,9 +13,7 @@
  *   Volker Springel. The code has been modified by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
-#ifndef CHIMES 
 double ThermalProperties(double u, double rho, int target, double *mu_guess, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess);
-#endif 
 void   InitCool(void);
 #ifndef CHIMES 
 void   InitCoolMemory(void);
@@ -31,8 +29,8 @@ void   TestCool(void);
 
 #ifndef CHIMES 
 double find_abundances_and_rates(double logT, double rho, int target, double shieldfac, int return_cooling_mode,
-                                 double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess);
-double convert_u_to_temp(double u, double rho, int target, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess);
+                                 double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess, double *mu_guess);
+double convert_u_to_temp(double u, double rho, int target, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess, double *mu_guess);
 double CoolingRate(double logT, double rho, double nelec, int target);
 double CoolingRateFromU(double u, double rho, double ne_guess, int target);
 #endif 
@@ -40,9 +38,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
 #ifndef CHIMES 
 double GetCoolingTime(double u_old, double rho,  double ne_guess, int target);
 double DoInstabilityCooling(double m_old, double u, double rho, double dt, double fac, double ne_guess, int target);
-double get_mu(double T_guess, double rho, double *ne_guess, int target);
-#endif 
-double yhelium(int target);
+#endif
 
 #ifdef COOL_GRACKLE
 void InitGrackle(void);

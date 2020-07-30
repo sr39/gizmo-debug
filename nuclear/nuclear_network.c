@@ -1,18 +1,24 @@
-#include <stdlib.h>
+#include <mpi.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <math.h>
+#include <ctype.h>
 #include <gsl/gsl_math.h>
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
 #include <gsl/gsl_const_cgs.h>
 #include <gsl/gsl_const_num.h>
+#include "../allvars.h"
+#include "../proto.h"
+#include "../kernel.h"
 
 /*
  *  This code is place-holder, inherited from GADGET3
  */
 
 #ifdef NUCLEAR_NETWORK
-#include "./nuclear_network.h"
+//#include "./nuclear_network.h"
 
 /* to use this network you need 5 files:
  * one file containing information about which species your network should use [species.txt]
@@ -129,17 +135,12 @@ int network_integrate(double temp, double rho, const double *x, double *dx, doub
 }
 
 
-
-
-
-
 #define ELECTRON_CHARGE_ESU (4.80320427e-10)
-
 /* for numerical derivatives */
 #define NETWORK_DIFFVAR (1e-6)
-
 /* threshold for contructing the sparse matrices */
 #define NETWORK_SPARSE_THRESHOLD (0.0)
+
 
 #define set_zero(x) memset(&x, 0, sizeof(x))
 #define min(x,y) ((x) < (y) ? (x) : (y))
@@ -149,8 +150,6 @@ int network_integrate(double temp, double rho, const double *x, double *dx, doub
 #define cbrt(x) pow(x, 1./3.)
 #endif
 
-
-static const double conv = 1.602177e-12 * 1.0e3 * 6.0221367e23;	/* eV2erg * 1.0e3 [keV] * avogadro */
 
 #if NETWORK_SPARSE
 static void store_csr(jacob_t * jacob, int row_ind, const double *row, size_t n_row);
@@ -170,20 +169,24 @@ static network_var compute_screening(const struct network_rate *rate, network_va
 /* functions for computing derivatives */
 static __inline network_var network_var_add(const network_var a, const network_var b);
 static __inline __attribute__ ((unused))
-     network_var network_var_const_add(const network_var a, const double b);
-     static __inline network_var network_var_sub(const network_var a, const network_var b);
-     static __inline network_var network_var_mul(const network_var a, const network_var b);
-     static __inline network_var network_var_const_mul(const network_var a, const double b);
-     static __inline __attribute__ ((unused))
-     network_var network_var_div(const network_var a, const network_var b);
-     static __inline network_var network_var_inverse(const network_var a);
-     static __inline network_var network_var_exp(const network_var a);
-     static __inline network_var network_var_sqrt(const network_var a);
-     static __inline network_var network_var_cbrt(const network_var a);
-     static __inline __attribute__ ((unused))
-     network_var network_var_log(const network_var a);
-     static __inline __attribute__ ((unused))
-     network_var network_var_pow_int(const network_var a, int n);
+network_var network_var_const_add(const network_var a, const double b);
+static __inline network_var network_var_sub(const network_var a, const network_var b);
+static __inline network_var network_var_mul(const network_var a, const network_var b);
+static __inline network_var network_var_const_mul(const network_var a, const double b);
+static __inline __attribute__ ((unused))
+network_var network_var_div(const network_var a, const network_var b);
+#if (NETWORK_VARIABLE == NETWORK_VAR_TEMP)
+static __inline network_var network_var_inverse(const network_var a);
+#endif
+static __inline network_var network_var_exp(const network_var a);
+#ifdef NETWORK_SCREENING
+static __inline network_var network_var_sqrt(const network_var a);
+//static __inline network_var network_var_cbrt(const network_var a);
+#endif
+static __inline __attribute__ ((unused))
+network_var network_var_log(const network_var a);
+static __inline __attribute__ ((unused))
+network_var network_var_pow_int(const network_var a, int n);
 
 /* abbreviations to make the code more readable */
 #define n_a(a, b) network_var_add(a, b)
@@ -199,7 +202,7 @@ static __inline __attribute__ ((unused))
 #define n_log(a) network_var_log(a)
 #define n_powi(a, n) network_var_pow_int(a, n)
 
-     static network_var network_var_add(const network_var a, const network_var b)
+static network_var network_var_add(const network_var a, const network_var b)
 {
   network_var res;
 
@@ -284,6 +287,7 @@ static network_var network_var_div(const network_var a, const network_var b)
   return res;
 }
 
+#if (NETWORK_VARIABLE == NETWORK_VAR_TEMP)
 static network_var network_var_inverse(const network_var a)
 {
   network_var res;
@@ -300,6 +304,7 @@ static network_var network_var_inverse(const network_var a)
 
   return res;
 }
+#endif
 
 static network_var network_var_exp(const network_var a)
 {
@@ -316,6 +321,7 @@ static network_var network_var_exp(const network_var a)
   return res;
 }
 
+#ifdef NETWORK_SCREENING
 static network_var network_var_sqrt(const network_var a)
 {
   network_var res;
@@ -332,7 +338,9 @@ static network_var network_var_sqrt(const network_var a)
 
   return res;
 }
+#endif
 
+/*
 static network_var network_var_cbrt(const network_var a)
 {
   network_var res;
@@ -349,6 +357,7 @@ static network_var network_var_cbrt(const network_var a)
 
   return res;
 }
+*/
 
 static network_var network_var_log(const network_var a)
 {
@@ -2140,7 +2149,7 @@ int getrates(double rho, double temp, double ye, double yz, int compute_derivs, 
 int network_part(double temp, const struct network_data *nd, struct network_workspace *nw)
 {
   /* interpolates partition functions, given the temperature */
-  /* \TODO implement partition functions for T > 1e10 K (cf. Rauscher paper?) */
+  /* to do: implement partition functions for T > 1e10 K (cf. Rauscher paper?) */
   int index, i;
   double tempLeft, tempRight;
   double dlgLeft, dlgRight;
@@ -2407,5 +2416,162 @@ static network_var compute_screening(const struct network_rate *rate, network_va
 }
 
 #endif /* NETWORK_SCREENING */
+
+
+
+
+/* some really basic utility functions used in the network subroutines */
+
+
+void myprintf(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+}
+
+char *util_fgets(char *str, int num, FILE * stream, char *file, int line)
+{
+    char *ret = fgets(str, num, stream);
+    if(ret == NULL)
+    {
+        printf("error: fgets in file %s at line %d\n", file, line); endrun(200);
+    }
+    return ret;
+}
+
+size_t util_fread(void *ptr, size_t size, size_t count, FILE * stream, char *file, int line)
+{
+    size_t result = fread(ptr, size, count, stream);
+    if(result != count)
+    {
+        printf("error: fread in file %s at line %d\n", file, line); endrun(201);
+    }
+    return result;
+}
+
+double SwapDouble(double Val)
+{
+    double nVal;
+    int i;
+    const char *readFrom = (const char *) &Val;
+    char *writeTo = ((char *) &nVal) + sizeof(nVal);
+    
+    for(i = 0; i < sizeof(Val); ++i)
+    {
+        *(--writeTo) = *(readFrom++);
+    }
+    return nVal;
+}
+
+float SwapFloat(float Val)
+{
+    float nVal;
+    int i;
+    const char *readFrom = (const char *) &Val;
+    char *writeTo = ((char *) &nVal) + sizeof(nVal);
+    
+    for(i = 0; i < sizeof(Val); ++i)
+    {
+        *(--writeTo) = *(readFrom++);
+    }
+    return nVal;
+}
+
+int SwapInt(int Val)
+{
+    int nVal;
+    int i;
+    const char *readFrom = (const char *) &Val;
+    char *writeTo = ((char *) &nVal) + sizeof(nVal);
+    
+    for(i = 0; i < sizeof(Val); ++i)
+    {
+        *(--writeTo) = *(readFrom++);
+    }
+    return nVal;
+}
+
+int CheckSwap(char *fname, int *swap)
+{
+    FILE *fd;
+    off_t fsize, fpos;
+    int blocksize, blockend;
+    
+    if(!(fd = fopen(fname, "r")))
+    {
+        printf("can't open file `%s'.\n", fname);
+        return -1;
+    }
+    
+    fseeko(fd, 0, SEEK_END);
+    fsize = ftello(fd);
+    
+    *swap = 0;
+    fpos = 0;
+    fseeko(fd, 0, SEEK_SET);
+    safe_fread(&blocksize, sizeof(int), 1, fd);
+    while(!feof(fd))
+    {
+        if(fpos + blocksize + 4 > fsize)
+        {
+            *swap += 1;
+            break;
+        }
+        fpos += 4 + blocksize;
+        fseeko(fd, fpos, SEEK_SET);
+        safe_fread(&blockend, sizeof(int), 1, fd);
+        if(blocksize != blockend)
+        {
+            *swap += 1;
+            break;
+        }
+        fpos += 4;
+        if(!fread(&blocksize, sizeof(int), 1, fd))
+            break;
+    }
+    
+    if(*swap == 0)
+    {
+        fclose(fd);
+        return 0;
+    }
+    
+    fpos = 0;
+    fseeko(fd, 0, SEEK_SET);
+    safe_fread(&blocksize, sizeof(int), 1, fd);
+    while(!feof(fd))
+    {
+        blocksize = SwapInt(blocksize);
+        if(fpos + blocksize + 4 > fsize)
+        {
+            *swap += 1;
+            break;
+        }
+        fpos += 4 + blocksize;
+        fseeko(fd, fpos, SEEK_SET);
+        safe_fread(&blockend, sizeof(int), 1, fd);
+        blockend = SwapInt(blockend);
+        if(blocksize != blockend)
+        {
+            *swap += 1;
+            break;
+        }
+        fpos += 4;
+        if(!fread(&blocksize, sizeof(int), 1, fd))
+            break;
+    }
+    
+    fclose(fd);
+    return 0;
+}
+
+
+
+
+
+
+
 
 #endif /* NUCLEAR_NETWORK */

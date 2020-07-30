@@ -14,7 +14,7 @@
 /*
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
- * in part (adding/removing routines as necessary) 
+ * in part (adding/removing routines as necessary)
  * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
@@ -48,7 +48,7 @@ int does_particle_need_to_be_split(int i);
 double target_mass_renormalization_factor_for_mergesplit(int i);
 void merge_particles_ij(int i, int j);
 //void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
-void split_particle_i(int i, int n_particles_split, int i_nearest); 
+void split_particle_i(int i, int n_particles_split, int i_nearest);
 double gamma_eos(int i);
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);
@@ -110,10 +110,8 @@ static inline double WRAP_POSITION_UNIFORM_BOX(double x)
 
 static inline double DMAX(double a, double b) { return (a > b) ? a : b; }
 static inline double DMIN(double a, double b) { return (a < b) ? a : b; }
-static inline int IMAX(int a, int b) { return (a > b) ? a : b; } 
+static inline int IMAX(int a, int b) { return (a > b) ? a : b; }
 static inline int IMIN(int a, int b) { return (a < b) ? a : b; }
-static inline integertime TIMAX(integertime a, integertime b) { return (a > b) ? a : b; }
-static inline integertime TIMIN(integertime a, integertime b) { return (a < b) ? a : b; }
 static inline double MINMOD(double a, double b) {return (a>0) ? ((b<0) ? 0 : DMIN(a,b)) : ((b>=0) ? 0 : DMAX(a,b));}
 /* special version of MINMOD below: a is always the "preferred" choice, b the stability-required one. here we allow overshoot, just not opposite signage */
 static inline double MINMOD_G(double a, double b) {return a;}
@@ -195,6 +193,7 @@ void mpi_distribute_items_to_tasks(void *data, int task_offset, int *n_items, in
 void parallel_sort_special_P_GrNr_ID(void);
 void calculate_power_spectra(int num, long long *ntot_type_all);
 
+
 int pmforce_is_particle_high_res(int type, MyDouble *pos);
 
 void compare_partitions(void);
@@ -221,22 +220,15 @@ void parallel_sort(void *base, size_t nmemb, size_t size, int (*compar) (const v
 void parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (const void *, const void *), MPI_Comm comm);
 int compare_IDs(const void *a, const void *b);
 void test_id_uniqueness(void);
-
-
+int compare_densities_for_sort(const void *a, const void *b);
 int io_compare_P_ID(const void *a, const void *b);
 int io_compare_P_GrNr_SubNr(const void *a, const void *b);
-
-
 void drift_particle(int i, integertime time1);
 int ShouldWeDoDynamicUpdate(void);
-
 void put_symbol(double t0, double t1, char c);
 void write_cpu_log(void);
-
 int get_timestep_bin(integertime ti_step);
-
 const char* svn_version(void);
-
 void find_particles_and_save_them(int num);
 void lineofsight_output(void);
 void sum_over_processors_and_normalize(void);
@@ -246,8 +238,6 @@ integertime find_next_lineofsighttime(integertime time0);
 integertime find_next_gridoutputtime(integertime ti_curr);
 void add_along_lines_of_sight(void);
 void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurrent, int mode);
-
-
 void x86_fix(void) ;
 
 void *mymalloc_fullinfo(const char *varname, size_t n, const char *func, const char *file, int linenr);
@@ -280,18 +270,18 @@ double bhgrowth(double z1, double z2);
 int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend_local);
 
 double INLINE_FUNC Get_Particle_Size(int i);
-double INLINE_FUNC Particle_density_for_energy_i(int i);
+double INLINE_FUNC Get_Gas_density_for_energy_i(int i);
 double INLINE_FUNC Get_Particle_Expected_Area(double h);
 double Get_Gas_Ionized_Fraction(int i);
 #ifdef COSMIC_RAYS
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i);
-double INLINE_FUNC Get_Particle_CosmicRayPressure(int i, int k_CRegy);
+double INLINE_FUNC Get_Gas_CosmicRayPressure(int i, int k_CRegy);
 double Get_CosmicRayGradientLength(int i, int k_CRegy);
 double Get_CosmicRayStreamingVelocity(int i);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
 double CR_cooling_and_gas_heating(int target, double n_elec, double nH_cgs, double dtime_cgs, int mode);
-double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, double shock_vel);
-double inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir);
+double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, double shock_vel, int return_index_in_bin);
+void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir);
 double Get_AlfvenMachNumber_Local(int i, double vA_idealMHD_codeunits, int use_shear_corrected_vturb_flag);
 double diffusion_coefficient_constant(int target, int k_CRegy);
 double diffusion_coefficient_extrinsic_turbulence(int mode, int target, int k_CRegy, double M_A, double L_scale, double b_muG, double vA_noion, double rho_cgs, double temperature, double cs_thermal, double nh0, double nHe0, double f_ion);
@@ -308,18 +298,43 @@ void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime
 double CR_gas_heating(int target, double n_elec, double nHcgs);
 double return_CRbin_CRmass_in_mp(int target, int k_CRegy);
 double return_CRbin_CR_rigidity_in_GV(int target, int k_CRegy);
+double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy);
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+void CR_spectrum_define_bins(void);
+void CR_initialize_multibin_quantities(void);
+void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, double dtime_cgs, int mode_driftkick);
+double CR_return_slope_from_number_and_energy_in_bin(double energy_in_code_units, double number_effective_in_code_units, double bin_centered_energy_in_GeV, int k_bin);
+double CR_return_new_bin_edge_from_rate(double rate_dt_dimless, double x_m_bin, double x_p_bin, int loss_mode, int NR_key);
+double CR_coulomb_energy_integrand(double x, double tau, double slope);
+double CR_compton_energy_integrand(double x, double tau, double slope);
+int CR_check_if_bin_is_nonrelativistic(int k_bin);
+double CR_return_true_number_in_bin(int target, int k_bin);
+double CR_return_effective_number_in_bin_in_codeunits(int target, int k_bin);
+double CR_return_spectral_slope_target(int target, int k_bin);
+double CR_get_number_in_bin_from_slope(int target, int k_bin, double energy, double slope);
+double CR_return_mean_energy_in_bin_in_GeV(int target, int k_bin);
+double CR_return_mean_rigidity_in_bin_in_GV(int target, int k_bin);
+int compare_CR_rigidity_for_sort(const void *a, const void *b);
+double return_CRbin_kinetic_energy_in_GeV_binvalsNRR(int k_CRegy);
+#endif
 #endif
 #ifdef EOS_ELASTIC
 void elastic_body_update_driftkick(int i, double dt_entr, int mode);
 #endif
 double INLINE_FUNC convert_internalenergy_soundspeed2(int i, double u);
-double INLINE_FUNC Particle_effective_soundspeed_i(int i);
+double INLINE_FUNC Get_Gas_effective_soundspeed_i(int i);
+double INLINE_FUNC Get_Gas_thermal_soundspeed_i(int i);
+double Get_Gas_Alfven_speed_i(int i);
+double Get_Gas_Fast_MHD_wavespeed_i(int i);
+double Get_Gas_Mean_Molecular_Weight_mu(double T_guess, double rho, double *xH0, double *ne_guess, double urad_from_uvb_in_G0, int target);
+double yhelium(int target);
+double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral_fraction, double free_electron_ratio, double urad_from_uvb_in_G0);
+double INLINE_FUNC Get_Gas_BField(int i_particle_id, int k_vector_component);
 #ifdef MAGNETIC
-double INLINE_FUNC Get_Particle_BField(int i_particle_id, int k_vector_component);
 double Get_DtB_FaceArea_Limiter(int i);
 #ifdef DIVBCLEANING_DEDNER
-double INLINE_FUNC Get_Particle_PhiField(int i_particle_id);
-double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id);
+double INLINE_FUNC Get_Gas_PhiField(int i_particle_id);
+double INLINE_FUNC Get_Gas_PhiField_DampingTimeInv(int i_particle_id);
 #endif
 #endif
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
@@ -456,28 +471,19 @@ void catch_fatal(int sig);
 void terminate_processes(void);
 void enable_core_dumps_and_fpu_exceptions(void);
 void write_pid_file(void);
-
 #ifdef PAUSE_RUN_TO_ATTACH_DEBUGGER
 void pause_run_to_attach_debugger();
 #endif
-
 void pm_init_periodic_allocate(void);
-
 void pm_init_periodic_free(void);
-
 void move_particles(integertime time1);
-
-
 void find_next_sync_point_and_drift(void);
 void find_dt_displacement_constraint(double hfac);
 #ifdef WAKEUP
 void process_wake_ups(void);
 #endif
-
 void set_units_sfr(void);
-
 void gravity_forcetest(void);
-
 void allocate_commbuffers(void);
 void allocate_memory(void);
 void begrun(void);
@@ -487,12 +493,17 @@ void compute_global_quantities_of_system(void);
 void compute_potential(void);
 void construct_timetree(void);
 void star_formation_parent_routine(void);
-
 #if defined(TURB_DRIVING)
 void do_turb_driving_step_first_half(void);
 void do_turb_driving_step_second_half(void);
+double st_return_dt_between_updates(void);
+double st_return_mode_correlation_time(void);
+double st_return_rms_acceleration(void);
+double st_turbdrive_get_gaussian_random_variable(void);
+void st_turbdrive_init_ouseq(void);
+void st_turbdrive_calc_phases(void);
+double st_return_driving_scale(void);
 #endif
-
 double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h, int target);
 
 
@@ -524,19 +535,28 @@ double mechanical_fb_calculate_eventrates(int i, double dt);
 double mechanical_fb_calculate_eventrates_SNe(int i, double dt);
 void mechanical_fb_calculate_eventrates_Winds(int i, double dt);
 void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt);
+void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt);
 void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i);
 void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i);
+void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i);
 double Z_for_stellar_evol(int i);
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
+int read_agetracerlist(char *fname);
+#endif
+int get_age_tracer_bin(double age);
+double get_age_tracer_bin_start_time(int k);
+#endif
 #endif
 #endif
 
 #ifdef SINGLE_STAR_FB_JETS
 double single_star_jet_velocity(int n);
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-double singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt);
-#if (SINGLE_STAR_PROTOSTELLAR_EVOLUTION == 2)
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
+void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt);
+#if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
 double ps_adiabatic_index(int stage, double mdot);
 double ps_rhoc(double m, double n_ad, double r);
 double ps_Pc(double m, double n_ad, double r);
@@ -568,7 +588,7 @@ void apply_grain_dragforce(void);
 
 #ifdef RT_INFRARED
 double get_min_allowed_dustIRrad_temperature(void);
-double get_rt_ir_lambdadust_effective(double T, double rho, double *ne_guess, int target);
+double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, double *ne_guess, int target);
 #endif
 
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
@@ -577,15 +597,12 @@ double particle_ionizing_luminosity_in_cgs(long i);
 
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
 void HII_heating_singledomain(void);
+int do_the_local_ionization(int target, double dt, int source);
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING_USEMULTIDOMAINSHARE
 void HII_heating_withMPIcomm(void);
 int HIIheating_RHIIest(int target);
 int HIIheating_evaluate(int target, int mode, int *nexport, int *nsend_local);
 #endif
-#endif
-
-#ifdef CHIMES_HII_REGIONS 
-void chimes_HII_regions_singledomain(void); 
 #endif
 
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
@@ -605,17 +622,17 @@ void thermal_fb_calc(void);
 #ifdef COOL_METAL_LINES_BY_SPECIES
 /*double GetMetalLambda(double, double);*/
 double getSpCoolTableVal(long i,long j,long k,long tblK);
-#ifndef CHIMES 
+#ifndef CHIMES
 double GetCoolingRateWSpecies(double nHcgs, double logT, double *Z);
 double GetLambdaSpecies(long k_index, long index_x0y0, long index_x0y1, long index_x1y0, long index_x1y1, double dx, double dy, double dz, double mdz);
 void LoadMultiSpeciesTables(void);
 void ReadMultiSpeciesTables(int iT);
 char *GetMultiSpeciesFilename(int i, int hk);
-#endif 
+#endif
 #endif
 
-double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz);
-double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r, double H_bh);
+double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double dx, double dy, double dz);
+double bh_angleweight_localcoupling(int j, double cos_theta, double r, double H_bh);
 
 #if defined(GALSF_SUBGRID_WINDS)
 void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double* pvtau_return);
@@ -637,24 +654,24 @@ void disp_density(void);
 #endif
 
 
-#ifdef CHIMES 
-void chimes_cooling_parent_routine(void); 
-double chimes_convert_u_to_temp(double u, double rho, int target); 
-void chimes_update_gas_vars(int target); 
-#ifdef COOL_METAL_LINES_BY_SPECIES 
-void chimes_update_element_abundances(int i); 
-#endif 
-#ifdef CHIMES_TURB_DIFF_IONS 
-void chimes_update_turbulent_abundances(int i, int mode); 
-#endif 
-#ifdef CHIMES_METAL_DEPLETION 
-void chimes_init_depletion_data(void); 
-double chimes_jenkins_linear_fit(double nH, double T, double Ax, double Bx, double zx); 
-void chimes_compute_depletions(double nH, double T, int thread_id); 
-#endif 
-#else 
+#ifdef CHIMES
+double chimes_convert_u_to_temp(double u, double rho, int target);
+void chimes_update_gas_vars(int target);
+void chimes_gizmo_exit(void);
+#ifdef COOL_METAL_LINES_BY_SPECIES
+void chimes_update_element_abundances(int i);
+#endif
+#ifdef CHIMES_TURB_DIFF_IONS
+void chimes_update_turbulent_abundances(int i, int mode);
+#endif
+#ifdef CHIMES_METAL_DEPLETION
+void chimes_init_depletion_data(void);
+double chimes_jenkins_linear_fit(double nH, double T, double Ax, double Bx, double zx);
+void chimes_compute_depletions(double nH, double T, int thread_id);
+#endif
+#else
+#endif
 void cooling_parent_routine(void);
-#endif 
 void count_hot_phase(void);
 void delete_node(int i);
 void density(void);
@@ -688,8 +705,10 @@ void gravity_tree(void);
 void hydro_force(void);
 void init(void);
 void do_the_cooling_for_particle(int i);
+double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_for_exgalbg);
+void apply_pm_hires_region_clipping_selection(int i);
 double get_starformation_rate(int i);
-void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double x, double rateOfSF);
+void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double cloudmass_fraction, double rateOfSF);
 void init_clouds(void);
 void integrate_sfr(void);
 void insert_node(int i);
@@ -732,7 +751,7 @@ void statistics(void);
 double timediff(double t0, double t1);
 void veldisp(void);
 void veldisp_ensure_neighbours(int mode);
-
+int binarySearch(const double * arr, const double x, const int l, const int r, const int total);
 
 double get_gravkick_factor(integertime time0, integertime time1);
 double drift_integ(double a, void *param);
@@ -768,13 +787,16 @@ void pm_setup_nonperiodic_kernel(void);
 
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
-#ifdef CHIMES_STELLAR_FLUXES 
-double chimes_G0_luminosity(double stellar_age, double stellar_mass); 
-double chimes_ion_luminosity(double stellar_age, double stellar_mass); 
-int rt_get_source_luminosity(int i, int mode, double *lum, double *chimes_lum_G0, double *chimes_lum_ion);
-#else 
-int rt_get_source_luminosity(int i, int mode, double *lum);
+#ifdef CHIMES_STELLAR_FLUXES
+double chimes_G0_luminosity(double stellar_age, double stellar_mass);
+double chimes_ion_luminosity(double stellar_age, double stellar_mass);
+int rt_get_source_luminosity_chimes(int i, int mode, double *lum, double *chimes_lum_G0, double *chimes_lum_ion);
 #endif
+int rt_get_source_luminosity(int i, int mode, double *lum);
+int rt_get_donation_target_bin(int bin);
+int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum);
+int rt_get_lum_band_agn(int i, int mode, double *lum);
+int rt_get_lum_band_singlestar(int i, int mode, double *lum);
 void eddington_tensor_dot_vector(double ET[6], double vec_in[3], double vec_out[3]);
 double return_flux_limiter(int target, int k_freq);
 double rt_kappa(int j, int k_freq);
@@ -795,6 +817,8 @@ void rt_init_intensity_directions(void);
 #endif
 void rt_get_lum_gas(int target, double *je);
 double slab_averaging_function(double x);
+double blackbody_lum_frac(double E_lower, double E_upper, double T_eff);
+double stellar_lum_in_band(int i, double E_lower, double E_upper);
 
 #ifdef RT_DIFFUSION_CG
 void rt_diffusion_cg_solve(void);
@@ -807,8 +831,8 @@ void rt_update_chemistry(void);
 void rt_get_sigma(void);
 double rt_GetCoolingTime(int i, double u, double rho);
 double rt_cooling_photoheating(int i, double dt);
-double rt_DoCooling(int i, double dt_internal);
-double rt_DoHeating(int i, double dt_internal);
+double rt_DoCooling(int i, double dt);
+double rt_DoHeating(int i, double dt);
 double rt_get_cooling_rate(int i, double internal_energy);
 void rt_write_chemistry_stats(void);
 #endif
@@ -898,7 +922,7 @@ void apply_excision();
 #endif
 
 #ifdef DM_SIDM
-double prob_of_interaction(double mass, double r, double h_si, double dV[3], integertime dt_step);
+double prob_of_interaction(double mass, double r, double h_si, double dV[3], double dt);
 double g_geo(double r);
 void calculate_interact_kick(double dV[3], double kick[3], double m);
 void init_geofactor_table(void);
@@ -907,7 +931,7 @@ double geofactor_angle_integ(double u, void * params);
 void init_self_interactions();
 #ifdef GRAIN_COLLISIONS
 double return_grain_cross_section_per_unit_mass(int i);
-double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, double h_si, double dV[3], integertime dt_step, int j_ngb);
+double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, double h_si, double dV[3], double dt, int j_ngb);
 #endif
 #endif
 
@@ -954,4 +978,3 @@ double gravfac2(double r, double mass);
 void grav_accel_jerk(double mass, double dx[3], double dv[3], double accel[3], double jerk[3]);
 double eccentric_anomaly(double mean_anomaly, double ecc);
 #endif
-

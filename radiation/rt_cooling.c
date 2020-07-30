@@ -22,26 +22,26 @@
 /* these routines should get combined into our standard cooling routine -- all the analogues are there, it just needs to be moved over */
 
 #ifndef RT_PHOTOION_MULTIFREQUENCY
-double rt_DoHeating(int i, double dt_internal)
+double rt_DoHeating(int i, double dt)
 {
     double sigma, nH, rate, du, de, e_gamma, nHI;
-    nH = HYDROGEN_MASSFRAC * SphP[i].Density * All.cf_a3inv / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
+    nH = HYDROGEN_MASSFRAC * SphP[i].Density * All.cf_a3inv / PROTONMASS * UNIT_MASS_IN_CGS;
     nHI = SphP[i].HI * nH;
-    sigma = 1.63e-18 / All.UnitLength_in_cm / All.UnitLength_in_cm * All.HubbleParam * All.HubbleParam;
+    sigma = 1.63e-18 / (UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS);
     e_gamma = SphP[i].Rad_E_gamma[0] * (SphP[i].Density*All.cf_a3inv/P[i].Mass);  // want the photon energy density //
     rate = nHI * C_LIGHT_CODE * sigma * e_gamma;
-    return rate / (All.cf_hubble_a * (SphP[i].Density * All.cf_a3inv));
+    return rate / (SphP[i].Density * All.cf_a3inv);
 }
 
 #else
 
-double rt_DoHeating(int i, double dt_internal)
+double rt_DoHeating(int i, double dt)
 {
     int j; double nH, rate, du, de, nHI, n_photons_vol, c_light = C_LIGHT_CODE;
 #ifdef RT_CHEM_PHOTOION_HE
     double nHeI, nHeII, nHeIII;
 #endif
-    nH = HYDROGEN_MASSFRAC * SphP[i].Density * All.cf_a3inv / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
+    nH = HYDROGEN_MASSFRAC * SphP[i].Density * All.cf_a3inv / PROTONMASS * UNIT_MASS_IN_CGS;
     nHI = SphP[i].HI * nH;
 #ifdef RT_CHEM_PHOTOION_HE
     nHeI = SphP[i].HeI * nH;
@@ -53,36 +53,35 @@ double rt_DoHeating(int i, double dt_internal)
     {
         n_photons_vol = rt_return_photon_number_density(i,j);
                 
-        if(nu[j] >= 13.6)
-            rate += nHI * c_light * rt_sigma_HI[j] * G_HI[j] * n_photons_vol;
+        if(rt_ion_nu_min[j] >= 13.6)
+            rate += nHI * c_light * rt_ion_sigma_HI[j] * rt_ion_G_HI[j] * n_photons_vol;
         
 #ifdef RT_CHEM_PHOTOION_HE
-        if(nu[j] >= 24.6)
-            rate += nHeI * c_light * rt_sigma_HeI[j] * G_HeI[j] * n_photons_vol;
+        if(rt_ion_nu_min[j] >= 24.6)
+            rate += nHeI * c_light * rt_ion_sigma_HeI[j] * rt_ion_G_HeI[j] * n_photons_vol;
         
-        if(nu[j] >= 54.4)
-            rate += nHeII * c_light * rt_sigma_HeII[j] * G_HeII[j] * n_photons_vol;
+        if(rt_ion_nu_min[j] >= 54.4)
+            rate += nHeII * c_light * rt_ion_sigma_HeII[j] * rt_ion_G_HeII[j] * n_photons_vol;
 #endif
     }
-    return rate / (All.cf_hubble_a * (SphP[i].Density * All.cf_a3inv));
+    return rate / (SphP[i].Density * All.cf_a3inv);
 }
 
 #endif
 
-double rt_DoCooling(int i, double dt_internal)
+double rt_DoCooling(int i, double dt)
 {
     double iter, u_old, u_lower, u_upper, ratefact, u;
-    double dtime = dt_internal / All.cf_hubble_a;
     double internal_energy = SphP[i].InternalEnergyPred;
     
     /* do the cooling */
     double lambda = rt_get_cooling_rate(i, internal_energy);
-    double de = lambda * dtime / (SphP[i].Density * All.cf_a3inv);
+    double de = lambda * dt / (SphP[i].Density * All.cf_a3inv);
     
     if(fabs(de) < 0.2 * internal_energy)
     {
         /* cooling is slow, we can do it explicitly */
-        return de / dt_internal;
+        return de / dt;
     }
     else
     {
@@ -90,7 +89,7 @@ double rt_DoCooling(int i, double dt_internal)
         u_old = internal_energy;
         u_lower = u_old / sqrt(1.1);
         u_upper = u_old * sqrt(1.1);
-        ratefact = dtime / (SphP[i].Density * All.cf_a3inv);
+        ratefact = dt / (SphP[i].Density * All.cf_a3inv);
         iter = 0;
         
         /* bracketing */
@@ -123,7 +122,7 @@ double rt_DoCooling(int i, double dt_internal)
         }
         while(fabs(du / u) > 1.0e-6);
         du = u - u_old;
-        return du / dt_internal;
+        return du / dt;
         
     }
     
@@ -142,9 +141,9 @@ double rt_get_cooling_rate(int i, double internal_energy)
     double deHe2, deHe3, deHe4, deHe5;
 #endif
     
-    double fac = All.UnitTime_in_s / pow(All.UnitLength_in_cm, 3) / All.UnitEnergy_in_cgs * pow(All.HubbleParam, 3);
+    double fac = 1. / (UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS * UNIT_LUM_IN_CGS);
     
-    nH = HYDROGEN_MASSFRAC * SphP[i].Density * All.cf_a3inv / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;	//physical
+    nH = HYDROGEN_MASSFRAC * SphP[i].Density * All.cf_a3inv * UNIT_MASS_IN_CGS / PROTONMASS;	//physical
     temp = rt_photoion_chem_return_temperature(i, internal_energy);
 
     /* all rates in erg cm^3 s^-1 in code units */
@@ -185,7 +184,7 @@ double rt_get_cooling_rate(int i, double internal_energy)
     deHe3 += SphP[i].HeII * nH * SphP[i].Ne * nH * rateHe3;
     
     rateHe3 = 5.01e-27 * pow(temp, -0.1687) / (1.0 + sqrt(temp / 1e5)) * exp(-55338 / temp) * fac;
-    rateHe3 *= pow(All.HubbleParam / All.UnitLength_in_cm, 3);
+    rateHe3 /= pow(UNIT_LENGTH_IN_CGS, 3);
     deHe3 += SphP[i].HeII * nH * SphP[i].Ne * nH * SphP[i].Ne * nH * rateHe3;
     
     /* collisional excitation cooling rate */
@@ -193,7 +192,7 @@ double rt_get_cooling_rate(int i, double internal_energy)
     deHe4 = SphP[i].HeII * nH * SphP[i].Ne * nH * rateHe4;
     
     rateHe4 = 9.10e-27 * pow(temp, -0.1687) / (1.0 + sqrt(temp / 1e5)) * exp(-13179 / temp) * fac;
-    rateHe4 *= pow(All.HubbleParam / All.UnitLength_in_cm, 3);
+    rateHe4 /= pow(UNIT_LENGTH_IN_CGS, 3);
     deHe4 += SphP[i].HeII * nH * SphP[i].Ne * nH * SphP[i].Ne * nH * rateHe4;
     
     /* Bremsstrahlung cooling rate */

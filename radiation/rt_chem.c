@@ -14,7 +14,7 @@
 /* return photon number density in physical code units */
 double rt_return_photon_number_density(int i, int k)
 {
-    return SphP[i].Rad_E_gamma[k] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (rt_nu_eff_eV[k]*ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam);
+    return SphP[i].Rad_E_gamma[k] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (rt_nu_eff_eV[k]*ELECTRONVOLT_IN_ERGS/UNIT_ENERGY_IN_CGS);
 }
 
 double rt_photoion_chem_return_temperature(int i, double internal_energy)
@@ -33,17 +33,17 @@ void rt_get_sigma(void)
     int k;
     for(k=0;k<N_RT_FREQ_BINS;k++)
     {
-        nu[k] = 0; rt_nu_eff_eV[k] = nu[k]; 
-        G_HI[k]=G_HeI[k]=G_HeII[k]=rt_sigma_HI[k]=rt_sigma_HeI[k]=rt_sigma_HeII[k]=precalc_stellar_luminosity_fraction[k]=0;
+        rt_ion_nu_min[k] = 0; rt_nu_eff_eV[k] = rt_ion_nu_min[k];
+        rt_ion_G_HI[k]=rt_ion_G_HeI[k]=rt_ion_G_HeII[k]=rt_ion_sigma_HI[k]=rt_ion_sigma_HeI[k]=rt_ion_sigma_HeII[k]=rt_ion_precalc_stellar_luminosity_fraction[k]=0;
     }
-    double fac = 1.0 / All.UnitLength_in_cm / All.UnitLength_in_cm * All.HubbleParam * All.HubbleParam;
+    double fac = 1.0 / (UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS);
     
 #ifndef RT_PHOTOION_MULTIFREQUENCY
     /* just the hydrogen ionization bin */
-    rt_sigma_HI[RT_FREQ_BIN_H0] = 6.3e-18 * fac; // cross-section (blackbody-weighted) for photons
-    nu[RT_FREQ_BIN_H0] = 13.6; // minimum frequency [in eV] of photons of interest
+    rt_ion_sigma_HI[RT_FREQ_BIN_H0] = 6.3e-18 * fac; // cross-section (blackbody-weighted) for photons
+    rt_ion_nu_min[RT_FREQ_BIN_H0] = 13.6; // minimum frequency [in eV] of photons of interest
     rt_nu_eff_eV[RT_FREQ_BIN_H0] = 27.2; // typical blackbody-weighted frequency [in eV] of photons of interest: to convert energies to numbers
-    G_HI[RT_FREQ_BIN_H0] = (rt_nu_eff_eV[RT_FREQ_BIN_H0]-13.6)*ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam; // absorption cross-section weighted photon energy in code units
+    rt_ion_G_HI[RT_FREQ_BIN_H0] = (rt_nu_eff_eV[RT_FREQ_BIN_H0]-13.6)*ELECTRONVOLT_IN_ERGS/UNIT_ENERGY_IN_CGS; // absorption cross-section weighted photon energy in code units
 #else
     
     /* now we use the multi-bin spectral information */
@@ -53,25 +53,25 @@ void rt_get_sigma(void)
     
     int i, j, integral=10000;
     double e, d_nu, e_start, e_end, sum_HI_sigma=0, sum_HI_G=0, hc=C_LIGHT*6.6262e-27, I_nu, sig, f, fac_two, T_eff, sum_egy_allbands=0;
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF)
+#if defined(GALSF)
     T_eff = 4.0e4;
 #else 
     T_eff = All.star_Teff;
 #endif
-    fac_two = ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam;
+    fac_two = ELECTRONVOLT_IN_ERGS/UNIT_ENERGY_IN_CGS;
 #ifdef RT_CHEM_PHOTOION_HE
     double sum_HeI_sigma=0, sum_HeII_sigma=0, sum_HeI_G=0, sum_HeII_G=0;
 #endif    
     for(k = 0; k < N_BINS_FOR_IONIZATION; k++)
     {
         i = i_vec[k];
-        e_start = nu[i] = nu_vec[k];
+        e_start = rt_ion_nu_min[i] = nu_vec[k];
         if(k==N_BINS_FOR_IONIZATION-1) {e_end = 500.;} else {e_end = nu_vec[k+1];} 
         d_nu = (e_end - e_start) / (float)(integral - 1);
-        rt_sigma_HI[i] = G_HI[i] = rt_nu_eff_eV[i] = 0.0;
+        rt_ion_sigma_HI[i] = rt_ion_G_HI[i] = rt_nu_eff_eV[i] = 0.0;
         sum_HI_sigma = sum_HI_G = 0.0;
 #ifdef RT_CHEM_PHOTOION_HE
-        rt_sigma_HeI[i] = rt_sigma_HeII[i] = G_HeI[i] = G_HeII[i] = 0.0;
+        rt_ion_sigma_HeI[i] = rt_ion_sigma_HeII[i] = rt_ion_G_HeI[i] = rt_ion_G_HeII[i] = 0.0;
         sum_HeI_sigma = sum_HeII_sigma = sum_HeI_G = sum_HeII_G = 0.0;
 #endif
         double n_photon_sum = 0.0, sum_energy = 0.0;
@@ -81,62 +81,62 @@ void rt_get_sigma(void)
             I_nu = 2.0 * pow(e * ELECTRONVOLT_IN_ERGS, 3) / (hc * hc) / (exp(e * ELECTRONVOLT_IN_ERGS / (BOLTZMANN * T_eff)) - 1.0);
             sum_energy += d_nu * I_nu;
             n_photon_sum += d_nu * I_nu / e;
-            if(nu[i] >= 13.6)
+            if(rt_ion_nu_min[i] >= 13.6)
             {
                 f = sqrt((e / 13.6) - 1.0);
                 if(e <= 13.6) {sig = 6.3e-18;} else {sig = 6.3e-18 * pow(13.6 / e, 4) * exp(4 - (4 * atan(f) / f)) / (1.0 - exp(-2 * M_PI / f));}
-                rt_sigma_HI[i] += d_nu * sig * I_nu / e;
+                rt_ion_sigma_HI[i] += d_nu * sig * I_nu / e;
                 sum_HI_sigma += d_nu * I_nu / e;
-                G_HI[i] += d_nu * sig * (e - 13.6) * I_nu / e;
+                rt_ion_G_HI[i] += d_nu * sig * (e - 13.6) * I_nu / e;
                 sum_HI_G += d_nu * sig * I_nu / e;
             }
 #ifdef RT_CHEM_PHOTOION_HE
-            if(nu[i] >= 24.6)
+            if(rt_ion_nu_min[i] >= 24.6)
             {
                 f = sqrt((e / 24.6) - 1.0);
                 if(e <= 24.6) {sig = 7.83e-18;} else {sig = 7.83e-18 * pow(24.6 / e, 4) * exp(4 - (4 * atan(f) / f)) / (1.0 - exp(-2 * M_PI / f));}
-                rt_sigma_HeI[i] += d_nu * sig * I_nu / e;
+                rt_ion_sigma_HeI[i] += d_nu * sig * I_nu / e;
                 sum_HeI_sigma += d_nu * I_nu / e;
-                G_HeI[i] += d_nu * sig * (e - 24.6) * I_nu / e;
+                rt_ion_G_HeI[i] += d_nu * sig * (e - 24.6) * I_nu / e;
                 sum_HeI_G += d_nu * sig * I_nu / e;
             }
-            if(nu[i] >= 54.4)
+            if(rt_ion_nu_min[i] >= 54.4)
             {
                 f = sqrt((e / 54.4) - 1.0);
                 if(e <= 54.4) {sig = 1.58e-18;} else {sig = 1.58e-18 * pow(54.4 / e, 4) * exp(4 - (4 * atan(f) / f)) / (1.0 - exp(-2 * M_PI / f));}
-                rt_sigma_HeII[i] += d_nu * sig * I_nu / e;
+                rt_ion_sigma_HeII[i] += d_nu * sig * I_nu / e;
                 sum_HeII_sigma += d_nu * I_nu / e;
-                G_HeII[i] += d_nu * sig * (e - 54.4) * I_nu / e;
+                rt_ion_G_HeII[i] += d_nu * sig * (e - 54.4) * I_nu / e;
                 sum_HeII_G += d_nu * sig * I_nu / e;
             }
 #endif
         }
         rt_nu_eff_eV[i] = sum_energy / n_photon_sum;
-        precalc_stellar_luminosity_fraction[i] = sum_energy;
+        rt_ion_precalc_stellar_luminosity_fraction[i] = sum_energy;
 
-        if(nu[i] >= 13.6)
+        if(rt_ion_nu_min[i] >= 13.6)
         {
-            rt_sigma_HI[i] *= fac / sum_HI_sigma;
-            G_HI[i] *= fac_two / sum_HI_G;
+            rt_ion_sigma_HI[i] *= fac / sum_HI_sigma;
+            rt_ion_G_HI[i] *= fac_two / sum_HI_G;
         }
 #ifdef RT_CHEM_PHOTOION_HE
-        if(nu[i] >= 24.6)
+        if(rt_ion_nu_min[i] >= 24.6)
         {
-            rt_sigma_HeI[i] *= fac / sum_HeI_sigma;
-            G_HeI[i] *= fac_two / sum_HeI_G;
+            rt_ion_sigma_HeI[i] *= fac / sum_HeI_sigma;
+            rt_ion_G_HeI[i] *= fac_two / sum_HeI_G;
         }
-        if(nu[i] >= 54.4)
+        if(rt_ion_nu_min[i] >= 54.4)
         {
-            rt_sigma_HeII[i] *= fac / sum_HeII_sigma;
-            G_HeII[i] *= fac_two / sum_HeII_G;
+            rt_ion_sigma_HeII[i] *= fac / sum_HeII_sigma;
+            rt_ion_G_HeII[i] *= fac_two / sum_HeII_G;
         }
 #endif
          sum_egy_allbands += sum_energy;
     }
 
-    for(i = 0; i < N_BINS_FOR_IONIZATION; i++){precalc_stellar_luminosity_fraction[i] /= sum_egy_allbands;}
+    for(i = 0; i < N_RT_FREQ_BINS; i++) {rt_ion_precalc_stellar_luminosity_fraction[i] /= sum_egy_allbands;}
     
-    if(ThisTask == 0) {for(i = 0; i < N_RT_FREQ_BINS; i++) {printf("%g %g | %g %g | %g %g\n",rt_sigma_HI[i]/fac, G_HI[i]/fac_two,rt_sigma_HeI[i]/fac, G_HeI[i]/fac_two,rt_sigma_HeII[i]/fac, G_HeII[i]/fac_two);}}
+    if(ThisTask == 0) {for(i = 0; i < N_RT_FREQ_BINS; i++) {printf("%g %g | %g %g | %g %g\n",rt_ion_sigma_HI[i]/fac, rt_ion_G_HI[i]/fac_two,rt_ion_sigma_HeI[i]/fac, rt_ion_G_HeI[i]/fac_two,rt_ion_sigma_HeII[i]/fac, rt_ion_G_HeII[i]/fac_two);}}
 #endif
 }
 
@@ -152,15 +152,15 @@ void rt_update_chemistry(void)
     double alpha_HeII, alpha_HeIII, gamma_HeI, gamma_HeII, nHeII, nHeIII, D, E, F, G, J, L, y_fac;
 #endif
     
-    fac = All.UnitTime_in_s / pow(All.UnitLength_in_cm, 3) * All.HubbleParam * All.HubbleParam;
+    fac = UNIT_TIME_IN_CGS / (UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS);
     c_light = C_LIGHT_CODE;
     
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
         if(P[i].Type == 0)
         {
-            dtime = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
             rho = SphP[i].Density * All.cf_a3inv;
-            nH = HYDROGEN_MASSFRAC * rho / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
+            nH = HYDROGEN_MASSFRAC * rho / PROTONMASS * UNIT_MASS_IN_CGS;
             temp = rt_photoion_chem_return_temperature(i,SphP[i].InternalEnergyPred);
             /* collisional ionization rate */
             gamma_HI = 5.85e-11 * sqrt(temp) * exp(-157809.1 / temp) / (1.0 + sqrt(temp / 1e5)) * fac;
@@ -176,7 +176,7 @@ void rt_update_chemistry(void)
             }
             
             A = dtime * gamma_HI * nH * SphP[i].Ne;
-            B = dtime * c_light * n_photons_vol * rt_sigma_HI[RT_FREQ_BIN_H0];
+            B = dtime * c_light * n_photons_vol * rt_ion_sigma_HI[RT_FREQ_BIN_H0];
             CC = dtime * alpha_HII * nH * SphP[i].Ne;
             
             /* semi-implicit scheme for ionization */
@@ -249,7 +249,7 @@ void rt_update_chemistry(void)
     double alpha_HeII, alpha_HeIII, gamma_HeI, gamma_HeII, nHeII, nHeIII, D, E, F, G, J, L, k_HeI, k_HeII, y_fac;
 #endif
     
-    fac = All.UnitTime_in_s / pow(All.UnitLength_in_cm, 3) * All.HubbleParam * All.HubbleParam;
+    fac = UNIT_TIME_IN_CGS / (UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS);
     c_light = C_LIGHT_CODE;
     
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
@@ -263,16 +263,16 @@ void rt_update_chemistry(void)
             for(j = 0; j < N_RT_FREQ_BINS; j++)
             {
                 n_photons_vol = rt_return_photon_number_density(i,j);
-                if(nu[j] >= 13.6) {k_HI += c_light * rt_sigma_HI[j] * n_photons_vol;}
+                if(rt_ion_nu_min[j] >= 13.6) {k_HI += c_light * rt_ion_sigma_HI[j] * n_photons_vol;}
 #ifdef RT_CHEM_PHOTOION_HE
-                if(nu[j] >= 24.6) {k_HeI += c_light * rt_sigma_HeI[j] * n_photons_vol;}
-                if(nu[j] >= 54.4) {k_HeII += c_light * rt_sigma_HeII[j] * n_photons_vol;}
+                if(rt_ion_nu_min[j] >= 24.6) {k_HeI += c_light * rt_ion_sigma_HeI[j] * n_photons_vol;}
+                if(rt_ion_nu_min[j] >= 54.4) {k_HeII += c_light * rt_ion_sigma_HeII[j] * n_photons_vol;}
 #endif
             }
             
-            dtime = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
             rho = SphP[i].Density * All.cf_a3inv;
-            nH = HYDROGEN_MASSFRAC * rho / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
+            nH = HYDROGEN_MASSFRAC * rho / PROTONMASS * UNIT_MASS_IN_CGS;
             temp = rt_photoion_chem_return_temperature(i,SphP[i].InternalEnergyPred);
             /* collisional ionization rate */
             gamma_HI = 5.85e-11 * sqrt(temp) * exp(-157809.1 / temp) / (1.0 + sqrt(temp / 1e5)) * fac;

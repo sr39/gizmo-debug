@@ -56,9 +56,7 @@ to b = 7.1 km/s in the code (in cooling.c), but in the future we could add an op
 explicitly from the gas motions in the simulation. 
 
 Additional CHIMES Config flags: 
-  - CHIMES_SFR_MOLECULAR_CRITERION - this works similarly to GALSF_SFR_MOLECULAR_CRITERION, except that the 
-    H2 fraction is taken from the CHIMES network. 
-  - CHIMES_REDUCED_OUTPUT - if this option is enabled, the full CHIMES abundance array will only be output 
+  - CHIMES_REDUCED_OUTPUT - if this option is enabled, the full CHIMES abundance array will only be output
     every N_chimes_full_output_freq snapshots. For the remaining snapshots, only the abundances of 
     electrons, HI and H2 will be output. 
   - CHIMES_HYDROGEN_ONLY - sets the HYDROGEN_MASS_FRACTION to 1. This option is ignored if METALS are also set. 
@@ -84,9 +82,6 @@ There are some Config flags that CHIMES does not currently work with, or its beh
   - GALSF_TURNOFF_COOLING_WINDS - currently, if cooling has been disabled for a wind particle, it also 
     will not evolve the chemical abundances either, i.e. the abundances become 'frozen' for the 
     delay time. 
-  - GALSF_SFR_MOLECULAR_CRITERION - calculates the H2 fraction using the model of Krumholz and Gnedin (2012), 
-    rather than using the H2 fraction from CHIMES. If you want to use the CHIMES H2 fraction, use 
-    CHIMES_SFR_MOLECULAR_CRITERION instead.     
   - GALSF_FB_FIRE_RT_HIIHEATING - if this option is used with CHIMES, then, for gas particles that are flagged as 
     being 'ionised' by a local star, the minimum temperature is set to HIIRegion_Temp. In other words, 
     particles below this are instantly heated to this temperature, and are not allowed to cool below it 
@@ -102,9 +97,6 @@ There are some Config flags that CHIMES does not currently work with, or its beh
     SphP[i].Rad_Flux_UV and SphP[i].Rad_Flux_EUV?
   - BLACK_HOLES - currently, CHIMES is not compatible with the inclusion of black holes, because when a gas particle 
     is accreted, we will need to delete the corresponding gasVariables structure (this is not currently done). 
-  - LONGIDS - the gasVars structure in CHIMES stores the particle ID as an unsigned int, which it compares to 
-    P[i].ID. However, if LONGIDS is set, then the ID in P[i].ID will be unsigned long long, not unsigned int, 
-    so CHIMES is not currently compatible with LONGIDS. 
   - RT_CHEM_PHOTOION - this is currently incompatible with CHIMES, as it uses its own routines to compute chemistry 
     abundances for the radiative transport. 
   - OUTPUTCOOLRATE - not currently compatible with CHIMES. 

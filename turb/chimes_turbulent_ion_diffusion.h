@@ -21,7 +21,7 @@
 {
 #ifdef CHIMES_TURB_DIFF_IONS  // turbulent diffusion of CHIMES ions and molecules (passive scalar mixing) //
         
-    if((local.Mass>0)&&(P[j].Mass>0)&&((local.TD_DiffCoeff>0)||(SphP[j].TD_DiffCoeff>0)))
+    if((local.Mass>0)&&(P[j].Mass>0)&&((local.TD_DiffCoeff>MIN_REAL_NUMBER)||(SphP[j].TD_DiffCoeff>MIN_REAL_NUMBER)))
     {
         double wt_i=0.5, wt_j=0.5, cmag, d_scalar;
         double diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*SphP[j].TD_DiffCoeff; // physical
