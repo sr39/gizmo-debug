@@ -70,7 +70,7 @@ void radiation_pressure_winds_consolidated(void)
                 { // within loop
                     /* ok, now open the neighbor list for the star particle */
                     N_MIN_KERNEL=10;N_MAX_KERNEL=256;MAXITER_FB=100;NITER=0;wt_sum=0; startnode=All.MaxPart;dummy=0;numngb_inbox=0;h=1.0*P[i].Hsml;pos=P[i].Pos;
-                    if(h<=0) {h=All.SofteningTable[0];} else {if(h>RtauMax) {h=RtauMax;}}
+                    if(h<=0) {h=All.ForceSoftening[0];} else {if(h>RtauMax) {h=RtauMax;}}
                     do {
                         numngb_inbox = ngb_treefind_variable_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
                         if((numngb_inbox>=N_MIN_KERNEL)&&(numngb_inbox<=N_MAX_KERNEL))
@@ -388,7 +388,8 @@ int do_the_local_ionization(int target, double dt, int source)
     // set the quantities desired for this age bin specifically: need a softened radius, for use here //
     double dp[3],r2=0,stellar_mass=P[source].Mass*UNIT_MASS_IN_SOLAR; for(k=0;k<3;k++) {dp[k]=P[source].Pos[k]-P[target].Pos[k];}
     NEAREST_XYZ(dp[0],dp[1],dp[2],1); for(k=0;k<3;k++) {dp[k]*=All.cf_atime*UNIT_LENGTH_IN_CGS; r2+=dp[k]*dp[k];} // separation in cgs
-    double eps_cgs=All.SofteningTable[P[source].Type]*All.cf_atime*UNIT_LENGTH_IN_CGS; r2+=eps_cgs*eps_cgs; // gravitational Softening (cgs units)
+    double eps_cgs=KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER*All.ForceSoftening[P[source].Type]*All.cf_atime*UNIT_LENGTH_IN_CGS; // plummer equivalent softening
+    r2+=eps_cgs*eps_cgs; // gravitational Softening (cgs units)
     SphP[target].Chimes_fluxPhotIon_HII[age_bin] = (1.0 - All.Chimes_f_esc_ion) * chimes_ion_luminosity(stellar_age_myr, stellar_mass) / r2; // cgs flux of H-ionising photons per second seen by the star particle
     SphP[target].Chimes_G0_HII[age_bin] = (1.0 - All.Chimes_f_esc_G0) * chimes_G0_luminosity(stellar_age_myr, stellar_mass) / r2; // cgs flux in the 6-13.6 eV band
 

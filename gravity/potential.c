@@ -202,7 +202,7 @@ void compute_potential(void)
 #ifndef ADAPTIVE_GRAVSOFT_FORALL
     for(i = 0; i < NumPart; i++) /* add correction to exclude self-potential [actually well-defined with adaptive force softenings, so keep it there] */
     {
-        P[i].Potential += P[i].Mass / All.SofteningTable[P[i].Type]; /* remove self-potential */
+        P[i].Potential -= P[i].Mass / All.ForceSoftening[P[i].Type] * kernel_gravity(0,1,1,-1); /* remove self-potential */
 #ifdef BOX_PERIODIC
         if(All.ComovingIntegrationOn) {P[i].Potential -= 2.8372975 * pow(P[i].Mass, 2.0 / 3) * pow(All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);}
 #endif

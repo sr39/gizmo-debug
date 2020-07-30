@@ -179,7 +179,7 @@ int subfind_loctree_treebuild(int npart, struct unbind_data *mp)
 	      if(P[th].Pos[2] > nfreep->center[2])
 		subnode += 4;
 
-	      if(nfreep->len < 1.0e-3 * All.SofteningTable[P[i].Type])
+	      if(nfreep->len < 3.e-4 * All.ForceSoftening[P[i].Type])
 		{
 		  /* seems like we're dealing with particles   
 		   * at identical locations. randomize 

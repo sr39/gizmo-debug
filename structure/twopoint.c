@@ -64,7 +64,7 @@ void twopoint(void)
     double p, rs, vol, scaled_frac, tstart, tend, mass, masstot; long long *countbuf; void *state_buffer;
     PRINT_STATUS("begin two-point correlation function..."); tstart = my_second();
     /* set inner and outer radius for the bins that are used for the correlation function estimate */
-    R0 = All.SofteningTable[1]; R1 = All.BoxSize / 2; /* we assume that type=1 is the primary type */
+    R0 = All.ForceSoftening[1] / 3.; R1 = All.BoxSize / 2; /* we assume that type=1 is the primary type */
     scaled_frac = FRACTION_TP * 1.0e7 / All.TotNumPart; logR0 = log(R0); binfac = BINS_TP / (log(R1) - log(R0));
     for(i = 0, mass = 0; i < NumPart; i++) {mass += P[i].Mass;}
     MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); PartMass = masstot / All.TotNumPart;

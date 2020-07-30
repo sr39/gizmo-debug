@@ -1092,7 +1092,6 @@ void setup_smoothinglengths(void)
 #endif
 
 #ifdef GRAIN_FLUID
-    //if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {if(P[i].Type > 0) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}}}
     if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {PPP[i].Hsml *= pow(2.,1./NUMDIMS);}} /* very rough correction assuming comparable numbers of dust and gas elements */
 #endif
 
@@ -1182,24 +1181,18 @@ void disp_setup_smoothinglengths(void)
                 while(10 * 2.0 * 64 * P[i].Mass > Nodes[no].u.d.mass)
                 {
                     p = Nodes[no].u.d.father;
-                    if(p < 0)
-                        break;
+                    if(p < 0) {break;}
                     no = p;
                 }
                 SphP[i].HsmlDM = pow(1.0/NORM_COEFF * 2.0 * 64 * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
                 if(All.SofteningTable[P[i].Type] != 0)
                 {
-                    if((SphP[i].HsmlDM >1000.*All.SofteningTable[P[i].Type])||(PPP[i].Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
-                        SphP[i].HsmlDM = All.SofteningTable[P[i].Type];
+                    if((SphP[i].HsmlDM >1000.*All.SofteningTable[P[i].Type])||(PPP[i].Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {SphP[i].HsmlDM = All.SofteningTable[P[i].Type];}
                 }
             }
         }
     }
-
-    if(ThisTask == 0)
-    {
-        printf("computing DM Vel_disp around gas particles.\n");
-    }
+    if(ThisTask == 0) {printf("computing DM Vel_disp around gas particles.\n");}
     disp_density();
 }
 #endif

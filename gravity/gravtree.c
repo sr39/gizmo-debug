@@ -459,7 +459,6 @@ void gravity_tree(void)
 #endif
 #ifdef EVALPOTENTIAL
         P[i].Potential *= All.G;
-        // P[i].Potential += All.G * P[i].Mass / All.SofteningTable[P[i].Type]; /* remove self-potential -- no longer done here since we want to include it for ags-type runs */
 #ifdef BOX_PERIODIC
         if(All.ComovingIntegrationOn) {P[i].Potential -= All.G * 2.8372975 * pow(P[i].Mass, 2.0 / 3) * pow(All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);} else {if(All.OmegaLambda>0) {P[i].Potential -= 0.5*All.OmegaLambda*All.Hubble_H0_CodeUnits*All.Hubble_H0_CodeUnits * (P[i].Pos[0]*P[i].Pos[0]+P[i].Pos[1]*P[i].Pos[1]+P[i].Pos[2]*P[i].Pos[2]);}}
 #endif
@@ -726,7 +725,7 @@ void set_softenings(void)
         All.SofteningTable[4] = All.SofteningStars;
         All.SofteningTable[5] = All.SofteningBndry;
     }
-    int i; for(i = 0; i < 6; i++) {All.ForceSoftening[i] = 2.8 * All.SofteningTable[i];}
+    int i; for(i = 0; i < 6; i++) {All.ForceSoftening[i] = 2.8 * All.SofteningTable[i];} 
     /* set the minimum gas kernel length to be used this timestep */
     All.MinHsml = All.MinGasHsmlFractional * All.ForceSoftening[0];
 #ifndef SELFGRAVITY_OFF

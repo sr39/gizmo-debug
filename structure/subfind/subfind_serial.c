@@ -448,7 +448,7 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
 #elif defined(ADAPTIVE_GRAVSOFT_FORGAS)
         if(P[p].Type == 0) h_grav = PPP[p].Hsml;
 #endif
-      P[p].u.DM_Potential = pot + P[p].Mass / (h_grav/2.8);
+      P[p].u.DM_Potential = pot - P[p].Mass / h_grav * kernel_gravity(0,1,1,-1); // subtracts self-contribution
 	      P[p].u.DM_Potential *= All.G / atime;
 
 	      if(All.TotN_gas > 0 && (FOF_PRIMARY_LINK_TYPES & 1) == 0 &&
@@ -482,7 +482,7 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
 #elif defined(ADAPTIVE_GRAVSOFT_FORGAS)
         if(P[p].Type == 0) h_grav = PPP[p].Hsml;
 #endif
-      P[p].u.DM_Potential = pot + P[p].Mass / (h_grav/2.8);
+        P[p].u.DM_Potential = pot - P[p].Mass / h_grav * kernel_gravity(0,1,1,-1); // subtract self-contribution
 		  P[p].u.DM_Potential = pot + P[p].Mass / h_grav;
 		  P[p].u.DM_Potential *= All.G / atime;
 

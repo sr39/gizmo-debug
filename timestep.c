@@ -339,7 +339,9 @@ integertime get_timestep(int p,		/*!< particle index */
 	         // take a short timestep, so we better not super-timestep otherwise we risk messing up that star's integration. But if it is consistent with the above, then we can safely super-timestep
 	        double Mtot=P[p].comp_Mass+P[p].Mass, dr=0,dv=0,dv_dot_dx=0, binary_dt_2body=0;
 	        for(k=0;k<3;k++) {dr+=P[p].comp_dx[k]*P[p].comp_dx[k]; dv+=P[p].comp_dv[k]*P[p].comp_dv[k]; dv_dot_dx+=P[p].comp_dx[k]*P[p].comp_dv[k];}
-	        dr += All.SofteningTable[5]*All.SofteningTable[5]; dr=sqrt(dr); if(dv>0) {dv=sqrt(dv);} else {dv=0;}
+            double r_effective = KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER * All.ForceSoftening[5]; // plummer-equivalent softening
+	        dr += r_effective*r_effective; // add in quadrature for simple softening estimate
+            dr=sqrt(dr); if(dv>0) {dv=sqrt(dv);} else {dv=0;}
             double dt_2body_base = 1/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
 	        binary_dt_2body = 1. / (dv / dr + sqrt(All.G * Mtot / (dr*dr*dr)));
 	        if(fabs(binary_dt_2body - dt_2body_base)/dt_2body_base < 1e-2)
@@ -974,10 +976,10 @@ integertime get_timestep(int p,		/*!< particle index */
         {
             double ahydro = sqrt(SphP[p].HydroAccel[0]*SphP[p].HydroAccel[0] + SphP[p].HydroAccel[1]*SphP[p].HydroAccel[1] + SphP[p].HydroAccel[2]*SphP[p].HydroAccel[2]);
             PRINT_WARNING("\n Cell-ID=%llu  dt_desired=%g dt_Courant=%g dt_Accel=%g\n accel_tot=%g accel_grav=%g accel_hydro=%g Pos_xyz=(%g|%g|%g) Vel_xyz=(%g|%g|%g)\n Hsml=%g Density=%g InternalEnergy=%g dtInternalEnergy=%g divV=%g Pressure=%g Cs_Eff=%g vAlfven=%g f_ion=%g\n csnd_for_signalspeed=%g eps_forcesoftening=%g mass=%g type=%d condition_number=%g Nngb=%g\n NVT=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g\n",
-                          (unsigned long long) P[p].ID, dt, dt_courant * All.cf_hubble_a, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a,
+                          (unsigned long long) P[p].ID, dt, dt_courant * All.cf_hubble_a, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.ForceSoftening[P[p].Type] / ac) * All.cf_hubble_a,
                           ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].Vel[0], P[p].Vel[1], P[p].Vel[2],
                           PPP[p].Hsml, SphP[p].Density, SphP[p].InternalEnergy, SphP[p].DtInternalEnergy, P[p].Particle_DivVel, SphP[p].Pressure, Get_Gas_effective_soundspeed_i(p), Get_Gas_Alfven_speed_i(p), Get_Gas_Ionized_Fraction(p),
-                          csnd, All.SofteningTable[P[p].Type], P[p].Mass, P[p].Type, SphP[p].ConditionNumber, PPP[p].NumNgb,
+                          csnd, All.ForceSoftening[P[p].Type], P[p].Mass, P[p].Type, SphP[p].ConditionNumber, PPP[p].NumNgb,
                           SphP[p].NV_T[0][0],SphP[p].NV_T[0][1],SphP[p].NV_T[0][2],SphP[p].NV_T[1][0],SphP[p].NV_T[1][1],SphP[p].NV_T[1][2],SphP[p].NV_T[2][0],SphP[p].NV_T[2][1],SphP[p].NV_T[2][2]);
         }
         else // if(P[p].Type == 0)
