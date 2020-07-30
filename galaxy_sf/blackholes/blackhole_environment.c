@@ -327,9 +327,10 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
                             if(spec_mom < All.G * (local.Mass + P[j].Mass) * local_sink_radius) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
 #endif
                             if( bh_check_boundedness(j,vrel,vbound,dr_code,local_sink_radius)==1 )
-                            { /* apocenter within 2.8*epsilon (softening length) */
+                            { /* apocenter within epsilon (softening length) */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                                double eps = DMAX(P[j].Hsml/2.8, DMAX(dr_code, ags_h_i/2.8)), tff = eps*eps*eps / (local.Mass + P[j].Mass); if(tff < P[j].SwallowTime) {P[j].SwallowTime = tff;}
+                                double eps = DMAX( dr_code , DMAX(P[j].Hsml , ags_h_i) * KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER ); // plummer-equivalent vs r
+                                double tff = eps*eps*eps / (local.Mass + P[j].Mass); if(tff < P[j].SwallowTime) {P[j].SwallowTime = tff;}
 #endif
 #if defined(BH_ACCRETE_NEARESTFIRST)
                                 if((out.BH_dr_to_NearestGasNeighbor > dr_code) && (P[j].SwallowID < local.ID)) {out.BH_dr_to_NearestGasNeighbor = dr_code; out.mass_to_swallow_edd = P[j].Mass;}

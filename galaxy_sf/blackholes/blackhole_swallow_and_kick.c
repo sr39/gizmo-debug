@@ -953,7 +953,6 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
-        //SphP[j].Density *= 1e-10; SphP[j].Pressure *= 1e-10; PPP[j].Hsml = All.SofteningTable[0];  /* set dummy values: will be re-generated anyways [actually better to use nearest-neighbor values to start] */
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
         SphP[j].MaxSignalVel = 2*DMAX(v_magnitude, SphP[j].MaxSignalVel);// need this to satisfy the Courant condition in the first timestep after spawn
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)

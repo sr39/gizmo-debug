@@ -223,7 +223,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                         if((P[j].Type != 5) && (SwallowID_j < local.ID)) // we have a particle not already marked to swallow
                         {
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-			                double eps = DMAX(P[j].Hsml/2.8, DMAX(ags_h_i/2.8, r));			    
+                            double eps = DMAX( r , DMAX(P[j].Hsml , ags_h_i) * KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER); // plummer-equivalent
 			                if(eps*eps*eps /(P[j].Mass + local.Mass) <= P[j].SwallowTime)
 #endif
 #if defined(BH_ALPHADISK_ACCRETION)
