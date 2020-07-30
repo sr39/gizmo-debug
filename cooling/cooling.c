@@ -23,7 +23,6 @@
     they are only defined once in a global operation, then locked for particle-by-particle operations */
 /* requires the cooling table TREECOOL, which is included in the GIZMO source in the cooling directory */
 #define NCOOLTAB  2000 /* defines size of cooling table */
-#define NH_SS 0.0123 /* CAFG: H number density above which we assume no ionizing bkg (proper cm^-3) */
 
 #if !defined(CHIMES)
 static double Tmin = -1.0, Tmax = 9.0, deltaT; /* minimum/maximum temp, in log10(T/K) and temperature gridding: will be appropriately set in make_cooling_tables subroutine below */
@@ -35,7 +34,9 @@ static float *SpCoolTable0, *SpCoolTable1;
 #endif
 /* these are constants of the UV background at a given redshift: they are interpolated from TREECOOL but then not modified particle-by-particle */
 static double J_UV = 0, gJH0 = 0, gJHep = 0, gJHe0 = 0, epsH0 = 0, epsHep = 0, epsHe0 = 0;
-#else // CHIMES
+#endif
+
+#if defined(CHIMES)
 int ChimesEqmMode, ChimesUVBMode, ChimesInitIonState, N_chimes_full_output_freq, Chimes_incl_full_output = 1;
 double chimes_rad_field_norm_factor, shielding_length_factor, cr_rate;
 char ChimesDataPath[256], ChimesEqAbundanceTable[196], ChimesPhotoIonTable[196];
@@ -407,7 +408,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
 {
     int iter = 0;
     double temp, temp_old, temp_old_old = 0, temp_new, prefac_fun_old, prefac_fun, fac, err_old, err_new, T_bracket_errneg = 0, T_bracket_errpos = 0, T_bracket_min = 0, T_bracket_max = 1.e20, bracket_sign = 0; // double max = 0;
-    double u_input = u, rho_input = rho, temp_guess, temp_upper_bound = 1.e20, temp_lower_bound = 0;
+    double u_input = u, rho_input = rho, temp_guess;
     double T_0 = u * PROTONMASS / BOLTZMANN; // this is the dimensional temperature, which since u is fixed is -frozen- in this calculation: we can work dimensionlessly below
     temp_guess = (GAMMA(target)-1) * T_0; // begin assuming mu ~ 1
     *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp_guess, rho, nH0_guess, ne_guess, 0., target); // get mu with that temp
@@ -762,9 +763,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 {
     double n_elec=n_elec_guess, nH0, nHe0, nHp, nHep, nHepp, mu; /* ionization states [computed below] */
     double Lambda, Heat, LambdaFF, LambdaCmptn, LambdaExcH0, LambdaExcHep, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
-    double LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, redshift, T, NH_SS_z, shieldfac, LambdaMol, LambdaMetal;
+    double LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, redshift, T, shieldfac, LambdaMol, LambdaMetal;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
-    LambdaMol=0; LambdaMetal=0; LambdaCmptn=0; NH_SS_z=NH_SS;
+    LambdaMol=0; LambdaMetal=0; LambdaCmptn=0;
     if(logT <= Tmin) {logT = Tmin + 0.5 * deltaT;}	/* floor at Tmin */
     if(!isfinite(rho)) {return 0;}
     T = pow(10.0, logT);
@@ -880,7 +881,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             if(!isfinite(Lambda_Metals_Neutral) || Lambda_Metals_Neutral < 0) {Lambda_Metals_Neutral=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
             if(!isfinite(Lambda_H2) || Lambda_H2 < 0) {Lambda_H2=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
             if(!isfinite(Lambda_HD) || Lambda_HD < 0) {Lambda_HD=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
-            LambdaMol = Lambda_Metals_Eff + Lambda_H2 + Lambda_HD; // combine to get total cooling rate
+            LambdaMol = Lambda_Metals_Neutral + Lambda_H2 + Lambda_HD; // combine to get total cooling rate
 #endif
             LambdaMol *= truncation_factor; // cutoff factor from above for where the tabulated rates take over at high temperatures
             if(!isfinite(LambdaMol)) {LambdaMol=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
@@ -1825,7 +1826,7 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
 /* function to return the local multiplier relative to the UVB model to account in some local RHD models for local ionizing sources */
 double return_local_gammamultiplier(int target)
 {
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#if defined(GALSF_FB_FIRE_RT_UVHEATING) && !defined(CHIMES)
     if((target >= 0) && (gJH0 > 0))
     {
         double local_gammamultiplier = SphP[target].Rad_Flux_EUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
@@ -1847,7 +1848,7 @@ double return_uvb_shieldfac(int target, double gamma_12, double nHcgs, double lo
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) 
     if(target>=0) {if(SphP[target].DelayTimeHII > 0) {return 1;}} // newer HII region model irradiates and removes shielding for regions, but allows cooling function to evolve //
 #endif
-    double NH_SS_z;
+    double NH_SS_z, NH_SS = 0.0123; /* CAFG: H number density above which we assume no ionizing bkg (proper cm^-3) */
     if(gamma_12>0) {NH_SS_z = NH_SS*pow(gamma_12,0.66)*pow(10.,0.173*(logT-4.));} else {NH_SS_z = NH_SS*pow(10.,0.173*(logT-4.));}
     double q_SS = nHcgs/NH_SS_z;
 #ifdef COOLING_SELFSHIELD_TESTUPDATE_RAHMATI

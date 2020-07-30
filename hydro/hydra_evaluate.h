@@ -6,10 +6,18 @@
 *   In this routine, we find the gas particle neighbors, and do the loop over
 *  neighbors to calculate the hydro fluxes. The actual flux calculation,
 *  and the returned values, should be in PHYSICAL (not comoving) units */
-/*
+/*!
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 /* --------------------------------------------------------------------------------- */
+/*!   -- this subroutine writes to shared memory [updating -some- essential neighbor values, setting wakeups, etc.]:
+  this should ideally be avoided whenever possible; need to protect these write operations for openmp below.
+  note that the 'j_is_active_for_fluxes' flag much more aggressively
+  does this, but that is restricted to ONLY be active when OPENMP is not active [see notes in gradients.c,
+  given the locks necessary to preserve thread safety, there is no performance improvement using this
+  method in openmp runs]. So those can be ignored, since they will only ever occur when the routine
+  is ensured safe. but we do have other flags set for manifest conservation in some hydro solvers,
+  for wakeups, and other key routines. those must all be protected if openmp is used -- */
 /* --------------------------------------------------------------------------------- */
 int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
@@ -137,11 +145,11 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 
             for(n = 0; n < numngb; n++)
             {
-                j = ngblist[n];
-                if(P[j].Mass <= 0) continue;
-                if(SphP[j].Density <= 0) continue;
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
+                if(P[j].Mass <= 0) {continue;}
+                if(SphP[j].Density <= 0) {continue;}
 #ifdef GALSF_SUBGRID_WINDS
-                if(SphP[j].DelayTime > 0) continue; /* no hydro forces for decoupled wind particles */
+                if(SphP[j].DelayTime > 0) {continue;} /* no hydro forces for decoupled wind particles */
 #endif
 
                 /* check if I need to compute this pair-wise interaction from "i" to "j", or skip it and let it be computed from "j" to "i" */
@@ -149,12 +157,12 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 dt_hydrostep = DMAX(dt_hydrostep_i , dt_hydrostep_j); // this is used for flux-limiting, so we always want to be more conservative and use the larger timestep //
                 int j_is_active_for_fluxes = 0;
 #if !defined(BOX_SHEARING) && !defined(_OPENMP) // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this; OpenMP on some new compilers goes bad here because pointers [e.g. P...] are not thread-safe shared with predictive operations, and vectorization means no gain here with OMP anyways) //
-                if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
+                if(local.Timestep > TimeStep_J) {continue;} /* compute from particle with smaller timestep */
                 /* use relative positions to break degeneracy */
                 if(local.Timestep == TimeStep_J)
                 {
                     int n0=0; if(local.Pos[n0] == P[j].Pos[n0]) {n0++; if(local.Pos[n0] == P[j].Pos[n0]) n0++;}
-                    if(local.Pos[n0] < P[j].Pos[n0]) continue;
+                    if(local.Pos[n0] < P[j].Pos[n0]) {continue;}
                 }
                 if(TimeBinActive[P[j].TimeBin]) {j_is_active_for_fluxes = 1;}
 #endif
@@ -182,20 +190,11 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 rinv = 1 / kernel.r;
                 /* we require a 'softener' to prevent numerical madness in interpolating functions */
                 rinv_soft = 1.0 / sqrt(r2 + 0.0001*kernel.h_i*kernel.h_i);
-#ifdef BOX_SHEARING
-                /* in a shearing box, need to set dv appropriately for the shearing boundary conditions */
-                MyDouble VelPred_j[3]; for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
-                NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,VelPred_j,-1); /* wrap velocities for shearing boxes if needed */
+                MyDouble VelPred_j[3]; for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];} // set the velocity of neighbor
+                NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,VelPred_j,-1); /* in a shearing box, wrap velocities for shearing boxes if needed [literally does nothing if not shearing box here] */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-                MyDouble ParticleVel_j[3]; for(k=0;k<3;k++) {ParticleVel_j[k]=SphP[j].VelPred[k];}
+                MyDouble ParticleVel_j[3]; for(k=0;k<3;k++) {ParticleVel_j[k]=SphP[j].VelPred[k];} // set the com-element velocity of neighbor
                 NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,ParticleVel_j,-1); /* wrap velocities for shearing boxes if needed */
-#endif
-#else
-                /* faster to just set a pointer directly */
-                MyDouble *VelPred_j = SphP[j].VelPred;
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME
-                MyDouble *ParticleVel_j = SphP[j].ParticleVel;
-#endif
 #endif
                 kernel.dv[0] = local.Vel[0] - VelPred_j[0];
                 kernel.dv[1] = local.Vel[1] - VelPred_j[1];
@@ -245,7 +244,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 }
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
                 double KE = kernel.dv[0]*kernel.dv[0] + kernel.dv[1]*kernel.dv[1] + kernel.dv[2]*kernel.dv[2];
-                if(KE > out.MaxKineticEnergyNgb) out.MaxKineticEnergyNgb = KE;
+                if(KE > out.MaxKineticEnergyNgb) {out.MaxKineticEnergyNgb = KE;}
                 if(j_is_active_for_fluxes) {if(KE > SphP[j].MaxKineticEnergyNgb) SphP[j].MaxKineticEnergyNgb = KE;}
 #endif
 #ifdef TURB_DIFF_METALS
@@ -304,7 +303,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 for(k=0;k<3;k++)
                 {
                     face_vel_i += local.Vel[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
-                    face_vel_j += SphP[j].VelPred[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
+                    face_vel_j += VelPred_j[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
                 }
                 // SPH: use the sph 'effective areas' oriented along the lines between particles and direct-difference gradients
                 Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density) * All.cf_atime*All.cf_atime;
@@ -379,8 +378,16 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 if(dmass_holder > 0) {dmass_limiter=P[j].Mass;} else {dmass_limiter=local.Mass;}
                 dmass_limiter *= 0.1;
                 if(fabs(dmass_holder) > dmass_limiter) {dmass_holder *= dmass_limiter / fabs(dmass_holder);}
-                if((local.Timestep < TimeStep_J) || (local.Timestep==TimeStep_J && j_is_active_for_fluxes==1)) {out.dMass += dmass_holder; SphP[j].dMass -= dmass_holder;}
-                if(local.Timestep==TimeStep_J && j_is_active_for_fluxes==0) {out.dMass += 0.5*dmass_holder; SphP[j].dMass -= 0.5*dmass_holder;}
+                if((local.Timestep < TimeStep_J) || (local.Timestep==TimeStep_J && j_is_active_for_fluxes==1)) {
+                    out.dMass += dmass_holder;
+                    #pragma omp atomic
+                    SphP[j].dMass -= dmass_holder; // here to ensure machine-accurate conservation with different timesteps we need to set this: careful to be thread-safe
+                }
+                if(local.Timestep==TimeStep_J && j_is_active_for_fluxes==0) {
+                    out.dMass += 0.5*dmass_holder;
+                    #pragma omp atomic
+                    SphP[j].dMass -= 0.5*dmass_holder; // here to ensure machine-accurate conservation with different timesteps we need to set this: careful to be thread-safe
+                }
                  /* this gets subtracted here to ensure the exchange is exact */
                 out.DtMass += Fluxes.rho;
                 double gravwork[3]; gravwork[0]=Fluxes.rho*kernel.dp[0]; gravwork[1]=Fluxes.rho*kernel.dp[1]; gravwork[2]=Fluxes.rho*kernel.dp[2];
@@ -475,9 +482,19 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #ifdef WAKEUP
                 if(!(TimeBinActive[P[j].TimeBin]))
                 {
-                    if(kernel.vsig > WAKEUP*SphP[j].MaxSignalVel) {PPPZ[j].wakeup = 1; NeedToWakeupParticles_local = 1;}
+                    if(kernel.vsig > WAKEUP*SphP[j].MaxSignalVel) {
+                        #pragma omp atomic write
+                        PPPZ[j].wakeup = 1;
+                        #pragma omp atomic write
+                        NeedToWakeupParticles_local = 1;
+                    }
 #if (SLOPE_LIMITER_TOLERANCE <= 0)
-                    if(local.Timestep*WAKEUP < TimeStep_J) {PPPZ[j].wakeup = 1; NeedToWakeupParticles_local = 1;}
+                    if(local.Timestep*WAKEUP < TimeStep_J) {
+                        #pragma omp atomic write
+                        PPPZ[j].wakeup = 1;
+                        #pragma omp atomic write
+                        NeedToWakeupParticles_local = 1;
+                    }
 #endif
                 }
 #endif

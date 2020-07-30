@@ -434,9 +434,13 @@ void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, i
         double ntot_prev = (egy_prev / E_GeV) * ((gamma_one + egy_slopemode) / (gamma_one)) * (xp_gamma_one - xm_gamma_one) / (xp_gamma_one*xp_e - xm_gamma_one*xm_e); // CR number before injection
         SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin[k_CRegy] = CR_return_slope_from_number_and_energy_in_bin(etot_new, ntot_prev + ntot_inj, E_GeV, k_CRegy);
         */
-        SphP[target].CosmicRay_Number_in_Bin[k_CRegy] += ntot_inj; // simply update injected number
+        #pragma omp atomic
+        SphP[target].CosmicRay_Number_in_Bin[k_CRegy] += ntot_inj; // simply update injected number. needs to be done thread-safely, but since the above routines dont depend on this, it should be safe to do here.
 #endif
-        SphP[target].CosmicRayEnergy[k_CRegy]+=dEcr; SphP[target].CosmicRayEnergyPred[k_CRegy]+=dEcr;
+        #pragma omp atomic
+        SphP[target].CosmicRayEnergy[k_CRegy] += dEcr; // update injected CR energy. needs to be done thread-safely, but since the above routines dont depend on this, it should be safe to do here.
+        #pragma omp atomic
+        SphP[target].CosmicRayEnergyPred[k_CRegy] += dEcr; // update injected CR energy. needs to be done thread-safely, but since the above routines dont depend on this, it should be safe to do here.
 #ifdef COSMIC_RAYS_M1
         double dir_mag=0, flux_mag=dEcr*COSMIC_RAYS_M1, dir_to_use[3]={0}; int k;
 #ifdef MAGNETIC
@@ -447,7 +451,13 @@ void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, i
 #endif
         for(k=0;k<3;k++) {dir_mag += dir_to_use[k]*dir_to_use[k];}
         if(dir_mag <= 0) {dir_to_use[0]=0; dir_to_use[1]=0; dir_to_use[2]=1; dir_mag=1;}
-        for(k=0;k<3;k++) {double dflux=flux_mag*dir_to_use[k]/sqrt(dir_mag); SphP[target].CosmicRayFlux[k_CRegy][k]+=dflux; SphP[target].CosmicRayFluxPred[k_CRegy][k]+=dflux;}
+        for(k=0;k<3;k++) {
+            double dflux=flux_mag*dir_to_use[k]/sqrt(dir_mag);
+            #pragma omp atomic
+            SphP[target].CosmicRayFlux[k_CRegy][k]+=dflux; // update injected CR energy. needs to be done thread-safely, but since the above routines dont depend on this, it should be safe to do here.
+            #pragma omp atomic
+            SphP[target].CosmicRayFluxPred[k_CRegy][k]+=dflux; // update injected CR energy. needs to be done thread-safely, but since the above routines dont depend on this, it should be safe to do here.
+        }
 #endif
     }
     return;

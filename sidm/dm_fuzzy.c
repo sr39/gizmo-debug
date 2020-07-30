@@ -377,6 +377,7 @@ void construct_gradient_DMGrad(double *grad, int i)
 
 
 /* this subroutine does the actual neighbor-element calculations (this is the 'core' of the loop, essentially) */
+/*!   -- this subroutine contains no writes to shared memory -- */
 int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     /* define variables */
@@ -409,7 +410,7 @@ int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
             if(numngb_inbox < 0) {return -1;} /* no neighbors! */
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
-                j = ngblist[n];
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if((P[j].Mass <= 0)||(P[j].AGS_Density <= 0)) {continue;} /* make sure neighbor is valid */
                 /* calculate position relative to target */
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0]; kernel.dp[1] = local.Pos[1] - P[j].Pos[1]; kernel.dp[2] = local.Pos[2] - P[j].Pos[2];

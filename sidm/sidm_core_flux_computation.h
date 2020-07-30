@@ -16,11 +16,22 @@
         if (gsl_rng_uniform(random_generator) < prob)
         {
 #ifdef WAKEUP
-            if(!(TimeBinActive[P[j].TimeBin])) {if(WAKEUP*local.dtime < Pj_dtime) {PPPZ[j].wakeup=1; NeedToWakeupParticles_local = 1;}}
+            if(!(TimeBinActive[P[j].TimeBin])) {if(WAKEUP*local.dtime < Pj_dtime) {
+                #pragma omp atomic write
+                PPPZ[j].wakeup=1;
+                #pragma omp atomic write
+                NeedToWakeupParticles_local = 1;
+            }}
 #endif
             double kick[3]; calculate_interact_kick(kernel.dv, kick, m_si);
-            int k; for(k=0;k<3;k++) {P[j].Vel[k] += (local.Mass/m_si)*kick[k]; out.sidm_kick[k] -= (P[j].Mass/m_si)*kick[k];}
-            out.si_count++; P[j].NInteractions++;
+            int k; for(k=0;k<3;k++) {
+                out.sidm_kick[k] -= (P[j].Mass/m_si)*kick[k];
+                #pragma omp atomic
+                P[j].Vel[k] += (local.Mass/m_si)*kick[k]; // this variable is modified here so need to do this carefully here to ensure we don't multiply-write at the same time
+            }
+            out.si_count++;
+            #pragma omp atomic
+            P[j].NInteractions++;
         }
     } // if((1 << ptype) & (DM_SIDM))
 }

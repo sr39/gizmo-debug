@@ -13,6 +13,7 @@
  */
 
 #if defined(GALSF_FB_FIRE_RT_LOCALRP) /* first the radiation pressure coupled in the immediate vicinity of the star */
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 void radiation_pressure_winds_consolidated(void)
 {
     double age_threshold_in_gyr = 0.15; // don't bother for older populations, they contribute negligibly here //
@@ -71,7 +72,7 @@ void radiation_pressure_winds_consolidated(void)
                     N_MIN_KERNEL=10;N_MAX_KERNEL=256;MAXITER_FB=100;NITER=0;wt_sum=0; startnode=All.MaxPart;dummy=0;numngb_inbox=0;h=1.0*P[i].Hsml;pos=P[i].Pos;
                     if(h<=0) {h=All.SofteningTable[0];} else {if(h>RtauMax) {h=RtauMax;}}
                     do {
-                        numngb_inbox = ngb_treefind_pairs_threads(pos, h, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist);
+                        numngb_inbox = ngb_treefind_variable_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
                         if((numngb_inbox>=N_MIN_KERNEL)&&(numngb_inbox<=N_MAX_KERNEL))
                         {
                             wt_sum=0; /* note these lines and many below assume 3D sims! */

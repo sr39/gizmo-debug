@@ -270,6 +270,7 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
 
 
 /*! This function represents the core of the initial hydro kernel-identification and volume computation. The target particle may either be local, or reside in the communication buffer. */
+/*!   -- this subroutine should in general contain no writes to shared memory. for optimization reasons, a couple of such writes have been included here in the sub-code for some sink routines -- those need to be handled with special care, both for thread safety and because of iteration. in general writes to shared memory in density.c are strongly discouraged -- */
 int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     int j, n, startnode, numngb_inbox, listindex = 0; double r2, h2, u, mass_j, wk;
@@ -289,7 +290,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
             if(numngb_inbox < 0) return -1;
             for(n = 0; n < numngb_inbox; n++)
             {
-                j = ngblist[n];
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
 #ifdef GALSF_SUBGRID_WINDS /* check if partner is a wind particle: if I'm not wind, then ignore the wind particle */
                 if(SphP[j].DelayTime > 0) {if(!(local.DelayTime > 0)) {continue;}}
 #endif
@@ -388,23 +389,31 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
 #endif
 
 #if defined(BLACK_HOLES)
+        /* note, we will have some writes to shared memory here for some initializations of 'j' quantities. fortunately these do not depend on previous values of those quantities, so can be done thread-safely with minor edits using the constructs below */
         if(local->Type == 5)
         {
+            #pragma omp atomic write
             P[j].SwallowID = 0;  // this way we don't have to do a global loop over local particles in blackhole_accretion() to reset these quantities...
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+            #pragma omp atomic write
+            P[j].SwallowTime = MAX_REAL_NUMBER; // initialize as a large number before looking
+#endif
+#if (SINGLE_STAR_SINK_FORMATION & 8)
+            if(kernel->r < DMAX(P[j].Hsml, All.ForceSoftening[5])) {
+                #pragma omp atomic write
+                P[j].BH_Ngb_Flag = 1; // note that this particle is inside of a BH's kernel function
+            }
+#endif
             short int TimeBin_j = P[j].TimeBin; if(TimeBin_j < 0) {TimeBin_j = -TimeBin_j - 1;} // need to make sure we correct for the fact that TimeBin is used as a 'switch' here to determine if a particle is active for iteration, otherwise this gives nonsense!
             if(out->BH_TimeBinGasNeighbor > TimeBin_j) {out->BH_TimeBinGasNeighbor = TimeBin_j;}
-#if (SINGLE_STAR_SINK_FORMATION & 8)
-            if(kernel->r < DMAX(P[j].Hsml, All.ForceSoftening[5])) {P[j].BH_Ngb_Flag = 1;}
-#endif
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-            P[j].SwallowTime = MAX_REAL_NUMBER;
-#endif
 #if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
-            double dr_eff_wtd = Get_Particle_Size(j); dr_eff_wtd=sqrt(dr_eff_wtd*dr_eff_wtd + (kernel->r)*(kernel->r)); /* effective distance for Gaussian-type kernel, weighted by density */
+            double dr_eff_wtd = Get_Particle_Size(j);
+            dr_eff_wtd=sqrt(dr_eff_wtd*dr_eff_wtd + (kernel->r)*(kernel->r)); /* effective distance for Gaussian-type kernel, weighted by density */
             if((dr_eff_wtd < out->BH_dr_to_NearestGasNeighbor) && (P[j].Mass > 0)) {out->BH_dr_to_NearestGasNeighbor = dr_eff_wtd;}
 #endif
         }
-#endif
+#endif // BLACK_HOLES
+        
 
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
         /* this is here because for the models of BH growth and self-shielding of stars, we
