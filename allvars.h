@@ -1239,7 +1239,6 @@ typedef unsigned long long peanokey;
 
 
 
-
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
 #define HIIRegion_Temp (1.0e4) /* temperature (in K) of heated gas */
 #endif
@@ -1626,6 +1625,7 @@ z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
 
 #define FACT1 0.366025403785	/* FACT1 = 0.5 * (sqrt(3)-1) */
 #define FACT2 0.86602540        /* FACT2 = 0.5 * sqrt(3) */
+#define CRSOL_OVER_CTRUE_SQUARED_FOR_BEAMING (((C_LIGHT_CODE_REDUCED*C_LIGHT_CODE_REDUCED)/(C_LIGHT_CODE*C_LIGHT_CODE))) /* factor needed in some places in the code to deal with relativistic terms when we use a RSOL */
 
 
 
