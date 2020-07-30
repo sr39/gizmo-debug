@@ -642,7 +642,7 @@ void blackhole_final_operations(void)
     int i, k, n, bin; double dt, mass_disk, mdot_disk, MgasBulge, MstarBulge, r0; k=0;
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
     int count_bhelim=0, tot_bhelim;
-#endif 
+#endif
 
 #ifdef BH_REPOSITION_ON_POTMIN
     for(n = FirstActiveParticle; n >= 0; n = NextActiveParticle[n])

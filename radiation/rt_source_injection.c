@@ -120,6 +120,7 @@ void rt_source_injection_initial_operations_preloop(void)
 
 
 /*! subroutine that actually distributes the luminosity as desired to neighbor particles in the kernel */
+/*!   -- this subroutine writes to shared memory [updating the neighbor values]: need to protect these writes for openmp below. none of the modified values are read, so only the write block is protected. */
 int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     /* Load the data for the particle */
@@ -146,14 +147,16 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
             for(n = 0; n < numngb_inbox; n++)
             {
                 /* figure out if the neighbor is eligible to receive photons, calculate some useful quantities ahead of time */
-                j = ngblist[n];
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if(P[j].Type != 0) {continue;} // require a gas particle //
                 if(P[j].Mass <= 0) {continue;} // require the particle has mass //
                 double dp[3]; for(k=0; k<3; k++) {dp[k] = local.Pos[k] - P[j].Pos[k];}
                 NEAREST_XYZ(dp[0],dp[1],dp[2],1); /* find the closest image in the given box size  */
                 double r2=0, r, c_light_eff; for(k=0;k<3;k++) {r2 += dp[k]*dp[k];}
                 if(r2<=0) {continue;} // same particle //
-#ifndef BH_ANGLEWEIGHT_PHOTON_INJECTION                
+#ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION
+                if(r2>=h2 && r2 >= PPP[j].Hsml*PPP[j].Hsml) {continue;} // outside kernel //
+#else
                 if(r2>=h2) {continue;} // outside kernel //
 #endif                
                 r = sqrt(r2); c_light_eff = C_LIGHT_CODE_REDUCED; // useful variables for below
@@ -179,11 +182,12 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 /* now actually apply the photon coupling for each RHD bin */
                 for(k=0;k<N_RT_FREQ_BINS;k++) 
                 {
-                    double dE = wk * local.Luminosity[k];
-                    
+                    double dE=0; dE = wk * local.Luminosity[k];
+                    double dfluxes[3]; dfluxes[0]=dfluxes[1]=dfluxes[2]=0;
+
 #if !defined(RT_INJECT_PHOTONS_DISCRETELY)
+                    #pragma omp atomic
                     SphP[j].Rad_Je[k] += dE; // inject photons as a source term, terms like fluxes, intensities, etc, will all be calculated later
-                    continue; // move on -- don't need any of the operations below
 #endif
                     
 
@@ -192,8 +196,14 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     double x_abs = 2. * SphP[j].Rad_Kappa[k] * (SphP[j].Density*All.cf_a3inv) * (DMAX(2.*Get_Particle_Size(j), DMAX(local.Hsml, r))) * All.cf_atime; // effective optical depth through particle
                     double slabfac_x = x_abs * slab_averaging_function(x_abs); // 1-exp(-x)
                     if(isnan(slabfac_x)||(slabfac_x<=0)) {slabfac_x=0;} else if(slabfac_x>1) {slabfac_x=1;}
-                    double dv = -slabfac_x * dE / (c_light_eff * P[j].Mass); // total absorbed momentum (needs multiplication by dp[kv]/r for directionality)
-                    int kv; for(kv=0;kv<3;kv++) {P[j].Vel[kv] += dv*(dp[kv]/r)*All.cf_atime; SphP[j].VelPred[kv] += dv*(dp[kv]/r)*All.cf_atime;} // applies direction and converts to code units
+                    double dv = -slabfac_x * dE / (c_light_eff * P[j].Mass); int kv; // total absorbed momentum (needs multiplication by dp[kv]/r for directionality)
+                    for(kv=0;kv<3;kv++) {
+                        double dv_tmp = dv*(dp[kv]/r)*All.cf_atime;
+                        #pragma omp atomic
+                        P[j].Vel[kv] += dv_tmp;
+                        #pragma omp atomic
+                        SphP[j].VelPred[kv] += dv_tmp;
+                    } // applies direction and converts to code units
 
 #ifdef RT_REPROCESS_INJECTED_PHOTONS // conserving photon energy, put only the un-absorbed component of the current band into that band, putting the rest in its "donation" bin (ionizing->optical, all others->IR). This would happen anyway during the routine for resolved absorption, but this may more realistically handle situations where e.g. your dust destruction front is at totally unresolved scales and you don't want to spuriously ionize stuff on larger scales. Assume isotropic re-radiation, so inject only energy for the donated bin and not net flux/momentum.
 		            double dE_donation=0; int donation_bin=rt_get_donation_target_bin(k), do_donation=1;
@@ -212,40 +222,65 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 
 #if defined(RT_EVOLVE_FLUX) /* when we use RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION, we add the 'full' optically-thin flux directly to the neighbor cells. a more general formulation allows these fluxes to build up self-consistently, since we don't know a-priori what these 'should' be */
                     double dflux = -dE * c_light_eff / r;
-                    for(kv=0;kv<3;kv++) {SphP[j].Rad_Flux[k][kv] += dflux*dp[kv]; SphP[j].Rad_Flux_Pred[k][kv] += dflux*dp[kv];}
+                    for(kv=0;kv<3;kv++) {dfluxes[kv] += dflux*dp[kv];}
 #endif
 #endif // RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION
 
                     
 #if defined(RT_INJECT_PHOTONS_DISCRETELY)
                     /* now add the actual photon energies */
+                    #pragma omp atomic
                     SphP[j].Rad_E_gamma[k] += dE; // dump discretely (noisier, but works smoothly with large timebin hierarchy)
 #ifdef RT_EVOLVE_ENERGY
+                    #pragma omp atomic
                     SphP[j].Rad_E_gamma_Pred[k] += dE;
 #endif
 #ifdef RT_REPROCESS_INJECTED_PHOTONS
-                    if(donation_bin > -1) {SphP[j].Rad_E_gamma[donation_bin] += dE_donation;} // dump energy to other bin if using sub-grid reprocessing model
+                    if(donation_bin > -1) {
+                        #pragma omp atomic
+                        SphP[j].Rad_E_gamma[donation_bin] += dE_donation;
+                    } // dump energy to other bin if using sub-grid reprocessing model
 #ifdef RT_EVOLVE_ENERGY
-		            if(donation_bin > -1) {SphP[j].Rad_E_gamma_Pred[donation_bin] += dE_donation;}
+		            if(donation_bin > -1) {
+                        #pragma omp atomic
+                        SphP[j].Rad_E_gamma_Pred[donation_bin] += dE_donation;
+                    }
 #endif
 #endif
 #ifdef RT_EVOLVE_INTENSITIES
                     double dflux = dE / angle_wt_Inu_sum; // have to add directly to the intensities since Rad_E_gamma here is actually a derived variable
-                    for(kv=0;kv<N_RT_INTENSITY_BINS;kv++) {SphP[j].Rad_Intensity[k][kv] += dflux * angle_wt_Inu[N_RT_INTENSITY_BINS]; SphP[j].Rad_Intensity_Pred[k][kv] += dflux * angle_wt_Inu[N_RT_INTENSITY_BINS];}
+                    for(kv=0;kv<N_RT_INTENSITY_BINS;kv++) {
+                        double dI_temp = dflux * angle_wt_Inu[N_RT_INTENSITY_BINS];
+                        #pragma omp atomic
+                        SphP[j].Rad_Intensity[k][kv] += dI_temp;
+                        #pragma omp atomic
+                        SphP[j].Rad_Intensity_Pred[k][kv] += dI_temp;
+                    }
 #endif
 
 #if defined(RT_EVOLVE_FLUX) // add relativistic corrections here, which should be there in general. however we will ignore [here] the 'back-reaction' term, since we're assuming the source is a star or something like that, where this would be negligible. gas self gain/loss is handled separately.
-                    {int kv; for(kv=0;kv<3;kv++) {SphP[j].Rad_Flux[k][kv] += dE*local.Vel[kv]/All.cf_atime; SphP[j].Rad_Flux_Pred[k][kv] += dE*local.Vel[kv]/All.cf_atime;}}
+                    {int kv; for(kv=0;kv<3;kv++) {dfluxes[kv] += CRSOL_OVER_CTRUE_SQUARED_FOR_BEAMING * dE*local.Vel[kv]/All.cf_atime;}}
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
-                    {double dflux=dE*C_LIGHT_CODE_REDUCED; SphP[j].Rad_Flux_Pred[k][2]+=dflux; SphP[j].Rad_Flux[k][2]+=dflux;}
+                    {double dflux=dE*C_LIGHT_CODE_REDUCED; dfluxes[2] += dflux;}
 #endif
+                    {int kv; for(kv=0;kv<3;kv++) {
+                        #pragma omp atomic
+                        SphP[j].Rad_Flux[k][kv] += dfluxes[kv]; // actually apply the variable update
+                        #pragma omp atomic
+                        SphP[j].Rad_Flux_Pred[k][kv] += dfluxes[kv]; // actually apply the variable update
+                    }}
+
 #endif
                     
 #endif // RT_INJECT_PHOTONS_DISCRETELY
                 }
-                                
+                
+                
 #if defined(SINGLE_STAR_FB_RAD)
-                SphP[j].wakeup = 1; NeedToWakeupParticles_local = 1; // this module works better if we send a wakeup whenever we inject
+                #pragma omp atomic write
+                SphP[j].wakeup = 1;
+                #pragma omp atomic write
+                NeedToWakeupParticles_local = 1; // this module works better if we send a wakeup whenever we inject
 #endif
                 
             } // for(n = 0; n < numngb; n++)
