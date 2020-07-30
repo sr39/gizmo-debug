@@ -87,7 +87,7 @@ double target_mass_renormalization_factor_for_mergesplit(int i)
 /*! This is the master routine to actually determine if mergers/splits need to be performed, and if so, to do them
   modified by Takashi Okamoto (t.t.okamoto@gmail.com) on 20/6/2019
  */
-
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 void merge_and_split_particles(void)
 {
     struct flags_merg_split {
@@ -133,7 +133,7 @@ void merge_and_split_particles(void)
 #endif
             startnode=All.MaxPart;
             do {
-                numngb_inbox = ngb_treefind_variable_threads_targeted(P[i].Pos,h_guess,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist,62); // search for all particle types -except- gas: 62=2^1+2^2+2^3+2^4+2^5
+                numngb_inbox = ngb_treefind_variable_targeted(P[i].Pos,h_guess,-1,&startnode,0,&dummy,&dummy,62); // search for all particle types -except- gas: 62=2^1+2^2+2^3+2^4+2^5
                 if((numngb_inbox < n_search_min) && (h_guess < h_search_max) && (NITER < NITER_MAX))
                 {
                     h_guess *= 1.27;
@@ -186,7 +186,7 @@ void merge_and_split_particles(void)
             {
                 /* if merging: do a neighbor loop ON THE SAME DOMAIN to determine the target */
                 startnode=All.MaxPart;
-                numngb_inbox = ngb_treefind_variable_threads_targeted(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist,Pi_BITFLAG); // search for particles of matching type
+                numngb_inbox = ngb_treefind_variable_targeted(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,Pi_BITFLAG); // search for particles of matching type
                 if(numngb_inbox>0)
                 {
                     target_for_merger = -1;
@@ -229,7 +229,7 @@ void merge_and_split_particles(void)
             else if(does_particle_need_to_be_split(i) && (Ptmp[i].flag == 0)) {
                 /* if splitting: do a neighbor loop ON THE SAME DOMAIN to determine the nearest particle (so dont overshoot it) */
                 startnode=All.MaxPart;
-                numngb_inbox = ngb_treefind_variable_threads_targeted(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist,Pi_BITFLAG); // search for particles of matching type
+                numngb_inbox = ngb_treefind_variable_targeted(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,Pi_BITFLAG); // search for particles of matching type
                 if(numngb_inbox>0)
                 {
                     target_for_merger = -1;

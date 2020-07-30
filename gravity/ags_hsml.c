@@ -128,6 +128,7 @@ void ags_out2particle_density(struct OUTPUT_STRUCT_NAME *out, int i, int mode, i
  *  target particle may either be local, or reside in the communication
  *  buffer.
  */
+/*!   -- this subroutine writes to shared memory [updating the neighbor values, primarily for wakeup-type updates]: need to protect these writes for openmp below */
 int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     int j, n;
@@ -171,7 +172,7 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
             
             for(n = 0; n < numngb_inbox; n++)
             {
-                j = ngblist[n];
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if(P[j].Mass <= 0) continue;
                 
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
@@ -206,13 +207,20 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
                         if(v_dot_r > 0) {v_dot_r *= 0.333333;} // receding elements don't signal strong change in forces in the same manner as approaching/converging particles
                         double vsig = 0.5 * fabs( fac_mu * v_dot_r / kernel.r );
                         short int TimeBin_j = P[j].TimeBin; if(TimeBin_j < 0) {TimeBin_j = -TimeBin_j - 1;} // need to make sure we correct for the fact that TimeBin is used as a 'switch' here to determine if a particle is active for iteration, otherwise this gives nonsense!
-                        if(TimeBinActive[TimeBin_j]) {if(vsig > PPP[j].AGS_vsig) PPP[j].AGS_vsig = vsig;}
                         if(vsig > out.AGS_vsig) {out.AGS_vsig = vsig;}
 #if defined(WAKEUP) && (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(DM_FUZZY) || defined(CBE_INTEGRATOR))
-                        if(!(TimeBinActive[TimeBin_j]) && (All.Time > All.TimeBegin)) {if(vsig > WAKEUP*P[j].AGS_vsig) {P[j].wakeup = 1; NeedToWakeupParticles_local = 1;}}
+                        int wakeup_condition = 0; // determine if wakeup is allowed
+                        if(!(TimeBinActive[TimeBin_j]) && (All.Time > All.TimeBegin) && (vsig > WAKEUP*P[j].AGS_vsig)) {wakeup_condition = 1;}
 #if defined(GALSF)
-                        if((P[j].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[j].Type == 2)||(P[j].Type==3)))) {P[j].wakeup = 0;} // don't wakeup star particles, or risk 2x-counting feedback events! //
+                        if((P[j].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[j].Type == 2)||(P[j].Type==3)))) {wakeup_condition = 0;} // don't wakeup star particles, or risk 2x-counting feedback events! //
 #endif
+                        if(wakeup_condition) // do the wakeup
+                        {
+                                #pragma omp atomic write
+                                P[j].wakeup = 1;
+                                #pragma omp atomic write
+                                NeedToWakeupParticles_local = 1;
+                        }
 #endif
                         out.Particle_DivVel -= kernel.dwk * (kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2]) / kernel.r;
                         /* this is the -particle- divv estimator, which determines how Hsml will evolve */
@@ -236,17 +244,11 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
             if(listindex < NODELISTLENGTH)
             {
                 startnode = DATAGET_NAME[target].NodeList[listindex];
-                if(startnode >= 0)
-                    startnode = Nodes[startnode].u.d.nextnode;    /* open it */
+                if(startnode >= 0) {startnode = Nodes[startnode].u.d.nextnode;}    /* open it */
             }
         }
     }
-    
-    if(mode == 0)
-        ags_out2particle_density(&out, target, 0, loop_iteration);
-    else
-        DATARESULT_NAME[target] = out;
-    
+    if(mode == 0) {ags_out2particle_density(&out, target, 0, loop_iteration);} else {DATARESULT_NAME[target] = out;}
     return 0;
 }
 
@@ -888,6 +890,7 @@ int AGSForce_isactive(int i)
 }
 
 
+/*!   -- this subroutine writes to shared memory [updating the neighbor values]: need to protect these writes for openmp below. none of the modified values are read, so only the write block is protected. note the writes can occur in the called code-blocks, so need to make sure they are followed so everything can be carefully constructed */
 int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     /* zero memory and import data for local target */
@@ -917,7 +920,7 @@ int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecoun
             if(numngb_inbox < 0) {return -1;} /* no neighbors! */
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
-                j = ngblist[n];
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if((P[j].Mass <= 0)||(PPP[j].AGS_Hsml <= 0)) continue; /* make sure neighbor is valid */
                 /* calculate position relative to target */
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0]; kernel.dp[1] = local.Pos[1] - P[j].Pos[1]; kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
@@ -959,6 +962,7 @@ int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecoun
     if(mode == 0) {OUTPUTFUNCTION_NAME(&out, target, 0, loop_iteration);} else {DATARESULT_NAME[target] = out;} /* collects the result at the right place */
     return 0;
 }
+
 
 
 void AGSForce_calc(void)

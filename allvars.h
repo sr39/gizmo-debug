@@ -909,7 +909,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 
-#if defined(EOS_SUBSTELLAR_ISM)
+#if defined(EOS_SUBSTELLAR_ISM) || defined(COOL_MOLECFRAC_NONEQM)
 #define EOS_GAMMA_VARIABLE
 #endif
 
@@ -930,6 +930,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #if defined(EOS_GENERAL)
 #define DOGRAD_SOUNDSPEED 1
 #endif
+
+
 
 
 
@@ -1238,11 +1240,16 @@ typedef unsigned long long peanokey;
 
 
 
-
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
 #define HIIRegion_Temp (1.0e4) /* temperature (in K) of heated gas */
 #endif
 
+
+#ifdef COOL_MOLECFRAC_NONEQM
+#ifndef OUTPUT_MOLECULAR_FRACTION
+#define OUTPUT_MOLECULAR_FRACTION
+#endif
+#endif
 
 
 #ifdef METALS
@@ -1619,6 +1626,7 @@ z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
 
 #define FACT1 0.366025403785	/* FACT1 = 0.5 * (sqrt(3)-1) */
 #define FACT2 0.86602540        /* FACT2 = 0.5 * sqrt(3) */
+#define CRSOL_OVER_CTRUE_SQUARED_FOR_BEAMING (((C_LIGHT_CODE_REDUCED*C_LIGHT_CODE_REDUCED)/(C_LIGHT_CODE*C_LIGHT_CODE))) /* factor needed in some places in the code to deal with relativistic terms when we use a RSOL */
 
 
 
@@ -3053,11 +3061,14 @@ extern struct sph_particle_data
 #endif
 
 #ifdef CONDUCTION
-    MyFloat Kappa_Conduction;           /*!< conduction coefficient */
+    MyFloat Kappa_Conduction;                   /*!< conduction coefficient */
 #endif
 
-#ifdef OUTPUT_MOLECULAR_FRACTION
-    MyFloat MolecularMassFraction;      /*!< holder for molecular mass fraction for sims where we evaluate it on-the-fly and wish to save it [different from detailed chemistry modules] */
+#if defined(OUTPUT_MOLECULAR_FRACTION) || defined(COOL_MOLECFRAC_NONEQM)
+    MyFloat MolecularMassFraction;              /*!< holder for molecular mass fraction for sims where we evaluate it on-the-fly and wish to save it [different from detailed chemistry modules] */
+#if defined(COOL_MOLECFRAC_NONEQM)
+    MyFloat MolecularMassFraction_perNeutralH;  /*! molecular mass fraction -of-the-neutral-gas-, which we retain as a separate variable since we have a hybrid model here using implicit updates for the ionization fraction */
+#endif
 #endif
 
 #ifdef MHD_NON_IDEAL

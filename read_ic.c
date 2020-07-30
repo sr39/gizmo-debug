@@ -521,8 +521,15 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++) {P[offset + n].SinkRadius = *fp++;}
 #endif
             break;
+            
+        case IO_MOLECULARFRACTION:
+#if defined(COOL_MOLECFRAC_NONEQM)
+            for (n = 0; n < pc; n++) {SphP[offset + n].MolecularMassFraction_perNeutralH = *fp++;}
+#endif
+            break;
 
-            /* the other input fields (if present) are not needed to define the
+
+        /* the other input fields (if present) are not needed to define the
              initial conditions of the code */
 
         case IO_COSMICRAY_KAPPA:
@@ -590,7 +597,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_CHIMES_STAR_SIGMA:
         case IO_DENS_AROUND_STAR:
         case IO_DELAY_TIME_HII:
-        case IO_MOLECULARFRACTION:
         case IO_CHIMES_FLUX_G0:
         case IO_CHIMES_FLUX_ION:
             break;

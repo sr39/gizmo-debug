@@ -134,7 +134,12 @@
         if(vsig > out.AGS_vsig) {out.AGS_vsig = vsig;} // set signal velocity if new value found
         //if(TimeBinActive[P[j].TimeBin]) {if(vsig > PPP[j].AGS_vsig) PPP[j].AGS_vsig = vsig;}
 #ifdef WAKEUP
-        if(!(TimeBinActive[P[j].TimeBin]) && (All.Time > All.TimeBegin)) {if(vsig > WAKEUP*PPP[j].AGS_vsig) {P[j].wakeup = 1; NeedToWakeupParticles_local = 1;}}
+        if(!(TimeBinActive[P[j].TimeBin]) && (All.Time > All.TimeBegin)) {if(vsig > WAKEUP*PPP[j].AGS_vsig) {
+            #pragma omp atomic write
+            P[j].wakeup = 1;
+            #pragma omp atomic write
+            NeedToWakeupParticles_local = 1;
+        }}
 #endif
     } // v_wt_sum > 0
 } // master bracket (for variable protection

@@ -657,13 +657,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_MOLECULARFRACTION:
-#ifdef OUTPUT_MOLECULAR_FRACTION
+#if defined(OUTPUT_MOLECULAR_FRACTION)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
+#if defined(COOL_MOLECFRAC_NONEQM)
+                    *fp++ = (MyOutputFloat) SphP[pindex].MolecularMassFraction_perNeutralH; /* more useful to output this particular value, rather than fH2 */
+#else
                     double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp; u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy); // needs to be in code units
                     temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
                     *fp++ = (MyOutputFloat) SphP[pindex].MolecularMassFraction; /* we call the subroutine above to make sure this quantity is as up-to-the-moment updated as possible, going into our next routine */
+#endif
                     n++;
                 }
 #endif
@@ -2477,7 +2481,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_MOLECULARFRACTION:
-#ifdef OUTPUT_MOLECULAR_FRACTION
+#if defined(OUTPUT_MOLECULAR_FRACTION)
             return 1;
 #endif
             break;

@@ -271,6 +271,7 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 
 
 /* this subroutine does the actual neighbor-element calculations (this is the 'core' of the loop, essentially) */
+/*!   -- this subroutine writes to shared memory [updating the neighbor values]: need to protect these writes for openmp below. modified values for the minimum timestep are read, so both read and write need to be protected. */
 int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     int startnode, numngb_inbox, listindex = 0, j, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
@@ -287,7 +288,8 @@ int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnode
             if(numngb_inbox < 0) {return -1;} /* no neighbors! */
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
-                j = ngblist[n]; if((P[j].Mass <= 0)||(P[j].Hsml <= 0)) {continue;} /* make sure neighbor is valid */
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
+                if((P[j].Mass <= 0)||(P[j].Hsml <= 0)) {continue;} /* make sure neighbor is valid */
                 int k; double dp[3]; for(k=0;k<3;k++) {dp[k]=local.Pos[k]-P[j].Pos[k];} /* position offset */
                 NEAREST_XYZ(dp[0],dp[1],dp[2],1); double r2=dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2]; /* box-wrap appropriately and calculate distance */
 #ifdef BOX_BND_PARTICLES
@@ -299,9 +301,25 @@ int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnode
                     kernel_main(r*hinv, hinv3, hinv4, &wk_i, &dwk_i, 0); /* kernel quantities that may be needed */
 #if defined(GRAIN_BACKREACTION)
                     double wt = -wk_i / local.Gas_Density, dv2=0; /* degy=wt*delta_egy; */
-                    for(k=0;k<3;k++) {double dv=wt*local.Grain_DeltaMomentum[k]; P[j].Vel[k]+=dv; SphP[j].VelPred[k]+=dv; dv2+=dv*dv;}
-                    P[j].Grain_AccelTimeMin=DMIN(DMIN(2.*All.ErrTolIntAccuracy*Get_Particle_Size(j)*All.cf_atime*All.cf_atime/sqrt(dv2+MIN_REAL_NUMBER) , 4.*local.Grain_AccelTimeMin), P[j].Grain_AccelTimeMin);
-                    /* for(k=0;k<3;k++) {degy-=P[j].Mass*dv*(VelPred_j[k]+0.5*dv);} SphP[j].InternalEnergy += degy; */
+                    for(k=0;k<3;k++) {
+                        double dv = wt*local.Grain_DeltaMomentum[k]; // momentum to be sent to this neighbor element
+                        dv2+=dv*dv; // save squared sum
+                        #pragma omp atomic
+                        P[j].Vel[k] += dv; // add the velocity (checking for thread safety in doing so!)
+                        #pragma omp atomic
+                        SphP[j].VelPred[k] += dv; // add the velocity (checking for thread safety in doing so!)
+                    }
+                    
+                    double taccel_min_prev = 0, taccel_min_new = 0;
+                    #pragma omp atomic read
+                    taccel_min_prev = P[j].Grain_AccelTimeMin; // this can be modified below so needs to be done in a thread-safe manner here //
+                    taccel_min_new = DMIN(DMIN(2.*All.ErrTolIntAccuracy*Get_Particle_Size(j)*All.cf_atime*All.cf_atime/sqrt(dv2+MIN_REAL_NUMBER) , 4.*local.Grain_AccelTimeMin), taccel_min_prev);
+                    if(taccel_min_new < taccel_min_prev)
+                    {
+                        #pragma omp atomic write
+                        P[j].Grain_AccelTimeMin = taccel_min_new;
+                    }
+                    /* for(k=0;k<3;k++) {degy-=P[j].Mass*dv*(VelPred_j[k]+0.5*dv);} SphP[j].InternalEnergy += degy; */ // ignoring these terms -- if re-add them be sure to do so thread-safely //
 #endif
                 }
             } // numngb_inbox loop
@@ -438,7 +456,8 @@ int interpolate_fluxes_opacities_gasgrains_evaluate(int target, int mode, int *e
             if(numngb_inbox < 0) {return -1;} /* no neighbors! */
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
-                j = ngblist[n]; if((P[j].Mass <= 0)||(PPP[j].Hsml <= 0)) {continue;} /* make sure neighbor is valid */
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
+                if((P[j].Mass <= 0)||(PPP[j].Hsml <= 0)) {continue;} /* make sure neighbor is valid */
                 int k,k_freq; double dp[3],h_to_use; for(k=0;k<3;k++) {dp[k]=local.Pos[k]-P[j].Pos[k];} /* position offset */
                 NEAREST_XYZ(dp[0],dp[1],dp[2],1); double r2=dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2]; /* box-wrap appropriately and calculate distance */
                 if(local.Type == 0) {h_to_use = PPP[j].Hsml;} else {h_to_use = local.Hsml;}

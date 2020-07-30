@@ -794,17 +794,12 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
                     if(pa->Type == 0)
                     {
-                        if(PPP[p].Hsml > hmax)
-                            hmax = PPP[p].Hsml;
-
+                        if(PPP[p].Hsml > hmax) {hmax = PPP[p].Hsml;}
                         divVel = P[p].Particle_DivVel;
-                        if(divVel > divVmax)
-                            divVmax = divVel;
+                        if(divVel > divVmax) {divVmax = divVel;}
                     }
 
-                    for(k = 0; k < 3; k++)
-                        if((v = fabs(pa->Vel[k])) > vmax)
-                            vmax = v;
+                    for(k = 0; k < 3; k++) {if((v = fabs(pa->Vel[k])) > vmax) {vmax = v;}}
 
                     /* update of the maximum gravitational softening  */
 #ifdef ADAPTIVE_GRAVSOFT_FORALL

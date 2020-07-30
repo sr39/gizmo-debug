@@ -433,6 +433,7 @@ void rt_diffusion_cg_matrix_multiply(double **matrixmult_in, double **matrixmult
 
 
 /* subroutine that actually does the neighbor calculation: this needs to be customized for your problem! */
+/*   -- this subroutine contains no writes to shared memory -- */
 int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
 {
     /* Load the data for the particle */
@@ -470,7 +471,7 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
             if(numngb_inbox < 0) {return -1;}
             for(n = 0; n < numngb_inbox; n++)
             {
-                j = ngblist[n];
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if(P[j].Type != 0) continue; // require a gas particle //
                 if(P[j].Mass <= 0) continue; // require the particle has mass //
                 double dp[3]; for(k=0; k<3; k++) {dp[k] = local.Pos[k] - P[j].Pos[k];}

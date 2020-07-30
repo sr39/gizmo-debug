@@ -749,6 +749,7 @@ void dynamic_diff_calc(void) {
  *  - D. Rennehan
  *
  */
+/*!   -- this subroutine contains no writes to shared memory -- */
 int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int dynamic_iteration) {
     int startnode, numngb, listindex = 0;
     int j, k, v, n;
@@ -814,7 +815,7 @@ int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodec
             if (numngb < 0) return -1;
             
             for (n = 0; n < numngb; n++) {
-                j = ngblist[n];
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
 #ifdef GALSF_SUBGRID_WINDS
                 if (local.DelayTime == 0 && SphP[j].DelayTime > 0) continue;
                 if (local.DelayTime > 0 && SphP[j].DelayTime == 0) continue;

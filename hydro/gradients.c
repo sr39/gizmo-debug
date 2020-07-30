@@ -1714,6 +1714,11 @@ void hydro_gradient_calc(void)
 }
 
 
+/* this is the main work routine for the gradients calculations */
+/*!   -- this subroutine ONLY should write to shared memory when the local pairwise 'swap_to_j' flag is set. that flag should never be active in OPENMP runs, by the definitions below, for thread safety.
+    comparing this to multithreaded code using thread locks or atomic for safety shows the latter provides no performance gain and often a loss, so this is better for safety and speed. if you
+    are adding to this routine, you must protect any writes to shared memory appropriately [including j variables and any global variables as well] -- */
+
 int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex,
                      int *ngblist, int gradient_iteration)
 {
@@ -1788,7 +1793,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 
             for(n = 0; n < numngb; n++)
             {
-                j = ngblist[n];
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if(GasGrad_isactive(j)==0) continue;
 
                 integertime TimeStep_J; TimeStep_J = GET_PARTICLE_INTEGERTIME(j);
