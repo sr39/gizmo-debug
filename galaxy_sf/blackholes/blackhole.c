@@ -812,7 +812,7 @@ void blackhole_final_operations(void)
 #endif
 
 #ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION
-        P[n].BH_angle_weighted_kernel_sum = BlackholeTempInfo[i].BH_angle_weighted_kernel_sum;
+        P[n].KernelSum_Around_RT_Source = BlackholeTempInfo[i].BH_angle_weighted_kernel_sum;
 #endif            
 
         /* dump the results to the 'blackhole_details' files */

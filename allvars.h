@@ -2676,9 +2676,6 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_WAKEUP_GAS /* force all gas within the interaction radius of a sink to timestep at the same rate */
     int LowestBHTimeBin;
 #endif
-#ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION
-    MyFloat BH_angle_weighted_kernel_sum;
-#endif     
 #ifdef BH_FOLLOW_ACCRETED_ANGMOM
     MyFloat BH_Specific_AngMom[3];
 #endif

@@ -820,14 +820,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     }
 #endif
                 }
-#endif
-#ifdef SINGLE_STAR_FB_WINDS
-                #pragma omp atomic write
-                SphP[j].wakeup = 1;
-                #pragma omp atomic write
-                NeedToWakeupParticles_local = 1;
-#endif
-                
+#endif                
                 /* we updated variables that need to get assigned to element 'j' -- let's do it here in a thread-safe manner */
                 #pragma omp atomic
                 P[j].Mass += Mass_j - Mass_j_0; // finite mass update [delta difference added here, allowing for another element to update in the meantime]. done this way to ensure conservation.

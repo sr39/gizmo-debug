@@ -37,9 +37,6 @@ static struct INPUT_STRUCT_NAME
 #if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
     MyDouble Dt;
 #endif
-#ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION
-    MyDouble BH_angle_weighted_kernel_sum;
-#endif
 }
 *DATAIN_NAME, *DATAGET_NAME;
 
@@ -64,9 +61,6 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
     for(k=0; k<N_RT_FREQ_BINS; k++) {if(P[i].Type==0 || active_check==0) {in->Luminosity[k]=0;} else {in->Luminosity[k] = lum[k] * dt;}}
 #if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
     in->Dt = dt;
-#endif
-#ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION
-    in->BH_angle_weighted_kernel_sum = P[i].BH_angle_weighted_kernel_sum;
 #endif
 }
 
@@ -139,7 +133,8 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
         while(startnode >= 0)
         {
 #ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION // we want the 2-way search to ensure overlapping diffuse gas gets radiation
-            numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            if(All.TimeStep > 0) {numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);}
+            else {numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);}// we don't have the necessary weights yet on timestep 0, so we will proceed with normal injection weighting and neighbor searching
 #else            
             numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #endif            
@@ -152,10 +147,10 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 if(P[j].Mass <= 0) {continue;} // require the particle has mass //
                 double dp[3]; for(k=0; k<3; k++) {dp[k] = local.Pos[k] - P[j].Pos[k];}
                 NEAREST_XYZ(dp[0],dp[1],dp[2],1); /* find the closest image in the given box size  */
-                double r2=0, r, c_light_eff; for(k=0;k<3;k++) {r2 += dp[k]*dp[k];}
+                double r2=0, r, c_light_eff, wk; for(k=0;k<3;k++) {r2 += dp[k]*dp[k];}
                 if(r2<=0) {continue;} // same particle //
 #ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION
-                if(r2>=h2 && r2 >= PPP[j].Hsml*PPP[j].Hsml) {continue;} // outside kernel //
+                if((All.TimeStep > 0) && (r2>=h2) && (r2 >= PPP[j].Hsml*PPP[j].Hsml)) {continue;} // outside kernel //
 #else
                 if(r2>=h2) {continue;} // outside kernel //
 #endif                
@@ -163,9 +158,9 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 
                 /* calculate the kernel weight used to apply photons to the neighbor */
 #ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION // use the angle-weighted coupling
-                double wk = bh_angleweight_localcoupling(j,0,r,local.Hsml) / local.BH_angle_weighted_kernel_sum;
+                if(All.TimeStep > 0) {wk = bh_angleweight_localcoupling(j,0,r,local.Hsml) / local.KernelSum_Around_RT_Source;} else {wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;}
 #else
-                double wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;
+                wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;
 #endif
                 
 #ifdef RT_EVOLVE_INTENSITIES /* additional weights needed to deal with directionality if we are using the intensity evolution module */
@@ -196,6 +191,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     double x_abs = 2. * SphP[j].Rad_Kappa[k] * (SphP[j].Density*All.cf_a3inv) * (DMAX(2.*Get_Particle_Size(j), DMAX(local.Hsml, r))) * All.cf_atime; // effective optical depth through particle
                     double slabfac_x = x_abs * slab_averaging_function(x_abs); // 1-exp(-x)
                     if(isnan(slabfac_x)||(slabfac_x<=0)) {slabfac_x=0;} else if(slabfac_x>1) {slabfac_x=1;}
+#if !defined(RT_DISABLE_RAD_PRESSURE)
                     double dv = -slabfac_x * dE / (c_light_eff * P[j].Mass); int kv; // total absorbed momentum (needs multiplication by dp[kv]/r for directionality)
                     for(kv=0;kv<3;kv++) {
                         double dv_tmp = dv*(dp[kv]/r)*All.cf_atime;
@@ -204,6 +200,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                         #pragma omp atomic
                         SphP[j].VelPred[kv] += dv_tmp;
                     } // applies direction and converts to code units
+#endif                    
 
 #ifdef RT_REPROCESS_INJECTED_PHOTONS // conserving photon energy, put only the un-absorbed component of the current band into that band, putting the rest in its "donation" bin (ionizing->optical, all others->IR). This would happen anyway during the routine for resolved absorption, but this may more realistically handle situations where e.g. your dust destruction front is at totally unresolved scales and you don't want to spuriously ionize stuff on larger scales. Assume isotropic re-radiation, so inject only energy for the donated bin and not net flux/momentum.
 		            double dE_donation=0; int donation_bin=rt_get_donation_target_bin(k), do_donation=1;
@@ -273,16 +270,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 #endif
                     
 #endif // RT_INJECT_PHOTONS_DISCRETELY
-                }
-                
-                
-#if defined(SINGLE_STAR_FB_RAD)
-                #pragma omp atomic write
-                SphP[j].wakeup = 1;
-                #pragma omp atomic write
-                NeedToWakeupParticles_local = 1; // this module works better if we send a wakeup whenever we inject
-#endif
-                
+                }                
             } // for(n = 0; n < numngb; n++)
         } // while(startnode >= 0)
 #ifndef DONOTUSENODELIST
