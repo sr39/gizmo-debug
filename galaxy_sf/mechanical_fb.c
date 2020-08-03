@@ -459,7 +459,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 for(k=0;k<3;k++) {
                     #pragma omp atomic
                     P[j].Vel[k] += Vel_j[k] - Vel_j_0[k]; // delta-update
+                    #pragma omp atomic
                     SphP[j].VelPred[k] += Vel_j[k] - Vel_j_0[k]; // delta-update
+                    #pragma omp atomic
                     P[j].dp[k] += Mass_j*Vel_j[k] - Mass_j_0*Vel_j_0[k]; // discrete momentum change
                 }
                 #pragma omp atomic
@@ -835,7 +837,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 for(k=0;k<3;k++) {
                     #pragma omp atomic
                     P[j].Vel[k] += Vel_j[k] - Vel_j_0[k]; // delta-update
+                    #pragma omp atomic
                     SphP[j].VelPred[k] += Vel_j[k] - Vel_j_0[k]; // delta-update
+                    #pragma omp atomic
                     P[j].dp[k] += Mass_j*Vel_j[k] - Mass_j_0*Vel_j_0[k]; // discrete momentum change
                 }
                 #pragma omp atomic
