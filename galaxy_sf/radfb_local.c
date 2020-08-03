@@ -195,8 +195,9 @@ void radiation_pressure_winds_consolidated(void)
 
 
 
-/* Routines for simple FIRE local photo-ionization heating feedback model. This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO. */
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING)
+/* Routines for simple FIRE local photo-ionization heating feedback model. This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO. */
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 void HII_heating_singledomain(void)    /* this version of the HII routine only communicates with particles on the same processor */
 {
 #ifdef RT_CHEM_PHOTOION
@@ -250,7 +251,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                 do {
                     jnearest=-1; rnearest=MAX_REAL_NUMBER;
                     R_search = RHII; if(h_i>R_search) {R_search=h_i;}
-                    numngb = ngb_treefind_variable_threads(pos, R_search, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist);
+                    numngb = ngb_treefind_variable_targeted(pos, R_search, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
                     if(numngb>0)
                     {
                         int ngb_list_touse[numngb]; for(n=0; n<numngb; n++) {ngb_list_touse[n]=Ngblist[n];}
@@ -408,7 +409,7 @@ int do_the_local_ionization(int target, double dt, int source)
     double u_eqm = (t4_eqm * HIIRegion_Temp) / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS); // converted to specific internal energy, assuming full ionization
     double u_post_ion_no_cooling = SphP[target].InternalEnergy + delta_U_of_ionization; // energy after ionization, before any cooling
     double u_final = DMIN( u_post_ion_no_cooling , u_eqm ), du = u_final-SphP[target].InternalEnergy; // don't heat to higher temperature than intial energy of ionization allows
-    SphP[target].InternalEnergy = u_final; SphP[target].InternalEnergyPred = DMAX(SphP[target].InternalEnergyPred + du , 1.e-3*SphP[target].InternalEnergyPred); /* add it */
+    SphP[target].InternalEnergy = u_final; SphP[target].InternalEnergyPred = u_final; /* add it */
 #endif
     SphP[target].Ne = 1.0 + 2.0*yhelium(target); /* set the cell to fully ionized */
 
