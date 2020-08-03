@@ -2713,7 +2713,6 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
     MyFloat min_bh_freefall_time;
-    MyFloat min_bh_periastron;
     MyFloat min_bh_approach_time;
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     int SuperTimestepFlag; // >=2 if allowed to super-timestep (increases with each drift/kick), 1 if a candidate for super-timestepping, 0 otherwise
@@ -2722,6 +2721,7 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef SINGLE_STAR_FB
     MyFloat MaxFeedbackVel; // maximum signal velocity of any feedback mechanism emanating from the star
+    MyFloat min_bh_fb_time;  // minimum time for feedback to arrive from a star
 #endif    
 #endif
 #endif
@@ -3357,13 +3357,15 @@ extern struct gravdata_out
 #ifdef SINGLE_STAR_TIMESTEPPING
     MyFloat min_bh_freefall_time;    // minimum value of sqrt(R^3 / G(M_BH + M_particle)) as calculated from the tree-walk
     MyFloat min_bh_approach_time; // smallest approach time t_a = |v_radial|/r
-    MyFloat min_bh_periastron; // closest anticipated periastron passage
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     MyLongDouble COM_tidal_tensorps[3][3]; //tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
     int COM_calc_flag; //flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
     int SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
 #endif
+#ifdef SINGLE_STAR_FB
+    MyFloat min_bh_fb_time; // minimum time for feedback to arrive from a star
+#endif    
 #endif
 #endif
 }

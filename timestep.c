@@ -358,7 +358,7 @@ integertime get_timestep(int p,		/*!< particle index */
     }
     
     if(P[p].Type == 0){
-        dt = DMIN(dt, All.CourantFac * P[p].min_bh_approach_time);
+        dt = DMIN(dt, All.CourantFac * DMIN(P[p].min_bh_fb_time, P[p].min_bh_approach_time));
     }
 #endif // SINGLE_STAR_TIMESTEPPING
 
