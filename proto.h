@@ -555,6 +555,9 @@ double get_age_tracer_bin_start_time(int k);
 #ifdef SINGLE_STAR_FB_JETS
 double single_star_jet_velocity(int n);
 #endif
+#if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_SNE)
+double single_star_fb_velocity(int n);
+#endif
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
 void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt);
 #if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)

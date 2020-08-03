@@ -493,6 +493,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_LOCAL_RP))
 #define SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION 2 //we are using the protostellar evolution model from ORION
+#define SINGLE_STAR_FB // general flag indicating feedback is on
 #endif
 #ifdef SINGLE_STAR_FB_RAD
 #define RT_M1
@@ -2719,6 +2720,9 @@ extern ALIGN(32) struct particle_data
     MyDouble COM_dt_tidal; //timescale from tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
 #endif
+#ifdef SINGLE_STAR_FB
+    MyFloat MaxFeedbackVel; // maximum signal velocity of any feedback mechanism emanating from the star
+#endif    
 #endif
 #endif
 
@@ -3663,7 +3667,10 @@ extern ALIGN(32) struct NODE
 #if defined(SINGLE_STAR_TIMESTEPPING)
   MyFloat bh_vel[3];    /*!< holds the mass-weighted avg. velocity of black holes in the node */
   int N_BH;             /*!< holds the number of BH particles in the node. Used for refinement/search criteria */
+#ifdef SINGLE_STAR_FB
+  MyFloat MaxFeedbackVel;
 #endif
+#endif    
 #endif
 
 #ifdef RT_SEPARATELY_TRACK_LUMPOS

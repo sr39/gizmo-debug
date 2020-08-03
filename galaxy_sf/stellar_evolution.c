@@ -815,7 +815,11 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
     BPP(n).StarLuminosity_Solar = (eps_protostar*All.G*mass*mdot/r + lum_Hayashi) * UNIT_LUM_IN_SOLAR; //same as above but we don't count H burning for the emission. Thsi way the radial evolution follows the same track as with the full model, but we don't provide feedback from H burning to the nearby gas
 #endif
 #endif//end of SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2
-
+    
+#if defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_RAD)
+    BPP(n).MaxFeedbackVel = single_star_fb_velocity(n);
+#endif
+    
 #ifdef PS_EVOL_OUTPUT_MOREINFO // print out the basic star info
 #if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
     if (BPP(n).ProtoStellarStage >= 5) //only for MS stars, for previous stages we will print out the properties before
@@ -883,6 +887,7 @@ double singlestar_WR_lifetime_Gyr(int n){ //Calculate lifetime for star in Wolf-
     return DMAX(0., 1.5e-3 * DMIN(1., ((m_solar-20.)/80.)) * pow(ZZ,0.5) );
 }
 
+
 double single_star_wind_velocity(int n){
     /* Let's get the wind velocity for MS stars */
     double T_eff = 5814.33 * pow( P[n].StarLuminosity_Solar/(P[n].ProtoStellarRadius_inSolar*P[n].ProtoStellarRadius_inSolar), 0.25 ); //effective temperature in K
@@ -891,8 +896,39 @@ double single_star_wind_velocity(int n){
     else if (T_eff < 2.1e4) {return 1.3 * v_esc;}
     else {return 2.6 * v_esc;}
 }
-#endif
+#endif // SINGLE_STAR_FB_WINDS
 
+#if defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_RAD)
+/*
+Computes the maximum signal velocity of _any_ feedback mechanism emanating from a star (jets, winds, radiation, SNe), as a worst-case for e.g. timestepping stability purposes
+ */
+double single_star_fb_velocity(int n){
+    if(P[n].Type != 5) {return 0;}
+    double v_fb = 0;    
+#ifdef SINGLE_STAR_FB_WINDS
+    double v_wind = single_star_wind_velocity(n);
+    double mdot = single_star_wind_mdot(n, 0);
+    double Lwind = 0.5 * mdot * v_wind * v_wind;
+    double rho = P[n].DensAroundStar;
+    double dm = 2*All.MinMassForParticleMerger;
+    double v_shell=MAX_REAL_NUMBER;
+    if(P[n].DensAroundStar) {v_shell = cbrt(Lwind / cbrt(dm*dm/rho));} // estimate the velocity of a wind shell swept up on the scale of a single resolution element in the similarity solution R ~ (L/rho)^1/3 t^(3/5) - use this if slower than v_wind (ie the free-expansion phase is unresolved)
+    printf("v_wind=%g v_shell=%g\n", v_wind, v_shell);
+    v_fb = DMAX(v_fb, DMIN(v_shell, v_wind));
+#endif
+#ifdef SINGLE_STAR_FB_SNE
+    if(P[n].ProtoStellarStage == 6){v_fb = DMAX(v_fb, single_star_SN_velocity(n));}
+#endif
+#ifdef SINGLE_STAR_FB_JETS
+    if(P[n].BH_Mdot > 0){v_fb = DMAX(v_fb, single_star_jet_velocity(n));}    
+#endif
+#ifdef SINGLE_STAR_FB_RAD
+    v_fb = DMAX(v_fb, C_LIGHT_CODE_REDUCED);
+#endif
+    return v_fb;
+}
+
+#endif
 
 double stellar_lifetime_in_Gyr(int n){ //Estimate lifetime of star, using simple MS approximation t/Gyr ~ 9.6 M/L in solar
     double m_solar = BPP(n).Mass * UNIT_MASS_IN_SOLAR; // mass in units of Msun
