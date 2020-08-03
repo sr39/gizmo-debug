@@ -473,7 +473,7 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
             else if(t<=t2y) {yields[1]=0.37; yields[2]=1.2e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=7.0e-2; yields[5]=1.0e-2;
                              yields[6]=5.5e-3; yields[7]=1.6e-2; yields[8]=1.3e-2; yields[9]=2.0e-4; yields[10]=5.0e-3;}
             else            {yields[1]=0.40; yields[2]=1.0e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=2.0e-2; yields[5]=6.e-4+2.e-3*DMIN(z_sol,3.);
-                             yields[6]=1.5e-3; yields[7]=8.5e-3; yields[8]=6.0e-3; yields[9]=7.0e-4; yields[10]=1.8e-2?????;}
+                             yields[6]=1.5e-3; yields[7]=8.5e-3; yields[8]=6.0e-3; yields[9]=7.0e-4; yields[10]=1.8e-3;}
             yields[0]=0; for(k=2;k<NUM_METAL_SPECIES;k++) {yields[0]+=yields[k];}
             /* from limongi+ papers: strong Z-dependence for: N [3], little bit for Ne? [but only in late-time bin, where this is strongly interpolation-dependent b/c no actual tables?],
                 some Mg+Si [6+7] in earliest bin, probably related to winds? both weak (~0.2 slope). and earliest bin has progenitor abundances,
