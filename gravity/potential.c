@@ -7,6 +7,7 @@
 
 #include "../allvars.h"
 #include "../proto.h"
+#include "../kernel.h"
 
 
 /*! \file potential.c
@@ -27,17 +28,10 @@
 void compute_potential(void)
 {
   int i;
-
 #ifndef SELFGRAVITY_OFF
-  int j, k, ret, recvTask;
-  int ndone, ndone_flag, dummy;
-  int ngrp, place, nexport, nimport;
-  double fac;
-  MPI_Status status;
-  double r2;
-
-  if(All.ComovingIntegrationOn)
-    set_softenings();
+  int j, k, ret, recvTask, ndone, ndone_flag, dummy, ngrp, place, nexport, nimport;
+  double fac, r2; MPI_Status status;
+  if(All.ComovingIntegrationOn) {set_softenings();}
 
   PRINT_STATUS("Start computation of potential for all particles...");
   CPU_Step[CPU_MISC] += measure_time();
@@ -57,8 +51,7 @@ void compute_potential(void)
   /* allocate buffers to arrange communication */
     size_t MyBufferSize = All.BufferSize;
     All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
-					     sizeof(struct gravdata_in) + sizeof(struct potdata_out) +
-					     sizemax(sizeof(struct gravdata_in),sizeof(struct potdata_out))));
+					     sizeof(struct gravdata_in) + sizeof(struct potdata_out) + sizemax(sizeof(struct gravdata_in),sizeof(struct potdata_out))));
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
 
@@ -83,7 +76,6 @@ void compute_potential(void)
 	}
 
       MYSORT_DATAINDEX(DataIndexTable, nexport, sizeof(struct data_index), data_index_compare);
-
       MPI_Alltoall(Send_count, 1, MPI_INT, Recv_count, 1, MPI_INT, MPI_COMM_WORLD);
 
       for(j = 0, nimport = 0, Recv_offset[0] = 0, Send_offset[0] = 0; j < NTask; j++)
@@ -106,7 +98,6 @@ void compute_potential(void)
 	  place = DataIndexTable[j].Index;
 
         for(k = 0; k < 3; k++) {GravDataIn[j].Pos[k] = P[place].Pos[k];}
-
         GravDataIn[j].Type = P[place].Type;
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
         GravDataIn[j].Mass = P[place].Mass;
@@ -132,7 +123,6 @@ void compute_potential(void)
       for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
 	{
 	  recvTask = ThisTask ^ ngrp;
-
 	  if(recvTask < NTask)
 	    {
 	      if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
@@ -147,7 +137,6 @@ void compute_potential(void)
 		}
 	    }
 	}
-
       myfree(GravDataIn);
       PotDataResult = (struct potdata_out *) mymalloc("PotDataResult", nimport * sizeof(struct potdata_out));
       PotDataOut = (struct potdata_out *) mymalloc("PotDataOut", nexport * sizeof(struct potdata_out));
@@ -160,7 +149,6 @@ void compute_potential(void)
 	}
 
       if(i >= NumPart) {ndone_flag = 1;} else {ndone_flag = 0;}
-
       MPI_Allreduce(&ndone_flag, &ndone, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
       /* get the result */
@@ -180,7 +168,6 @@ void compute_potential(void)
 			       MPI_BYTE, recvTask, TAG_POTENTIAL_B, MPI_COMM_WORLD, &status);
 		}
 	    }
-
 	}
 
       /* add the results to the local particles */
