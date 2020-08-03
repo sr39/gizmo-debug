@@ -818,7 +818,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
         /* this is a giant pile of variables to zero out. dont need everything here because we cloned a valid particle, but handy anyways */
         P[j].Particle_DivVel = 0; SphP[j].DtInternalEnergy = 0; for(k=0;k<3;k++) {SphP[j].HydroAccel[k] = 0; P[j].GravAccel[k] = 0;}
-        P[j].NumNgb=All.DesNumNgb;
+        P[j].NumNgb=cbrt(All.DesNumNgb); // this gets cube rooted at the end of the density loop, so take cbrt here
 #ifdef PMGRID
         for(k=0;k<3;k++) {P[j].GravPM[k] = 0;}
 #endif
@@ -953,10 +953,17 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
-#if defined(SINGLE_STAR_SINK_DYNAMICS)
+#if defined(SINGLE_STAR_SINK_DYNAMICS) 
         SphP[j].MaxSignalVel = 2*DMAX(v_magnitude, SphP[j].MaxSignalVel);// need this to satisfy the Courant condition in the first timestep after spawn
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-        if(P[i].ProtoStellarStage < 6) {P[j].Hsml = pow(mass_of_new_particle / SphP[j].Density, 1./3);} else {P[j].Hsml = d_r*sqrt(4.0*M_PI/(double)n_particles_split);}
+        // need to initialize the gas density and search radius so that we get sensible CFL timesteps (which happens before density() is called and we recalculate these self-consistently)
+        if(n_particles_split > All.DesNumNgb){ // we are spawning a whole "shell" together, so initialize search radii/densities assuming kernels are confined to the region of spawned material. This only matters for the initial C
+            SphP[j].Density = mass_of_new_particle / (4 * M_PI * d_r*d_r*d_r);
+            P[j].Hsml = P[j].NumNgb * 2.32489404843 * d_r;
+        } else { // we are spawning in the jet/wind piecemeal, so use the local density estimator around the star
+            SphP[j].Density = P[i].DensAroundStar;
+            P[j].Hsml = P[i].Hsml;
+        }                         
 #endif
 #endif
 #ifdef BH_DEBUG_SPAWN_JET_TEST
