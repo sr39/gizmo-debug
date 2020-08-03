@@ -913,7 +913,6 @@ double single_star_fb_velocity(int n){
     double dm = 2*All.MinMassForParticleMerger;
     double v_shell=MAX_REAL_NUMBER;
     if(P[n].DensAroundStar) {v_shell = cbrt(Lwind / cbrt(dm*dm/rho));} // estimate the velocity of a wind shell swept up on the scale of a single resolution element in the similarity solution R ~ (L/rho)^1/3 t^(3/5) - use this if slower than v_wind (ie the free-expansion phase is unresolved)
-    printf("v_wind=%g v_shell=%g\n", v_wind, v_shell);
     v_fb = DMAX(v_fb, DMIN(v_shell, v_wind));
 #endif
 #ifdef SINGLE_STAR_FB_SNE
