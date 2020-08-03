@@ -196,10 +196,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                 double Mass_j, Vel_j[3], InternalEnergy_j; // velocity kicks to apply to 'j's, accumulate here to apply at bottom of code
                 #pragma omp atomic read
                 Mass_j = P[j].Mass; // this can get modified -a lot- below, so we need to read it carefully right now
-                int ptype_j;
-                #pragma omp atomic read
-                ptype_j = P[j].Type;
-                if(ptype_j==0){                    
+                if(P[j].Type==0)
+                {
                     #pragma omp atomic read
                     InternalEnergy_j = SphP[j].InternalEnergy; // this can get modified -a lot- below, so we need to read it carefully right now
                 }
