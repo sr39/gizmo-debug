@@ -572,6 +572,9 @@ void force_update_node_recursive(int no, int sib, int father)
         MyFloat bh_mass=0, bh_pos_times_mass[3]={0,0,0};   /* position of each black hole in the node times its mass; divide by total mass at the end to get COM */
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)
         MyFloat bh_mom[3] = {0,0,0}; int N_BH = 0;
+#ifdef SINGLE_STAR_FB
+        MyFloat max_feedback_vel=0;
+#endif        
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -665,6 +668,9 @@ void force_update_node_recursive(int no, int sib, int father)
                         bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
                         bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;
                         N_BH += Nodes[p].N_BH;
+#ifdef SINGLE_STAR_FB
+                        if(Nodes[p].bh_mass > 0) {max_feedback_vel = DMAX(Nodes[p].MaxFeedbackVel, max_feedback_vel);}
+#endif                        
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -775,6 +781,9 @@ void force_update_node_recursive(int no, int sib, int father)
                         bh_mom[0] += pa->Vel[0] * pa->Mass;
                         bh_mom[1] += pa->Vel[1] * pa->Mass;
                         bh_mom[2] += pa->Vel[2] * pa->Mass;
+#ifdef SINGLE_STAR_FB
+                        max_feedback_vel = DMAX(pa->MaxFeedbackVel, max_feedback_vel);
+#endif                        
 #endif
                     }
 #endif
@@ -942,6 +951,9 @@ void force_update_node_recursive(int no, int sib, int father)
                 Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
                 Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;
                 Nodes[no].N_BH = N_BH;
+#ifdef SINGLE_STAR_FB
+                Nodes[no].MaxFeedbackVel = max_feedback_vel;
+#endif                        
 #endif
             }
 #endif
@@ -1044,6 +1056,9 @@ void force_exchange_pseudodata(void)
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)
         MyFloat bh_vel[3];
         int N_BH;
+#ifdef  SINGLE_STAR_FB
+        MyFloat MaxFeedbackVel;
+#endif        
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1125,6 +1140,9 @@ void force_exchange_pseudodata(void)
             DomainMoment[i].bh_vel[1] = Nodes[no].bh_vel[1];
             DomainMoment[i].bh_vel[2] = Nodes[no].bh_vel[2];
             DomainMoment[i].N_BH = Nodes[no].N_BH;
+#ifdef SINGLE_STAR_FB
+            DomainMoment[i].MaxFeedbackVel = Nodes[no].MaxFeedbackVel;
+#endif            
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1220,6 +1238,9 @@ void force_exchange_pseudodata(void)
                     Nodes[no].bh_vel[1] = DomainMoment[i].bh_vel[1];
                     Nodes[no].bh_vel[2] = DomainMoment[i].bh_vel[2];
                     Nodes[no].N_BH = DomainMoment[i].N_BH;
+#ifdef SINGLE_STAR_FB
+                    Nodes[no].MaxFeedbackVel = DomainMoment[i].MaxFeedbackVel;
+#endif                        
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1281,6 +1302,9 @@ void force_treeupdate_pseudos(int no)
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)
     MyFloat bh_mom[3] = {0,0,0};
     int N_BH = 0;
+#ifdef SINGLE_STAR_FB
+    MyFloat max_feedback_vel=0;
+#endif    
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1349,6 +1373,9 @@ void force_treeupdate_pseudos(int no)
             bh_mom[0] += Nodes[p].bh_vel[0] * Nodes[p].bh_mass;
             bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
             bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;
+#ifdef SINGLE_STAR_FB
+            if(Nodes[p].bh_mass > 0) {max_feedback_vel = DMAX(max_feedback_vel, Nodes[p].MaxFeedbackVel);}
+#endif
             N_BH += Nodes[p].N_BH;
 #endif
 #endif
@@ -1503,6 +1530,9 @@ void force_treeupdate_pseudos(int no)
             Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
             Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
             Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;
+#ifdef SINGLE_STAR_FB
+            Nodes[no].MaxFeedbackVel = max_feedback_vel;
+#endif            
             Nodes[no].N_BH = N_BH;
 #endif
         }
@@ -1940,10 +1970,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double bh_dvx=P[no].Vel[0]-vel_x, bh_dvy=P[no].Vel[1]-vel_y, bh_dvz=P[no].Vel[2]-vel_z, vSqr=bh_dvx*bh_dvx+bh_dvy*bh_dvy+bh_dvz*bh_dvz, M_total=P[no].Mass+pmass, r2soft=All.ForceSoftening[5];
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
                     r2soft = DMAX(r2soft, soft);
-#endif
+#endif                    
                     r2soft *= KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER;
                     r2soft = r2 + r2soft*r2soft;
+#ifdef SINGLE_STAR_FB
+                    if(ptype == 0) {vSqr += P[no].MaxFeedbackVel * P[no].MaxFeedbackVel;} // for gas, add the signal velocity of feedback from the star
+#endif                    
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER), tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
+
                     if(tSqr < min_bh_approach_time) {min_bh_approach_time = tSqr;}
                     if(tff4 < min_bh_freefall_time) {min_bh_freefall_time = tff4;}
 #ifdef SINGLE_STAR_FIND_BINARIES
@@ -2348,6 +2382,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double bh_dvx=nop->bh_vel[0]-vel_x, bh_dvy=nop->bh_vel[1]-vel_y, bh_dvz=nop->bh_vel[2]-vel_z, vSqr=bh_dvx*bh_dvx+bh_dvy*bh_dvy+bh_dvz*bh_dvz, M_total=nop->bh_mass+pmass, r2soft;
                     r2soft = DMAX(All.ForceSoftening[5], soft) * KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER;
                     r2soft = r2 + r2soft*r2soft;
+#ifdef SINGLE_STAR_FB
+                    if(ptype == 0) {vSqr += nop->MaxFeedbackVel * nop->MaxFeedbackVel;} // for gas, add the signal velocity of feedback from the star
+#endif                                        
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER), tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
                     if(tSqr < min_bh_approach_time) {min_bh_approach_time = tSqr;}
                     if(tff4 < min_bh_freefall_time) {min_bh_freefall_time = tff4;}

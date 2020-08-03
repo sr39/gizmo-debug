@@ -356,6 +356,10 @@ integertime get_timestep(int p,		/*!< particle index */
         if(eligible_for_hermite(p)) dt *= 1.4; // gives 10^-6 energy error per orbit for a 0.9 eccentricity binary
 #endif
     }
+    
+    if(P[p].Type == 0){
+        dt = DMIN(dt, All.CourantFac * P[p].min_bh_approach_time);
+    }
 #endif // SINGLE_STAR_TIMESTEPPING
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
@@ -913,10 +917,12 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt > dt_ff && dt_ff > 0) {dt = 1.01 * dt_ff;}
 
             double L_particle = Get_Particle_Size(p);
-            double dt_cour_sink = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / P[p].BH_SurroundingGasVel;
-#if defined(RT_M1) || defined(RT_LOCALRAYGRID)
-	    dt_cour_sink = DMIN(All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED, dt_cour_sink);
-#endif
+            double vsig = P[p].BH_SurroundingGasVel;
+#ifdef SINGLE_STAR_FB
+            vsig += P[p].MaxFeedbackVel;
+#endif                        
+            double dt_cour_sink = All.CourantFac * (L_particle*All.cf_atime) / vsig;
+
             if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
 
 #if defined(SINGLE_STAR_FB_LOCAL_RP) || (defined(SINGLE_STAR_FB_RAD) && defined(RT_RAD_PRESSURE_FORCES))

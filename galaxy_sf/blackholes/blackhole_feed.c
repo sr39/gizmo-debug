@@ -317,7 +317,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                         /* ok, before exiting this loop, need to mark whether or not we actually designated a particle for accretion! */
                         if(SwallowID_j > 0)
                         {
-                            #pragma omp write
+                            #pragma omp atomic write
                             P[j].SwallowID = SwallowID_j;  // ok got a clean write. -not- gauranteed two threads won't see this at the same time and compete over it [both think they get it here]. but only one will -actually- get it, and that's ok.
                         }
                         

@@ -251,6 +251,9 @@ void hydrokerneldensity_out2particle(struct OUTPUT_STRUCT_NAME *out, int i, int 
 #endif
 
 #if defined(RT_SOURCE_INJECTION)
+#if defined(BH_ANGLEWEIGHT_PHOTON_INJECTION)
+    if(All.TimeStep == 0) // we only do this on the 0'th timestep, since we haven't done a BH loop yet to get the angle weights we'll use normally
+#endif    
     if((1 << P[i].Type) & (RT_SOURCES)) {ASSIGN_ADD(P[i].KernelSum_Around_RT_Source, out->KernelSum_Around_RT_Source, mode);}
 #endif
 
@@ -314,6 +317,9 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if(local.Type == 0 && kernel.r==0) {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * SphP[j].VelPred[kv];}} // just the self-contribution //
 #endif
 #if defined(RT_SOURCE_INJECTION)
+#if defined(BH_ANGLEWEIGHT_PHOTON_INJECTION)
+                    if(All.TimeStep == 0) // we only do this on the 0'th timestep, since we haven't done a BH loop yet to get the angle weights we'll use normally
+#endif                        
                     if((1 << local.Type) & (RT_SOURCES)) {out.KernelSum_Around_RT_Source += 1.-u*u;}
 #endif
                     out.DhsmlNgb += -(NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
