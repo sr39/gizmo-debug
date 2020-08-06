@@ -191,8 +191,9 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     double x_abs = 2. * SphP[j].Rad_Kappa[k] * (SphP[j].Density*All.cf_a3inv) * (DMAX(2.*Get_Particle_Size(j), DMAX(local.Hsml, r))) * All.cf_atime; // effective optical depth through particle
                     double slabfac_x = x_abs * slab_averaging_function(x_abs); // 1-exp(-x)
                     if(isnan(slabfac_x)||(slabfac_x<=0)) {slabfac_x=0;} else if(slabfac_x>1) {slabfac_x=1;}
+                    int kv;
 #if !defined(RT_DISABLE_RAD_PRESSURE)
-                    double dv = -slabfac_x * dE / (c_light_eff * P[j].Mass); int kv; // total absorbed momentum (needs multiplication by dp[kv]/r for directionality)
+                    double dv = -slabfac_x * dE / (c_light_eff * P[j].Mass); // total absorbed momentum (needs multiplication by dp[kv]/r for directionality)
                     for(kv=0;kv<3;kv++) {
                         double dv_tmp = dv*(dp[kv]/r)*All.cf_atime;
                         #pragma omp atomic

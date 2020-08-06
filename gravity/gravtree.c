@@ -363,7 +363,6 @@ void gravity_tree(void)
 #ifdef SINGLE_STAR_TIMESTEPPING
                 if(GravDataOut[j].min_bh_approach_time < P[place].min_bh_approach_time) {P[place].min_bh_approach_time = GravDataOut[j].min_bh_approach_time;}
                 if(GravDataOut[j].min_bh_freefall_time < P[place].min_bh_freefall_time) {P[place].min_bh_freefall_time = GravDataOut[j].min_bh_freefall_time;}
-                if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron) {P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;}
 #ifdef SINGLE_STAR_FIND_BINARIES
                 if((P[place].Type == 5) && (GravDataOut[j].min_bh_t_orbital < P[place].min_bh_t_orbital))
                 {
@@ -373,6 +372,9 @@ void gravity_tree(void)
                     for(k=0;k<3;k++) {P[place].comp_dx[k]=GravDataOut[j].comp_dx[k]; P[place].comp_dv[k]=GravDataOut[j].comp_dv[k];}
                 }
 #endif
+#ifdef SINGLE_STAR_FB
+                if(GravDataOut[j].min_bh_fb_time < P[place].min_bh_fb_time) {P[place].min_bh_fb_time = GravDataOut[j].min_bh_fb_time;}
+#endif                
 #endif
 #endif // BH_CALC_DISTANCES
 

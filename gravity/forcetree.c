@@ -1744,8 +1744,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_TIMESTEPPING
     double min_bh_approach_time = MAX_REAL_NUMBER;
     double min_bh_freefall_time = MAX_REAL_NUMBER;
-    double min_bh_periastron = MAX_REAL_NUMBER;
 #endif
+#ifdef SINGLE_STAR_FB
+    double min_bh_fb_time = MAX_REAL_NUMBER;
+#endif    
 #endif
 
 
@@ -1974,7 +1976,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     r2soft *= KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER;
                     r2soft = r2 + r2soft*r2soft;
 #ifdef SINGLE_STAR_FB
-                    if(ptype == 0) {vSqr += P[no].MaxFeedbackVel * P[no].MaxFeedbackVel;} // for gas, add the signal velocity of feedback from the star
+                    if(ptype == 0) {
+                        double tSqr_fb = r2soft /(P[no].MaxFeedbackVel * P[no].MaxFeedbackVel + MIN_REAL_NUMBER);
+                        if(tSqr_fb < min_bh_fb_time) {min_bh_fb_time = tSqr_fb;}
+                    } // for gas, add the signal velocity of feedback from the star
 #endif                    
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER), tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
 
@@ -2382,10 +2387,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double bh_dvx=nop->bh_vel[0]-vel_x, bh_dvy=nop->bh_vel[1]-vel_y, bh_dvz=nop->bh_vel[2]-vel_z, vSqr=bh_dvx*bh_dvx+bh_dvy*bh_dvy+bh_dvz*bh_dvz, M_total=nop->bh_mass+pmass, r2soft;
                     r2soft = DMAX(All.ForceSoftening[5], soft) * KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER;
                     r2soft = r2 + r2soft*r2soft;
-#ifdef SINGLE_STAR_FB
-                    if(ptype == 0) {vSqr += nop->MaxFeedbackVel * nop->MaxFeedbackVel;} // for gas, add the signal velocity of feedback from the star
-#endif                                        
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER), tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
+#ifdef SINGLE_STAR_FB
+                    if(ptype == 0) {
+                        double tSqr_fb = r2soft /(nop->MaxFeedbackVel * nop->MaxFeedbackVel + MIN_REAL_NUMBER);
+                        if(tSqr_fb < min_bh_fb_time) {min_bh_fb_time = tSqr_fb;}
+                    } // for gas, add the signal velocity of feedback from the star
+#endif                                                            
                     if(tSqr < min_bh_approach_time) {min_bh_approach_time = tSqr;}
                     if(tff4 < min_bh_freefall_time) {min_bh_freefall_time = tff4;}
 #ifdef SINGLE_STAR_FIND_BINARIES
@@ -2819,9 +2827,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_TIMESTEPPING
         P[target].min_bh_approach_time = sqrt(min_bh_approach_time);
         P[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
-        P[target].min_bh_periastron = min_bh_periastron;
+#ifdef SINGLE_STAR_FB
+        P[target].min_bh_fb_time = sqrt(min_bh_fb_time);
+#endif  
 #endif
-#endif
+#endif // BH_CALC_DISTANCES        
     }
     else
     {
@@ -2881,9 +2891,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_TIMESTEPPING
         GravDataResult[target].min_bh_approach_time = sqrt(min_bh_approach_time);
         GravDataResult[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
-        GravDataResult[target].min_bh_periastron = min_bh_periastron;
+#ifdef SINGLE_STAR_FB
+        GravDataResult[target].min_bh_fb_time = sqrt(min_bh_fb_time);
+#endif        
 #endif
-#endif
+#endif // BH_CALC_DISTANCES        
         *exportflag = nodesinlist;
     }
 
