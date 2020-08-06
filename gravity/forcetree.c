@@ -2541,15 +2541,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 
 #ifdef EVALPOTENTIAL
-#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-                pot += FLT(mass * ewald_pot_corr(dx, dy, dz));
-#elif defined(PMGRID)
-                pot += FLT(facpot * shortrange_table_potential[tabindex]);
-#else
+#ifdef PMGRID
+                facpot *= shortrange_table_potential[tabindex];
+#endif
                 pot += FLT(facpot);
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC) && !defined(PMGRID)
+                pot += FLT(mass * ewald_pot_corr(dx, dy, dz));
 #endif
 #endif
-
                 acc_x += FLT(dx * fac);
                 acc_y += FLT(dy * fac);
                 acc_z += FLT(dz * fac);
@@ -3611,16 +3610,15 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 fac = 1;
 #endif
                 if(r >= h)
-                    pot += FLT(-fac * mass / r);
-
-                else
                 {
+                    pot += FLT(-fac * mass / r);
+                } else {
                     h_inv = 1.0 / h;
                     u = r * h_inv;
                     pot += FLT( fac * mass * kernel_gravity(u, h_inv, 1, -1) );
                 }
             }
-#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC) && !defined(PMGRID)
             pot += FLT(mass * ewald_pot_corr(dx, dy, dz));
 #endif
         }
