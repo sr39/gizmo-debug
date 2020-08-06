@@ -689,10 +689,8 @@ void ensure_neighbours(void);
 
 void output_log_messages(void);
 void ewald_corr(double dx, double dy, double dz, double *fper);
-
 void ewald_force(int ii, int jj, int kk, double x[3], double force[3]);
 void ewald_force_ni(int iii, int jjj, int kkk, double x[3], double force[3]);
-
 void ewald_init(void);
 double ewald_psi(double x[3]);
 double ewald_pot_corr(double dx, double dy, double dz);

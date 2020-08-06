@@ -1681,6 +1681,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     // define a number of variables needed in the shielding module
     double dx_cell = Get_Particle_Size(i) * All.cf_atime; // cell size
     double surface_density_H2_0 = 5.e14 * PROTONMASS, x_exp_fac=0.00085, w0=0.2; // characteristic cgs column for -molecular line- self-shielding
+    w0 = 0.035; // actual calibration from Drain, Gnedin, Richings, others: 0.2 is more appropriate as a re-calibration for sims doing local eqm without ability to resolve shielding at higher columns
     //double surface_density_local = xH0 * SphP[i].Density * All.cf_a3inv * dx_cell * UNIT_SURFDEN_IN_CGS; // this is -just- the [neutral] depth through the local cell/slab. note G0 is -already- attenuated in the pre-processing by dust.
     double surface_density_local = xH0 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS; // this is -just- the [neutral] depth to infinity with our Sobolev-type approximation. Note G0 is already attenuated by dust, but we need to include H2 self-shielding, for which it is appropriate to integrate to infinity.
     double v_thermal_rms = 0.111*sqrt(T); // sqrt(3*kB*T/2*mp), since want rms thermal speed of -molecular H2- in kms
@@ -1689,7 +1690,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
         dv2 += vt*vt;}} // calculate magnitude of the velocity shear across cell from || grad -otimes- v ||^(1/2)
     double dv_turb=sqrt(dv2)*dx_cell*UNIT_VEL_IN_KMS; // delta-velocity across cell
     double x00 = surface_density_local / surface_density_H2_0, x01 = x00 / (sqrt(1. + 3.*dv_turb*dv_turb/(v_thermal_rms*v_thermal_rms)) * sqrt(2.)*v_thermal_rms), y_ss, x_ss_1, x_ss_sqrt, fH2_tmp, fH2_max, fH2_min, Q_max, Q_min, Q_initial, Q_0, Q_1, fH2_0, fH2_1, fH2_new; // variable needed below. note the x01 term corrects following Gnedin+Draine 2014 for the velocity gradient at the sonic scale, assuming a Burgers-type spectrum [their Eq. 3]
-    double b_time_Mach = 0.5 * (2.0*dv_turb) / (v_thermal_rms*sqrt(2./1.25)); // v_thermal converted from molecular to atomic for all [slightly larger], dv_turb to full inside Hsml [x2], assume "b" prefactor for compressive-to-solenoidal ratio corresponding to the 'natural mix' = 0.5
+    double b_time_Mach = 0.5 * dv_turb / (v_thermal_rms/sqrt(3.)); // cs_thermal for molecular [=rms v_thermal / sqrt(3)], dv_turb to full inside dx, assume "b" prefactor for compressive-to-solenoidal ratio corresponding to the 'natural mix' = 0.5. could further multiply by 1.58 if really needed to by extended dvturb to 2h = H, and vthermal from molecular to atomic for the generating field, but not as well-justified
     double clumping_factor = 1. + b_time_Mach*b_time_Mach; // this is the exact clumping factor for a standard lognormal PDF with S=ln[1+b^2 Mach^2] //
     double clumping_factor_3 = clumping_factor*clumping_factor*clumping_factor; // clumping factor N for <rho^n>/<rho>^n = clumping factor^(N*(N-1)/2) //
     
@@ -1702,7 +1703,16 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     double b_H2HI = (7.073e-19 * pow(T,2.012) * exp(-DMIN(5.179e4/T,EXPmax)) / pow(1. + 2.130e-5*T , 3.512)) * (nH0/2.) * clumping_factor; // collisional dissociation
     double b_H2H2 = (5.996e-30 * pow(T,4.1881) * exp(-DMIN(5.466e4/T,EXPmax)) / pow(1. + 6.761e-6*T , 5.6881)) * (nH0/2.) * (1./2.) * clumping_factor; // collisional mol-mol dissociation
     double G_LW = 3.3e-11 * urad_G0 * (1./2.); // photo-dissociation (+ionization); note we're assuming a spectral shape identical to the MW background mean, scaling by G0
-    double xi_cr_H2 = (7.525e-16) * (1./2.); // CR dissociation (+ionization)
+    double xi_cr_H2 = (7.525e-16) * (1./2.), prefac_CR=1.;; // CR dissociation (+ionization)
+#if defined(COSMIC_RAYS) // scale ionization+dissociation rates with local CR energy density
+    prefac_CR=0; {int kcr; for(kcr=0;kcr<N_CR_PARTICLE_BINS;kcr++) {prefac_CR += SphP[i].CosmicRayEnergyPred[kcr];}} // add up CR energy
+    prefac_CR *= (SphP[i].Density * All.cf_a3inv / P[i].Mass) * UNIT_PRESSURE_IN_EV; // convert to CR volume energy density in eV/cm^3
+    prefac_CR /= 3.0; // scale ionization rate relative to the CR energy density [in eV/cm3] assumed to give rise to this level of ionization [from Indriolo], for a universal spectrum
+#else
+    if(All.ComovingIntegrationOn) {double rhofac = (rho*UNIT_DENSITY_IN_CGS)/(1000.*COSMIC_BARYON_DENSITY_CGS);
+        if(rhofac < 0.2) {prefac_CR=0;} else {if(rhofac > 200.) {prefac_CR=1;} else {prefac_CR=exp(-1./(rhofac*rhofac));}}} // in cosmological runs, turn off CR heating for any gas with density unless it's >1000 times the cosmic mean density
+#endif
+    xi_cr_H2 *= prefac_CR;
 
     // want to solve the implicit equation: f_f = f_0 + g[f_f]*dt, where g[f_f] = df_dt evaluated at f=f_f, so root-find: dt*g[f_f] + f_0-f_f = 0
     // can write this as a quadtratic: x_a*f^2 - x_b_0*f - xb_LW*f + x_c = 0, where xb_LW is a non-linear function of f accounting for the H2 self-shielding terms

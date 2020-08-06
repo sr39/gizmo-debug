@@ -1021,7 +1021,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
 
                     ntot += dn_flux_fromprevbin; // update the bin with the -already cooled- CRs from the previous bin
                     etot += de_flux_fromprevbin; // update the bin with the -already cooled- CRs from the previous bin
-                    if(ntot > 0 && etot > 0) {slope_gamma = CR_return_slope_from_number_and_energy_in_bin(etot, ntot, E_bin_NtoE, j);} // get the updated slope for this bin
+                    if(ntot > 0 && etot > 0) {slope_gamma = CR_return_slope_from_number_and_energy_in_bin(etot, ntot, E_bin_NtoE, j);} else {slope_gamma=0;} // get the updated slope for this bin
 
                     ntot_evolved[j] = ntot; // set finalized updated number in bin
                     Ucr[j] = etot; // set finalized updated energy in bin
