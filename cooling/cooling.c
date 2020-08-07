@@ -913,7 +913,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
             if(T>3.e5) {double dx=(T-3.e5)/2.e5; LambdaDust *= exp(-DMIN(dx*dx,40.));} /* needs to truncate at high temperatures b/c of dust destruction */
             LambdaDust *= truncation_factor; // cutoff factor from above for where the tabulated rates take over at high temperatures
+#ifdef RT_INFRARED            
             SphP[target].LambdaDust = LambdaDust;
+#endif            
             if(!isfinite(LambdaDust)) {LambdaDust=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
             if(LambdaDust<0) {Lambda -= LambdaDust;} /* add the -positive- Lambda-dust associated with cooling */
         }
