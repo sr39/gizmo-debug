@@ -509,7 +509,6 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #ifdef RT_INFRARED
 #define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
-#define COOLING_OPERATOR_SPLIT 
 #endif
 #if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY))
 #define RT_USE_TREECOL_FOR_NH 6
@@ -3122,6 +3121,7 @@ extern struct sph_particle_data
     MyFloat Radiation_Temperature; /* IR radiation field temperature (evolved variable ^4 power, for convenience) */
     MyFloat Dt_Rad_E_gamma_T_weighted_IR; /* IR radiation temperature-weighted time derivative of photon energy (evolved variable ^4 power, for convenience) */
     MyFloat Dust_Temperature; /* Dust temperature (evolved variable ^4 power, for convenience) */
+    MyFloat LambdaDust; /* Dust cooling rate */
 #endif
 #ifdef RT_CHEM_PHOTOION
     MyFloat HI;                  /* HI fraction */

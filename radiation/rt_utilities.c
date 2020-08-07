@@ -1145,6 +1145,7 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, d
     double lambda_eff = sign_term * L0_abs * xfac; // final effective cooling/heating rate
 
     SphP[target].Dust_Temperature = DMAX(pow(Erad_to_T4_fac*DMAX( 0., egy_rad - lambda_eff*ratefact*dt ), 0.25), get_min_allowed_dustIRrad_temperature()); // update dust temperature guess //
+    SphP[target].LambdaDust = lambda_eff;
     return lambda_eff;
 #endif
     return 0;
