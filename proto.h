@@ -304,8 +304,9 @@ void CR_spectrum_define_bins(void);
 void CR_initialize_multibin_quantities(void);
 void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, double dtime_cgs, int mode_driftkick);
 double CR_return_slope_from_number_and_energy_in_bin(double energy_in_code_units, double number_effective_in_code_units, double bin_centered_energy_in_GeV, int k_bin);
-double CR_return_new_bin_edge_from_rate(double rate_dt_dimless, double x_m_bin, double x_p_bin, int loss_mode, int NR_key);
+double CR_return_new_bin_edge_from_rate(double rate_dt_dimless, double x_m_bin, double x_p_bin, int loss_mode, int NR_key, double additional_variable_dummy);
 double CR_coulomb_energy_integrand(double x, double tau, double slope);
+double CR_reaccel_energy_integrand(double x, double tau, double slope, double delta_slope, int NR_key)
 double CR_compton_energy_integrand(double x, double tau, double slope);
 int CR_check_if_bin_is_nonrelativistic(int k_bin);
 double CR_return_true_number_in_bin(int target, int k_bin);
