@@ -235,7 +235,8 @@ double get_starformation_rate(int i)
 
     int exceeds_force_softening_threshold; exceeds_force_softening_threshold = 0; /* flag that notes if the density is so high such that gravity is non-Keplerian [inside of smallest force-softening limits] */
 #if (SINGLE_STAR_SINK_FORMATION & 1024)
-    if(PPP[i].Hsml <= DMAX(All.MinHsml, 2.*All.ForceSoftening[0])) {exceeds_force_softening_threshold=1;}
+    if(DMIN(PPP[i].Hsml, 2.*Get_Particle_Size(i)) <= DMAX(All.MinHsml, 2.*All.ForceSoftening[0])) {exceeds_force_softening_threshold=1;}
+    if(exceeds_force_softening_threshold) {return 1.e4 * rateOfSF;}
 #endif
 
     /* compute various velocity-gradient terms which are potentially used in the various criteria below */
@@ -303,6 +304,7 @@ double get_starformation_rate(int i)
 
 #if (SINGLE_STAR_SINK_FORMATION & 64) || (GALSF_SFR_VIRIAL_SF_CRITERION >= 3) /* check if Jeans mass is low enough for conceivable formation of 'stars' */
     double cs_touse=cs_eff, MJ_crit=DMAX(DMIN(1.e3, 1.*P[i].Mass*UNIT_MASS_IN_SOLAR), 100.); /* for galaxy-scale SF, default to large ~1000 Msun threshold */
+    if(exceeds_force_softening_threshold) {MJ_crit = DMAX(1.e4 , 10.*P[i].Mass*UNIT_MASS_IN_SOLAR);}
 #ifdef SINGLE_STAR_SINK_FORMATION
     cs_touse=v_fast; MJ_crit=DMIN(1.e4, DMAX(1.e-3 , 100.*P[i].Mass*UNIT_MASS_IN_SOLAR)); /* for single-star formation use un-resolved Jeans mass criterion, with B+thermal pressure */
 #endif

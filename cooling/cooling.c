@@ -1679,6 +1679,9 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &xn_e, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties [will assume fixed value of fH2 at previous update value]
     double T=1, Z_Zsol=1, urad_G0=1, xH0=1, x_e=0, nH_cgs=rho*UNIT_DENSITY_IN_NHCGS; // initialize definitions of some variables used below to prevent compiler warnings
     Z_Zsol=1; urad_G0=1; // initialize metal and radiation fields. will assume solar-Z and spatially-uniform Habing field for incident FUV radiation unless reset below.
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING)
+    if(SphP[i].DelayTimeHII > 0) {SphP[i].MolecularMassFraction_perNeutralH=SphP[i].MolecularMassFraction=0; return;} // force gas flagged as in HII regions to have zero molecular fraction
+#endif
     if(temperature > 3.e5) {SphP[i].MolecularMassFraction_perNeutralH=SphP[i].MolecularMassFraction=0; return;} else {T=temperature;} // approximations below not designed for high temperatures, should simply give null
     xH0 = DMIN(DMAX(nh0, 0.),1.); // get neutral fraction [given by call to this program]
     if(xH0 <= MIN_REAL_NUMBER) {SphP[i].MolecularMassFraction_perNeutralH=SphP[i].MolecularMassFraction=0; return;} // no neutral gas, no molecules!

@@ -789,11 +789,11 @@ void hydro_final_operations_and_cleanup(void)
                 for(k=0;k<3;k++) {vdot_h[k] = erad_i * (vel_i[k] + vdot_h[k]);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term. this is the P term //
                 double flux_thin = erad_i * C_LIGHT_CODE_REDUCED; if(flux_mag>0) {flux_mag=sqrt(flux_mag);} else {flux_mag=1.e-20*flux_thin;}
                 if(flux_mag > 0) {
-		  flux_corr = DMIN(1., flux_thin/flux_mag);
+                    flux_corr = DMIN(1., flux_thin/flux_mag);
 #if defined(RT_ENABLE_R15_GRADIENTFIX)
-		  flux_corr = flux_thin/flux_mag; // set to maximum (optically thin limit)
+                    flux_corr = flux_thin/flux_mag; // set to maximum (optically thin limit)
 #endif
-		}  else {flux_corr = 0;}
+                }  else {flux_corr = 0;}
 
                 for(k=0;k<3;k++)
                 {
