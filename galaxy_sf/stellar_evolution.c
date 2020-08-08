@@ -495,13 +495,13 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
             // compare nomoto '06: y = [He: 3.69e-1, C: 1.27e-2, N: 4.56e-3, O: 1.11e-1, Ne: 3.81e-2, Mg: 9.40e-3, Si: 8.89e-3, S: 3.78e-3, Ca: 4.36e-4, Fe: 7.06e-3]
             
             /* ok now use the fit parameters above for the piecewise power-law components to define the yields at each time */
-            double t=t_gyr*1000.; int i_t=-1; for(k=0;k<i_tvec;k++) {if(t>tvec[k]) {i_t=k;}}
+            double t_myr=t_gyr*1000.; int i_t=-1; for(k=0;k<i_tvec;k++) {if(t_myr>tvec[k]) {i_t=k;}}
             for(k=0;k<10;k++)
             {
                 int i_y = k + 1;
                 if(i_t<0) {yields[i_y] = fvec[k][0];}
                 else if(i_t>=i_tvec-1) {yields[i_y] = fvec[k][i_tvec-1];}
-                else {yields[i_y] = fvec[k][i_t] * pow(t/tvec[i_t] , log(fvec[k][i_t+1]/fvec[k][i_t]) / log(tvec[k][i_t+1]/tvec[k][i_t])); }
+                else {yields[i_y] = fvec[k][i_t] * pow(t_myr/tvec[i_t] , log(fvec[k][i_t+1]/fvec[k][i_t]) / log(tvec[i_t+1]/tvec[i_t])); }
             }
             
 #if 0
