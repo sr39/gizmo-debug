@@ -296,6 +296,7 @@ double CR_gas_heating(int target, double n_elec, double nHcgs)
 {
     double e_heat=0, e_CR_units_0=(SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_CGS / nHcgs; int k_CRegy;
     double a_hadronic = 6.37e-16, b_coulomb_per_GeV = 3.09e-16*n_elec*HYDROGEN_MASSFRAC, f_heat_hadronic=1./6.; /* some coefficients; a_hadronic is the default coefficient, b_coulomb_per_GeV the default divided by GeV, b/c we need to divide the energy per CR  */
+
     for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
         double Z = return_CRbin_CR_charge_in_e(target,k_CRegy);
@@ -304,7 +305,8 @@ double CR_gas_heating(int target, double n_elec, double nHcgs)
             double e_cr_units = SphP[target].CosmicRayEnergyPred[k_CRegy] * e_CR_units_0;
 #if (N_CR_PARTICLE_BINS > 2)
             double E_GeV = return_CRbin_kinetic_energy_in_GeV(target,k_CRegy), beta = return_CRbin_beta_factor(target,k_CRegy);
-            e_heat += b_coulomb_per_GeV * ((Z*Z)/(beta*E_GeV)) * e_cr_units; // all protons Coulomb-heat, can be rapid for low-E
+            double T_eff_fullion = 0.59*(5./3.-1.)*U_TO_TEMP_UNITS*SphP[target].InternalEnergyPred, xm = 0.0286*sqrt(T_eff_fullion/2.e6);
+            e_heat += b_coulomb_per_GeV * ((Z*Z*beta*beta)/((beta*beta*beta+xm*xm*xm)*E_GeV)) * e_cr_units; // all protons Coulomb-heat, can be rapid for low-E
             if(E_GeV>=0.28) {e_heat += f_heat_hadronic * a_hadronic * e_cr_units;} // only GeV CRs or higher trigger above threshold for collisions
 #else
             e_heat += (0.87*f_heat_hadronic*a_hadronic + 0.53*b_coulomb_per_GeV) * e_cr_units; /* for N<=2, assume a universal spectral shape, the factor here corrects for the fraction above-threshold for hadronic interactions, and 0.53 likewise for averaging  */
@@ -710,39 +712,35 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         double mdivvdt = -dt_entr * P[i].Particle_DivVel*All.cf_a2inv; // get locally-estimated gas velocity divergence for cells - if using non-Lagrangian method, need to modify. take negative of this [for sign of change to energy] and multiply by timestep
         if(All.ComovingIntegrationOn) {mdivvdt += -dt_entr * 3.*All.cf_hubble_a;} // include hubble-flow terms
         mdivvdt = DMAX(-1.5, DMIN(1.5, mdivvdt)); // our timestep limiter should ensure this, but problem is it responds to the -previous- timestep, so we need to impose an additional check here to prevent a numerical divergence when/if the gradients are inaccurate
-        
-        double fmult, Ui = u0 * P[i].Mass; // factor for multiplication below, and initial thermal energy
+        double Ui = u0 * P[i].Mass; // factor for multiplication below, and initial thermal energy
         double d_CR = mdivvdt * (gamma_eff-1.) * eCR_tmp; // expected CR change - this is the 'PdV' part of the work, applicable in smooth flows
-        double d_Egas = mdivvdt * (GAMMA(i)-1.) * Ui; // expected gas change - in a smooth flow likewise should be entropy-conserving
         double min_IEgy = P[i].Mass * All.MinEgySpec; // minimum internal energy - in total units -
-        
         double dtI_hydro = SphP[i].DtInternalEnergy * P[i].Mass * dt_entr; // change given by hydro-step computed delta_InternalEnergy
-        if(mdivvdt * dtI_hydro > 0 && mode == 0) // same sign from hydro and from smooth-flow-estimator, suggests we are in a smooth flow, so we'll use stronger assumptions about the effective 'entropy' here
+        double f_limiter = 0.9; // dimensionless fraction of energy to limit to
+        double Ui_max_increase = fabs(1.e4*Ui); // maximum amount we'll allow Ui to increase from this term in 1 timestep
+        if(mode==1) {f_limiter=0.5;} // use slightly stricter criterion for drifting vs kicking //
+        if(mdivvdt * dtI_hydro > 0) // same sign from hydro and from smooth-flow-estimator, suggests we are in a smooth flow, so we'll use stronger assumptions about the effective 'entropy' here
         {
             double abs_limit = fabs(dtI_hydro); // in smooth flow, sum of CR+gas PdV work terms should not exceed this
-            double d_sum = fabs(d_CR + d_Egas); // sum of the terms estimated as above
-            if(d_sum > abs_limit) {fmult = abs_limit/d_sum; d_CR *= fmult; d_Egas *= fmult;} // limit to not exceed
-            
-            double limforU = -0.9*Ui; // maximum change in internal energy we will allow, to prevent negative values
-            if(Ui <= min_IEgy) {limforU=0;} else {limforU = DMAX(limforU,min_IEgy-Ui);} // actually more restrictive: prevent crossing the minimum enforced temperature in cooling
-            if(-d_CR < limforU) {fmult = limforU/d_Egas; d_CR *= fmult; d_Egas *= fmult;} // limit
-            
-            double limforC = -0.9*eCR_tmp; // maximum change in CR energy we will allow, to prevent negative values
-            if(d_CR < limforC) {fmult = limforC/d_CR; d_CR *= fmult; d_Egas *= fmult;} // limit
-        } else { // opposite sign, suggests numerical-diffusion dominated; in this case, we will be more conservative about the limits
-            double limforU = -0.5*Ui; // maximum change in internal energy we will allow, to prevent negative values
-            if(Ui <= min_IEgy) {limforU=0;} else {limforU = DMAX(limforU, 0.5*(min_IEgy-Ui));} // actually more restrictive: prevent crossing the minimum enforced temperature in cooling
-            if(-d_CR < limforU) {fmult = limforU/d_Egas; d_CR *= fmult; d_Egas *= fmult;} // limit
-            
-            double limforC = -0.5*eCR_tmp; // maximum change in CR energy we will allow, to prevent negative values
-            if(d_CR < limforC) {fmult = limforC/d_CR; d_CR *= fmult; d_Egas *= fmult;} // limit
+            double d_Egas = mdivvdt * (GAMMA(i)-1.) * Ui; // expected gas change - in a smooth flow likewise should be entropy-conserving
+            double d_sum = fabs(d_CR + d_Egas); // sum of the expected adiabatic CR + gas terms estimated as above
+            if(d_sum > abs_limit) {d_CR *= abs_limit/d_sum;} // limit to not exceed
+        } else { // hydro and CRs have opposite sign, indicating non-smooth flow: here limit more strongly to prevent artificial huge increase in gas energy
+            f_limiter = 0.5; // use more conservative limits regardless of drift or kick since we're in a less-smooth flow
+            Ui_max_increase = fabs(2.*Ui); // maximum amount we'll allow Ui to increase from this term in 1 timestep
         }
+        if(d_CR<0 && fabs(d_CR)>Ui_max_increase) {d_CR *= Ui_max_increase/fabs(d_CR);}
+        double limforU = fabs(f_limiter*Ui); // largest [negative] change in internal energy we will allow, to prevent negative values
+        if(Ui <= min_IEgy) {limforU=0;} else {limforU = DMIN(limforU, fabs(f_limiter*(Ui-min_IEgy)));} // actually more restrictive: prevent crossing the minimum enforced temperature in cooling
+        if(d_CR>0 && d_CR>limforU) {d_CR *= limforU/fabs(d_CR);} // limit to prevent internal energy going negative
+        double limforC = fabs(f_limiter*eCR_tmp); // maximum change in CR energy we will allow, to prevent negative values
+        if(d_CR<0 && d_CR<-limforC) {d_CR *= limforC/fabs(d_CR);} // limit
         dCR_div = d_CR; // set final value
 #else
         /* old treatment here */
         double d_div = (-(gamma_eff-1.) * P[i].Particle_DivVel*All.cf_a2inv) * dt_entr;
         if(All.ComovingIntegrationOn) {d_div += (-3.*(gamma_eff-1.) * All.cf_hubble_a) * dt_entr;} /* adiabatic term from Hubble expansion (needed for cosmological integrations */
-        double dCR_div = DMIN(eCR_tmp*d_div , 0.5*u0*P[i].Mass); // limit so don't take away all the gas internal energy [to negative values]
+        dCR_div = DMIN(eCR_tmp*d_div , 0.5*u0*P[i].Mass); // limit so don't take away all the gas internal energy [to negative values]
         if(dCR_div + eCR_tmp < 0) {dCR_div = -eCR_tmp;} // check against energy going negative
         eCR_tmp += dCR_div; if((eCR_tmp<0)||(isnan(eCR_tmp))) {eCR_tmp=0;} // check against energy going negative or nan
         dCR_div = eCR_tmp - eCR_0; // actual change that is going to be applied
@@ -750,8 +748,8 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         if(dCR_div < -0.9*eCR_00) {dCR_div=-0.9*eCR_00;} // before re-coupling, ensure this will not cause negative energies
 #endif
         double uf = DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
-        //if(mode==0) {SphP[i].InternalEnergy = uf;} else {SphP[i].InternalEnergyPred = uf;} // update gas
-        if(mode==0) {SphP[i].DtInternalEnergy += (uf-u0)/(dt_entr+MIN_REAL_NUMBER);} else {SphP[i].InternalEnergyPred = uf;} // update gas
+        if(mode==0) {SphP[i].InternalEnergy = uf;} else {SphP[i].InternalEnergyPred = uf;} // update gas
+        //if(mode==0) {SphP[i].DtInternalEnergy += (uf-u0)/(dt_entr+MIN_REAL_NUMBER);} else {SphP[i].InternalEnergyPred = uf;} // update gas
 #if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
         if(mode==0) {SphP[i].CosmicRayEnergy[k_CRegy] += dCR_div;} else {SphP[i].CosmicRayEnergyPred[k_CRegy] += dCR_div;} // update CRs: note if explicitly evolving spectrum, this is done separately below //
 #endif
@@ -863,6 +861,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
         double delta_limit=0.0315059; delta_diffcoeff[k] = DMIN(DMAX(delta_diffcoeff[k], delta_limit),2.-delta_limit); // need to restrict delta value for the quasi-linear theory model below to make any sense (otherwise just gives unphysical answers because relevant integrals all diverge)
         double alpha_denom = delta_diffcoeff[k] * (4.-delta_diffcoeff[k]) * (4.-delta_diffcoeff[k]*delta_diffcoeff[k]); // quasi-linear isotropic turbulent-type assumption for coefficient relating Dpp and Dxx
         reaccel_coeff[k] = -delta_diffcoeff[k] * reaccel_coeff_0 / ((kappa_i[k] + MIN_REAL_NUMBER) * (alpha_denom + MIN_REAL_NUMBER)); // up to a factor of (R/R0)^(-delta) * (1 - slope_gamma/2), this gives the rate in 1/seconds of the effective momentum-space diffusion. note sign here: generally implies energy gain.
+        if(fabs(reaccel_coeff[k]) > fabs(delta_diffcoeff[k]*adiabatic_coeff)) {reaccel_coeff[k] *= fabs(delta_diffcoeff[k]*adiabatic_coeff) / fabs(reaccel_coeff[k]);}
         bin_centered_rate_coeff[k] += reaccel_coeff[k] * (1. - 0.5*DMIN(bin_slopes[k], 2.)); // limit this to ensure we don't miss if this should be larger
     }
 #endif
