@@ -271,6 +271,18 @@ double INLINE_FUNC Get_Gas_BField(int i_particle_id, int k_vector_component)
 }
 
 
+/* handy function that just returns the B-field magnitude in microGauss, physical units. purely here to save us time re-writing this */
+double get_cell_Bfield_in_microGauss(int i)
+{
+    double Bmag=0;
+#ifdef MAGNETIC
+    int k; for(k=0;k<3;k++) {double B=Get_Gas_BField(i,k)*All.cf_a2inv; Bmag+=B*B;} // actual B-field in code units
+#else
+    Bmag=2.*SphP[i].Pressure*All.cf_a3inv; // assume equipartition
+#endif
+    return UNIT_B_IN_GAUSS * sqrt(DMAX(Bmag,0)) * 1.e6; // return B in microGauss
+}
+
 
 /* returns the conversion factor to go -approximately- (for really quick estimation) in code units, from internal energy to soundspeed */
 double INLINE_FUNC convert_internalenergy_soundspeed2(int i, double u)

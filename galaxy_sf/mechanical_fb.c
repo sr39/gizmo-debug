@@ -198,7 +198,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double CR_energy_to_inject = 0;
     if((local.SNe_v_ejecta > 2000./UNIT_VEL_IN_KMS))
     {
-        local.SNe_v_ejecta *= sqrt(1-All.CosmicRay_SNeFraction);
+        local.SNe_v_ejecta *= sqrt(1.-All.CosmicRay_SNeFraction);
         CR_energy_to_inject = (All.CosmicRay_SNeFraction/(1.-All.CosmicRay_SNeFraction)) * 0.5 * local.Msne * local.SNe_v_ejecta * local.SNe_v_ejecta;
     }
 #endif
@@ -542,7 +542,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double CR_energy_to_inject = 0;
     if((v_ejecta_eff > 2000./UNIT_VEL_IN_KMS))
     {
-        v_ejecta_eff *= sqrt(1-All.CosmicRay_SNeFraction);
+        v_ejecta_eff *= sqrt(1.-All.CosmicRay_SNeFraction);
         CR_energy_to_inject = (All.CosmicRay_SNeFraction/(1.-All.CosmicRay_SNeFraction)) * 0.5 * local.Msne * v_ejecta_eff * v_ejecta_eff;
     }
 #endif

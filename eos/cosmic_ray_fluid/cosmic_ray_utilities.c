@@ -499,7 +499,7 @@ double Get_CosmicRayGradientLength(int i, int k_CRegy)
     /* limit this scale length; if the gradient is too shallow, there is no information beyond a few smoothing lengths, so we can't let streaming go that far */
     double L_gradient_max = DMAX(1000.*L_gradient_min, 500.0*PPP[i].Hsml*All.cf_atime);
 
-    /* also, physically, cosmic rays cannot stream/diffuse with a faster coefficient than ~v_max*L_mean_free_path, where L_mean_free_path ~ 2.e20 * (cm^-3/n) */
+    /* also, physically, cosmic rays cannot stream/diffuse with a faster coefficient than ~v_max*L_mean_free_path, where L_mean_free_path ~ 2.e20 * (cm^-3/n) [collisional here] */
     double nH_cgs = SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS;
     double L_mean_free_path = (3.e25 / nH_cgs) / UNIT_LENGTH_IN_CGS;
     L_gradient_max = DMIN(L_gradient_max, L_mean_free_path);
@@ -583,19 +583,6 @@ double return_CRbin_numberdensity_in_cgs(int target, int k_CRegy)
 }
 
 
-/* handy functoin that just returns the B-field magnitude in microGauss, physical units. purely here to save us time re-writing this */
-double get_cell_Bfield_in_microGauss(int i)
-{
-    double Bmag=0;
-#ifdef MAGNETIC
-    int k; for(k=0;k<3;k++) {double B=Get_Gas_BField(i,k)*All.cf_a2inv; Bmag+=B*B;} // actual B-field in code units
-#else
-    Bmag=2.*SphP[i].Pressure*All.cf_a3inv; // assume equipartition
-#endif
-    return UNIT_B_IN_GAUSS * sqrt(DMAX(Bmag,0)) * 1.e6; // return B in microGauss
-}
-
-
 /* handy function that just returns the radiation energy density in eV/cm^-3, physical units. purely here to save us time re-writing this */
 double get_cell_Urad_in_eVcm3(int i)
 {
@@ -622,7 +609,7 @@ double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy)
 #if !defined(COSMIC_RAYS_DISABLE_STREAMING) && !defined(COSMIC_RAYS_ALFVEN)
     double vstream_0 = Get_CosmicRayStreamingVelocity(target), vA=Get_Gas_Alfven_speed_i(target); /* define naive streaming and Alfven speeds */
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-    vA /= Get_Gas_Ionized_Fraction(target); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
+    vA /= sqrt(Get_Gas_Ionized_Fraction(target)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
     if(vA>0) {vstream_0 = DMIN(vA, vstream_0);} /* account for the fact that the loss term is always [or below] the Alfven speed, regardless of the bulk streaming speed */
     double L_cr = Get_CosmicRayGradientLength(target,k_CRegy), v_st_eff = SphP[target].CosmicRayDiffusionCoeff[k_CRegy] / (GAMMA_COSMICRAY * L_cr + MIN_REAL_NUMBER); // maximum possible streaming speed from combined diffusivity
