@@ -303,7 +303,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
 
         iter_condition = ((fabs(du/u) > 3.0e-2)||((fabs(du/u) > 3.0e-4)&&(iter < 10)));
 #ifdef RT_INFRARED
-        iter_condition = iter_condition || (((fabs(LambdaDust - SphP[target].LambdaDust) > 1e-2*fabs(LambdaDust)) || (fabs(u - u_old - ratefact * LambdaNet * dt) > 0.01*fabs(u-u_old)))  && (iter < MAXITER-10));
+        iter_condition = iter_condition || (((fabs(LambdaDust - SphP[target].LambdaDust) > 1e-2*fabs(LambdaDust)) || (fabs(u - u_old - ratefact * LambdaNet * dt) > 0.01*fabs(u-u_old)))  && (iter < MAXITER-11));
 #endif        
         iter_condition = iter_condition &&  (iter < MAXITER); // make sure we don't iterate more than MAXITER times
         
