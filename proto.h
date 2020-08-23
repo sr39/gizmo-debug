@@ -458,11 +458,14 @@ void set_injection_accel(void);
 int density_isactive(int n);
 int GasGrad_isactive(int i);
 
+#ifdef HYDRO_VOLUME_CORRECTIONS
+void cellcorrections_calc(void);
+void cellcorrections_final_operations_and_cleanup(void);
+#endif
+
 size_t sizemax(size_t a, size_t b);
 
-
 void reconstruct_timebins(void);
-
 void init_peano_map(void);
 peanokey peano_hilbert_key(int x, int y, int z, int bits);
 peanokey peano_and_morton_key(int x, int y, int z, int bits, peanokey *morton);
