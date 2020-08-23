@@ -1309,14 +1309,7 @@ void IonizeParamsTable(void)
 
     logz = log10(redshift + 1.0);
     ilow = 0;
-    for(i = 0; i < nheattab; i++)
-    {
-        if(inlogz[i] < logz)
-            ilow = i;
-        else
-            break;
-    }
-
+    for(i=0; i<nheattab; i++) {if(inlogz[i] < logz) {ilow = i;} else {break;}}
     dzlow = logz - inlogz[ilow];
     dzhi = inlogz[ilow + 1] - logz;
 
@@ -1799,10 +1792,10 @@ double evaluate_Compton_heating_cooling_rate(int target, double T, double nHcgs,
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
     if(target >= 0)
     {
-        int k; double E_tot_to_evol_eVcgs = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_EV;
+        int k; double E_tot_to_evol_eVcgs = (SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_EV;
         for(k=0;k<N_RT_FREQ_BINS;k++)
         {
-            double e_tmp = SphP[i].Rad_E_gamma_Pred[k] * E_tot_to_evol_eVcgs;
+            double e_tmp = SphP[target].Rad_E_gamma_Pred[k] * E_tot_to_evol_eVcgs, Teff = 0;
             
 #if defined(GALSF_FB_FIRE_RT_LONGRANGE) /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
             if(k==RT_FREQ_BIN_FIRE_IR) {Teff=30.;}
@@ -1810,7 +1803,7 @@ double evaluate_Compton_heating_cooling_rate(int target, double T, double nHcgs,
             if(k==RT_FREQ_BIN_FIRE_UV) {Teff=15000.;}
 #endif
 #if defined(RT_INFRARED) /* special mid-through-far infrared band, which includes IR radiation temperature evolution */
-            if(k==RT_FREQ_BIN_INFRARED) {Teff=SphP[i].Dust_Temperature;}
+            if(k==RT_FREQ_BIN_INFRARED) {Teff=SphP[target].Dust_Temperature;}
 #endif
 #if defined(RT_OPTICAL_NIR) /* Optical-NIR approximate spectra for stars as used in the FIRE (Hopkins et al.) models; from 0.41-3.4 eV */
             if(k==RT_FREQ_BIN_OPTICAL_NIR) {Teff=2800.;}
