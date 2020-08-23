@@ -488,8 +488,8 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                         #pragma omp atomic write
                         NeedToWakeupParticles_local = 1;
                     }
-#if (SLOPE_LIMITER_TOLERANCE <= 0)
-                    if(local.Timestep*WAKEUP < TimeStep_J) {
+#if (SLOPE_LIMITER_TOLERANCE < 0) /* special here - can set off a chain of wakeups that runs away, b/c woken up cell has bottom timestep so will wake up everything else, etc. need to use something more like 'intended timestep' for this to work */
+                    if(2.*dt_hydrostep_i*WAKEUP < dt_hydrostep_j) {
                         #pragma omp atomic write
                         PPPZ[j].wakeup = 1;
                         #pragma omp atomic write

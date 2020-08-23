@@ -272,6 +272,7 @@ int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend
 double INLINE_FUNC Get_Particle_Size(int i);
 double INLINE_FUNC Get_Gas_density_for_energy_i(int i);
 double INLINE_FUNC Get_Particle_Expected_Area(double h);
+double get_cell_Bfield_in_microGauss(int i);
 double Get_Gas_Ionized_Fraction(int i);
 #ifdef COSMIC_RAYS
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i);
@@ -292,7 +293,6 @@ double return_CRbin_CR_charge_in_e(int target, int k_CRegy);
 double return_CRbin_kinetic_energy_in_GeV(int target, int k_CRegy);
 double return_CRbin_gamma_factor(int target, int k_CRegy);
 double return_CRbin_beta_factor(int target, int k_CRegy);
-double get_cell_Bfield_in_microGauss(int i);
 double get_cell_Urad_in_eVcm3(int i);
 void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime_cgs);
 double CR_gas_heating(int target, double n_elec, double nHcgs);

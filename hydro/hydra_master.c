@@ -829,8 +829,7 @@ void hydro_final_operations_and_cleanup(void)
             /* if we have winds, we decouple particles briefly if delaytime>0 */
             if(SphP[i].DelayTime > 0)
             {
-                for(k = 0; k < 3; k++)
-                    SphP[i].HydroAccel[k] = 0;//SphP[i].dMomentum[k] = 0;
+                for(k = 0; k < 3; k++) {SphP[i].HydroAccel[k] = 0;}//SphP[i].dMomentum[k] = 0;
                 SphP[i].DtInternalEnergy = 0; //SphP[i].dInternalEnergy = 0;
                 double windspeed = sqrt(2 * All.WindEnergyFraction * All.FactorSN * All.EgySpecSN / (1 - All.FactorSN) / All.WindEfficiency) * All.Time;
                 windspeed *= fac_mu;

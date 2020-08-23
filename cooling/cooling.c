@@ -781,10 +781,10 @@ extern FILE *fd;
 double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 {
     double n_elec=n_elec_guess, nH0, nHe0, nHp, nHep, nHepp, mu; /* ionization states [computed below] */
-    double Lambda, Heat, LambdaFF, LambdaCmptn, LambdaExcH0, LambdaExcHep, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
+    double Lambda, Heat, LambdaFF, LambdaCompton, LambdaExcH0, LambdaExcHep, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
     double LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, redshift, T, shieldfac, LambdaMol, LambdaMetal;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
-    LambdaMol=0; LambdaMetal=0; LambdaCmptn=0;
+    LambdaMol=0; LambdaMetal=0; LambdaCompton=0;
     if(logT <= Tmin) {logT = Tmin + 0.5 * deltaT;}	/* floor at Tmin */
     if(!isfinite(rho)) {return 0;}
     T = pow(10.0, logT);
@@ -804,11 +804,6 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     double local_gammamultiplier = return_local_gammamultiplier(target);
     shieldfac = return_uvb_shieldfac(target, local_gammamultiplier*gJH0/1.0e-12, nHcgs, logT);
     
-#ifdef BH_COMPTON_HEATING
-    double AGN_LambdaPre = 0, AGN_T_Compton; AGN_T_Compton = 2.0e7; /* approximate from Sazonov et al. */
-    if(target >= 0) {AGN_LambdaPre = 4.488e-34 * SphP[target].Rad_Flux_AGN * UNIT_FLUX_IN_CGS;} /* convert physical code units to cgs; need to convert to relevant pre-factor for heating rate:  sigma_T x 4*k_B/(me*c^2) in CGS, just pre-computed here for convenience */
-#endif
-
 #if defined(COOL_LOW_TEMPERATURES)
     double Tdust = 30., LambdaDust = 0.; /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS)
@@ -836,6 +831,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         /* get ionization states for H and He with associated ionization, collision, recombination, and free-free heating/cooling */
         Lambda = find_abundances_and_rates(logT, rho, target, shieldfac, 1, &n_elec, &nH0, &nHp, &nHe0, &nHep, &nHepp, &mu);
 
+        LambdaCompton = evaluate_Compton_heating_cooling_rate(target,T,nHcgs,n_elec,shieldfac); /* note this can have either sign: heating or cooling */
+        if(LambdaCompton > 0) {Lambda += LambdaCompton;}
+        
 #ifdef COOL_METAL_LINES_BY_SPECIES
         /* can restrict to low-densities where not self-shielded, but let shieldfac (in ne) take care of this self-consistently */
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
@@ -922,28 +920,6 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
 
 
-        if(All.ComovingIntegrationOn)
-        {
-            redshift = 1 / All.Time - 1;
-            LambdaCmptn = 5.65e-36 * n_elec * (T - 2.73 * (1. + redshift)) * pow(1. + redshift, 4.) / nHcgs;
-            Lambda += LambdaCmptn;
-        }
-        else {LambdaCmptn = 0;}
-
-#if defined(BH_COMPTON_HEATING)
-        if(T > AGN_T_Compton)
-        {
-            LambdaCmptn = AGN_LambdaPre * (T - AGN_T_Compton) * n_elec/nHcgs;
-            if(T > 10.*AGN_T_Compton)
-            {
-                double LambdaCmptn_var = (AGN_LambdaPre/1.e-26) * (T/1.e9) / nHcgs;
-                LambdaCmptn_var = 2.55e-19 * pow( (LambdaCmptn_var*LambdaCmptn_var*LambdaCmptn_var) * (1.e9/T) , 0.2 );
-                if(LambdaCmptn > LambdaCmptn_var) {LambdaCmptn = LambdaCmptn_var;}
-            }
-            Lambda += LambdaCmptn;
-        }
-#endif
-
 
         Heat = 0;  /* Now, collect heating terms */
 
@@ -1014,29 +990,14 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
 #endif
 
-
-#if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) // account for Compton heating by X-rays:
-        double u_gamma_xr=0, Tc_xr=0, prefac_for_compton = 1.35e-23 * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_CGS / nHcgs; // convert Rad_E_gamma to (u_gamma*c)*sigma_Thompson*(4*kB)/(me*c^2) in CGS (last 1/n is to make it in appropriate "Lambda" units)
-#if defined(RT_HARD_XRAY)
-        u_gamma_xr=SphP[target].Rad_E_gamma[RT_FREQ_BIN_HARD_XRAY]; Tc_xr=1.7e7; if(T<Tc_xr) {Heat += prefac_for_compton*u_gamma_xr*(Tc_xr-T);}
-#endif
-#if defined(RT_SOFT_XRAY)
-        u_gamma_xr=SphP[target].Rad_E_gamma[RT_FREQ_BIN_SOFT_XRAY]; Tc_xr=3.6e6; if(T<Tc_xr) {Heat += prefac_for_compton*u_gamma_xr*(Tc_xr-T);}
-#endif
-#endif
-
-
 #if defined(COOL_LOW_TEMPERATURES)
         if(LambdaDust>0) {Heat += LambdaDust;} /* Dust collisional heating (Tdust > Tgas) */
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         if(LambdaMetal<0) {Heat -= LambdaMetal;} // potential net heating from low-temperature gas-phase metal line absorption //
 #endif
 #endif
-
-
-#if defined(BH_COMPTON_HEATING) /* Compton heating from AGN */
-        if(T < AGN_T_Compton) Heat += AGN_LambdaPre * (AGN_T_Compton - T) / nHcgs; /* note this is independent of the free electron fraction */
-#endif
+        
+        if(LambdaCompton<0) {Heat -= LambdaCompton;} /* Compton heating rather than cooling */
 
 #if defined(GALSF_FB_FIRE_RT_UVHEATING) || defined(RT_PHOTOELECTRIC)
         /* Photoelectric heating following Bakes & Thielens 1994 (also Wolfire 1995); now with 'update' from Wolfire 2005 for PAH [fudge factor 0.5 below] */
@@ -1065,35 +1026,13 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
   else				/* here we're outside of tabulated rates, T>Tmax K */
     {
       /* at high T (fully ionized); only free-free and Compton cooling are present.  Assumes no heating. */
+      Heat = LambdaExcH0 = LambdaExcHep = LambdaIonH0 = LambdaIonHe0 = LambdaIonHep = LambdaRecHp = LambdaRecHep = LambdaRecHepp = LambdaRecHepd = 0;
+      nHp = 1.0; nHep = 0; nHepp = yhelium(target); n_elec = nHp + 2.0 * nHepp; /* very hot: H and He both fully ionized */
 
-      Heat = 0;
-      LambdaExcH0 = LambdaExcHep = LambdaIonH0 = LambdaIonHe0 = LambdaIonHep = LambdaRecHp = LambdaRecHep = LambdaRecHepp = LambdaRecHepd = 0;
+      LambdaFF = 1.42e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - logT) * (5.5 - logT) / 3)) * (nHp + 4 * nHepp) * n_elec; // free-free
+      LambdaCompton = evaluate_Compton_heating_cooling_rate(target,T,nHcgs,n_elec,shieldfac); // Compton
 
-      /* very hot: H and He both fully ionized */
-      nHp = 1.0;
-      nHep = 0;
-      nHepp = yhelium(target);
-      n_elec = nHp + 2.0 * nHepp;
-
-      LambdaFF = 1.42e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - logT) * (5.5 - logT) / 3)) * (nHp + 4 * nHepp) * n_elec;
-
-      if(All.ComovingIntegrationOn)
-      {
-          redshift = 1 / All.Time - 1; /* add inverse Compton cooling off the microwave background */
-          LambdaCmptn = 5.65e-36 * n_elec * (T - 2.73 * (1. + redshift)) * pow(1. + redshift, 4.) / nHcgs;
-      }
-      else {LambdaCmptn = 0;}
-
-#if defined(BH_COMPTON_HEATING) /* Relativistic compton cooling from an AGN source */
-        LambdaCmptn += AGN_LambdaPre * (T - AGN_T_Compton) * (T/1.5e9)/(1-exp(-T/1.5e9)) * n_elec/nHcgs;
-        /* per CAFG's calculations, we should note that at very high temperatures, the rate-limiting step may be
-         the Coulomb collisions moving energy from protons to e-; which if slow will prevent efficient e- cooling */
-        double LambdaCmptn_var = (AGN_LambdaPre/1.e-26) * (T/1.e9) / nHcgs;
-        LambdaCmptn_var = 2.55e-19 * pow( (LambdaCmptn_var*LambdaCmptn_var*LambdaCmptn_var) * (1.e9/T) , 0.2 );
-        if(LambdaCmptn > LambdaCmptn_var) {LambdaCmptn = LambdaCmptn_var;}
-#endif
-
-      Lambda = LambdaFF + LambdaCmptn;
+      Lambda = LambdaFF + DMAX(LambdaCompton,0);
     }
 
     double Q = Heat - Lambda;
@@ -1839,6 +1778,103 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
     }
     return DMAX(DMIN(Tdust_eqm , 2000.) , 1.); // limit at sublimation temperature or some very low temp //
 }
+
+
+
+
+/* this function evaluates Compton heating+cooling rates and synchrotron cooling for thermal gas populations, accounting for the
+    explicitly-evolved radiation field if it is evolved (otherwise assuming a standard background), and B-fields if they
+    are evolved, as well as the proper relativistic or non-relativistic effects and two-temperature plasma effects. */
+double evaluate_Compton_heating_cooling_rate(int target, double T, double nHcgs, double n_elec, double shielding_factor_for_exgalbg)
+{
+    double Lambda = 0;
+    double compton_prefac_eV = 2.16e-35 / nHcgs; // multiply field in eV/cm^3 by this and temperature difference to obtain rate
+
+    double e_CMB_eV=0.262*All.cf_a3inv/All.cf_atime, T_cmb = 2.73/All.cf_atime; // CMB [energy in eV/cm^3, T in K]
+    Lambda += compton_prefac_eV * n_elec * e_CMB_eV * (T-T_cmb);
+
+    double e_UVB_eV = shielding_factor_for_exgalbg * 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // this comes from the cosmic optical+UV backgrounds. small correction, so treat simply, and ignore when self-shielded.
+    Lambda += compton_prefac_eV * n_elec * e_UVB_eV * (T-2.e4); // assume very crude approx Compton temp ~2e4 for UVB
+    
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
+    if(target >= 0)
+    {
+        int k; double E_tot_to_evol_eVcgs = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_EV;
+        for(k=0;k<N_RT_FREQ_BINS;k++)
+        {
+            double e_tmp = SphP[i].Rad_E_gamma_Pred[k] * E_tot_to_evol_eVcgs;
+            
+#if defined(GALSF_FB_FIRE_RT_LONGRANGE) /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
+            if(k==RT_FREQ_BIN_FIRE_IR) {Teff=30.;}
+            if(k==RT_FREQ_BIN_FIRE_OPT) {Teff=4000.;}
+            if(k==RT_FREQ_BIN_FIRE_UV) {Teff=15000.;}
+#endif
+#if defined(RT_INFRARED) /* special mid-through-far infrared band, which includes IR radiation temperature evolution */
+            if(k==RT_FREQ_BIN_INFRARED) {Teff=SphP[i].Dust_Temperature;}
+#endif
+#if defined(RT_OPTICAL_NIR) /* Optical-NIR approximate spectra for stars as used in the FIRE (Hopkins et al.) models; from 0.41-3.4 eV */
+            if(k==RT_FREQ_BIN_OPTICAL_NIR) {Teff=2800.;}
+#endif
+#if defined(RT_NUV) /* Near-UV approximate spectra (UV/optical spectra, sub-photo-electric, but high-opacity) for stars as used in the FIRE (Hopkins et al.) models; from 3.4-8 eV */
+            if(k==RT_FREQ_BIN_NUV) {Teff=12000.;}
+#endif
+#if defined(RT_PHOTOELECTRIC) /* photo-electric bands (8-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
+            if(k==RT_FREQ_BIN_PHOTOELECTRIC) {Teff=24400.;}
+#endif
+#if defined(RT_LYMAN_WERNER) /* lyman-werner bands (11.2-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
+            if(k==RT_FREQ_BIN_LYMAN_WERNER) {Teff=28800.;}
+#endif
+#if defined(RT_CHEM_PHOTOION) /* Hydrogen and Helium ionizing bands: H0 here */
+            if(k==RT_FREQ_BIN_H0) {Teff=2340.*rt_nu_eff_eV[k];}
+#endif
+#if defined(RT_PHOTOION_MULTIFREQUENCY) /* Hydrogen and Helium ionizing bands: He bands */
+            if(k==RT_FREQ_BIN_He0 || k==RT_FREQ_BIN_He1 || k==RT_FREQ_BIN_He2) {Teff=2340.*rt_nu_eff_eV[k];}
+#endif
+#if defined(RT_SOFT_XRAY) /* soft and hard X-rays for e.g. compton heating by X-ray binaries */
+            if(k==RT_FREQ_BIN_SOFT_XRAY) {Teff=3.6e6;}
+#endif
+#if defined(RT_HARD_XRAY) /* soft and hard X-rays for e.g. compton heating by X-ray binaries */
+            if(k==RT_FREQ_BIN_HARD_XRAY) {Teff=1.7e7;}
+#endif
+            if(Teff < 3.e4) {e_tmp *= n_elec;} // low-energy radiation acts inefficiently on neutrals here
+            Lambda += compton_prefac_eV * e_tmp * (T - Teff); // add to compton heating/cooling terms
+        }
+    }
+#else // no explicit RHD terms evolved, so assume a MW-like ISRF instead
+    double e_IR_eV=0.31, T_IR=DMAX(30.,T_cmb); // Milky way ISRF from Draine (2011), assume peak of dust emission at ~100 microns
+    double e_OUV_eV=0.66, T_OUV=5800.; // Milky way ISRF from Draine (2011), assume peak of stellar emission at ~0.6 microns [can still have hot dust, this effect is pretty weak]
+    Lambda += compton_prefac_eV * n_elec * (e_IR_eV*(T-T_IR) + e_OUV_eV*(T-T_OUV));
+#endif
+
+#ifdef BH_COMPTON_HEATING /* custom band to represent (non)relativistic X-ray compton cooling from an AGN source without full RHD */
+    if(target >= 0)
+    {
+        double e_agn = (SphP[target].Rad_Flux_AGN * UNIT_FLUX_IN_CGS) / (C_LIGHT * ELECTRONVOLT_IN_ERGS), T_agn=2.e7; /* approximate from Sazonov et al. */
+        Lambda += compton_prefac_eV * e_agn * (T-T_agn); // since the heating here is primarily hard X-rays, and the cooling only relevant for very high temps, do not have an n_elec here
+    }
+#endif
+
+#ifdef MAGNETIC /* include sychrotron losses as well as long as we're here, since these scale more or less identically just using the magnetic instead of radiation energy */
+    if(target >= 0)
+    {
+        double b_muG = get_cell_Bfield_in_microGauss(target), U_mag_ev=0.0248342*b_muG*b_muG;
+        Lambda += compton_prefac_eV * U_mag_ev * T; // synchrotron losses proportional to temperature (non-relativistic here), as inverse compton, just here without needing to worry about "T-T_eff", as if T_eff->0
+    }
+#endif
+
+    double T_eff_for_relativistic_corr = T; /* used below, but can be corrected */
+    if(Lambda > 0) /* per CAFG's calculations, we should note that at very high temperatures, the rate-limiting step may be the Coulomb collisions moving energy from protons to e-; which if slow will prevent efficient e- cooling */
+    {
+        double Lambda_limiter_var = 1.483e34 * Lambda*Lambda*T; /* = (Lambda/2.6e-22)^2 * (T/1e9): if this >> 1, follow CAFG and cap at cooling rate assuming equilibrium e- temp from Coulomb exchange balancing compton */
+        if(Lambda_limiter_var > 1) {Lambda_limiter_var = 1./pow(Lambda_limiter_var,0.2); Lambda*=Lambda_limiter_var; T_eff_for_relativistic_corr*=Lambda_limiter_var;}
+    }
+    if(T_eff_for_relativistic_corr > 3.e7) {Lambda *= (T_eff_for_relativistic_corr/1.5e9) / (1-exp(-T_eff_for_relativistic_corr/1.5e9));} /* relativistic correction term, becomes important at >1e9 K, enhancing rate */
+    
+    return Lambda;
+}
+
+
+
 
 
 
