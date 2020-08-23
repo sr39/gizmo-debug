@@ -164,7 +164,9 @@ void do_the_cooling_for_particle(int i)
 #endif
 
 #ifdef RT_INFRARED /* assume (for now) that all radiated/absorbed energy comes from the IR bin [not really correct, this should just be the dust term] */
-        double de_u = -(unew-SphP[i].InternalEnergy) * P[i].Mass; /* energy gained by gas needs to be subtracted from radiation */
+        double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density / PROTONMASS;	/* hydrogen number dens in cgs units */
+        double ratefact = nHcgs * nHcgs / (SphP[i].Density * UNIT_DENSITY_IN_CGS);
+        double de_u = -SphP[i].LambdaDust * ratefact * dtime*UNIT_TIME_IN_CGS / (UNIT_SPECEGY_IN_CGS) * P[i].Mass; /* energy gained by gas needs to be subtracted from radiation */
         if(de_u<=-0.99*SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]) {de_u=-0.99*SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]; unew=DMAX(0.01*SphP[i].InternalEnergy , SphP[i].InternalEnergy-de_u/P[i].Mass);}
         SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED] += de_u; /* energy gained by gas is lost here */
         SphP[i].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED] = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]; /* updated drifted */
@@ -253,7 +255,10 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
 
 #else // CHIMES
 
-    int iter=0, iter_upper=0, iter_lower=0; double LambdaNet, ratefact, u_upper, u_lower;
+    int iter=0, iter_upper=0, iter_lower=0, iter_condition = 0; double LambdaNet, ratefact, u_upper, u_lower;
+#ifdef RT_INFRARED
+    double LambdaDust;
+#endif    
     rho *= UNIT_DENSITY_IN_CGS;	/* convert to physical cgs units */
     u_old *= UNIT_SPECEGY_IN_CGS;
     dt *= UNIT_TIME_IN_CGS;
@@ -287,13 +292,23 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     do
     {
         u = 0.5 * (u_lower + u_upper);
-        LambdaNet = CoolingRateFromU(u, rho, ne_guess, target);
+#ifdef RT_INFRARED
+        LambdaDust = SphP[target].LambdaDust;
+#endif          
+        LambdaNet = CoolingRateFromU(u, rho, ne_guess, target);      
         if(u - u_old - ratefact * LambdaNet * dt > 0) {u_upper = u;} else {u_lower = u;}
         du = u_upper - u_lower;
         iter++;
         if(iter >= (MAXITER - 10)) {printf("u=%g u_old=%g u_upper=%g u_lower=%g ne_guess=%g dt=%g iter=%d \n", u,u_old,u_upper,u_lower,ne_guess,dt,iter);}
+
+        iter_condition = ((fabs(du/u) > 3.0e-2)||((fabs(du/u) > 3.0e-4)&&(iter < 10)));
+#ifdef RT_INFRARED
+        iter_condition = iter_condition || (((fabs(LambdaDust - SphP[target].LambdaDust) > 1e-2*fabs(LambdaDust)) || (fabs(u - u_old - ratefact * LambdaNet * dt) > 0.01*fabs(u-u_old)))  && (iter < MAXITER-11));
+#endif        
+        iter_condition = iter_condition &&  (iter < MAXITER); // make sure we don't iterate more than MAXITER times
+        
     }
-    while(((fabs(du/u) > 3.0e-2)||((fabs(du/u) > 3.0e-4)&&(iter < 10))) && (iter < MAXITER)); /* iteration condition */
+    while(iter_condition); /* iteration condition */
     /* crash condition */
     if(iter >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g target=%d \n",u_old,rho,dt,ne_guess,target); endrun(10);}
     double specific_energy_codeunits_toreturn = u / UNIT_SPECEGY_IN_CGS;    /* in internal units */
@@ -462,19 +477,23 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
         {
             if(temp >= T_bracket_max || temp <= T_bracket_min) {temp = sqrt(T_bracket_min*T_bracket_max);} // bisect (in log-space)
         }
-        
+#ifndef RT_INFRARED        
         if(fabs(temp-temp_old_old)/(temp+temp_old_old) < 1.e-3) {double wt=get_random_number(12*iter+340*ThisTask+5435*target); temp=(wt*temp_old + (1.-wt)*temp_new);}
+#endif        
         temp_old_old = temp_old;
         iter++;
         if(iter > (MAXITER - 10)) {printf("-> temp_next/new/old/oldold=%g/%g/%g/%g ne=%g mu=%g rho=%g iter=%d target=%d err_new/prev=%g/%g gamma_minus_1_mu_new/prev=%g/%g Brackets: Error_bracket_positive=%g Error_bracket_negative=%g T_bracket_Min/Max=%g/%g fac_for_SecantDT=%g \n", temp,temp_new,temp_old,temp_old_old,*ne_guess, (*mu_guess) ,rho,iter,target,err_new,err_old,prefac_fun,prefac_fun_old,T_bracket_errpos,T_bracket_errneg,T_bracket_min,T_bracket_max,fac); fflush(stdout);}
     }
     while(
+#ifdef RT_INFRARED
+        (fabs(temp - temp_old) > 1e-3 * temp) && iter < MAXITER);
+#else   
           ((fabs(temp - temp_old) > 0.25 * temp) ||
            ((fabs(temp - temp_old) > 0.1 * temp) && (temp > 20.)) ||
            ((fabs(temp - temp_old) > 0.05 * temp) && (temp > 200.)) ||
            ((fabs(temp - temp_old) > 0.01 * temp) && (temp > 200.) && (iter<100)) ||
            ((fabs(temp - temp_old) > 1.0e-3 * temp) && (temp > 200.) && (iter<10))) && iter < MAXITER);
-
+#endif
     if(iter >= MAXITER) {printf("failed to converge in convert_u_to_temp(): u_input= %g rho_input=%g n_elec_input=%g target=%d\n", u_input, rho_input, *ne_guess, target); endrun(12);}
 
     if(temp<=0) temp=pow(10.0,Tmin);
@@ -892,6 +911,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
             if(T>3.e5) {double dx=(T-3.e5)/2.e5; LambdaDust *= exp(-DMIN(dx*dx,40.));} /* needs to truncate at high temperatures b/c of dust destruction */
             LambdaDust *= truncation_factor; // cutoff factor from above for where the tabulated rates take over at high temperatures
+#ifdef RT_INFRARED            
+            SphP[target].LambdaDust = LambdaDust;
+#endif            
             if(!isfinite(LambdaDust)) {LambdaDust=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
             if(LambdaDust<0) {Lambda -= LambdaDust;} /* add the -positive- Lambda-dust associated with cooling */
         }
