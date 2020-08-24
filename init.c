@@ -883,11 +883,7 @@ void init(void)
 #ifdef GALSF_GENERATIONS
         All.MinMassForParticleMerger /= (float)GALSF_GENERATIONS;
 #endif
-        /* All.MaxMassForParticleSplit  = 5.01 * mpi_mass_max; */
         All.MaxMassForParticleSplit  = 3.01 * mpi_mass_max;
-#ifdef TRUELOVE_REFINEMENT
-        All.MaxMassForParticleSplit = 1.01 * mpi_mass_max;
-#endif        
 #ifdef MERGESPLIT_HARDCODE_MAX_MASS
         All.MaxMassForParticleSplit = MERGESPLIT_HARDCODE_MAX_MASS;
 #endif
