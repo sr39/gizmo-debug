@@ -1878,15 +1878,15 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 
 
 #if defined(MHD_CONSTRAINED_GRADIENT)
-                double V_j = P[j].Mass / SphP[j].Density;
-                double Face_Area_Vec[3];
-                double wt_i,wt_j; wt_i=V_i; wt_j=V_j;
+                double V_j = P[j].Mass / SphP[j].Density, Face_Area_Vec[3], wt_i=V_i, wt_j=V_j, Particle_Size_i=pow(V_i,1./NUMDIMS)*All.cf_atime, Particle_Size_j=Get_Particle_Size(j)*All.cf_atime;
 #if (SLOPE_LIMITER_TOLERANCE != 2) && !((defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)) // unless using the most aggressive reconstruction, we will limit face-area disparity here //
 #if defined(COOLING) || (SLOPE_LIMITER_TOLERANCE==0)
                 if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=2.*V_i*V_j/(V_i+V_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
 #else
-                if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*PPP[j].Hsml+V_j*local.Hsml)/(local.Hsml+PPP[j].Hsml);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = (V_i*PPP[j].Hsml + V_j*local.Hsml) / (local.Hsml+PPP[j].Hsml); // should these be H, or be -effective sizes- //
+                if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*Particle_Size_j+V_j*Particle_Size_i)/(Particle_Size_i+Particle_Size_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = (V_i*PPP[j].Hsml + V_j*local.Hsml) / (local.Hsml+PPP[j].Hsml); // should these be H, or be -effective sizes- //
 #endif
+#elif defined(GALSF)
+                if( (fabs(log(V_i/V_j)/NUMDIMS) > 1.25) && (kernel.r > local.Hsml || kernel.r > PPP[j].Hsml) ) {wt_i=wt_j=(V_i*Particle_Size_j+V_j*Particle_Size_i)/(Particle_Size_i+Particle_Size_j);}
 #endif
                 double Face_Area_Norm = 0;
                 for(k=0;k<3;k++)
