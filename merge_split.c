@@ -540,8 +540,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
     P[i].Pos[0] += dx; P[j].Pos[0] -= dx; P[i].Pos[1] += dy; P[j].Pos[1] -= dy; P[i].Pos[2] += dz; P[j].Pos[2] -= dz;
 
     /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
-    // we don't have to do below because we rebuild the tree (TO: 21/06/2019)
-#ifdef MERGE_SPLIT_ONTHEFLY
+#ifdef PARTICLE_MERGE_SPLIT_EVERY_TIMESTEP    
     long bin = P[i].TimeBin;
     if(FirstInTimeBin[bin] < 0) {FirstInTimeBin[bin]=j; LastInTimeBin[bin]=j; NextInTimeBin[j]=-1; PrevInTimeBin[j]=-1;} /* only particle in this time bin on this task */
     else {NextInTimeBin[j]=FirstInTimeBin[bin]; PrevInTimeBin[j]=-1; PrevInTimeBin[FirstInTimeBin[bin]]=j; FirstInTimeBin[bin]=j;} /* there is already at least one particle; add this one "to the front" of the list */
