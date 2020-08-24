@@ -126,12 +126,14 @@ void run(void)
 
         compute_hydro_densities_and_forces();	/* densities, gradients, & hydro-accels for synchronous particles */
         
-#ifdef MERGESPLIT_ONTHEFLY // do merge/split routines every single timestep - need to do it here if we didn't do it during domain decomp on a coarse timestep
-        if(!reconstructed_tree){
+#ifdef PARTICLE_MERGE_SPLIT_EVERY_TIMESTEP // do merge/split routines every single timestep - need to do it here if we didn't do it during domain decomp on a coarse timestep
+        if(!reconstructed_tree)
+        {
             merge_and_split_particles();
             rearrange_particle_sequence();
         }
-#endif                        
+#endif
+        
         do_second_halfstep_kick();	/* this does the half-step kick at the end of the timestep */
 
         calculate_non_standard_physics();	/* source terms are here treated in a strang-split fashion */

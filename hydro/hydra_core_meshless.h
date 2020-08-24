@@ -13,7 +13,7 @@
 #define HYDRO_FACE_AREA_LIMITER // use more restrictive face-area limiter in the simulations [some applications this is useful, but unclear if we can generally apply it] //
 #endif
 #if !defined(PROTECT_FROZEN_FIRE) && !defined(HYDRO_FACE_AREA_LIMITER)
-#define HYDRO_FACE_VOLUME_RECONSTRUCTION_CORRECTION
+//#define HYDRO_FACE_VOLUME_RECONSTRUCTION_CORRECTION
 #endif
     
     double s_star_ij,s_i,s_j,v_frame[3],n_unit[3],dummy_pressure;
@@ -67,8 +67,10 @@
 #if defined(COOLING) || (SLOPE_LIMITER_TOLERANCE==0)
     if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=2.*V_i*V_j/(V_i+V_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
 #else
-    if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*PPP[j].Hsml+V_j*local.Hsml)/(local.Hsml+PPP[j].Hsml);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = (V_i*PPP[j].Hsml + V_j*local.Hsml) / (local.Hsml+PPP[j].Hsml); // should these be H, or be -effective sizes- //
+    if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*Particle_Size_j+V_j*Particle_Size_i)/(Particle_Size_i+Particle_Size_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = (V_i*PPP[j].Hsml + V_j*local.Hsml) / (local.Hsml+PPP[j].Hsml); // should these be H, or be -effective sizes- //
 #endif
+#elif defined(GALSF)
+    if( (fabs(log(V_i/V_j)/NUMDIMS) > 1.25) && (kernel.r > local.Hsml || kernel.r > PPP[j].Hsml) ) {wt_i=wt_j=(V_i*Particle_Size_j+V_j*Particle_Size_i)/(Particle_Size_i+Particle_Size_j);}
 #endif
     /* the effective gradient matrix is well-conditioned: we can safely use the consistent EOM */
     // note the 'default' formulation from Lanson and Vila takes wt_i=V_i, wt_j=V_j; but this assumes negligible variation in h between particles;
