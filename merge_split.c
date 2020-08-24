@@ -51,6 +51,16 @@ int does_particle_need_to_be_merged(int i)
 #endif
     }
 #endif
+#ifdef TRUELOVE_REFINEMENT
+    if(P[i].Type == 0){
+        return 0;
+        double cs = Get_Gas_Fast_MHD_wavespeed_i(i);
+        double lambda_J = cs * sqrt(M_PI / (All.G * SphP[i].Density));
+        double NJ = lambda_J / Get_Particle_Size(i);
+        if((NJ > TRUELOVE_REFINEMENT * 4) && (P[i].Mass < All.MaxMassForParticleSplit)){return 1;} // de-refine if we have more than 4*TRUELOVE_REFINEMENT cells per Jeans length and will not exceed the max mass
+        else {return 0;}
+    }
+#endif    
     if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 0;}
     if(P[i].Mass <= (All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
     return 0;
@@ -67,6 +77,12 @@ int does_particle_need_to_be_split(int i)
     return 0;
 #else
     if(P[i].Mass >= (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
+#ifdef TRUELOVE_REFINEMENT
+    double cs = Get_Gas_Fast_MHD_wavespeed_i(i);
+    double lambda_J = cs * sqrt(M_PI / (All.G * SphP[i].Density));
+    double NJ = lambda_J / Get_Particle_Size(i);
+    if((NJ < TRUELOVE_REFINEMENT) && (P[i].Mass > 2*MIN_REFINED_MASS)){return 1;}
+#endif
     return 0;
 #endif
 }
@@ -75,6 +91,14 @@ int does_particle_need_to_be_split(int i)
 double target_mass_renormalization_factor_for_mergesplit(int i)
 {
     double ref_factor=1.0;
+/* #ifdef TRUELOVE_REFINEMENT // get mass refinement factor needed to get TRUELOVE_REFINEMENT=1/J cells per Jeans length: m = cs^3 J^3 pi^3/2 G^-3/2 rho^-1/2 */
+/*     double cs = Get_Gas_Fast_MHD_wavespeed_i(i); */
+/*     double target_mass = cs * sqrt(M_PI/All.G) / (TRUELOVE_REFINEMENT); */
+/*     target_mass = target_mass * target_mass * target_mass; */
+/*     target_mass /= sqrt(SphP[i].Density); */
+/*     target_mass = DMAX(MIN_REFINED_MASS, 0.99*target_mass); */
+/*     ref_factor = DMIN(1, target_mass / All.MaxMassForParticleSplit); */
+/* #endif     */
 /*!
  #if defined(BH_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE) && !defined(SINGLE_STAR_SINK_DYNAMICS)
     ref_factor = DMIN(1.,sqrt(P[i].min_dist_to_bh + 0.0001)); // this is an example of the kind of routine you could use to scale resolution with BH distance //
@@ -493,7 +517,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
         double norm=0, dp[3]; int m; dp[0]=dp[1]=dp[2]=0;
         for(k = 0; k < NUMDIMS; k++)
         {
-            for(m = 0; m < NUMDIMS; m++) {dp[k] += SphP[i].NV_T[k][m];} 
+            for(m = 0; m < NUMDIMS; m++) {dp[k] += SphP[i].NV_T[k][m];}
             norm += dp[k] * dp[k];
         }
         if(norm > 0)
@@ -505,6 +529,12 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
             // if(dp[2]==1) {dx=d_r; dy=0; dz=0;} else {dz = sqrt(dp[1]*dp[1] + dp[0]*dp[0]); dx = -d_r * dp[1]/dz; dy = d_r * dp[0]/dz; dz = 0.0;}
         }
 #endif
+#ifdef MERGESPLIT_ONTHEFLY
+       long bin = P[i].TimeBin;
+       if(FirstInTimeBin[bin] < 0) {FirstInTimeBin[bin]=j; LastInTimeBin[bin]=j; NextInTimeBin[j]=-1; PrevInTimeBin[j]=-1;} /* only particle in this time bin on this task */
+            else {NextInTimeBin[j]=FirstInTimeBin[bin]; PrevInTimeBin[j]=-1; PrevInTimeBin[FirstInTimeBin[bin]]=j; FirstInTimeBin[bin]=j;} /* there is already at least one particle; add this one "to the front" of the list */
+       force_add_star_to_tree(i, j);
+#endif       
 #ifdef WAKEUP  /* TO: rather conservative. But we want to update Density and Hsml after the particle masses were changed */
         PPPZ[i].wakeup = 1; PPPZ[j].wakeup = 1; NeedToWakeupParticles_local = 1;
 #endif
