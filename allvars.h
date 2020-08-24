@@ -103,6 +103,16 @@
 #define PREVENT_PARTICLE_MERGE_SPLIT  /* particle merging/splitting doesn't make sense with frozen grids */
 #endif
 
+#ifdef TRUELOVE_REFINEMENT
+#define MERGESPLIT_ONTHEFLY // need to be able to perform merge/split operations on demand, not just coarse timesteps
+#endif
+
+#ifdef MERGESPLIT_ONTHEFLY
+#define MAINTAIN_TREE_IN_REARRANGE
+#ifndef MIN_REFINED_MASS
+#define MIN_REFINED_MASS 0 // minimum refined mass allowed, in code units
+#endif
+#endif
 
 
 #ifdef PMGRID
