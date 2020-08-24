@@ -55,8 +55,8 @@ int does_particle_need_to_be_merged(int i)
     if(P[i].Type == 0){
         return 0;
         double cs = Get_Gas_Fast_MHD_wavespeed_i(i);
-        double lambda_J = cs * sqrt(M_PI / (All.G * SphP[i].Density));
-        double NJ = lambda_J / Get_Particle_Size(i);
+        double lambda_J = cs * sqrt(M_PI / (All.G * SphP[i].Density * All.cf_a3inv));
+        double NJ = lambda_J / (Get_Particle_Size(i) * All.cf_atime);
         if((NJ > TRUELOVE_REFINEMENT * 4) && (P[i].Mass < All.MaxMassForParticleSplit)){return 1;} // de-refine if we have more than 4*TRUELOVE_REFINEMENT cells per Jeans length and will not exceed the max mass
         else {return 0;}
     }
@@ -79,8 +79,8 @@ int does_particle_need_to_be_split(int i)
     if(P[i].Mass >= (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
 #ifdef TRUELOVE_REFINEMENT
     double cs = Get_Gas_Fast_MHD_wavespeed_i(i);
-    double lambda_J = cs * sqrt(M_PI / (All.G * SphP[i].Density));
-    double NJ = lambda_J / Get_Particle_Size(i);
+    double lambda_J = cs * sqrt(M_PI / (All.G * SphP[i].Density * All.cf_a3inv));
+    double NJ = lambda_J / (All.cf_atime * Get_Particle_Size(i));
     if((NJ < TRUELOVE_REFINEMENT) && (P[i].Mass > 2*MIN_REFINED_MASS)){return 1;}
 #endif
     return 0;
