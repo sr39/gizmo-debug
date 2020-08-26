@@ -1695,7 +1695,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     MyLongDouble acc_x, acc_y, acc_z;
     // cache some global vars in local vars to help compiler with alias analysis
     int maxPart = All.MaxPart;
-    int bunchSize = All.BunchSize;
+    long bunchSize = All.BunchSize;
     int maxNodes = MaxNodes;
     integertime ti_Current = All.Ti_Current;
     double errTol2 = All.ErrTolTheta * All.ErrTolTheta;

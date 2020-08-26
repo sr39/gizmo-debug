@@ -433,13 +433,6 @@ void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, i
         double slope_inj = CR_energy_spectrum_injection_fraction(k_CRegy,source_PType,injection_velocity,1); // spectral slope of injected CRs
         double gamma_one = slope_inj + 1., xm_gamma_one = pow(xm, gamma_one), xp_gamma_one = pow(xp, gamma_one); // variables below
         double ntot_inj = (dEcr / E_GeV) * ((gamma_one + egy_slopemode) / (gamma_one)) * (xp_gamma_one - xm_gamma_one) / (xp_gamma_one*xp_e - xm_gamma_one*xm_e); // injected number in bin
-        /* // below for old method where we explicitly evolved slope instead of number
-        double egy_prev = SphP[target].CosmicRayEnergy[k_CRegy], etot_new = egy_prev + dEcr,
-        double slope_prev = SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin[k_CRegy]; // spectral slope of initial CRs
-        gamma_one = slope_prev + 1.; xm_gamma_one = pow(xm, gamma_one); xp_gamma_one = pow(xp, gamma_one); // variables below
-        double ntot_prev = (egy_prev / E_GeV) * ((gamma_one + egy_slopemode) / (gamma_one)) * (xp_gamma_one - xm_gamma_one) / (xp_gamma_one*xp_e - xm_gamma_one*xm_e); // CR number before injection
-        SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin[k_CRegy] = CR_return_slope_from_number_and_energy_in_bin(etot_new, ntot_prev + ntot_inj, E_GeV, k_CRegy);
-        */
         #pragma omp atomic
         SphP[target].CosmicRay_Number_in_Bin[k_CRegy] += ntot_inj; // simply update injected number. needs to be done thread-safely, but since the above routines dont depend on this, it should be safe to do here.
 #endif

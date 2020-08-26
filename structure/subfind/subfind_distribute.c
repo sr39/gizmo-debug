@@ -97,7 +97,7 @@ void subfind_distribute_groups(void)
 
 void subfind_distribute_particles(int mode)
 {
-  int nexport = 0, nimport = 0;
+  long nexport = 0, nimport = 0;
   int i, n, ngrp, target = 0;
   struct particle_data *partBuf;
 
