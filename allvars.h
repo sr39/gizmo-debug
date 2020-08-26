@@ -2955,6 +2955,7 @@ extern struct sph_particle_data
     } Gradients;
     MyLongDouble NV_T[3][3];        /*!< holds the tensor used for gradient estimation */
     MyLongDouble ConditionNumber;   /*!< condition number of the gradient matrix: needed to ensure stability */
+    MyDouble FaceClosureError;      /*!< dimensionless measure of face closure */
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     MyDouble MaxKineticEnergyNgb;   /*!< maximum kinetic energy (with respect to neighbors): use for entropy 'switch' */
 #endif

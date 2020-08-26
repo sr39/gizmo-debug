@@ -184,6 +184,7 @@ struct INPUT_STRUCT_NAME
     MyFloat Density;
     MyFloat Pressure;
     MyFloat ConditionNumber;
+    MyFloat FaceClosureError;
     MyFloat InternalEnergyPred;
     MyFloat SoundSpeed;
     integertime Timestep;
@@ -409,6 +410,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
     in->SoundSpeed = Get_Gas_effective_soundspeed_i(i);
     in->Timestep = GET_PARTICLE_INTEGERTIME(i);
     in->ConditionNumber = SphP[i].ConditionNumber;
+    in->FaceClosureError = SphP[i].FaceClosureError;
 #ifdef MHD_CONSTRAINED_GRADIENT
     /* since it is not used elsewhere, we can use the sign of the condition number as a bit
         to conveniently indicate the status of the parent particle flag, for the constrained gradients */

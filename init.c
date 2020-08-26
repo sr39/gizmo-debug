@@ -512,6 +512,7 @@ void init(void)
         P[i].Particle_DivVel = 0;
         SphP[i].ConditionNumber = 1;
         SphP[i].DtInternalEnergy = 0;
+        SphP[i].FaceClosureError = 0;
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
         SphP[i].MaxKineticEnergyNgb = 0;
 #endif

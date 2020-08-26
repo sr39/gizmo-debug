@@ -16,8 +16,8 @@
 //#define HYDRO_FACE_VOLUME_RECONSTRUCTION_CORRECTION
 #endif
     
-    double s_star_ij,s_i,s_j,v_frame[3],n_unit[3],dummy_pressure;
-    double distance_from_i[3],distance_from_j[3];
+    double s_star_ij,s_i,s_j,v_frame[3],n_unit[3],dummy_pressure,distance_from_i[3],distance_from_j[3];
+    double leak_vs_tol = (local.FaceClosureError+SphP[j].FaceClosureError)/(0.1*NUMDIMS);
     dummy_pressure=face_area_dot_vel=face_vel_i=face_vel_j=Face_Area_Norm=0;
     double Pressure_i = local.Pressure, Pressure_j = SphP[j].Pressure;
 #if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
@@ -124,10 +124,10 @@
     }
 #endif
 
-    if((SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2) || (facenormal_dot_dp < 0))
+    if((SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2) || (facenormal_dot_dp < 0) || (leak_vs_tol>1))
     {
-        /* the effective gradient matrix is ill-conditioned (or not positive-definite!): for stability, we revert to the "RSPH" EOM */
-        Face_Area_Norm = -(wt_i*V_i*kernel.dwk_i + wt_j*V_j*kernel.dwk_j) / kernel.r;
+        /* the effective gradient matrix is ill-conditioned (or not positive-definite!): for stability, we revert to the "SPH" effective face, ignoring the grad-h corrections here */
+        Face_Area_Norm = -(V_i*V_i*kernel.dwk_i*(P[j].Mass/local.Mass) + V_j*V_j*kernel.dwk_j*(local.Mass/P[j].Mass)) / kernel.r;
         Face_Area_Norm *= All.cf_atime*All.cf_atime; /* Face_Area_Norm has units of area, need to convert to physical */
         Face_Area_Vec[0] = Face_Area_Norm * kernel.dp[0];
         Face_Area_Vec[1] = Face_Area_Norm * kernel.dp[1];
@@ -220,6 +220,7 @@
         if(fabs(vdotr2_phys)*UNIT_VEL_IN_KMS > 1000.) {recon_mode = 0;} // particle approach/recession velocity > 1000 km/s: be extra careful here!
 #endif
         //if(kernel.r > local.Hsml || kernel.r > PPP[j].Hsml) {recon_mode = 0;} // some extrapolation: this is more conservative but does help preserve contact discontinuities (perhaps too well?)
+        if(leak_vs_tol > 1) {recon_mode = 0;}
         
         double rho_i=local.Density, rho_j=SphP[j].Density, P_i=Pressure_i, P_j=Pressure_j; // initialize for below
 #if defined(HYDRO_FACE_VOLUME_RECONSTRUCTION_CORRECTION)
@@ -387,7 +388,7 @@
             int use_entropic_energy_equation = 0;
             double du_new = 0;
             double SM_over_ceff = fabs(Riemann_out.S_M) / DMIN(kernel.sound_i,kernel.sound_j);
-            if(SM_over_ceff < epsilon_entropic_eos_big && All.ComovingIntegrationOn == 1)
+            if((SM_over_ceff < epsilon_entropic_eos_big && All.ComovingIntegrationOn == 1) || (leak_vs_tol > 1))
             {
                 use_entropic_energy_equation = 1;
                 double PdV_fac = Riemann_out.P_M * vdotr2_phys / All.cf_a2inv;
@@ -415,7 +416,7 @@
                 }
                 if(cnum2 >= cnumcrit2) {use_entropic_energy_equation=1;}
                 // alright, if we've come this far, we need to subtract -off- the thermal energy part of the flux, and replace it //
-                if(use_entropic_energy_equation) {Fluxes.p = du_new;}
+                if(leak_vs_tol>1 || use_entropic_energy_equation) {Fluxes.p = du_new;}
             }
 #endif
             
@@ -478,7 +479,7 @@
             /* for MFM, do the face correction for adiabatic flows here */
             double SM_over_ceff = fabs(Riemann_out.S_M) / DMIN(kernel.sound_i,kernel.sound_j); // for now use sound speed here (more conservative) vs magnetosonic speed //
             /* if SM is sufficiently large, we do nothing to the equations */
-            if(SM_over_ceff < epsilon_entropic_eos_big && All.ComovingIntegrationOn == 1)
+            if((SM_over_ceff < epsilon_entropic_eos_big && All.ComovingIntegrationOn == 1) || (leak_vs_tol>1))
             {
                 /* ok SM is small, we should use adiabatic equations instead */
 #ifdef MAGNETIC
@@ -512,7 +513,7 @@
                 }
                 if(cnum2 >= cnumcrit2) {use_entropic_energy_equation=1;}
                 // alright, if we've come this far, we need to subtract -off- the thermal energy part of the flux, and replace it //
-                if(use_entropic_energy_equation) {Fluxes.p += du_new - du_old;}
+                if(leak_vs_tol>1 || use_entropic_energy_equation) {Fluxes.p += du_new - du_old;}
             }
 #endif // closes MFM check // 
 

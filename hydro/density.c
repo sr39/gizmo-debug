@@ -347,6 +347,10 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             out.NV_T[1][1] +=  wk * kernel.dp[1] * kernel.dp[1];
                             out.NV_T[1][2] +=  wk * kernel.dp[1] * kernel.dp[2];
                             out.NV_T[2][2] +=  wk * kernel.dp[2] * kernel.dp[2];
+                            /* these will temporarily hold the 'face area' terms */
+                            out.NV_T[1][0] += wk * kernel.dp[0];
+                            out.NV_T[2][0] += wk * kernel.dp[1];
+                            out.NV_T[2][1] += wk * kernel.dp[2];
                         }
                         kernel.dv[0] = local.Vel[0] - SphP[j].VelPred[0];
                         kernel.dv[1] = local.Vel[1] - SphP[j].VelPred[1];
@@ -529,10 +533,13 @@ void density(void)
                 if(PPP[i].DhsmlNgbFactor > -0.9) {PPP[i].DhsmlNgbFactor = 1 / (1 + PPP[i].DhsmlNgbFactor);} else {PPP[i].DhsmlNgbFactor = 1;} /* note: this would be -1 if only a single particle at zero lag is found */
                 P[i].Particle_DivVel *= PPP[i].DhsmlNgbFactor;
 
-                MyLongDouble NV_T_prev[6]; NV_T_prev[0]=SphP[i].NV_T[0][0]; NV_T_prev[1]=SphP[i].NV_T[1][1]; NV_T_prev[2]=SphP[i].NV_T[2][2]; NV_T_prev[3]=SphP[i].NV_T[0][1]; NV_T_prev[4]=SphP[i].NV_T[0][2]; NV_T_prev[5]=SphP[i].NV_T[1][2];
+                double dimless_face_leak=0; MyLongDouble NV_T_prev[6]; NV_T_prev[0]=SphP[i].NV_T[0][0]; NV_T_prev[1]=SphP[i].NV_T[1][1]; NV_T_prev[2]=SphP[i].NV_T[2][2]; NV_T_prev[3]=SphP[i].NV_T[0][1]; NV_T_prev[4]=SphP[i].NV_T[0][2]; NV_T_prev[5]=SphP[i].NV_T[1][2];
                 if(P[i].Type == 0) /* invert the NV_T matrix we just measured */
                 {
-                    /* fill in the missing elements of NV_T (it's symmetric, so we saved time not computing these directly) */
+                    /* use the single-moment terms of NV_T to construct the faces one would have if the system were perfectly symmetric in reconstruction 'from both sides' */
+                    double V_i = NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) / PPP[i].NumNgb, dx_i = pow(V_i , 1./NUMDIMS); // this is the effective volume which will be used below
+                    double Face_Area_OneSided_Estimator_in[3]={0}, Face_Area_OneSided_Estimator_out[3]={0}; Face_Area_OneSided_Estimator_in[0]=SphP[i].NV_T[1][0]; Face_Area_OneSided_Estimator_in[1]=SphP[i].NV_T[2][0]; Face_Area_OneSided_Estimator_in[2]=SphP[i].NV_T[2][1];
+                    /* now fill in the missing elements of NV_T (it's symmetric, so we saved time not computing these directly) */
                     SphP[i].NV_T[1][0]=SphP[i].NV_T[0][1]; SphP[i].NV_T[2][0]=SphP[i].NV_T[0][2]; SphP[i].NV_T[2][1]=SphP[i].NV_T[1][2];
                     double dimensional_NV_T_normalizer = pow( PPP[i].Hsml , 2-NUMDIMS ); /* this has the same dimensions as NV_T here */
                     for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {SphP[i].NV_T[k1][k2] /= dimensional_NV_T_normalizer;}} /* now NV_T should be dimensionless */
@@ -585,6 +592,9 @@ void density(void)
                     }
                     for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {SphP[i].NV_T[k1][k2] = Tinv[k1][k2] / dimensional_NV_T_normalizer;}} /* re-insert normalization correctly */
                     /* now NV_T holds the inverted matrix elements, for use in hydro */
+                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Face_Area_OneSided_Estimator_out[k1] += 2.*V_i*SphP[i].NV_T[k1][k2]*Face_Area_OneSided_Estimator_in[k2];}} /* calculate mfm/mfv areas that we would have by default, if both sides of reconstruction were symmetric */
+                    for(k1=0;k1<3;k1++) {dimless_face_leak += fabs(Face_Area_OneSided_Estimator_out[k1]);}
+                    SphP[i].FaceClosureError = dimless_face_leak / (2.*NUMDIMS*dx_i);
                 } // P[i].Type == 0 //
 
                 /* now check whether we had enough neighbours */
@@ -606,6 +616,7 @@ void density(void)
                         if(dn_ngb < 10.0) SphP[i].ConditionNumber = ConditionNumber;
                     }
                     ncorr_ngb=1; cn=SphP[i].ConditionNumber; if(cn>c0) {ncorr_ngb=sqrt(1.0+(cn-c0)/((double)CONDITION_NUMBER_DANGER));} if(ncorr_ngb>2) ncorr_ngb=2;
+                    double d00=0.1*NUMDIMS; if(SphP[i].FaceClosureError > d00) {ncorr_ngb = DMAX(ncorr_ngb , DMIN(SphP[i].FaceClosureError/d00 , 2.));}
                 }
                 desnumngb = All.DesNumNgb * ncorr_ngb;
                 desnumngbdev = desnumngbdev_0 * ncorr_ngb;
