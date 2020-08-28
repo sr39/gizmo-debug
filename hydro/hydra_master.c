@@ -227,6 +227,9 @@ struct INPUT_STRUCT_NAME
 #if defined(KERNEL_CRK_FACES)
     MyFloat Tensor_CRK_Face_Corrections[16];
 #endif
+#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
+    MyFloat Tensor_MFM_Face_Corrections[9];
+#endif
 #ifdef HYDRO_PRESSURE_SPH
     MyFloat EgyWtRho;
 #endif
@@ -434,6 +437,9 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #endif
 #if defined(KERNEL_CRK_FACES)
     for(k=0;k<16;k++) {in->Tensor_CRK_Face_Corrections[k] = SphP[i].Tensor_CRK_Face_Corrections[k];}
+#endif
+#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
+    for(k=0;k<9;k++) {in->Tensor_MFM_Face_Corrections[k] = SphP[i].Tensor_MFM_Face_Corrections[k];}
 #endif
 
     int j;
@@ -748,10 +754,16 @@ void hydro_final_operations_and_cleanup(void)
             for(k=0;k<N_CR_PARTICLE_BINS;k++)
             {
                 double streamfac = CR_get_streaming_loss_rate_coefficient(i,k);
+                SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * streamfac;
 #if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
                 SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * streamfac; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
 #endif
-                SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * streamfac;
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) && !defined(COOLING_OPERATOR_SPLIT)
+                /* with the spectrum model, we account here the adiabatic heating/cooling of the 'fluid', here, which was solved in the hydro solver but doesn't resolve which portion goes to CRs and which to internal energy, with gamma=GAMMA_COSMICRAY */
+                double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt, k, SphP[i].CosmicRayEnergyPred[k], 2); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places
+                double u0 = DMAX(SphP[i].InternalEnergyPred, All.MinEgySpec) , uf = DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
+                SphP[i].DtInternalEnergy += (uf - u0) / (dt + MIN_REAL_NUMBER); // update gas quantities to be used in cooling function
+#endif
             }
 #endif
 

@@ -2840,6 +2840,12 @@ extern ALIGN(32) struct particle_data
 #endif
 
 
+#if defined(HYDRO_TENSOR_FACE_CORRECTIONS_NGBITER)
+#define HYDRO_TENSOR_FACE_CORRECTIONS_NUMBER_MOMWTS 15
+#else
+#define HYDRO_TENSOR_FACE_CORRECTIONS_NUMBER_MOMWTS 9
+#endif
+
 
 /* the following struture holds data that is stored for each SPH particle in addition to the collisionless
  * variables.
@@ -2893,6 +2899,9 @@ extern struct sph_particle_data
 
 #if defined(KERNEL_CRK_FACES)
     MyFloat Tensor_CRK_Face_Corrections[16]; /*!< tensor set for face-area correction terms for the CRK formulation of SPH or MFM/V areas */
+#endif
+#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
+    MyFloat Tensor_MFM_Face_Corrections[9]; /*!< alternative tensor face corrections for linear consistency */
 #endif
 
 #ifdef COSMIC_RAYS

@@ -17,7 +17,7 @@
 #endif
     
     double s_star_ij,s_i,s_j,v_frame[3],n_unit[3],dummy_pressure,distance_from_i[3],distance_from_j[3];
-    double leak_vs_tol = (local.FaceClosureError+SphP[j].FaceClosureError)/(0.1*NUMDIMS);
+    double leak_vs_tol = 0.5 * (local.FaceClosureError+SphP[j].FaceClosureError);
     dummy_pressure=face_area_dot_vel=face_vel_i=face_vel_j=Face_Area_Norm=0;
     double Pressure_i = local.Pressure, Pressure_j = SphP[j].Pressure;
 #if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
@@ -85,6 +85,26 @@
         facenormal_dot_dp += Face_Area_Vec[k] * kernel.dp[k]; /* check that face points same direction as vector normal: should be true for positive-definite (well-conditioned) NV_T */
     }
     
+    
+#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
+    {
+        double wkwt_i=V_i*kernel.wk_i/All.cf_a2inv, wkwt_j=V_j*kernel.wk_j/All.cf_a2inv, Bi_dot_dx=0, Bj_dot_dx=0;
+        for(k=0;k<3;k++) {Bi_dot_dx += local.Tensor_MFM_Face_Corrections[k] * kernel.dp[k]; Bj_dot_dx -= SphP[j].Tensor_MFM_Face_Corrections[k] * kernel.dp[k];}
+        wkwt_i *= 1. + Bi_dot_dx; wkwt_j *= 1. + Bj_dot_dx;
+        
+        Face_Area_Vec[0] = wkwt_i * (local.Tensor_MFM_Face_Corrections[3]*kernel.dp[0] + local.Tensor_MFM_Face_Corrections[4]*kernel.dp[1] + local.Tensor_MFM_Face_Corrections[5]*kernel.dp[2]);
+        Face_Area_Vec[1] = wkwt_i * (local.Tensor_MFM_Face_Corrections[4]*kernel.dp[0] + local.Tensor_MFM_Face_Corrections[6]*kernel.dp[1] + local.Tensor_MFM_Face_Corrections[7]*kernel.dp[2]);
+        Face_Area_Vec[2] = wkwt_i * (local.Tensor_MFM_Face_Corrections[5]*kernel.dp[0] + local.Tensor_MFM_Face_Corrections[7]*kernel.dp[1] + local.Tensor_MFM_Face_Corrections[8]*kernel.dp[2]);
+
+        Face_Area_Vec[0]+= wkwt_j * (SphP[j].Tensor_MFM_Face_Corrections[3]*kernel.dp[0] + SphP[j].Tensor_MFM_Face_Corrections[4]*kernel.dp[1] + SphP[j].Tensor_MFM_Face_Corrections[5]*kernel.dp[2]);
+        Face_Area_Vec[1]+= wkwt_j * (SphP[j].Tensor_MFM_Face_Corrections[4]*kernel.dp[0] + SphP[j].Tensor_MFM_Face_Corrections[6]*kernel.dp[1] + SphP[j].Tensor_MFM_Face_Corrections[7]*kernel.dp[2]);
+        Face_Area_Vec[2]+= wkwt_j * (SphP[j].Tensor_MFM_Face_Corrections[5]*kernel.dp[0] + SphP[j].Tensor_MFM_Face_Corrections[7]*kernel.dp[1] + SphP[j].Tensor_MFM_Face_Corrections[8]*kernel.dp[2]);
+
+        Face_Area_Norm=0; facenormal_dot_dp=0; for(k=0;k<3;k++) {Face_Area_Norm+=Face_Area_Vec[k]*Face_Area_Vec[k]; facenormal_dot_dp+=Face_Area_Vec[k]*kernel.dp[k];} /* check that face points same direction as vector normal: should be true for positive-definite (well-conditioned) NV_T */
+    }
+#endif
+
+    
 #if defined(KERNEL_CRK_FACES)
     {
         // order of Tensor_CRK_Face_Corrections: A, B[3], (dA+A*B)[3], (dA.B+A.dB)[3][3] //
@@ -124,7 +144,7 @@
     }
 #endif
 
-    if((SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2) || (facenormal_dot_dp < 0) || (leak_vs_tol>1))
+    if((SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2) || (facenormal_dot_dp < 0))
     {
         /* the effective gradient matrix is ill-conditioned (or not positive-definite!): for stability, we revert to the "SPH" effective face, ignoring the grad-h corrections here */
         Face_Area_Norm = -(V_i*V_i*kernel.dwk_i*(P[j].Mass/local.Mass) + V_j*V_j*kernel.dwk_j*(local.Mass/P[j].Mass)) / kernel.r;
@@ -416,7 +436,7 @@
                 }
                 if(cnum2 >= cnumcrit2) {use_entropic_energy_equation=1;}
                 // alright, if we've come this far, we need to subtract -off- the thermal energy part of the flux, and replace it //
-                if(leak_vs_tol>1 || use_entropic_energy_equation) {Fluxes.p = du_new;}
+                if(use_entropic_energy_equation) {Fluxes.p = du_new;}
             }
 #endif
             
@@ -513,7 +533,7 @@
                 }
                 if(cnum2 >= cnumcrit2) {use_entropic_energy_equation=1;}
                 // alright, if we've come this far, we need to subtract -off- the thermal energy part of the flux, and replace it //
-                if(leak_vs_tol>1 || use_entropic_energy_equation) {Fluxes.p += du_new - du_old;}
+                if(use_entropic_energy_equation) {Fluxes.p += du_new - du_old;}
             }
 #endif // closes MFM check // 
 

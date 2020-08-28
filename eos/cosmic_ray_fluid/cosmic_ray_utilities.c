@@ -661,7 +661,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 #endif
     
         /* update scalar CR energy. first update the CR energies from fluxes. since this is positive-definite, some additional care is needed */
-        double dCR_dt = SphP[i].DtCosmicRayEnergy[k_CRegy], gamma_eff = GAMMA_COSMICRAY, eCR_tmp = eCR;
+        double dCR_dt = SphP[i].DtCosmicRayEnergy[k_CRegy], eCR_tmp = eCR;
         double dCR = dCR_dt*dt_entr, dCRmax = 1.e10*(eCR_tmp+MIN_REAL_NUMBER);
 #if defined(GALSF)
         dCRmax = DMAX(2.0*eCR_tmp , 0.1*u0*P[i].Mass);
@@ -686,57 +686,70 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         }
 #endif
         
-        /* now need to account for the adiabatic heating/cooling of the 'fluid', here, with gamma=gamma_eff */
-        double dCR_div;
-#if 1
-        double mdivvdt = -dt_entr * P[i].Particle_DivVel*All.cf_a2inv; // get locally-estimated gas velocity divergence for cells - if using non-Lagrangian method, need to modify. take negative of this [for sign of change to energy] and multiply by timestep
-        if(All.ComovingIntegrationOn) {mdivvdt += -dt_entr * 3.*All.cf_hubble_a;} // include hubble-flow terms
-        mdivvdt = DMAX(-1.5, DMIN(1.5, mdivvdt)); // our timestep limiter should ensure this, but problem is it responds to the -previous- timestep, so we need to impose an additional check here to prevent a numerical divergence when/if the gradients are inaccurate
-        double Ui = u0 * P[i].Mass; // factor for multiplication below, and initial thermal energy
-        double d_CR = mdivvdt * (gamma_eff-1.) * eCR_tmp; // expected CR change - this is the 'PdV' part of the work, applicable in smooth flows
-        double min_IEgy = P[i].Mass * All.MinEgySpec; // minimum internal energy - in total units -
-        double dtI_hydro = SphP[i].DtInternalEnergy * P[i].Mass * dt_entr; // change given by hydro-step computed delta_InternalEnergy
-        double f_limiter = 0.9; // dimensionless fraction of energy to limit to
-        double Ui_max_increase = fabs(1.e4*Ui); // maximum amount we'll allow Ui to increase from this term in 1 timestep
-        if(mode==1) {f_limiter=0.5;} // use slightly stricter criterion for drifting vs kicking //
-        if(mdivvdt * dtI_hydro > 0) // same sign from hydro and from smooth-flow-estimator, suggests we are in a smooth flow, so we'll use stronger assumptions about the effective 'entropy' here
-        {
-            double abs_limit = fabs(dtI_hydro); // in smooth flow, sum of CR+gas PdV work terms should not exceed this
-            double d_Egas = mdivvdt * (GAMMA(i)-1.) * Ui; // expected gas change - in a smooth flow likewise should be entropy-conserving
-            double d_sum = fabs(d_CR + d_Egas); // sum of the expected adiabatic CR + gas terms estimated as above
-            if(d_sum > abs_limit) {d_CR *= abs_limit/d_sum;} // limit to not exceed
-        } else { // hydro and CRs have opposite sign, indicating non-smooth flow: here limit more strongly to prevent artificial huge increase in gas energy
-            f_limiter = 0.5; // use more conservative limits regardless of drift or kick since we're in a less-smooth flow
-            Ui_max_increase = fabs(2.*Ui); // maximum amount we'll allow Ui to increase from this term in 1 timestep
-        }
-        if(d_CR<0 && fabs(d_CR)>Ui_max_increase) {d_CR *= Ui_max_increase/fabs(d_CR);}
-        double limforU = fabs(f_limiter*Ui); // largest [negative] change in internal energy we will allow, to prevent negative values
-        if(Ui <= min_IEgy) {limforU=0;} else {limforU = DMIN(limforU, fabs(f_limiter*(Ui-min_IEgy)));} // actually more restrictive: prevent crossing the minimum enforced temperature in cooling
-        if(d_CR>0 && d_CR>limforU) {d_CR *= limforU/fabs(d_CR);} // limit to prevent internal energy going negative
-        double limforC = fabs(f_limiter*eCR_tmp); // maximum change in CR energy we will allow, to prevent negative values
-        if(d_CR<0 && d_CR<-limforC) {d_CR *= limforC/fabs(d_CR);} // limit
-        dCR_div = d_CR; // set final value
-#else
-        /* old treatment here */
-        double d_div = (-(gamma_eff-1.) * P[i].Particle_DivVel*All.cf_a2inv) * dt_entr;
-        if(All.ComovingIntegrationOn) {d_div += (-3.*(gamma_eff-1.) * All.cf_hubble_a) * dt_entr;} /* adiabatic term from Hubble expansion (needed for cosmological integrations */
-        dCR_div = DMIN(eCR_tmp*d_div , 0.5*u0*P[i].Mass); // limit so don't take away all the gas internal energy [to negative values]
-        if(dCR_div + eCR_tmp < 0) {dCR_div = -eCR_tmp;} // check against energy going negative
-        eCR_tmp += dCR_div; if((eCR_tmp<0)||(isnan(eCR_tmp))) {eCR_tmp=0;} // check against energy going negative or nan
-        dCR_div = eCR_tmp - eCR_0; // actual change that is going to be applied
-        if(dCR_div < -0.5*P[i].Mass*u0) {dCR_div=-0.5*P[i].Mass*u0;} // before re-coupling, ensure this will not cause negative energies
-        if(dCR_div < -0.9*eCR_00) {dCR_div=-0.9*eCR_00;} // before re-coupling, ensure this will not cause negative energies
-#endif
+#if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM) || defined(COOLING_OPERATOR_SPLIT)
+        /* now need to account for the adiabatic heating/cooling of the 'fluid', here, with gamma=GAMMA_COSMICRAY */
+        double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt_entr, k_CRegy, eCR_tmp, mode); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places
         double uf = DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
         if(mode==0) {SphP[i].InternalEnergy = uf;} else {SphP[i].InternalEnergyPred = uf;} // update gas
-        //if(mode==0) {SphP[i].DtInternalEnergy += (uf-u0)/(dt_entr+MIN_REAL_NUMBER);} else {SphP[i].InternalEnergyPred = uf;} // update gas
 #if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
         if(mode==0) {SphP[i].CosmicRayEnergy[k_CRegy] += dCR_div;} else {SphP[i].CosmicRayEnergyPred[k_CRegy] += dCR_div;} // update CRs: note if explicitly evolving spectrum, this is done separately below //
 #endif
+#endif
+
     } // loop over CR bins complete
     return 1;
 }
 #endif
+
+
+
+/* subroutine to calculate which part of the adiabatic PdV work from the RP gets assigned to the CRs vs the gas; since the CRs are always smooth by definition under this operation this follows simply from the local cell divergence and the effective CR eos */
+double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, int k_CRegy, double eCR_tmp, int mode)
+{
+    double u0; if(mode==0) {u0=SphP[i].InternalEnergy;} else {u0=SphP[i].InternalEnergyPred;} // initial energy
+    if(u0<All.MinEgySpec) {u0=All.MinEgySpec;} // enforced throughout code
+    double dCR_div;
+#if 1
+    double mdivvdt = -dt_entr * P[i].Particle_DivVel*All.cf_a2inv; // get locally-estimated gas velocity divergence for cells - if using non-Lagrangian method, need to modify. take negative of this [for sign of change to energy] and multiply by timestep
+    if(All.ComovingIntegrationOn) {mdivvdt += -dt_entr * 3.*All.cf_hubble_a;} // include hubble-flow terms
+    mdivvdt = DMAX(-1.5, DMIN(1.5, mdivvdt)); // our timestep limiter should ensure this, but problem is it responds to the -previous- timestep, so we need to impose an additional check here to prevent a numerical divergence when/if the gradients are inaccurate
+    double Ui = u0 * P[i].Mass; // factor for multiplication below, and initial thermal energy
+    double d_CR = mdivvdt * (GAMMA_COSMICRAY-1.) * eCR_tmp; // expected CR change - this is the 'PdV' part of the work, applicable in smooth flows
+    double min_IEgy = P[i].Mass * All.MinEgySpec; // minimum internal energy - in total units -
+    double dtI_hydro = SphP[i].DtInternalEnergy * P[i].Mass * dt_entr; // change given by hydro-step computed delta_InternalEnergy
+    double f_limiter = 0.9; // dimensionless fraction of energy to limit to
+    double Ui_max_increase = fabs(1.e4*Ui); // maximum amount we'll allow Ui to increase from this term in 1 timestep
+    if(mode==1) {f_limiter=0.5;} // use slightly stricter criterion for drifting vs kicking //
+    if(mdivvdt * dtI_hydro > 0) // same sign from hydro and from smooth-flow-estimator, suggests we are in a smooth flow, so we'll use stronger assumptions about the effective 'entropy' here
+    {
+        double abs_limit = fabs(dtI_hydro); // in smooth flow, sum of CR+gas PdV work terms should not exceed this
+        double d_Egas = mdivvdt * (GAMMA(i)-1.) * Ui; // expected gas change - in a smooth flow likewise should be entropy-conserving
+        double d_sum = fabs(d_CR + d_Egas); // sum of the expected adiabatic CR + gas terms estimated as above
+        if(d_sum > abs_limit) {d_CR *= abs_limit/d_sum;} // limit to not exceed
+    } else { // hydro and CRs have opposite sign, indicating non-smooth flow: here limit more strongly to prevent artificial huge increase in gas energy
+        f_limiter = 0.5; // use more conservative limits regardless of drift or kick since we're in a less-smooth flow
+        Ui_max_increase = fabs(2.*Ui); // maximum amount we'll allow Ui to increase from this term in 1 timestep
+    }
+    if(d_CR<0 && fabs(d_CR)>Ui_max_increase) {d_CR *= Ui_max_increase/fabs(d_CR);}
+    double limforU = fabs(f_limiter*Ui); // largest [negative] change in internal energy we will allow, to prevent negative values
+    if(Ui <= min_IEgy) {limforU=0;} else {limforU = DMIN(limforU, fabs(f_limiter*(Ui-min_IEgy)));} // actually more restrictive: prevent crossing the minimum enforced temperature in cooling
+    if(d_CR>0 && d_CR>limforU) {d_CR *= limforU/fabs(d_CR);} // limit to prevent internal energy going negative
+    double limforC = fabs(f_limiter*eCR_tmp); // maximum change in CR energy we will allow, to prevent negative values
+    if(d_CR<0 && d_CR<-limforC) {d_CR *= limforC/fabs(d_CR);} // limit
+    dCR_div = d_CR; // set final value
+#else
+    /* old treatment here */
+    double d_div = (-(GAMMA_COSMICRAY-1.) * P[i].Particle_DivVel*All.cf_a2inv) * dt_entr;
+    if(All.ComovingIntegrationOn) {d_div += (-3.*(GAMMA_COSMICRAY-1.) * All.cf_hubble_a) * dt_entr;} /* adiabatic term from Hubble expansion (needed for cosmological integrations */
+    dCR_div = DMIN(eCR_tmp*d_div , 0.5*u0*P[i].Mass); // limit so don't take away all the gas internal energy [to negative values]
+    if(dCR_div + eCR_tmp < 0) {dCR_div = -eCR_tmp;} // check against energy going negative
+    eCR_tmp += dCR_div; if((eCR_tmp<0)||(isnan(eCR_tmp))) {eCR_tmp=0;} // check against energy going negative or nan
+    dCR_div = eCR_tmp - eCR_0; // actual change that is going to be applied
+    if(dCR_div < -0.5*P[i].Mass*u0) {dCR_div=-0.5*P[i].Mass*u0;} // before re-coupling, ensure this will not cause negative energies
+    if(dCR_div < -0.9*eCR_00) {dCR_div=-0.9*eCR_00;} // before re-coupling, ensure this will not cause negative energies
+#endif
+    return dCR_div;
+}
 
 
 
@@ -885,10 +898,10 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
     {
         printf("WARNING: timestep for subcycling wants to exceed limit: dt_min_e/p=%g/%g dt_tot=%g \n",dt_min_e,dt_min_p,dtime_cgs);
 #if defined(COSMIC_RAYS_DIFFUSIVE_REACCELERATION)
-        printf(" ID=%llu mode=%d nH=%g ne=%g vA=%g vA_ion=%g dt=%g Utot=%g hadronic_coeff=%g coulomb_coeff=%g brems_coeff_0=%g synchIC_coeff_0=%g (U_mag_eV=%g U_rad_eV=%g) adiabatic_coeff=%g dtmin=%g signflip=%d signkey=%d \n",P[target].ID,mode_driftkick,nHcgs,n_elec,vA,vA_ion,dtime_cgs,Ucr_tot,hadronic_coeff,coulomb_coeff,brems_coeff_0,synchIC_coeff_0,U_mag_ev,U_rad_ev,adiabatic_coeff,DMIN(dt_min_e,dt_min_p),sign_flip_adiabatic_terms,sign_key_for_adiabatic_loop);
+        printf(" ID=%llu mode=%d nH=%g ne=%g vA=%g vA_ion=%g dt=%g Utot=%g hadronic_coeff=%g coulomb_coeff=%g brems_coeff_0=%g synchIC_coeff_0=%g (U_mag_eV=%g U_rad_eV=%g) adiabatic_coeff=%g dtmin=%g signflip=%d signkey=%d \n",(unsigned long long)P[target].ID,mode_driftkick,nHcgs,n_elec,vA,vA_ion,dtime_cgs,Ucr_tot,hadronic_coeff,coulomb_coeff,brems_coeff_0,synchIC_coeff_0,U_mag_ev,U_rad_ev,adiabatic_coeff,DMIN(dt_min_e,dt_min_p),sign_flip_adiabatic_terms,sign_key_for_adiabatic_loop);
         for(k=0;k<N_CR_PARTICLE_BINS;k++) {printf("  k=%d U=%g Z=%g R0=%g E=%g NR=%d xm=%g xp=%g slope=%g kappa=%g brem_c=%g stream_c=%g reacc_c=%g delta_DxxSlope=%g IC_sync_c=%g el_ion_coul_c=%g p_ion_coul_c_R/NR=%g/%g binratec=%g \n",k,Ucr[k],Z[k],R0[k],E_GeV[k],NR_key[k],x_m[k],x_p[k],bin_slopes[k],kappa_i[k],brems_coeff[k],streaming_coeff[k],reaccel_coeff[k],delta_diffcoeff[k],(E_GeV[k]/E_rest_e_GeV) * synchIC_coeff_0,(e_coulomb_coeff + (1.+0.07*log(E_GeV[k])) * e_ion_coeff) / R0[k], (Z[k]/R0[k]) * coulomb_coeff,0.88/ (R0[k]*R0[k]*R0[k] * Z[k]) * coulomb_coeff,bin_centered_rate_coeff[k]);}
 #else
-        printf(" ID=%llu mode=%d nH=%g ne=%g dt=%g Utot=%g hadronic_coeff=%g coulomb_coeff=%g brems_coeff_0=%g synchIC_coeff_0=%g (U_mag_eV=%g U_rad_eV=%g) adiabatic_coeff=%g dtmin=%g signflip=%d signkey=%d \n",P[target].ID,mode_driftkick,nHcgs,n_elec,dtime_cgs,Ucr_tot,hadronic_coeff,coulomb_coeff,brems_coeff_0,synchIC_coeff_0,U_mag_ev,U_rad_ev,adiabatic_coeff,DMIN(dt_min_e,dt_min_p),sign_flip_adiabatic_terms,sign_key_for_adiabatic_loop);
+        printf(" ID=%llu mode=%d nH=%g ne=%g dt=%g Utot=%g hadronic_coeff=%g coulomb_coeff=%g brems_coeff_0=%g synchIC_coeff_0=%g (U_mag_eV=%g U_rad_eV=%g) adiabatic_coeff=%g dtmin=%g signflip=%d signkey=%d \n",(unsigned long long)P[target].ID,mode_driftkick,nHcgs,n_elec,dtime_cgs,Ucr_tot,hadronic_coeff,coulomb_coeff,brems_coeff_0,synchIC_coeff_0,U_mag_ev,U_rad_ev,adiabatic_coeff,DMIN(dt_min_e,dt_min_p),sign_flip_adiabatic_terms,sign_key_for_adiabatic_loop);
         for(k=0;k<N_CR_PARTICLE_BINS;k++) {printf("  k=%d U=%g Z=%g R0=%g E=%g NR=%d xm=%g xp=%g slope=%g bremc=%g strmc=%g binratec=%g \n",k,Ucr[k],Z[k],R0[k],E_GeV[k],NR_key[k],x_m[k],x_p[k],bin_slopes[k],brems_coeff[k],streaming_coeff[k],bin_centered_rate_coeff[k]);}
 #endif
         double dt_min_tmp = 1.e-4 * dtime_cgs; // enforce this since our integrators can deal with it, just at some loss of accuracy

@@ -884,7 +884,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
 #endif
 #endif//end of SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2
     
-#if defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_RAD)
+#if (defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_RAD)) && defined(SINGLE_STAR_TIMESTEPPING) && defined(BH_CALC_DISTANCES)
     BPP(n).MaxFeedbackVel = single_star_fb_velocity(n);
 #endif
     
@@ -941,7 +941,7 @@ double single_star_wind_mdot(int n, int set_mode){ //if set_mode is zero then th
         }
 #endif
         if (old_wind_mode != P[n].wind_mode){
-            printf("Wind mode change for star %llu to %d at %g. Mdot_wind %g\n",(unsigned long long) P[n].ID,P[n].wind_mode,All.Time, wind_mass_loss_rate);
+            printf("Wind mode change for star %llu to %d at %g. Mdot_wind %g\n",(unsigned long long)P[n].ID,P[n].wind_mode,All.Time, wind_mass_loss_rate);
         }
     }
     return wind_mass_loss_rate;
