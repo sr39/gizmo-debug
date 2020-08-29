@@ -758,15 +758,8 @@ void hydro_final_operations_and_cleanup(void)
 #if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
                 SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * streamfac; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
 #endif
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) && !defined(COOLING_OPERATOR_SPLIT)
-                /* with the spectrum model, we account here the adiabatic heating/cooling of the 'fluid', here, which was solved in the hydro solver but doesn't resolve which portion goes to CRs and which to internal energy, with gamma=GAMMA_COSMICRAY */
-                double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt, k, SphP[i].CosmicRayEnergyPred[k], 2); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places
-                double u0 = DMAX(SphP[i].InternalEnergyPred, All.MinEgySpec) , uf = DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
-                SphP[i].DtInternalEnergy += (uf - u0) / (dt + MIN_REAL_NUMBER); // update gas quantities to be used in cooling function
-#endif
             }
 #endif
-
 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtInternalEnergy -= SphP[i].InternalEnergyPred * SphP[i].DtMass;
@@ -836,6 +829,15 @@ void hydro_final_operations_and_cleanup(void)
 
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME)) /* update the metal masses from exchange */
             for(k=0;k<NUM_METAL_SPECIES;k++) {P[i].Metallicity[k] = DMAX(P[i].Metallicity[k] + SphP[i].Dyield[k] / P[i].Mass , 0.01*P[i].Metallicity[k]);}
+#endif
+            
+            
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) && !defined(COOLING_OPERATOR_SPLIT)
+            /* with the spectrum model, we account here the adiabatic heating/cooling of the 'fluid', here, which was solved in the hydro solver but doesn't resolve which portion goes to CRs and which to internal energy, with gamma=GAMMA_COSMICRAY */
+            double ECR_tot=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {ECR_tot+=SphP[i].CosmicRayEnergyPred[k];} // routine below only depends on the total CR energy, not bin-by-bin energies, when we do it this way here
+            double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt, ECR_tot, 1); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places
+            double u0=DMAX(SphP[i].InternalEnergyPred, All.MinEgySpec) , uf=DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
+            SphP[i].DtInternalEnergy += (uf - u0) / (dt + MIN_REAL_NUMBER); // update gas quantities to be used in cooling function
 #endif
 
 

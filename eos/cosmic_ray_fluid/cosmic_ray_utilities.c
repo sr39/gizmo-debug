@@ -688,7 +688,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         
 #if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM) || defined(COOLING_OPERATOR_SPLIT)
         /* now need to account for the adiabatic heating/cooling of the 'fluid', here, with gamma=GAMMA_COSMICRAY */
-        double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt_entr, k_CRegy, eCR_tmp, mode); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places
+        double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt_entr, eCR_tmp, mode); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places
         double uf = DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
         if(mode==0) {SphP[i].InternalEnergy = uf;} else {SphP[i].InternalEnergyPred = uf;} // update gas
 #if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
@@ -704,7 +704,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 
 
 /* subroutine to calculate which part of the adiabatic PdV work from the RP gets assigned to the CRs vs the gas; since the CRs are always smooth by definition under this operation this follows simply from the local cell divergence and the effective CR eos */
-double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, int k_CRegy, double eCR_tmp, int mode)
+double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double eCR_tmp, int mode)
 {
     double u0; if(mode==0) {u0=SphP[i].InternalEnergy;} else {u0=SphP[i].InternalEnergyPred;} // initial energy
     if(u0<All.MinEgySpec) {u0=All.MinEgySpec;} // enforced throughout code
