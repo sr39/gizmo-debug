@@ -887,6 +887,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         double Bmag_IC = sqrt(All.BiniX*All.BiniX + All.BiniY*All.BiniY + All.BiniZ*All.BiniZ) * All.UnitMagneticField_in_gauss / UNIT_B_IN_GAUSS; // IC B-field sets floor as well
         Bmag = DMAX(Bmag , 0.1 * Bmag_IC);
 #endif
+#if defined(SINGLE_STAR_FB_SNE)
+        if(P[i].ProtoStellarStage == 6) {Bmag=0;} // No need to have flux in SN ejecta
+#endif
         Bmag = DMAX(Bmag, MIN_REAL_NUMBER); // floor to prevent underflow errors
         /* add magnetic flux here to 'Bmag' if desired */
         Bmag *= P[j].Mass / (All.cf_a2inv * SphP[j].Density); // convert back to code units
