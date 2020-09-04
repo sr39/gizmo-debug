@@ -408,7 +408,7 @@ int do_the_local_ionization(int target, double dt, int source)
     double t4_eqm = DMIN( 1.5*Theat_star , 3.85/DMAX(log(DMAX(390.*Z_sol/Theat_star,1.001)),0.01) ); // equilibrium H2 region temperature in 1e4 K: 1.5*Theat = eqm temp for pure-H region, while second expression assumes eqm cooling with O+C, etc, but breaks down at low-Z when metals don't dominate cooling.
     double u_eqm = (t4_eqm * HIIRegion_Temp) / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS); // converted to specific internal energy, assuming full ionization
     double u_post_ion_no_cooling = SphP[target].InternalEnergy + delta_U_of_ionization; // energy after ionization, before any cooling
-    double u_final = DMIN( u_post_ion_no_cooling , u_eqm ), du = u_final-SphP[target].InternalEnergy; // don't heat to higher temperature than intial energy of ionization allows
+    double u_final = DMIN( u_post_ion_no_cooling , u_eqm ); // don't heat to higher temperature than intial energy of ionization allows
     SphP[target].InternalEnergy = u_final; SphP[target].InternalEnergyPred = u_final; /* add it */
 #endif
     SphP[target].Ne = 1.0 + 2.0*yhelium(target); /* set the cell to fully ionized */

@@ -19,8 +19,27 @@ double facenormal_dot_dp = 0, Face_Area_Norm = 0;
         Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k];
         facenormal_dot_dp += Face_Area_Vec[k] * kernel.dp[k]; /* check that face points same direction as vector normal: should be true for positive-definite (well-conditioned) NV_T */
     }
+
+#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
+    {
+        double wkwt_i=V_i*kernel.wk_i/All.cf_a2inv, wkwt_j=V_j*kernel.wk_j/All.cf_a2inv, Bi_dot_dx=0, Bj_dot_dx=0;
+        for(k=0;k<3;k++) {Bi_dot_dx += local.Tensor_MFM_Face_Corrections[k] * kernel.dp[k]; Bj_dot_dx -= SphP[j].Tensor_MFM_Face_Corrections[k] * kernel.dp[k];}
+        wkwt_i *= 1. + Bi_dot_dx; wkwt_j *= 1. + Bj_dot_dx;
+        
+        Face_Area_Vec[0] = wkwt_i * (local.Tensor_MFM_Face_Corrections[3]*kernel.dp[0] + local.Tensor_MFM_Face_Corrections[4]*kernel.dp[1] + local.Tensor_MFM_Face_Corrections[5]*kernel.dp[2]);
+        Face_Area_Vec[1] = wkwt_i * (local.Tensor_MFM_Face_Corrections[4]*kernel.dp[0] + local.Tensor_MFM_Face_Corrections[6]*kernel.dp[1] + local.Tensor_MFM_Face_Corrections[7]*kernel.dp[2]);
+        Face_Area_Vec[2] = wkwt_i * (local.Tensor_MFM_Face_Corrections[5]*kernel.dp[0] + local.Tensor_MFM_Face_Corrections[7]*kernel.dp[1] + local.Tensor_MFM_Face_Corrections[8]*kernel.dp[2]);
+
+        Face_Area_Vec[0]+= wkwt_j * (SphP[j].Tensor_MFM_Face_Corrections[3]*kernel.dp[0] + SphP[j].Tensor_MFM_Face_Corrections[4]*kernel.dp[1] + SphP[j].Tensor_MFM_Face_Corrections[5]*kernel.dp[2]);
+        Face_Area_Vec[1]+= wkwt_j * (SphP[j].Tensor_MFM_Face_Corrections[4]*kernel.dp[0] + SphP[j].Tensor_MFM_Face_Corrections[6]*kernel.dp[1] + SphP[j].Tensor_MFM_Face_Corrections[7]*kernel.dp[2]);
+        Face_Area_Vec[2]+= wkwt_j * (SphP[j].Tensor_MFM_Face_Corrections[5]*kernel.dp[0] + SphP[j].Tensor_MFM_Face_Corrections[7]*kernel.dp[1] + SphP[j].Tensor_MFM_Face_Corrections[8]*kernel.dp[2]);
+
+        Face_Area_Norm=0; facenormal_dot_dp=0; for(k=0;k<3;k++) {Face_Area_Norm+=Face_Area_Vec[k]*Face_Area_Vec[k]; facenormal_dot_dp+=Face_Area_Vec[k]*kernel.dp[k];} /* check that face points same direction as vector normal: should be true for positive-definite (well-conditioned) NV_T */
+    }
+#endif
+
     
-#if defined(KERNEL_CRK_FACES) 
+#if defined(KERNEL_CRK_FACES)
     {
         // order of Tensor_CRK_Face_Corrections: A, B[3], (dA+A*B)[3], (dA.B+A.dB)[3][3] //
         double wk_ij = 0.5*(kernel.wk_i+kernel.wk_j), dwk_ij = 0.5*(kernel.dwk_i+kernel.dwk_j) / (MIN_REAL_NUMBER + kernel.r);
@@ -48,7 +67,6 @@ double facenormal_dot_dp = 0, Face_Area_Norm = 0;
             facenormal_dot_dp += Face_Area_Vec[k] * kernel.dp[k]; /* check that face points same direction as vector normal: should be true for positive-definite (well-conditioned) NV_T */
         }
     }
-#endif
 
     if((SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2) || (facenormal_dot_dp < 0))
     {

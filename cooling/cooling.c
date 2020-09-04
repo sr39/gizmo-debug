@@ -124,7 +124,7 @@ void do_the_cooling_for_particle(int i)
 #endif
         /* limit the magnitude of the hydro dtinternalenergy */
         SphP[i].DtInternalEnergy = DMAX(SphP[i].DtInternalEnergy , -0.99*SphP[i].InternalEnergy/dtime ); // equivalent to saying this wouldn't lower internal energy to below 1% in one timestep
-        SphP[i].DtInternalEnergy = DMIN(SphP[i].DtInternalEnergy ,  1.e8*SphP[i].InternalEnergy/dtime ); // equivalent to saying we cant massively enhance internal energy in a single timestep from the hydro work terms: should be big, since just numerical [shocks are real!]
+        SphP[i].DtInternalEnergy = DMIN(SphP[i].DtInternalEnergy ,  1.e4*SphP[i].InternalEnergy/dtime ); // equivalent to saying we cant massively enhance internal energy in a single timestep from the hydro work terms: should be big, since just numerical [shocks are real!]
         /* and convert to cgs before use in the cooling sub-routine */
         SphP[i].DtInternalEnergy *= (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS/HYDROGEN_MASSFRAC);
 #endif
@@ -782,7 +782,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 {
     double n_elec=n_elec_guess, nH0, nHe0, nHp, nHep, nHepp, mu; /* ionization states [computed below] */
     double Lambda, Heat, LambdaFF, LambdaCompton, LambdaExcH0, LambdaExcHep, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
-    double LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, redshift, T, shieldfac, LambdaMol, LambdaMetal;
+    double LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, T, shieldfac, LambdaMol, LambdaMetal;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
     LambdaMol=0; LambdaMetal=0; LambdaCompton=0;
     if(logT <= Tmin) {logT = Tmin + 0.5 * deltaT;}	/* floor at Tmin */
@@ -1037,7 +1037,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 
     double Q = Heat - Lambda;
 #if defined(OUTPUT_COOLRATE_DETAIL)
-    if (target>=0){SphP[target].CoolingRate = Lambda; SphP[target].HeatingRate = Heat;}
+    if(target>=0) {SphP[target].CoolingRate = Lambda; SphP[target].HeatingRate = Heat;}
 #endif
 
 #if defined(COOL_LOW_TEMPERATURES) && !defined(COOL_LOWTEMP_THIN_ONLY)

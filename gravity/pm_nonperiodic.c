@@ -3177,11 +3177,9 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
 	    }
 
 	  /* pre factor = (2*M_PI) / All.BoxSize */
-	  /* note: tidal tensor = - d^2 Phi/ dx_i dx_j  IS THE SIGN CORRECT ?!?! */
-	  cmplx_re(fft_of_rhogrid[ip]) *=
-	    (2 * M_PI) * (2 * M_PI) / (All.TotalMeshSize[grnr] * All.TotalMeshSize[grnr]);
-	  cmplx_im(fft_of_rhogrid[ip]) *=
-	    (2 * M_PI) * (2 * M_PI) / (All.TotalMeshSize[grnr] * All.TotalMeshSize[grnr]);
+	  /* note: tidal tensor = - d^2 Phi/ dx_i dx_j  -- make sure the sign is correct here -- */
+	  cmplx_re(fft_of_rhogrid[ip]) *= (2 * M_PI) * (2 * M_PI) / (All.TotalMeshSize[grnr] * All.TotalMeshSize[grnr]);
+	  cmplx_im(fft_of_rhogrid[ip]) *= (2 * M_PI) * (2 * M_PI) / (All.TotalMeshSize[grnr] * All.TotalMeshSize[grnr]);
 
 	}
 

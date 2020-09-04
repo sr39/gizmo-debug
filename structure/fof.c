@@ -1739,7 +1739,8 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
 void fof_make_black_holes(void)
 {
   int i, j, n, ntot;
-  int nexport, nimport, recvTask, level;
+  long nexport, nimport;
+  int recvTask, level;
   int *import_indices, *export_indices;
   gsl_rng *random_generator_forbh;
   double random_number_forbh=0, unitmass_in_msun;

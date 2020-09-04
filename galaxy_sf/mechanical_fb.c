@@ -393,6 +393,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 E_coupled += e_shock;
 
                 /* inject actual mass from mass return */
+                int couple_anything_but_scalar_mass_and_metals = 1; // key to indicate whether or not we actually need to do the next set of steps beyond pure scalar mass+metal couplings //
                 if(P[j].Hsml<=0) {if(rho_j>0){rho_j*=(1+dM_ejecta_in/Mass_j);} else {rho_j=dM_ejecta_in*kernel.hinv3;}} else {rho_j+=kernel_zero*dM_ejecta_in*hinv3_j;}
                 rho_j *= 1 + dM_ejecta_in/Mass_j; // inject mass at constant particle volume //
                 Mass_j += dM_ejecta_in;
@@ -406,9 +407,12 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-                if(loop_iteration >= 2) continue; // for r-process, age-tracers, etc., nothing left here to bother coupling //
+                if(loop_iteration >= 2) {couple_anything_but_scalar_mass_and_metals = 0;}; // for r-process, age-tracers, etc., nothing left here to bother coupling //
 #endif
 #endif
+                if(couple_anything_but_scalar_mass_and_metals)
+                {
+                    
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) /* inject cosmic rays */
                 double crdir[3]; for(k=0;k<3;k++) {crdir[k]=-kernel.dp[k]/kernel.r;}
                 inject_cosmic_rays(pnorm * CR_energy_to_inject, local.SNe_v_ejecta, loop_iteration, j, crdir);
@@ -444,6 +448,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double q = q0 * v_bw[k];
                     Vel_j[k] += q;
                 }
+                    
+                } // couple_anything_but_scalar_mass_and_metals
                 
                 /* we updated variables that need to get assigned to element 'j' -- let's do it here in a thread-safe manner */
                 #pragma omp atomic
@@ -744,10 +750,12 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 massratio_ejecta = dM_ejecta_in / (dM_ejecta_in + Mass_j);
 
                 /* inject actual mass from mass return */
+                int couple_anything_but_scalar_mass_and_metals = 1; // key to indicate whether or not we actually need to do the next set of steps beyond pure scalar mass+metal couplings //
                 if(P[j].Hsml<=0) {if(rho_j>0){rho_j*=(1+dM_ejecta_in/Mass_j);} else {rho_j=dM_ejecta_in*kernel.hinv3;}} else {rho_j+=kernel_zero*dM_ejecta_in*hinv3_j;}
                 rho_j *= 1 + dM_ejecta_in/Mass_j; // inject mass at constant particle volume //
                 Mass_j += dM_ejecta_in;
                 out.M_coupled += dM_ejecta_in;
+                
 #ifdef METALS   /* inject metals */
                 for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {Metallicity_j[k]=(1-massratio_ejecta)*Metallicity_j[k] + massratio_ejecta*local.yields[k];}
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
@@ -757,9 +765,13 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-                if(loop_iteration >= 2) continue; // for r-process, age-tracers, etc., nothing left here to bother coupling //
+                if(loop_iteration >= 2) {couple_anything_but_scalar_mass_and_metals = 0;}; // for r-process, age-tracers, etc., nothing left here to bother coupling //
 #endif
 #endif
+                
+                if(couple_anything_but_scalar_mass_and_metals)
+                {
+                    
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
                 double crdir[3]; for(k=0;k<3;k++) {crdir[k]=-kernel.dp[k]/kernel.r;}
                 inject_cosmic_rays(pnorm * CR_energy_to_inject, local.SNe_v_ejecta, loop_iteration, j, crdir);
@@ -822,7 +834,10 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     }
 #endif
                 }
-#endif                
+#endif
+                    
+                } // couple_anything_but_scalar_mass_and_metals
+                    
                 /* we updated variables that need to get assigned to element 'j' -- let's do it here in a thread-safe manner */
                 #pragma omp atomic
                 P[j].Mass += Mass_j - Mass_j_0; // finite mass update [delta difference added here, allowing for another element to update in the meantime]. done this way to ensure conservation.

@@ -6,6 +6,7 @@
 #include <gsl/gsl_math.h>
 #include "../allvars.h"
 #include "../proto.h"
+#include "../kernel.h"
 
 /*! Routines for gas equation-of-state terms (collects things like calculation of gas pressure)
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.

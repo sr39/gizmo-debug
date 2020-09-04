@@ -184,6 +184,7 @@ struct INPUT_STRUCT_NAME
     MyFloat Density;
     MyFloat Pressure;
     MyFloat ConditionNumber;
+    MyFloat FaceClosureError;
     MyFloat InternalEnergyPred;
     MyFloat SoundSpeed;
     integertime Timestep;
@@ -225,6 +226,9 @@ struct INPUT_STRUCT_NAME
 
 #if defined(KERNEL_CRK_FACES)
     MyFloat Tensor_CRK_Face_Corrections[16];
+#endif
+#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
+    MyFloat Tensor_MFM_Face_Corrections[9];
 #endif
 #ifdef HYDRO_PRESSURE_SPH
     MyFloat EgyWtRho;
@@ -409,6 +413,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
     in->SoundSpeed = Get_Gas_effective_soundspeed_i(i);
     in->Timestep = GET_PARTICLE_INTEGERTIME(i);
     in->ConditionNumber = SphP[i].ConditionNumber;
+    in->FaceClosureError = SphP[i].FaceClosureError;
 #ifdef MHD_CONSTRAINED_GRADIENT
     /* since it is not used elsewhere, we can use the sign of the condition number as a bit
         to conveniently indicate the status of the parent particle flag, for the constrained gradients */
@@ -432,6 +437,9 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #endif
 #if defined(KERNEL_CRK_FACES)
     for(k=0;k<16;k++) {in->Tensor_CRK_Face_Corrections[k] = SphP[i].Tensor_CRK_Face_Corrections[k];}
+#endif
+#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
+    for(k=0;k<9;k++) {in->Tensor_MFM_Face_Corrections[k] = SphP[i].Tensor_MFM_Face_Corrections[k];}
 #endif
 
     int j;
@@ -746,13 +754,12 @@ void hydro_final_operations_and_cleanup(void)
             for(k=0;k<N_CR_PARTICLE_BINS;k++)
             {
                 double streamfac = CR_get_streaming_loss_rate_coefficient(i,k);
+                SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * streamfac;
 #if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
                 SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * streamfac; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
 #endif
-                SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * streamfac;
             }
 #endif
-
 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtInternalEnergy -= SphP[i].InternalEnergyPred * SphP[i].DtMass;
@@ -822,6 +829,15 @@ void hydro_final_operations_and_cleanup(void)
 
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME)) /* update the metal masses from exchange */
             for(k=0;k<NUM_METAL_SPECIES;k++) {P[i].Metallicity[k] = DMAX(P[i].Metallicity[k] + SphP[i].Dyield[k] / P[i].Mass , 0.01*P[i].Metallicity[k]);}
+#endif
+            
+            
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) && !defined(COOLING_OPERATOR_SPLIT)
+            /* with the spectrum model, we account here the adiabatic heating/cooling of the 'fluid', here, which was solved in the hydro solver but doesn't resolve which portion goes to CRs and which to internal energy, with gamma=GAMMA_COSMICRAY */
+            double ECR_tot=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {ECR_tot+=SphP[i].CosmicRayEnergyPred[k];} // routine below only depends on the total CR energy, not bin-by-bin energies, when we do it this way here
+            double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt, ECR_tot, 1); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places
+            double u0=DMAX(SphP[i].InternalEnergyPred, All.MinEgySpec) , uf=DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
+            SphP[i].DtInternalEnergy += (uf - u0) / (dt + MIN_REAL_NUMBER); // update gas quantities to be used in cooling function
 #endif
 
 

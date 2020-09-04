@@ -52,6 +52,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest);
 double gamma_eos(int i);
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);
+double matrix_invert_ndims(double T[3][3], double Tinv[3][3]);
 #ifdef HERMITE_INTEGRATION
 int eligible_for_hermite(int i);
 void do_hermite_prediction(void);
@@ -281,6 +282,7 @@ double Get_CosmicRayGradientLength(int i, int k_CRegy);
 double Get_CosmicRayStreamingVelocity(int i);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
 double CR_cooling_and_gas_heating(int target, double n_elec, double nH_cgs, double dtime_cgs, int mode);
+double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double eCR_tmp, int mode);
 double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, double shock_vel, int return_index_in_bin);
 void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir);
 double Get_AlfvenMachNumber_Local(int i, double vA_idealMHD_codeunits, int use_shear_corrected_vturb_flag);

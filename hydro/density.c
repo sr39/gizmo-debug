@@ -202,7 +202,7 @@ void hydrokerneldensity_out2particle(struct OUTPUT_STRUCT_NAME *out, int i, int 
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
         for(k=0;k<3;k++) ASSIGN_ADD(SphP[i].ParticleVel[k], out->ParticleVel[k],   mode);
 #endif
-        for(k = 0; k < 3; k++) {for(j = 0; j < 3; j++) {ASSIGN_ADD(SphP[i].NV_T[k][j], out->NV_T[k][j], mode);}}
+        for(k=0;k<3;k++) {for(j=0;j<3;j++) {ASSIGN_ADD(SphP[i].NV_T[k][j], out->NV_T[k][j], mode);}}
 
 #ifdef HYDRO_SPH
         ASSIGN_ADD(SphP[i].DhsmlHydroSumFactor, out->DhsmlHydroSumFactor, mode);
@@ -347,6 +347,10 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             out.NV_T[1][1] +=  wk * kernel.dp[1] * kernel.dp[1];
                             out.NV_T[1][2] +=  wk * kernel.dp[1] * kernel.dp[2];
                             out.NV_T[2][2] +=  wk * kernel.dp[2] * kernel.dp[2];
+                            /* these will temporarily hold the 'face area' terms */
+                            out.NV_T[1][0] += wk * kernel.dp[0];
+                            out.NV_T[2][0] += wk * kernel.dp[1];
+                            out.NV_T[2][1] += wk * kernel.dp[2];
                         }
                         kernel.dv[0] = local.Vel[0] - SphP[j].VelPred[0];
                         kernel.dv[1] = local.Vel[1] - SphP[j].VelPred[1];
@@ -497,7 +501,7 @@ void density(void)
     desnumngb = All.DesNumNgb; desnumngbdev = All.MaxNumNgbDeviation;
     /* in the initial timestep and iteration, use a much more strict tolerance for the neighbor number */
     if(All.Time==All.TimeBegin) {if(All.MaxNumNgbDeviation > 0.05) desnumngbdev=0.05;}
-    MyLongDouble desnumngbdev_0 = desnumngbdev, Tinv[3][3], detT, CNumHolder=0, ConditionNumber=0; int k,k1,k2; k=0;
+    MyLongDouble desnumngbdev_0 = desnumngbdev, Tinv[3][3], ConditionNumber=0; int k,k1,k2; k=0;
 
     /* allocate buffers to arrange communication */
     #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
@@ -529,10 +533,14 @@ void density(void)
                 if(PPP[i].DhsmlNgbFactor > -0.9) {PPP[i].DhsmlNgbFactor = 1 / (1 + PPP[i].DhsmlNgbFactor);} else {PPP[i].DhsmlNgbFactor = 1;} /* note: this would be -1 if only a single particle at zero lag is found */
                 P[i].Particle_DivVel *= PPP[i].DhsmlNgbFactor;
 
-                MyLongDouble NV_T_prev[6]; NV_T_prev[0]=SphP[i].NV_T[0][0]; NV_T_prev[1]=SphP[i].NV_T[1][1]; NV_T_prev[2]=SphP[i].NV_T[2][2]; NV_T_prev[3]=SphP[i].NV_T[0][1]; NV_T_prev[4]=SphP[i].NV_T[0][2]; NV_T_prev[5]=SphP[i].NV_T[1][2];
+                double dimless_face_leak=0; MyLongDouble NV_T_prev[6]; NV_T_prev[0]=SphP[i].NV_T[0][0]; NV_T_prev[1]=SphP[i].NV_T[1][1]; NV_T_prev[2]=SphP[i].NV_T[2][2]; NV_T_prev[3]=SphP[i].NV_T[0][1]; NV_T_prev[4]=SphP[i].NV_T[0][2]; NV_T_prev[5]=SphP[i].NV_T[1][2];
                 if(P[i].Type == 0) /* invert the NV_T matrix we just measured */
                 {
-                    /* fill in the missing elements of NV_T (it's symmetric, so we saved time not computing these directly) */
+                    /* use the single-moment terms of NV_T to construct the faces one would have if the system were perfectly symmetric in reconstruction 'from both sides' */
+                    double V_i = NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) / PPP[i].NumNgb, dx_i = pow(V_i , 1./NUMDIMS); // this is the effective volume which will be used below
+                    dx_i = sqrt(V_i * (SphP[i].NV_T[0][0] + SphP[i].NV_T[1][1] + SphP[i].NV_T[2][2])); // this is the sqrt of the weighted sum of (w*r^2)
+                    double Face_Area_OneSided_Estimator_in[3]={0}, Face_Area_OneSided_Estimator_out[3]={0}; Face_Area_OneSided_Estimator_in[0]=SphP[i].NV_T[1][0]; Face_Area_OneSided_Estimator_in[1]=SphP[i].NV_T[2][0]; Face_Area_OneSided_Estimator_in[2]=SphP[i].NV_T[2][1];
+                    /* now fill in the missing elements of NV_T (it's symmetric, so we saved time not computing these directly) */
                     SphP[i].NV_T[1][0]=SphP[i].NV_T[0][1]; SphP[i].NV_T[2][0]=SphP[i].NV_T[0][2]; SphP[i].NV_T[2][1]=SphP[i].NV_T[1][2];
                     double dimensional_NV_T_normalizer = pow( PPP[i].Hsml , 2-NUMDIMS ); /* this has the same dimensions as NV_T here */
                     for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {SphP[i].NV_T[k1][k2] /= dimensional_NV_T_normalizer;}} /* now NV_T should be dimensionless */
@@ -543,48 +551,16 @@ void density(void)
                     double conditioning_term_to_add = 1.05 * (trace_initial / NUMDIMS) / ConditionNumber_threshold; /* this will be added as a test value if the code does not reach the desired condition number */
                     while(1)
                     {
-                        ConditionNumber = CNumHolder = 0;
-                        for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {ConditionNumber += SphP[i].NV_T[k1][k2]*SphP[i].NV_T[k1][k2];}}
-                        for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}} /* initialize inverse matrix to null */
-#if (NUMDIMS==1) /* one-dimensional case */
-                        detT = SphP[i].NV_T[0][0]; if((detT != 0) && !isnan(detT)) {Tinv[0][0] = 1./detT;} /* only one non-trivial element in 1D! */
-#endif
-#if (NUMDIMS==2) /* two-dimensional case */
-                        detT = SphP[i].NV_T[0][0]*SphP[i].NV_T[1][1] - SphP[i].NV_T[0][1]*SphP[i].NV_T[1][0];
-                        if((detT != 0) && !isnan(detT))
-                        {
-                            Tinv[0][0] =  SphP[i].NV_T[1][1] / detT; Tinv[0][1] = -SphP[i].NV_T[0][1] / detT;
-                            Tinv[1][0] = -SphP[i].NV_T[1][0] / detT; Tinv[1][1] =  SphP[i].NV_T[0][0] / detT;
-                        }
-#endif
-#if (NUMDIMS==3) /* three-dimensional case */
-                        detT = SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][2]
-                             + SphP[i].NV_T[0][1] * SphP[i].NV_T[1][2] * SphP[i].NV_T[2][0]
-                             + SphP[i].NV_T[0][2] * SphP[i].NV_T[1][0] * SphP[i].NV_T[2][1]
-                             - SphP[i].NV_T[0][2] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][0]
-                             - SphP[i].NV_T[0][1] * SphP[i].NV_T[1][0] * SphP[i].NV_T[2][2]
-                             - SphP[i].NV_T[0][0] * SphP[i].NV_T[1][2] * SphP[i].NV_T[2][1];
-                        if((detT != 0) && !isnan(detT)) /* check for zero determinant */
-                        {
-                            Tinv[0][0] = (SphP[i].NV_T[1][1] * SphP[i].NV_T[2][2] - SphP[i].NV_T[1][2] * SphP[i].NV_T[2][1]) / detT;
-                            Tinv[0][1] = (SphP[i].NV_T[0][2] * SphP[i].NV_T[2][1] - SphP[i].NV_T[0][1] * SphP[i].NV_T[2][2]) / detT;
-                            Tinv[0][2] = (SphP[i].NV_T[0][1] * SphP[i].NV_T[1][2] - SphP[i].NV_T[0][2] * SphP[i].NV_T[1][1]) / detT;
-                            Tinv[1][0] = (SphP[i].NV_T[1][2] * SphP[i].NV_T[2][0] - SphP[i].NV_T[1][0] * SphP[i].NV_T[2][2]) / detT;
-                            Tinv[1][1] = (SphP[i].NV_T[0][0] * SphP[i].NV_T[2][2] - SphP[i].NV_T[0][2] * SphP[i].NV_T[2][0]) / detT;
-                            Tinv[1][2] = (SphP[i].NV_T[0][2] * SphP[i].NV_T[1][0] - SphP[i].NV_T[0][0] * SphP[i].NV_T[1][2]) / detT;
-                            Tinv[2][0] = (SphP[i].NV_T[1][0] * SphP[i].NV_T[2][1] - SphP[i].NV_T[1][1] * SphP[i].NV_T[2][0]) / detT;
-                            Tinv[2][1] = (SphP[i].NV_T[0][1] * SphP[i].NV_T[2][0] - SphP[i].NV_T[0][0] * SphP[i].NV_T[2][1]) / detT;
-                            Tinv[2][2] = (SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] - SphP[i].NV_T[0][1] * SphP[i].NV_T[1][0]) / detT;
-                        }
-#endif
-                        for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {CNumHolder += Tinv[k1][k2]*Tinv[k1][k2];}}
-                        ConditionNumber = DMAX( sqrt(ConditionNumber*CNumHolder) / NUMDIMS , 1 ); /* this = sqrt( ||NV_T^-1||*||NV_T|| ) :: should be ~1 for a well-conditioned matrix */
+                        ConditionNumber = matrix_invert_ndims(SphP[i].NV_T, Tinv);
                         if(ConditionNumber < ConditionNumber_threshold) {break;}
                         for(k1=0;k1<NUMDIMS;k1++) {SphP[i].NV_T[k1][k1] += conditioning_term_to_add;} /* add the conditioning term which should make the matrix better-conditioned for subsequent use */
                         conditioning_term_to_add *= 1.2; /* multiply the conditioning term so it will grow and eventually satisfy our criteria */
                     }
                     for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {SphP[i].NV_T[k1][k2] = Tinv[k1][k2] / dimensional_NV_T_normalizer;}} /* re-insert normalization correctly */
                     /* now NV_T holds the inverted matrix elements, for use in hydro */
+                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Face_Area_OneSided_Estimator_out[k1] += 2.*V_i*SphP[i].NV_T[k1][k2]*Face_Area_OneSided_Estimator_in[k2];}} /* calculate mfm/mfv areas that we would have by default, if both sides of reconstruction were symmetric */
+                    for(k1=0;k1<3;k1++) {dimless_face_leak += fabs(Face_Area_OneSided_Estimator_out[k1]) / NUMDIMS;} // average of absolute values
+                    SphP[i].FaceClosureError = dimless_face_leak / (2.*NUMDIMS*pow(dx_i,NUMDIMS-1));
                 } // P[i].Type == 0 //
 
                 /* now check whether we had enough neighbours */
@@ -606,6 +582,7 @@ void density(void)
                         if(dn_ngb < 10.0) SphP[i].ConditionNumber = ConditionNumber;
                     }
                     ncorr_ngb=1; cn=SphP[i].ConditionNumber; if(cn>c0) {ncorr_ngb=sqrt(1.0+(cn-c0)/((double)CONDITION_NUMBER_DANGER));} if(ncorr_ngb>2) ncorr_ngb=2;
+                    double d00=0.35; if(SphP[i].FaceClosureError > d00) {ncorr_ngb = DMAX(ncorr_ngb , DMIN(SphP[i].FaceClosureError/d00 , 2.));}
                 }
                 desnumngb = All.DesNumNgb * ncorr_ngb;
                 desnumngbdev = desnumngbdev_0 * ncorr_ngb;

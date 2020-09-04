@@ -1961,7 +1961,7 @@ extern struct global_data_all_processes
   int NumFilesWrittenInParallel;	/*!< maximum number of files that may be written simultaneously when
                                      writing/reading restart-files, or when writing snapshot files */
   double BufferSize;		/*!< size of communication buffer in MB */
-  int BunchSize;     	        /*!< number of particles fitting into the buffer in the parallel tree algorithm  */
+  long BunchSize;     	        /*!< number of particles fitting into the buffer in the parallel tree algorithm  */
 
   double PartAllocFactor;	/*!< in order to maintain work-load balance, the particle load will usually
 				   NOT be balanced.  Each processor allocates memory for PartAllocFactor times
@@ -2840,6 +2840,12 @@ extern ALIGN(32) struct particle_data
 #endif
 
 
+#if defined(HYDRO_TENSOR_FACE_CORRECTIONS_NGBITER)
+#define HYDRO_TENSOR_FACE_CORRECTIONS_NUMBER_MOMWTS 15
+#else
+#define HYDRO_TENSOR_FACE_CORRECTIONS_NUMBER_MOMWTS 9
+#endif
+
 
 /* the following struture holds data that is stored for each SPH particle in addition to the collisionless
  * variables.
@@ -2893,6 +2899,9 @@ extern struct sph_particle_data
 
 #if defined(KERNEL_CRK_FACES)
     MyFloat Tensor_CRK_Face_Corrections[16]; /*!< tensor set for face-area correction terms for the CRK formulation of SPH or MFM/V areas */
+#endif
+#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
+    MyFloat Tensor_MFM_Face_Corrections[9]; /*!< alternative tensor face corrections for linear consistency */
 #endif
 
 #ifdef COSMIC_RAYS
@@ -2955,6 +2964,7 @@ extern struct sph_particle_data
     } Gradients;
     MyLongDouble NV_T[3][3];        /*!< holds the tensor used for gradient estimation */
     MyLongDouble ConditionNumber;   /*!< condition number of the gradient matrix: needed to ensure stability */
+    MyDouble FaceClosureError;      /*!< dimensionless measure of face closure */
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     MyDouble MaxKineticEnergyNgb;   /*!< maximum kinetic energy (with respect to neighbors): use for entropy 'switch' */
 #endif

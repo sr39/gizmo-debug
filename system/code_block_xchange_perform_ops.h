@@ -31,7 +31,7 @@ be copy-pasted and can be generically optimized in a single place */
             }
             if(NextParticle == save_NextParticle)
             {
-                PRINT_WARNING("NextParticle == save_NextParticle condition: NextParticle=%d save_NextParticle=%d last_nextparticle=%d ProcessedFlag[NextParticle]=%d NextActiveParticle[NextParticle]=%d NumPart=%d N_gas=%d NTaskTimesNumPart=%llu maxThreads=%d All.BunchSize=%d All.BufferSize=%llu Nexport=%ld",NextParticle,save_NextParticle,last_nextparticle,ProcessedFlag[NextParticle],NextActiveParticle[NextParticle],NumPart,N_gas,(unsigned long long)NTaskTimesNumPart,maxThreads,All.BunchSize,(unsigned long long)All.BufferSize,Nexport);
+                PRINT_WARNING("NextParticle == save_NextParticle condition (the buffer appears to small to hold a single particle): NextParticle=%d save_NextParticle=%d last_nextparticle=%d ProcessedFlag[NextParticle]=%d NextActiveParticle[NextParticle]=%d NumPart=%d N_gas=%d NTaskTimesNumPart=%llu maxThreads=%d All.BunchSize=%ld All.BufferSize=%llu Nexport=%ld",NextParticle,save_NextParticle,last_nextparticle,ProcessedFlag[NextParticle],NextActiveParticle[NextParticle],NumPart,N_gas,(unsigned long long)NTaskTimesNumPart,maxThreads,All.BunchSize,(unsigned long long)All.BufferSize,Nexport);
                 if(NextParticle >= 0) {PRINT_WARNING("This is a live particle: NextParticle=%d ID=%llu Mass=%g Type=%d",NextParticle,(unsigned long long)P[NextParticle].ID,P[NextParticle].Mass,P[NextParticle].Type);}
                 endrun(113312);
             } /* in this case, the buffer is too small to process even a single particle */
