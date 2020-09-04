@@ -1016,6 +1016,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+            
+        case IO_AGE_PROTOSTAR:
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = BPP(pindex).ProtoStellarAge;
+                    n++;
+                }
+#endif
+            break;
 
         case IO_LUM_SINGLESTAR:
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
@@ -1685,7 +1696,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_STAGE_PROTOSTAR:
             bytes_per_blockelement = sizeof(int);
             break;
-
+        case IO_AGE_PROTOSTAR:
         case IO_MASS:
         case IO_BH_DIST:
         case IO_U:
@@ -1929,7 +1940,6 @@ int get_datatype_in_block(enum iofields blocknr)
         case IO_STAGE_PROTOSTAR:
             typekey = 0;		/* native int */
             break;
-
         default:
             typekey = 1;		/* native MyOutputFloat */
             break;
@@ -2002,6 +2012,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_MASS_D_PROTOSTAR:
         case IO_ZAMS_MASS:
         case IO_STAGE_PROTOSTAR:
+        case IO_AGE_PROTOSTAR:
         case IO_LUM_SINGLESTAR:
         case IO_BHPROGS:
         case IO_CAUSTIC_COUNTER:
@@ -2319,6 +2330,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_MASS_D_PROTOSTAR:
         case IO_ZAMS_MASS:
         case IO_STAGE_PROTOSTAR:
+        case IO_AGE_PROTOSTAR:
         case IO_LUM_SINGLESTAR:
         case IO_BHPROGS:
             for(i = 0; i < 6; i++) {if(i != 5) {typelist[i] = 0;}}
@@ -2673,6 +2685,12 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_STAGE_PROTOSTAR:
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
+            return 1;
+#endif
+            break;
+            
+        case IO_AGE_PROTOSTAR:
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             return 1;
 #endif
@@ -3074,6 +3092,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_STAGE_PROTOSTAR:
             strncpy(label, "PSST", 4);
             break;
+        case IO_AGE_PROTOSTAR:
+            strncpy(label, "PSAG", 4);
+            break;
         case IO_MASS_D_PROTOSTAR:
             strncpy(label, "PSMD", 4);
             break;
@@ -3441,6 +3462,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_STAGE_PROTOSTAR:
             strcpy(buf, "ProtoStellarStage");
+            break;
+        case IO_AGE_PROTOSTAR:
+            strcpy(buf, "ProtoStellarAge");
             break;
         case IO_LUM_SINGLESTAR:
             strcpy(buf, "StarLuminosity_Solar");

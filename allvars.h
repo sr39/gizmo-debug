@@ -2009,7 +2009,7 @@ extern struct global_data_all_processes
 #ifdef PM_HIRES_REGION_CLIPDM
     double MassOfClippedDMParticles; /*!< the mass of high-res DM particles which the low-res particles will target if they enter the highres region */
 #endif
-
+    double MeanGasParticleMass; /*!< the mean gas particle mass */
     double MinMassForParticleMerger; /*!< the minimum mass of a gas particle below which it will be merged into a neighbor */
     double MaxMassForParticleSplit; /*!< the maximum mass of a gas particle above which it will be split into a pair */
 
@@ -3480,6 +3480,7 @@ enum iofields
   IO_MASS_D_PROTOSTAR,
   IO_ZAMS_MASS,
   IO_STAGE_PROTOSTAR,
+  IO_AGE_PROTOSTAR,
   IO_LUM_SINGLESTAR,
   IO_BHPROGS,
   IO_BH_DIST,
