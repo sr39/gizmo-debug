@@ -871,8 +871,10 @@ void init(void)
     {
         double mass_min = MAX_REAL_NUMBER;
         double mass_max = -MAX_REAL_NUMBER;
+        double mass_tot = 0;
         for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
         {
+            mass_tot += P[i].Mass;
             if(P[i].Mass > mass_max) mass_max = P[i].Mass;
             if(P[i].Mass < mass_min) mass_min = P[i].Mass;
         }
@@ -881,6 +883,12 @@ void init(void)
         MPI_Allreduce(&mass_min, &mpi_mass_min, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
         MPI_Allreduce(&mass_max, &mpi_mass_max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
         All.MinMassForParticleMerger = 0.49 * mpi_mass_min;
+        /* Get mean gas mass */
+        double mpi_mass_tot;
+        long mpi_Ngas; long Ngas_l = (long) N_gas;
+        MPI_Allreduce(&mass_tot, &mpi_mass_tot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(&Ngas_l, &mpi_Ngas, 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
+        All.MeanGasParticleMass = mpi_mass_tot/( (double)mpi_Ngas );
 #ifdef GALSF_GENERATIONS
         All.MinMassForParticleMerger /= (float)GALSF_GENERATIONS;
 #endif

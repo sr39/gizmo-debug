@@ -328,7 +328,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 
 #if defined(SINGLE_STAR_FB_WINDS) /* SINGLE-STAR VERSION: single-star wind mass-loss rates */
     double fire_wind_rel_mass_res = 1e-4; //relative mass resolution of winds, essentially the wind will get spawned in packets of fire_wind_rel_mass_res*(gas_mass_resolution) mass
-    D_RETURN_FRAC = fire_wind_rel_mass_res * (2.0*All.MinMassForParticleMerger)/ P[i].Mass;
+    D_RETURN_FRAC = fire_wind_rel_mass_res * (All.MeanGasParticleMass)/ P[i].Mass;
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION /* for 'fancy' multi-stage modules, have a separate subroutine to compute this */
     if(P[i].wind_mode != 2) {return;} /* only some eligible particles have winds in this module */
     p = single_star_wind_mdot(i,0) * dt / P[i].Mass; /* actual mdot from its own subroutine, given in code units */
@@ -984,7 +984,7 @@ double single_star_fb_velocity(int n){
     double mdot = single_star_wind_mdot(n, 0);
     double Lwind = 0.5 * mdot * v_wind * v_wind;
     double rho = P[n].DensAroundStar;
-    double dm = 2*All.MinMassForParticleMerger;
+    double dm = All.MeanGasParticleMass;
     double v_shell=MAX_REAL_NUMBER;
     if(P[n].DensAroundStar) {v_shell = cbrt(Lwind / cbrt(dm*dm/rho));} // estimate the velocity of a wind shell swept up on the scale of a single resolution element in the similarity solution R ~ (L/rho)^1/3 t^(3/5) - use this if slower than v_wind (ie the free-expansion phase is unresolved)
     v_fb = DMAX(v_fb, DMIN(v_shell, v_wind));
