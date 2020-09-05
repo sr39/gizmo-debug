@@ -67,6 +67,7 @@ double facenormal_dot_dp = 0, Face_Area_Norm = 0;
             facenormal_dot_dp += Face_Area_Vec[k] * kernel.dp[k]; /* check that face points same direction as vector normal: should be true for positive-definite (well-conditioned) NV_T */
         }
     }
+#endif
 
     if((SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2) || (facenormal_dot_dp < 0))
     {
