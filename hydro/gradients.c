@@ -1895,32 +1895,13 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 {
                     kernel.dwk_j = kernel.wk_j = 0;
                 }
-
-#if ((defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)) || defined(MHD_CONSTRAINED_GRADIENT) // we need to get effective sizes
-                double Particle_Size_j = Get_Particle_Size(j);
-                double Particle_Size_i = pow(local.Mass/local.GQuant.Density, 1./NUMDIMS);
-#endif
+                double Particle_Size_j, Particle_Size_i;  Particle_Size_j=Get_Particle_Size(j); Particle_Size_i=pow(local.Mass/local.GQuant.Density, 1./NUMDIMS);
 
 #if defined(MHD_CONSTRAINED_GRADIENT)
-                double V_j = P[j].Mass / SphP[j].Density, Face_Area_Vec[3], wt_i=V_i, wt_j=V_j;
-		double cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber;
+                double V_j = P[j].Mass / SphP[j].Density, Face_Area_Vec[3], cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber;
 
-/* insert code block for computing Face_Area_Vec, Face_Area_Norm (pre-limiter and sqrt), wt_i, and wt_j */
-#include "compute_vol_wt_faces.h"
+#include "compute_finitevol_faces.h" /* insert code block for computing Face_Area_Vec, Face_Area_Norm, n_unit, etc. */
                 
-		Face_Area_Norm = sqrt(Face_Area_Norm);
-
-		/* below, if we are using fixed-grid mode for the code, we manually set the areas to the correct geometric areas */
-#ifdef HYDRO_REGULAR_GRID
-                Face_Area_Norm = calculate_face_area_for_cartesian_mesh(kernel.dp, rinv, Particle_Size_i, Face_Area_Vec);
-#endif
-
-#if (defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)
-                /* check if face area exceeds maximum geometric allowed limit (can occur when particles with -very- different Hsml interact at the edge of the kernel, limited to geometric max to prevent numerical instability */
-                double Amax = DMIN(Get_Particle_Expected_Area(Particle_Size_i) , Get_Particle_Expected_Area(Particle_Size_j)); // minimum of area "i" or area "j": this subroutine takes care of dimensionality, etc. note inputs are all in -physical- units here
-                if(Face_Area_Norm > Amax) {for(k=0;k<3;k++) {Face_Area_Vec[k] = (Amax/Face_Area_Norm) * Face_Area_Vec[k];}} /* set the face area to the maximum limit, and reset the face vector as well [ direction is preserved, just area changes] */
-#endif
-
                 for(k=0;k<3;k++){
                     if(gradient_iteration == 0)
                     {
