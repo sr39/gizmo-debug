@@ -82,7 +82,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
     dt_hydrostep_i = local.Timestep * UNIT_INTEGERTIME_IN_PHYSICAL; /* (physical) timestep */
     out.MaxSignalVel = kernel.sound_i;
     kernel_mode = 0; /* need dwk and wk */
-    double cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber;
+    double cnumcrit2; cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber;
 #if defined(HYDRO_SPH)
 #ifdef HYDRO_PRESSURE_SPH
     kernel.p_over_rho2_i = local.Pressure / (local.EgyWtRho*local.EgyWtRho);

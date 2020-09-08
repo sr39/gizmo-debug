@@ -16,7 +16,7 @@
 //#define HYDRO_FACE_VOLUME_RECONSTRUCTION_CORRECTION
 #endif
     
-    double s_star_ij,s_i,s_j,v_frame[3],n_unit[3],dummy_pressure,distance_from_i[3],distance_from_j[3];
+    double s_star_ij,s_i,s_j,v_frame[3],dummy_pressure,distance_from_i[3],distance_from_j[3];
     double leak_vs_tol = 0.5 * (local.FaceClosureError+SphP[j].FaceClosureError);
     dummy_pressure=face_area_dot_vel=face_vel_i=face_vel_j=Face_Area_Norm=0;
     double Pressure_i = local.Pressure, Pressure_j = SphP[j].Pressure;
@@ -62,17 +62,7 @@
     /* ------------------------------------------------------------------------------------------------------------------- */
     /* now we're ready to compute the volume integral of the fluxes (or equivalently an 'effective area'/face orientation) */
     /* ------------------------------------------------------------------------------------------------------------------- */
-    double wt_i,wt_j; wt_i=V_i; wt_j=V_j;
-#include "compute_vol_wt_faces.h" // computes wt_i, wt_j, and Face_Area_Vec, and Face_Area_Norm (but does not yet apply area limiter or sqrt to Face_Area_Norm). Different parts of the code need to run this and be exactly consistent, so we modify it in this one place
-
-#if defined(HYDRO_FACE_VOLUME_RECONSTRUCTION_CORRECTION)
-    double Vi_phys=V_i/All.cf_a3inv, Vj_phys=V_j/All.cf_a3inv, Vi_inv_corr=1., Vj_inv_corr=1., Vol_min = fabs(0.5*facenormal_dot_dp) * All.cf_atime / 3.; // area of an oblique pyramid, origin at one origin point, face at midpoint
-    if(Vol_min > DMIN(Vi_phys,Vj_phys)) // minimum volume extrapolated to face is larger than one of the particle volumes, so we will apply a correction to avoid too-large a flux
-    {
-        if(Vol_min > Vi_phys) {Vi_inv_corr = Vi_phys/Vol_min;}
-        if(Vol_min > Vj_phys) {Vj_inv_corr = Vj_phys/Vol_min;}
-    }
-#endif
+#include "compute_finitevol_faces.h" /* insert code block for computing Face_Area_Vec, Face_Area_Norm, etc. */
 
     if(Face_Area_Norm == 0)
     {
@@ -81,27 +71,8 @@
         Riemann_out.phi_normal_mean=Riemann_out.phi_normal_db=0;
 #endif
     } else {
-        
-        if((Face_Area_Norm<=0)||(isnan(Face_Area_Norm)))
-        {
-            printf("PANIC! Face_Area_Norm=%g Mij=%g/%g wk_ij=%g/%g Vij=%g/%g dx/dy/dz=%g/%g/%g NVT=%g/%g/%g NVT_j=%g/%g/%g \n",Face_Area_Norm,local.Mass,P[j].Mass,kernel.wk_i,
-                   kernel.wk_j,V_i,V_j,kernel.dp[0],kernel.dp[1],kernel.dp[2],local.NV_T[0][0],local.NV_T[0][1],local.NV_T[0][2],SphP[j].NV_T[0][0],SphP[j].NV_T[0][1],
-                   SphP[j].NV_T[0][2]);
-            fflush(stdout);
-        }
-        Face_Area_Norm = sqrt(Face_Area_Norm);
-        
-        /* below, if we are using fixed-grid mode for the code, we manually set the areas to the correct geometric areas */
-#ifdef HYDRO_REGULAR_GRID
-        Face_Area_Norm = calculate_face_area_for_cartesian_mesh(kernel.dp, rinv, Particle_Size_i, Face_Area_Vec);
-#endif
-        
-        for(k=0;k<3;k++) {n_unit[k] = Face_Area_Vec[k] / Face_Area_Norm;} /* define useful unit vector for below */
-#if (defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)
-        /* check if face area exceeds maximum geometric allowed limit (can occur when particles with -very- different Hsml interact at the edge of the kernel, limited to geometric max to prevent numerical instability */
-        double Amax = DMIN(Get_Particle_Expected_Area(Particle_Size_i) , Get_Particle_Expected_Area(Particle_Size_j)); // minimum of area "i" or area "j": this subroutine takes care of dimensionality, etc. note inputs are all in -physical- units here
-        if(Face_Area_Norm > Amax) {Face_Area_Norm = Amax; for(k=0;k<3;k++) {Face_Area_Vec[k] = n_unit[k] * Face_Area_Norm;}} /* set the face area to the maximum limit, and reset the face vector as well [ direction is preserved, just area changes] */
-#endif
+        if((Face_Area_Norm<=0)||(isnan(Face_Area_Norm))) {PRINT_WARNING("PANIC! Face_Area_Norm=%g Mij=%g/%g wk_ij=%g/%g Vij=%g/%g dx/dy/dz=%g/%g/%g NVT=%g/%g/%g NVT_j=%g/%g/%g \n",Face_Area_Norm,local.Mass,P[j].Mass,kernel.wk_i,kernel.wk_j,V_i,V_j,kernel.dp[0],kernel.dp[1],kernel.dp[2],local.NV_T[0][0],local.NV_T[0][1],local.NV_T[0][2],SphP[j].NV_T[0][0],SphP[j].NV_T[0][1],SphP[j].NV_T[0][2]); fflush(stdout);}
+        double n_unit[3]; for(k=0;k<3;k++) {n_unit[k] = Face_Area_Vec[k] / Face_Area_Norm;} /* define useful unit vector for below */
 
         /* --------------------------------------------------------------------------------- */
         /* extrapolate the conserved quantities to the interaction face between the particles */

@@ -418,7 +418,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
         double R_grain_code=P[i].Grain_Size/UNIT_LENGTH_IN_CGS, rho_grain_code=All.Grain_Internal_Density/UNIT_DENSITY_IN_CGS, rho_gas_code=P[i].Gas_Density*All.cf_a3inv; /* internal grain density in code units */
         for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
         {
-            double Q_abs_eff = return_grain_absorption_efficiency_Q(i, k_freq); /* need this to calculate the absorption efficiency in each band */
+            double Q_abs_eff = return_grain_extinction_efficiency_Q(i, k_freq); /* need this to calculate the absorption efficiency in each band */
             in->Grain_Abs_Coeff[k_freq] = Q_abs_eff * 3. / (4. * C_LIGHT_CODE_REDUCED * rho_grain_code * R_grain_code * rho_gas_code);
         }
     }
@@ -472,7 +472,7 @@ int interpolate_fluxes_opacities_gasgrains_evaluate(int target, int mode, int *e
                         double R_grain_code=P[j].Grain_Size/UNIT_LENGTH_IN_CGS, rho_grain_code=All.Grain_Internal_Density/UNIT_DENSITY_IN_CGS; /* internal grain density in code units */
                         for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
                         {
-                            double Q_abs_eff = return_grain_absorption_efficiency_Q(j, k_freq); /* need this to calculate the absorption efficiency in each band */
+                            double Q_abs_eff = return_grain_extinction_efficiency_Q(j, k_freq); /* need this to calculate the absorption efficiency in each band */
                             out.Interpolated_Opacity[k_freq] += wt * Q_abs_eff * 3. / (4. * rho_grain_code * R_grain_code);
                         }
                     } else { /* sitting on a -grain- element, want to interpolate flux to it and calculate radiation pressure force */
@@ -525,7 +525,7 @@ void interpolate_fluxes_opacities_gasgrains(void)
 
 
 
-double return_grain_absorption_efficiency_Q(int i, int k_freq)
+double return_grain_extinction_efficiency_Q(int i, int k_freq)
 {
     double Q = 1; /* default to geometric opacity */
 #if defined(GRAIN_RDI_TESTPROBLEM)
@@ -535,7 +535,7 @@ double return_grain_absorption_efficiency_Q(int i, int k_freq)
 #endif
 #else
     /* INSERT PHYSICS HERE -- this is where you want to specify the optical properties of grains relative to the frequency bins being evolved. could code up something for -ALL- the bins we do, but that's a lot, so we'll do these as-needed, for runs with different frequencies */
-    if(ThisTask==0) {PRINT_WARNING("Code does not have entered grain absorption efficiency/optical properties for your specific wavelength being evolved. Please enter that information in the routine 'return_grain_absorption_efficiency_Q'. For now will assume geometric absorption (Q=1). \n");}
+    if(ThisTask==0) {PRINT_WARNING("Code does not have entered grain absorption efficiency/optical properties for your specific wavelength being evolved. Please enter that information in the routine 'return_grain_extinction_efficiency_Q'. For now will assume geometric absorption (Q=1). \n");}
 #endif
     return Q;
 }

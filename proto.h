@@ -80,7 +80,7 @@ double sub_turb_enclosed_mass(double r, double msub, double vmax, double radvmax
 
 void interpolate_fluxes_opacities_gasgrains(void);
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
-double return_grain_absorption_efficiency_Q(int i, int k_freq);
+double return_grain_extinction_efficiency_Q(int i, int k_freq);
 #endif
 int powerspec_turb_find_nearest_evaluate(int target, int mode, int *nexport, int *nsend_local);
 void powerspec_turb_calc_dispersion(void);
