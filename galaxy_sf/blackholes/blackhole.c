@@ -372,7 +372,7 @@ void set_blackhole_mdot(int i, int n, double dt)
         double reff = All.ForceSoftening[5], Gm_i = 1./(All.G*P[n].Mass);
 #if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
         double cs_min = 0.2 / UNIT_VEL_IN_KMS;
-        reff = All.G*2.*All.MinMassForParticleMerger/(cs_min*cs_min), Gm_i = 1./(All.G*2.*All.MinMassForParticleMerger); // effectively setting the value to the freefall time the particle has when it forms, for both 'size' of disk and 'effective mass' (for dynamical time below)
+        reff = All.G*All.MeanGasParticleMass/(cs_min*cs_min), Gm_i = 1./(All.G*All.MeanGasParticleMass); // effectively setting the value to the freefall time the particle has when it forms, for both 'size' of disk and 'effective mass' (for dynamical time below)
 #endif
         t_acc_disk = sqrt(reff*reff*reff * Gm_i); // dynamical time at radius "reff", essentially fastest-possible accretion time
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM) && defined(BH_MDOT_FROM_ALPHAMODEL)
@@ -765,7 +765,7 @@ void blackhole_final_operations(void)
         /* DAA: for wind spawning, we only need to subtract the BAL wind mass from BH_Mass (or BH_Mass_AlphaDisk) --> wind mass subtracted from P.Mass in blackhole_spawn_particle_wind_shell()  */
         double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
 #ifdef SINGLE_STAR_FB_JETS
-        if((P[n].BH_Mass * UNIT_MASS_IN_SOLAR < 0.01) || P[n].Mass < 7*All.MinMassForParticleMerger) {dm_wind = 0;} // no jets launched yet if <0.01msun or if we haven't accreted enough to get a reliable jet direction
+        if((P[n].BH_Mass * UNIT_MASS_IN_SOLAR < 0.01) || P[n].Mass < 3.5*All.MeanGasParticleMass) {dm_wind = 0;} // no jets launched yet if <0.01msun or if we haven't accreted enough to get a reliable jet direction
 #endif
         if(dm_wind > P[n].Mass) {dm_wind = P[n].Mass;}
 #if defined(BH_ALPHADISK_ACCRETION)
@@ -793,11 +793,11 @@ void blackhole_final_operations(void)
             eps = DMAX(eps, P[n].SinkRadius);
 #endif
             double t_clear = eps/single_star_SN_velocity(n); // time needed spawned wind particles to clear the sink
-            double SN_mdot = (SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger)/t_clear; // we spawn SINGLE_STAR_FB_SNE_N_EJECTA per ejected shell, and we can have maximum 1 shell per t_clear
+            double SN_mdot = (SINGLE_STAR_FB_SNE_N_EJECTA * All.MeanGasParticleMass)/t_clear; // we spawn SINGLE_STAR_FB_SNE_N_EJECTA per ejected shell, and we can have maximum 1 shell per t_clear
             dm_wind = DMIN(SN_mdot*dt, BPP(n).BH_Mass); // We will spawn particles to model the SN ejecta, but not more than what we can handle at the same time, these particles will have the same mass as gas particles, not like wind particles
             printf("Adding SN ejecta of mass %g from star %llu at time %g, unspawned mass at %g\n", dm_wind, (unsigned long long) P[n].ID, All.Time, (BPP(n).unspawned_wind_mass+dm_wind));
             BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
-            if (BPP(n).BH_Mass < 0.5*(SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger)){ // less than half a shell mass left in the star: instead of spawning the last shell with very low mass particles we will make the one before slightly more massive
+            if (BPP(n).BH_Mass < 0.5*(SINGLE_STAR_FB_SNE_N_EJECTA * All.MeanGasParticleMass)){ // less than half a shell mass left in the star: instead of spawning the last shell with very low mass particles we will make the one before slightly more massive
                 dm_wind += BPP(n).BH_Mass; BPP(n).BH_Mass = 0; // add leftover mass to be spawned and zero-out mass
             }
             if (BPP(n).BH_Mass == 0){
