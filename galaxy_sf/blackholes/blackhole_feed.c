@@ -160,8 +160,8 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                     if(r2 < h_i2 || r2 < PPP[j].Hsml*PPP[j].Hsml)
                     {
                         vrel=0; for(k=0;k<3;k++) {vrel += dvel[k]*dvel[k];}
-                        r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime;  /* do this once and use below */
-                        vesc=bh_vesc(j,local.Mass,r, ags_h_i);
+                        r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime;  /* relative velocity in physical units. do this once and use below */
+                        vesc=bh_vesc(j, local.Mass, r, ags_h_i);
                         
                         /* note that SwallowID is both read and potentially re-written below: we need to make sure this is done in a thread-safe manner */
                         MyIDType SwallowID_j;
@@ -201,7 +201,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                             if((r < 1.0001*P[j].min_dist_to_bh) && (r < PPP[j].Hsml) && (r < sink_radius) && (P[j].Mass < local.Mass) && (P[j].Mass < 1.5*All.MeanGasParticleMass)) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
 #endif
                             {
-                                if((vrel < BH_CSND_FRAC_BH_MERGE * vesc) && (bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1))
+                                if((vrel < vesc) && (bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1))
                                 {
                                     printf(" ..BH-BH Merger: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) local.ID);
                                     SwallowID_j = local.ID;

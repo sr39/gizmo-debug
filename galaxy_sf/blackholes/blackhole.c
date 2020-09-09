@@ -89,7 +89,10 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
     if(P[j].Type==0) {m_eff += 4.*M_PI * r_code*r_code*r_code * SphP[j].Density;} // assume an isothermal sphere interior, for Shu-type solution
 #endif
     double hinv = 1./All.ForceSoftening[5], fac=2.*All.G*m_eff/All.cf_atime;
-    return sqrt(-fac*kernel_gravity(r_code*hinv,hinv,hinv*hinv*hinv,-1) + cs_to_add*cs_to_add); // accounts for softening [non-Keplerian inside softening]
+#if defined(BH_REPOSITION_ON_POTMIN)
+    return sqrt(fac/r_code + cs_to_add*cs_to_add); // in this case BH dynamics are intentionally inexact and gravitational BH velocities not well-resolved, so use the larger Keplerian term here
+#endif
+    return sqrt(fac*fabs(kernel_gravity(r_code*hinv,hinv,hinv*hinv*hinv,-1)) + cs_to_add*cs_to_add); // accounts for softening [non-Keplerian inside softening]
 }
 
 
@@ -97,6 +100,10 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
 /* check whether a particle is sufficiently bound to the BH to qualify for 'gravitational capture' */
 int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double sink_radius) // need to know the sink radius, which can be distinct from both the softening and search radii
 {
+#if defined(BH_REPOSITION_ON_POTMIN)
+    if(P[j].Type == 5) {return 1;} // if this module is active, we aren't doing exact BH-BH dynamics, so default is to be unrestrictive for BH-BH mergers //
+#endif
+
     /* if pair is a gas particle make sure to account for its pressure and internal energy */
     double cs=0; if(P[j].Type==0) {cs=Get_Gas_Fast_MHD_wavespeed_i(j);} // use the fast MHD wavespeed to account for magnetic+thermal energy (but not e.g. cosmic ray), in allowing accretion //
 
@@ -124,9 +131,6 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
         if(P[j].Type == 0) {r_j = DMAX(r_j , PPP[j].Hsml);}
         apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
         if(P[j].Type == 5) {apocenter_max = DMIN(apocenter_max , 1.*All.ForceSoftening[5]);}
-#endif
-#if defined(BH_REPOSITION_ON_POTMIN)
-        if(P[j].Type == 5) {return 1;} // default is to be unrestrictive for BH-BH mergers //
 #endif
         if(apocenter < apocenter_max) {bound = 1;}
     }
