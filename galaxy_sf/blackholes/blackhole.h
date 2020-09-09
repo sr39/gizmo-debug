@@ -9,10 +9,6 @@
 #ifdef BLACK_HOLES // master flag [needs to be here to prevent compiler breaking when this is not active] //
 
 
-#ifndef BH_CSND_FRAC_BH_MERGE
-#define BH_CSND_FRAC_BH_MERGE 1.0 /* Relative velocity fraction (in units of soundspeed) for merging blackholes, default=1.0 */
-#endif
-
 #define BHPOTVALUEINIT 1.0e30
 extern int N_active_loc_BHs;    /*!< number of active black holes on the LOCAL processor */
 
