@@ -269,12 +269,12 @@ void begrun(void)
         /* allow softenings to be modified during the run */
         if(All.ComovingIntegrationOn)
         {
-        All.SofteningGasMaxPhys = all.SofteningGasMaxPhys;
-        All.SofteningHaloMaxPhys = all.SofteningHaloMaxPhys;
-        All.SofteningDiskMaxPhys = all.SofteningDiskMaxPhys;
-        All.SofteningBulgeMaxPhys = all.SofteningBulgeMaxPhys;
-        All.SofteningStarsMaxPhys = all.SofteningStarsMaxPhys;
-        All.SofteningBndryMaxPhys = all.SofteningBndryMaxPhys;
+            All.SofteningGasMaxPhys = all.SofteningGasMaxPhys;
+            All.SofteningHaloMaxPhys = all.SofteningHaloMaxPhys;
+            All.SofteningDiskMaxPhys = all.SofteningDiskMaxPhys;
+            All.SofteningBulgeMaxPhys = all.SofteningBulgeMaxPhys;
+            All.SofteningStarsMaxPhys = all.SofteningStarsMaxPhys;
+            All.SofteningBndryMaxPhys = all.SofteningBndryMaxPhys;
         }
         All.SofteningGas = all.SofteningGas;
         All.SofteningHalo = all.SofteningHalo;
@@ -283,52 +283,83 @@ void begrun(void)
         All.SofteningStars = all.SofteningStars;
         All.SofteningBndry = all.SofteningBndry;
 
-      All.MaxHsml = all.MaxHsml;
-      All.MaxRMSDisplacementFac = all.MaxRMSDisplacementFac;
+        All.MaxHsml = all.MaxHsml;
+        All.MaxRMSDisplacementFac = all.MaxRMSDisplacementFac;
 
-      All.ErrTolForceAcc = all.ErrTolForceAcc;
-      All.NumFilesPerSnapshot = all.NumFilesPerSnapshot;
-      All.NumFilesWrittenInParallel = all.NumFilesWrittenInParallel;
-      All.TreeDomainUpdateFrequency = all.TreeDomainUpdateFrequency;
+        All.ErrTolForceAcc = all.ErrTolForceAcc;
+        All.NumFilesPerSnapshot = all.NumFilesPerSnapshot;
+        All.NumFilesWrittenInParallel = all.NumFilesWrittenInParallel;
+        All.TreeDomainUpdateFrequency = all.TreeDomainUpdateFrequency;
 
-      All.OutputListOn = all.OutputListOn;
-      All.CourantFac = all.CourantFac;
-
-      All.OutputListLength = all.OutputListLength;
-      memcpy(All.OutputListTimes, all.OutputListTimes, sizeof(double) * All.OutputListLength);
-      memcpy(All.OutputListFlag, all.OutputListFlag, sizeof(char) * All.OutputListLength);
+        All.OutputListOn = all.OutputListOn;
+        All.CourantFac = all.CourantFac;
+        
+        All.OutputListLength = all.OutputListLength;
+        memcpy(All.OutputListTimes, all.OutputListTimes, sizeof(double) * All.OutputListLength);
+        memcpy(All.OutputListFlag, all.OutputListFlag, sizeof(char) * All.OutputListLength);
 
 #ifdef GALSF
-      All.CritPhysDensity = all.CritPhysDensity;
-      All.MaxSfrTimescale = all.MaxSfrTimescale;
+        All.CritPhysDensity = all.CritPhysDensity;
+        All.MaxSfrTimescale = all.MaxSfrTimescale;
 #endif
-
-
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
-      All.ArtBulkViscConst = all.ArtBulkViscConst;
-      All.ViscosityAMin = all.ViscosityAMin;
-      All.ViscosityAMax = all.ViscosityAMax;
+        All.ArtBulkViscConst = all.ArtBulkViscConst;
+        All.ViscosityAMin = all.ViscosityAMin;
+        All.ViscosityAMax = all.ViscosityAMax;
 #endif
 #ifdef TURB_DIFFUSION
-      All.TurbDiffusion_Coefficient = all.TurbDiffusion_Coefficient;
+        All.TurbDiffusion_Coefficient = all.TurbDiffusion_Coefficient;
 #endif
 #ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
-      All.ArtCondConstant = all.ArtCondConstant;
+        All.ArtCondConstant = all.ArtCondConstant;
 #endif
-
 #if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
-      All.ArtMagDispConst = all.ArtMagDispConst;
+        All.ArtMagDispConst = all.ArtMagDispConst;
 #endif
-
 #ifdef DIVBCLEANING_DEDNER
-      All.DivBcleanParabolicSigma = all.DivBcleanParabolicSigma;
-      All.DivBcleanHyperbolicSigma = all.DivBcleanHyperbolicSigma;
-      All.FastestWaveSpeed = 0.0;
-      All.FastestWaveDecay = 0.0;
+        All.DivBcleanParabolicSigma = all.DivBcleanParabolicSigma;
+        All.DivBcleanHyperbolicSigma = all.DivBcleanHyperbolicSigma;
+        All.FastestWaveSpeed = 0.0;
+        All.FastestWaveDecay = 0.0;
 #endif
 #ifdef BLACK_HOLES
-      All.BlackHoleMaxAccretionRadius = all.BlackHoleMaxAccretionRadius;
+        All.BlackHoleEddingtonFactor = all.BlackHoleEddingtonFactor;
+        All.SeedBlackHoleMass = all.SeedBlackHoleMass;
+        All.BlackHoleNgbFactor = all.BlackHoleNgbFactor;
+        All.BlackHoleMaxAccretionRadius = all.BlackHoleMaxAccretionRadius;
+        All.BlackHoleRadiativeEfficiency = all.BlackHoleRadiativeEfficiency;
+        All.BlackHoleFeedbackFactor = all.BlackHoleFeedbackFactor;
+#if defined(BH_SEED_FROM_FOF) || defined(BH_SEED_FROM_LOCALGAS)
+        All.SeedBlackHoleMassSigma = all.SeedBlackHoleMassSigma;
+        All.SeedBlackHoleMinRedshift = all.SeedBlackHoleMinRedshift;
+#ifdef BH_SEED_FROM_LOCALGAS
+        All.SeedBlackHolePerUnitMass = all.SeedBlackHolePerUnitMass;
 #endif
+#endif
+#ifdef BH_ALPHADISK_ACCRETION
+        All.SeedAlphaDiskMass = all.SeedAlphaDiskMass;
+#endif
+#ifdef BH_SEED_FROM_FOF
+        All.MinFoFMassForNewSeed = all.MinFoFMassForNewSeed;
+#endif
+#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
+        All.BAL_f_accretion = all.BAL_f_accretion;
+        All.BAL_v_outflow = all.BAL_v_outflow;
+#endif
+#if defined(SINGLE_STAR_FB_JETS)
+        All.BAL_f_launch_v = all.BAL_f_launch_v;
+#endif
+#if defined(BH_COSMIC_RAYS)
+        All.BH_CosmicRay_Injection_Efficiency = all.BH_CosmicRay_Injection_Efficiency;
+#endif
+#ifdef BH_WIND_SPAWN
+        All.BAL_internal_temperature = all.BAL_internal_temperature;
+        All.BAL_wind_particle_mass = all.BAL_wind_particle_mass; // dangeous to change this, as it is also part of the merger criterion!
+#endif
+#ifdef BH_PHOTONMOMENTUM
+        All.BH_Rad_MomentumFactor = all.BH_Rad_MomentumFactor;
+#endif
+#endif // blackholes
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
         All.RP_Local_Momentum_Renormalization = all.RP_Local_Momentum_Renormalization;
 #endif
@@ -373,7 +404,7 @@ void begrun(void)
       All.MaxNumNgbDeviation = all.MaxNumNgbDeviation;
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
       /* Allow the tolerance over the number of neighbours to vary during the run:
-       * If it was initially set to a very strict value, convergence in ngb-iteration may at some point fail */
+        If it was initially set to a very strict value, convergence in ngb-iteration may at some point fail */
       All.AGS_MaxNumNgbDeviation = all.AGS_MaxNumNgbDeviation;
 #endif
 
@@ -409,8 +440,7 @@ void begrun(void)
       All.NetworkTempThreshold = all.NetworkTempThreshold;
 #endif
 
-      if(All.TimeMax != all.TimeMax)
-	readjust_timebase(All.TimeMax, all.TimeMax);
+      if(All.TimeMax != all.TimeMax) {readjust_timebase(All.TimeMax, all.TimeMax);}
     }
 
 #ifdef GALSF_EFFECTIVE_EQS
@@ -420,7 +450,6 @@ void begrun(void)
   char contfname[1000];
   sprintf(contfname, "%scont", All.OutputDir);
   unlink(contfname);
-
   open_outputfiles();
 
 #ifdef PMGRID
@@ -431,20 +460,11 @@ void begrun(void)
 
 #ifndef BOX_SHEARING
 #if (NUMDIMS==2)
-  int i;
-
-  for(i = 0; i < NumPart; i++)
+    int i;
+    for(i = 0; i < NumPart; i++)
     {
-      P[i].Pos[2] = 0;
-      P[i].Vel[2] = 0;
-
-      P[i].GravAccel[2] = 0;
-
-      if(P[i].Type == 0)
-	{
-	  SphP[i].VelPred[2] = 0;
-	  SphP[i].HydroAccel[2] = 0;
-	}
+      P[i].Pos[2] = P[i].Vel[2] = P[i].GravAccel[2] = 0;
+      if(P[i].Type == 0) {SphP[i].VelPred[2] = SphP[i].HydroAccel[2] = 0;}
     }
 #endif
 #endif
@@ -469,15 +489,14 @@ void begrun(void)
 #endif
 
 
-  if(All.ComovingIntegrationOn)
-    init_drift_table();
+  if(All.ComovingIntegrationOn) {init_drift_table();}
 
   if(RestartFlag == 2)
-    All.Ti_nextoutput = find_next_outputtime(All.Ti_Current + 100);
+    {All.Ti_nextoutput = find_next_outputtime(All.Ti_Current + 100);}
   else if(RestartFlag == 1)
-    All.Ti_nextoutput = find_next_outputtime(All.Ti_Current + 1);
+    {All.Ti_nextoutput = find_next_outputtime(All.Ti_Current + 1);}
   else
-    All.Ti_nextoutput = find_next_outputtime(All.Ti_Current);
+    {All.Ti_nextoutput = find_next_outputtime(All.Ti_Current);}
 
   All.TimeLastRestartFile = CPUThisRun;
 }
