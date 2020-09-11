@@ -375,6 +375,7 @@ struct OUTPUT_STRUCT_NAME
 #endif // MAGNETIC //
 
 #ifdef COSMIC_RAYS
+    MyDouble Face_DivVel_ForAdOps;
     MyDouble DtCosmicRayEnergy[N_CR_PARTICLE_BINS];
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
     MyDouble DtCosmicRay_Number_in_Bin[N_CR_PARTICLE_BINS];
@@ -626,6 +627,7 @@ static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int
 #endif // MAGNETIC //
 
 #ifdef COSMIC_RAYS
+    SphP[i].Face_DivVel_ForAdOps += out->Face_DivVel_ForAdOps;
     for(k=0;k<N_CR_PARTICLE_BINS;k++)
     {
         SphP[i].DtCosmicRayEnergy[k] += out->DtCosmicRayEnergy[k];
@@ -747,20 +749,6 @@ void hydro_final_operations_and_cleanup(void)
 #endif
                 SphP[i].HydroAccel[k] /= P[i].Mass; /* we solved for momentum flux */
             }
-
-#if defined(COSMIC_RAYS)
-            /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
-                (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
-            for(k=0;k<N_CR_PARTICLE_BINS;k++)
-            {
-                double streamfac = CR_get_streaming_loss_rate_coefficient(i,k);
-                SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * streamfac;
-#if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
-                SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * streamfac; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
-#endif
-            }
-#endif
-
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtInternalEnergy -= SphP[i].InternalEnergyPred * SphP[i].DtMass;
 #endif
@@ -832,6 +820,7 @@ void hydro_final_operations_and_cleanup(void)
 #endif
             
             
+#if defined(COSMIC_RAYS)
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) && !defined(COOLING_OPERATOR_SPLIT)
             /* with the spectrum model, we account here the adiabatic heating/cooling of the 'fluid', here, which was solved in the hydro solver but doesn't resolve which portion goes to CRs and which to internal energy, with gamma=GAMMA_COSMICRAY */
             double ECR_tot=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {ECR_tot+=SphP[i].CosmicRayEnergyPred[k];} // routine below only depends on the total CR energy, not bin-by-bin energies, when we do it this way here
@@ -839,6 +828,19 @@ void hydro_final_operations_and_cleanup(void)
             double u0=DMAX(SphP[i].InternalEnergyPred, All.MinEgySpec) , uf=DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
             SphP[i].DtInternalEnergy += (uf - u0) / (dt + MIN_REAL_NUMBER); // update gas quantities to be used in cooling function
 #endif
+            /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
+                (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
+            for(k=0;k<N_CR_PARTICLE_BINS;k++)
+            {
+                double streamfac = fabs(CR_get_streaming_loss_rate_coefficient(i,k));
+                SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * streamfac;
+#if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+                SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * streamfac; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
+#endif
+            }
+#endif
+
+
 
 
 #ifdef GALSF_SUBGRID_WINDS
@@ -968,6 +970,7 @@ void hydro_force_initial_operations_preloop(void)
 #endif
 #endif // magnetic //
 #ifdef COSMIC_RAYS
+            SphP[i].Face_DivVel_ForAdOps = 0;
             for(k=0;k<N_CR_PARTICLE_BINS;k++)
             {
                 SphP[i].DtCosmicRayEnergy[k] = 0;
