@@ -277,8 +277,8 @@ void subfind_density(int j_in)
 		  if(iter >= MAXITER - 10)
 		    {
 		      printf
-			("i=%d task=%d ID=%d Hsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n",
-			 i, ThisTask, (int) P[i].ID, P[i].DM_Hsml, Left[i], Right[i],
+			("i=%d task=%d ID=%llu Hsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n",
+			 i, ThisTask, (unsigned long long) P[i].ID, P[i].DM_Hsml, Left[i], Right[i],
 			 (double) P[i].DM_NumNgb, Right[i] - Left[i], P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
 		      fflush(stdout);
 		    }
@@ -373,6 +373,7 @@ void subfind_density(int j_in)
  *  target particle may either be local, or reside in the communication
  *  buffer.
  */
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 int subfind_density_evaluate(int target, int mode, int *nexport, int *nsend_local, int tp)
 {
   int j, n;

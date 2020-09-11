@@ -6,6 +6,7 @@
 #include <gsl/gsl_math.h>
 #include "../../allvars.h"
 #include "../../proto.h"
+#include "../../kernel.h"
 /*
 * This file was originally part of the GADGET3 code developed by Volker Springel.
 * It has been updated significantly by PFH for basic compatibility with GIZMO,
@@ -262,6 +263,7 @@ void subfind_find_nearesttwo(void)
  *  target particle may either be local, or reside in the communication
  *  buffer.
  */
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 int subfind_nearesttwo_evaluate(int target, int mode, int *nexport, int *nsend_local)
 {
   int j, k, n, count;
@@ -430,6 +432,7 @@ int subfind_nearesttwo_evaluate(int target, int mode, int *nexport, int *nsend_l
 
 
 
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 int subfind_ngb_treefind_nearesttwo(MyDouble searchcenter[3], double hsml, int target, int *startnode,
 				    int mode, double *hmax, int *nexport, int *nsend_local)
 {
@@ -459,7 +462,7 @@ int subfind_ngb_treefind_nearesttwo(MyDouble searchcenter[3], double hsml, int t
 	    continue;
 #endif
 
-        dist = hsml; double xtmp;
+        dist = hsml; double xtmp; xtmp=0;
       dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
 	  if(dx > dist)
 	    continue;
@@ -536,7 +539,7 @@ int subfind_ngb_treefind_nearesttwo(MyDouble searchcenter[3], double hsml, int t
 
 	  no = current->u.d.sibling;	/* in case the node can be discarded */
 
-        dist = hsml + 0.5 * current->len; double xtmp;
+        dist = hsml + 0.5 * current->len; double xtmp; xtmp=0;
       dx = NGB_PERIODIC_BOX_LONG_X(current->center[0] - searchcenter[0], current->center[1] - searchcenter[1], current->center[2] - searchcenter[2], -1);
 	  if(dx > dist)
 	    continue;

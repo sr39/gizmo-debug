@@ -3,9 +3,9 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include "../../kernel.h"
 #include "../../allvars.h"
 #include "../../proto.h"
+#include "../../kernel.h"
 /*
 * This file was originally part of the GADGET3 code developed by Volker Springel.
 * It has been updated significantly by PFH for basic compatibility with GIZMO,
@@ -179,7 +179,7 @@ int subfind_loctree_treebuild(int npart, struct unbind_data *mp)
 	      if(P[th].Pos[2] > nfreep->center[2])
 		subnode += 4;
 
-	      if(nfreep->len < 1.0e-3 * All.SofteningTable[P[i].Type])
+	      if(nfreep->len < 3.e-4 * All.ForceSoftening[P[i].Type])
 		{
 		  /* seems like we're dealing with particles   
 		   * at identical locations. randomize 
@@ -217,10 +217,6 @@ int subfind_loctree_treebuild(int npart, struct unbind_data *mp)
     Nodes[last].u.d.nextnode = -1;
   else
     Nextnode[last] = -1;
-
-  /*
-     fprintf(Logfile,"Have put %d particles into tree.\n", num);
-   */
 
   return numnodes;
 }
@@ -392,7 +388,7 @@ double subfind_loctree_treeevaluate_potential(int target)
 	}
       else			/* we have an internal node. Need to check opening criterion */
 	{
-        double ErrTolThetaSubfind = All.ErrTolThetaSubfind;
+        double ErrTolThetaSubfind = All.ErrTolTheta;
 	  if(nop->len * nop->len > r2 * ErrTolThetaSubfind * ErrTolThetaSubfind)
 	    {
 	      /* open cell */
@@ -445,6 +441,7 @@ int subfind_locngb_compare_key(const void *a, const void *b)
 }
 
 
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 double subfind_locngb_treefind(MyDouble xyz[3], int desngb, double hguess)
 {
   int numngb;
@@ -453,15 +450,12 @@ double subfind_locngb_treefind(MyDouble xyz[3], int desngb, double hguess)
 
   if(hguess == 0)
     {
-      part_dens = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G) / P[0].Mass;
+      part_dens = All.OmegaMatter * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G) / P[0].Mass;
       hguess = pow(3 * desngb / (4 * M_PI) / part_dens, 1.0 / 3);
     }
 
   do
     {
-      /*
-         fprintf(Logfile,"hguess= %g\n", hguess);
-       */
       numngb = subfind_locngb_treefind_variable(xyz, hguess);
 
       if(numngb < desngb)
@@ -485,6 +479,7 @@ double subfind_locngb_treefind(MyDouble xyz[3], int desngb, double hguess)
 }
 
 
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 int subfind_locngb_treefind_variable(MyDouble searchcenter[3], double hguess)
 {
   int numngb, no, p;

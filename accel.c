@@ -74,6 +74,9 @@ void compute_hydro_densities_and_forces(void)
 
         PRINT_STATUS(" ..density & tree-update computation done...");
 
+#ifdef HYDRO_VOLUME_CORRECTIONS
+        cellcorrections_calc(); /* must be called after density, and after the update of hmax in the tree [because it depends on bi-directional search], but before gradients where quantities dependent on volumetric elements such as density are needed */
+#endif
 #ifdef TURB_DIFF_DYNAMIC
         dynamic_diff_vel_calc(); /* This must be called between density and gradient calculations */
 #endif
@@ -83,10 +86,7 @@ void compute_hydro_densities_and_forces(void)
 
         hydro_gradient_calc(); /* calculates the gradients of hydrodynamical quantities  */
 #if defined(COOLING) && defined(GALSF_FB_FIRE_RT_UVHEATING)
-        selfshield_local_incident_uv_flux();
-        /* needs to be called after gravity tree (where raw flux is calculated) 
-         and the local gradient calculation (GradRho) to
-         properly self-shield the particles that had this calculated */
+        selfshield_local_incident_uv_flux(); /* needs to be called after gravity tree (where raw flux is calculated) and the local gradient calculation (GradRho) to properly self-shield the particles that had this calculated */
 #endif
         PRINT_STATUS(" ..gradient computation done.");
 
@@ -138,28 +138,28 @@ void compute_stellar_feedback(void)
     mechanical_fb_calc(0); /* actually do the mechanical feedback coupling */
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
     mechanical_fb_calc(1); /* additional loop for stellar mass-loss */
+#ifdef GALSF_FB_FIRE_RPROCESS
     mechanical_fb_calc(2); /* additional loop for R-process */
 #endif
-    CPU_Step[CPU_SNIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+    mechanical_fb_calc(3); /* additional loop for stellar age tracers */
+#endif
+#endif
+    MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_SNIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */
 #endif
 #ifdef GALSF_FB_THERMAL
     thermal_fb_calc(); /* thermal feedback */
-    CPU_Step[CPU_SNIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */
+    MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_SNIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */
 #endif
     
-#ifdef GALSF_FB_FIRE_RT_HIIHEATING
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING)
     HII_heating_singledomain(); /* local photo-ionization heating */
-    CPU_Step[CPU_HIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */
-#endif
-
-#ifdef CHIMES_HII_REGIONS 
-    chimes_HII_regions_singledomain(); 
-    CPU_Step[CPU_HIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */
+    MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_HIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */
 #endif
     
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
     radiation_pressure_winds_consolidated(); /* local radiation pressure */
-    CPU_Step[CPU_LOCALWIND] += measure_time(); /* collect timings and reset clock for next timing */
+    MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_LOCALWIND] += measure_time(); /* collect timings and reset clock for next timing */
 #endif
     
     CPU_Step[CPU_MISC] += measure_time();

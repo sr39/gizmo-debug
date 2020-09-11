@@ -207,8 +207,8 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
                 fprintf(stderr, "Error in solve_chemistry_table.\n");
                 endrun(ENDRUNVAL);
             }
-            double nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess;
-            convert_u_to_temp(energy, rho, target, &ne_guess, &nH0_guess, &nHp_guess, &nHe0_guess, &nHep_guess, &nHepp_guess); //need to update *ne_guess for tabular!!, this may be wrong
+            double nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu, temp; nH0_guess = DMAX(0,DMIN(1,1.-ne_guess/1.2));
+            temp = convert_u_to_temp(energy, rho, target, &ne_guess, &nH0_guess, &nHp_guess, &nHe0_guess, &nHep_guess, &nHepp_guess, &mu); //need to update *ne_guess for tabular!!, this may be wrong
 #ifdef RT_CHEM_PHOTOION
             if(target >= 0)
             {
@@ -279,10 +279,10 @@ void InitGrackle(void)
     // First, set up the units system.
     // These are conversions from code units to cgs.
     All.GrackleUnits.comoving_coordinates = 0; //All.ComovingIntegrationOn; // 1 if cosmological sim, 0 if not
-    All.GrackleUnits.density_units        = All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;
-    All.GrackleUnits.length_units         = All.UnitLength_in_cm / All.HubbleParam;
-    All.GrackleUnits.time_units           = All.UnitTime_in_s / All.HubbleParam;
-    All.GrackleUnits.velocity_units       = All.UnitVelocity_in_cm_per_s;
+    All.GrackleUnits.density_units        = UNIT_DENSITY_IN_CGS;
+    All.GrackleUnits.length_units         = UNIT_LENGTH_IN_CGS;
+    All.GrackleUnits.time_units           = UNIT_TIME_IN_CGS;
+    All.GrackleUnits.velocity_units       = UNIT_VEL_IN_CGS;
     All.GrackleUnits.a_units              = 1.0; // units for the expansion factor
     
     // Second, create a chemistry object for parameters and rate data.

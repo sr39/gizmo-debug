@@ -31,12 +31,12 @@ struct kernel_density /*! defines a number of useful variables we will use below
 int density_isactive(int n)
 {
     /* first check our 'marker' for particles which have finished iterating to an Hsml solution (if they have, dont do them again) */
-    if(P[n].TimeBin < 0) return 0;
-    
+    if(P[n].TimeBin < 0) {return 0;}
+
 #if defined(GRAIN_FLUID)
     if((1 << P[n].Type) & (GRAIN_PTYPES)) {return 1;} /* any of the particle types flagged as a valid grain-type is active here */
 #endif
-    
+
 #if defined(RT_SOURCE_INJECTION)
     if((1 << P[n].Type) & (RT_SOURCES))
     {
@@ -51,7 +51,7 @@ int density_isactive(int n)
 #endif
     }
 #endif
-    
+
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     if(((P[n].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[n].Type == 2)||(P[n].Type==3))))&&(P[n].Mass>0))
     {
@@ -60,9 +60,15 @@ int density_isactive(int n)
         if(P[n].SNe_ThisTimeStep>0) return 1;
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION)
         if(P[n].MassReturn_ThisTimeStep>0) return 1;
+#ifdef GALSF_FB_FIRE_RPROCESS
         if(P[n].RProcessEvent_ThisTimeStep>0) return 1;
 #endif
+#if defined(GALSF_FB_FIRE_AGE_TRACERS)
+        if(P[n].AgeDeposition_ThisTimeStep>0) return 1;
 #endif
+#endif
+#endif
+        
 #if defined(GALSF)
         if(P[n].DensAroundStar<=0) return 1;
         if(All.ComovingIntegrationOn==0) // only do stellar age evaluation if we have to //
@@ -80,11 +86,11 @@ int density_isactive(int n)
 #endif
     }
 #endif
-    
+
 #ifdef BLACK_HOLES
     if(P[n].Type == 5) return 1;
 #endif
-    
+
     if(P[n].Type == 0 && P[n].Mass > 0) return 1;
     return 0; /* default to 0 if no check passed */
 }
@@ -134,7 +140,6 @@ void hydrokerneldensity_particle2in(struct INPUT_STRUCT_NAME *in, int i, int loo
     }
 }
 
-
 /*! this structure defines the variables that need to be sent -back to- the 'searching' element */
 static struct OUTPUT_STRUCT_NAME
 {
@@ -142,7 +147,7 @@ static struct OUTPUT_STRUCT_NAME
     MyLongDouble Rho;
     MyLongDouble DhsmlNgb;
     MyLongDouble Particle_DivVel;
-    MyFloat NV_T[3][3];
+    MyLongDouble NV_T[3][3];
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
     MyDouble ParticleVel[3];
 #endif
@@ -169,7 +174,7 @@ static struct OUTPUT_STRUCT_NAME
     int BH_TimeBinGasNeighbor;
 #if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
     MyDouble BH_dr_to_NearestGasNeighbor;
-#endif 
+#endif
 #endif
 #if defined(TURB_DRIVING) || defined(GRAIN_FLUID)
     MyDouble GasVel[3];
@@ -190,14 +195,14 @@ void hydrokerneldensity_out2particle(struct OUTPUT_STRUCT_NAME *out, int i, int 
     ASSIGN_ADD(PPP[i].NumNgb, out->Ngb, mode);
     ASSIGN_ADD(PPP[i].DhsmlNgbFactor, out->DhsmlNgb, mode);
     ASSIGN_ADD(P[i].Particle_DivVel, out->Particle_DivVel,   mode);
-    
+
     if(P[i].Type == 0)
     {
         ASSIGN_ADD(SphP[i].Density, out->Rho, mode);
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
         for(k=0;k<3;k++) ASSIGN_ADD(SphP[i].ParticleVel[k], out->ParticleVel[k],   mode);
 #endif
-        for(k = 0; k < 3; k++) {for(j = 0; j < 3; j++) {ASSIGN_ADD(SphP[i].NV_T[k][j], out->NV_T[k][j], mode);}}
+        for(k=0;k<3;k++) {for(j=0;j<3;j++) {ASSIGN_ADD(SphP[i].NV_T[k][j], out->NV_T[k][j], mode);}}
 
 #ifdef HYDRO_SPH
         ASSIGN_ADD(SphP[i].DhsmlHydroSumFactor, out->DhsmlHydroSumFactor, mode);
@@ -244,11 +249,14 @@ void hydrokerneldensity_out2particle(struct OUTPUT_STRUCT_NAME *out, int i, int 
         for(k = 0; k<3; k++) {ASSIGN_ADD(P[i].GradRho[k], out->GradRho[k], mode);}
     }
 #endif
-    
+
 #if defined(RT_SOURCE_INJECTION)
+#if defined(BH_ANGLEWEIGHT_PHOTON_INJECTION)
+    if(All.TimeStep == 0) // we only do this on the 0'th timestep, since we haven't done a BH loop yet to get the angle weights we'll use normally
+#endif    
     if((1 << P[i].Type) & (RT_SOURCES)) {ASSIGN_ADD(P[i].KernelSum_Around_RT_Source, out->KernelSum_Around_RT_Source, mode);}
 #endif
-    
+
 #ifdef BLACK_HOLES
     if(P[i].Type == 5)
     {
@@ -265,6 +273,7 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
 
 
 /*! This function represents the core of the initial hydro kernel-identification and volume computation. The target particle may either be local, or reside in the communication buffer. */
+/*!   -- this subroutine should in general contain no writes to shared memory. for optimization reasons, a couple of such writes have been included here in the sub-code for some sink routines -- those need to be handled with special care, both for thread safety and because of iteration. in general writes to shared memory in density.c are strongly discouraged -- */
 int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     int j, n, startnode, numngb_inbox, listindex = 0; double r2, h2, u, mass_j, wk;
@@ -284,7 +293,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
             if(numngb_inbox < 0) return -1;
             for(n = 0; n < numngb_inbox; n++)
             {
-                j = ngblist[n];
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
 #ifdef GALSF_SUBGRID_WINDS /* check if partner is a wind particle: if I'm not wind, then ignore the wind particle */
                 if(SphP[j].DelayTime > 0) {if(!(local.DelayTime > 0)) {continue;}}
 #endif
@@ -301,13 +310,16 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 0);
                     mass_j = P[j].Mass;
                     kernel.mj_wk = FLT(mass_j * kernel.wk);
-                    
+
                     out.Ngb += kernel.wk;
                     out.Rho += kernel.mj_wk;
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
                     if(local.Type == 0 && kernel.r==0) {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * SphP[j].VelPred[kv];}} // just the self-contribution //
 #endif
 #if defined(RT_SOURCE_INJECTION)
+#if defined(BH_ANGLEWEIGHT_PHOTON_INJECTION)
+                    if(All.TimeStep == 0) // we only do this on the 0'th timestep, since we haven't done a BH loop yet to get the angle weights we'll use normally
+#endif                        
                     if((1 << local.Type) & (RT_SOURCES)) {out.KernelSum_Around_RT_Source += 1.-u*u;}
 #endif
                     out.DhsmlNgb += -(NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
@@ -335,6 +347,10 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             out.NV_T[1][1] +=  wk * kernel.dp[1] * kernel.dp[1];
                             out.NV_T[1][2] +=  wk * kernel.dp[1] * kernel.dp[2];
                             out.NV_T[2][2] +=  wk * kernel.dp[2] * kernel.dp[2];
+                            /* these will temporarily hold the 'face area' terms */
+                            out.NV_T[1][0] += wk * kernel.dp[0];
+                            out.NV_T[2][0] += wk * kernel.dp[1];
+                            out.NV_T[2][1] += wk * kernel.dp[2];
                         }
                         kernel.dv[0] = local.Vel[0] - SphP[j].VelPred[0];
                         kernel.dv[1] = local.Vel[1] - SphP[j].VelPred[1];
@@ -346,7 +362,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
                         out.Particle_DivVel -= kernel.dwk * (kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2]) / kernel.r;
                         /* this is the -particle- divv estimator, which determines how Hsml will evolve (particle drift) */
-                        
+
                         density_evaluate_extra_physics_gas(&local, &out, &kernel, j);
                     } // kernel.r > 0
                 } // if(r2 < h2)
@@ -381,26 +397,34 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
 #endif
         }
 #endif
-        
+
 #if defined(BLACK_HOLES)
+        /* note, we will have some writes to shared memory here for some initializations of 'j' quantities. fortunately these do not depend on previous values of those quantities, so can be done thread-safely with minor edits using the constructs below */
         if(local->Type == 5)
         {
+            #pragma omp atomic write
             P[j].SwallowID = 0;  // this way we don't have to do a global loop over local particles in blackhole_accretion() to reset these quantities...
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+            #pragma omp atomic write
+            P[j].SwallowTime = MAX_REAL_NUMBER; // initialize as a large number before looking
+#endif
+#if (SINGLE_STAR_SINK_FORMATION & 8)
+            if(kernel->r < DMAX(P[j].Hsml, All.ForceSoftening[5])) {
+                #pragma omp atomic write
+                P[j].BH_Ngb_Flag = 1; // note that this particle is inside of a BH's kernel function
+            }
+#endif
             short int TimeBin_j = P[j].TimeBin; if(TimeBin_j < 0) {TimeBin_j = -TimeBin_j - 1;} // need to make sure we correct for the fact that TimeBin is used as a 'switch' here to determine if a particle is active for iteration, otherwise this gives nonsense!
             if(out->BH_TimeBinGasNeighbor > TimeBin_j) {out->BH_TimeBinGasNeighbor = TimeBin_j;}
-#if (SINGLE_STAR_SINK_FORMATION & 8)
-            if(kernel->r < DMAX(P[j].Hsml, All.ForceSoftening[5])) P[j].BH_Ngb_Flag = 1; 
-#endif
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-            P[j].SwallowTime = MAX_REAL_NUMBER;
-#endif
 #if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
-            double dr_eff_wtd = Get_Particle_Size(j); dr_eff_wtd=sqrt(dr_eff_wtd*dr_eff_wtd + (kernel->r)*(kernel->r)); /* effective distance for Gaussian-type kernel, weighted by density */
+            double dr_eff_wtd = Get_Particle_Size(j);
+            dr_eff_wtd=sqrt(dr_eff_wtd*dr_eff_wtd + (kernel->r)*(kernel->r)); /* effective distance for Gaussian-type kernel, weighted by density */
             if((dr_eff_wtd < out->BH_dr_to_NearestGasNeighbor) && (P[j].Mass > 0)) {out->BH_dr_to_NearestGasNeighbor = dr_eff_wtd;}
 #endif
         }
-#endif
+#endif // BLACK_HOLES
         
+
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
         /* this is here because for the models of BH growth and self-shielding of stars, we
          just need a quick-and-dirty, single-pass approximation for the gradients (the error from
@@ -410,7 +434,7 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
         out->GradRho[1] += kernel->mj_dwk_r * kernel->dp[1];
         out->GradRho[2] += kernel->mj_dwk_r * kernel->dp[2];
 #endif
-        
+
     } else { /* local.Type == 0 */
 
 #if defined(TURB_DRIVING)
@@ -430,7 +454,7 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
         out->NV_A[2][0] += (local->Accel[2] - All.cf_a2inv*P[j].GravAccel[2] - SphP[j].HydroAccel[2]) * kernel->dp[0] * wk;
         out->NV_A[2][1] += (local->Accel[2] - All.cf_a2inv*P[j].GravAccel[2] - SphP[j].HydroAccel[2]) * kernel->dp[1] * wk;
         out->NV_A[2][2] += (local->Accel[2] - All.cf_a2inv*P[j].GravAccel[2] - SphP[j].HydroAccel[2]) * kernel->dp[2] * wk;
-        
+
         out->NV_D[0][0] += kernel->dv[0] * kernel->dp[0] * wk;
         out->NV_D[0][1] += kernel->dv[0] * kernel->dp[1] * wk;
         out->NV_D[0][2] += kernel->dv[0] * kernel->dp[2] * wk;
@@ -441,10 +465,9 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
         out->NV_D[2][1] += kernel->dv[2] * kernel->dp[1] * wk;
         out->NV_D[2][2] += kernel->dv[2] * kernel->dp[2] * wk;
 #endif
-    
+
     } // Type = 0 check
 }
-
 
 
 
@@ -460,7 +483,7 @@ void density(void)
     int i, npleft, iter=0, redo_particle, particle_set_to_minhsml_flag = 0, particle_set_to_maxhsml_flag = 0;
     Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));
     Right = (MyFloat *) mymalloc("Right", NumPart * sizeof(MyFloat));
-    
+
     /* initialize anything we need to about the active particles before their loop */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
         if(density_isactive(i)) {
@@ -478,7 +501,7 @@ void density(void)
     desnumngb = All.DesNumNgb; desnumngbdev = All.MaxNumNgbDeviation;
     /* in the initial timestep and iteration, use a much more strict tolerance for the neighbor number */
     if(All.Time==All.TimeBegin) {if(All.MaxNumNgbDeviation > 0.05) desnumngbdev=0.05;}
-    double desnumngbdev_0 = desnumngbdev, Tinv[3][3], detT, CNumHolder=0, ConditionNumber=0; int k,k1,k2; k=0;
+    MyLongDouble desnumngbdev_0 = desnumngbdev, Tinv[3][3], ConditionNumber=0; int k,k1,k2; k=0;
 
     /* allocate buffers to arrange communication */
     #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
@@ -505,74 +528,41 @@ void density(void)
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) /* if particle is AGS-active and non-gas, set DivVel to zero because it will be reset in ags_hsml routine */
                 if(ags_density_isactive(i) && (P[i].Type > 0)) {PPP[i].Particle_DivVel = 0;}
 #endif
-                
+
                 // inverse of SPH volume element (to satisfy constraint implicit in Lagrange multipliers)
-                if(PPP[i].DhsmlNgbFactor > -0.9)	/* note: this would be -1 if only a single particle at zero lag is found */
-                    PPP[i].DhsmlNgbFactor = 1 / (1 + PPP[i].DhsmlNgbFactor);
-                else
-                    PPP[i].DhsmlNgbFactor = 1;
+                if(PPP[i].DhsmlNgbFactor > -0.9) {PPP[i].DhsmlNgbFactor = 1 / (1 + PPP[i].DhsmlNgbFactor);} else {PPP[i].DhsmlNgbFactor = 1;} /* note: this would be -1 if only a single particle at zero lag is found */
                 P[i].Particle_DivVel *= PPP[i].DhsmlNgbFactor;
-            
-                if(P[i].Type == 0)
+
+                double dimless_face_leak=0; MyLongDouble NV_T_prev[6]; NV_T_prev[0]=SphP[i].NV_T[0][0]; NV_T_prev[1]=SphP[i].NV_T[1][1]; NV_T_prev[2]=SphP[i].NV_T[2][2]; NV_T_prev[3]=SphP[i].NV_T[0][1]; NV_T_prev[4]=SphP[i].NV_T[0][2]; NV_T_prev[5]=SphP[i].NV_T[1][2];
+                if(P[i].Type == 0) /* invert the NV_T matrix we just measured */
                 {
-                    /* fill in the missing elements of NV_T (it's symmetric, so we saved time not computing these directly) */
+                    /* use the single-moment terms of NV_T to construct the faces one would have if the system were perfectly symmetric in reconstruction 'from both sides' */
+                    double V_i = NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) / PPP[i].NumNgb, dx_i = pow(V_i , 1./NUMDIMS); // this is the effective volume which will be used below
+                    dx_i = sqrt(V_i * (SphP[i].NV_T[0][0] + SphP[i].NV_T[1][1] + SphP[i].NV_T[2][2])); // this is the sqrt of the weighted sum of (w*r^2)
+                    double Face_Area_OneSided_Estimator_in[3]={0}, Face_Area_OneSided_Estimator_out[3]={0}; Face_Area_OneSided_Estimator_in[0]=SphP[i].NV_T[1][0]; Face_Area_OneSided_Estimator_in[1]=SphP[i].NV_T[2][0]; Face_Area_OneSided_Estimator_in[2]=SphP[i].NV_T[2][1];
+                    /* now fill in the missing elements of NV_T (it's symmetric, so we saved time not computing these directly) */
                     SphP[i].NV_T[1][0]=SphP[i].NV_T[0][1]; SphP[i].NV_T[2][0]=SphP[i].NV_T[0][2]; SphP[i].NV_T[2][1]=SphP[i].NV_T[1][2];
-                    /* Now invert the NV_T matrix we just measured */
+                    double dimensional_NV_T_normalizer = pow( PPP[i].Hsml , 2-NUMDIMS ); /* this has the same dimensions as NV_T here */
+                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {SphP[i].NV_T[k1][k2] /= dimensional_NV_T_normalizer;}} /* now NV_T should be dimensionless */
                     /* Also, we want to be able to calculate the condition number of the matrix to be inverted, since
                         this will tell us how robust our procedure is (and let us know if we need to expand the neighbor number */
-                    ConditionNumber=CNumHolder=0;
-                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {ConditionNumber += SphP[i].NV_T[k1][k2]*SphP[i].NV_T[k1][k2];}}
-#if (NUMDIMS==1)
-                    /* one-dimensional case */
-                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}}
-                    detT = SphP[i].NV_T[0][0];
-                    if(SphP[i].NV_T[0][0]!=0 && !isnan(SphP[i].NV_T[0][0])) Tinv[0][0] = 1/detT; /* only one non-trivial element in 1D! */
-#endif
-#if (NUMDIMS==2)
-                    /* two-dimensional case */
-                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}}
-                    detT = SphP[i].NV_T[0][0]*SphP[i].NV_T[1][1] - SphP[i].NV_T[0][1]*SphP[i].NV_T[1][0];
-                    if((detT != 0)&&(!isnan(detT)))
+                    double ConditionNumber_threshold = 10. * CONDITION_NUMBER_DANGER; /* set a threshold condition number - above this we will 'pre-condition' the matrix for better behavior */
+                    double trace_initial = SphP[i].NV_T[0][0] + SphP[i].NV_T[1][1] + SphP[i].NV_T[2][2]; /* initial trace of this symmetric, positive-definite matrix; used below as a characteristic value for adding the identity */
+                    double conditioning_term_to_add = 1.05 * (trace_initial / NUMDIMS) / ConditionNumber_threshold; /* this will be added as a test value if the code does not reach the desired condition number */
+                    while(1)
                     {
-                        Tinv[0][0] = SphP[i].NV_T[1][1] / detT;
-                        Tinv[0][1] = -SphP[i].NV_T[0][1] / detT;
-                        Tinv[1][0] = -SphP[i].NV_T[1][0] / detT;
-                        Tinv[1][1] = SphP[i].NV_T[0][0] / detT;
+                        ConditionNumber = matrix_invert_ndims(SphP[i].NV_T, Tinv);
+                        if(ConditionNumber < ConditionNumber_threshold) {break;}
+                        for(k1=0;k1<NUMDIMS;k1++) {SphP[i].NV_T[k1][k1] += conditioning_term_to_add;} /* add the conditioning term which should make the matrix better-conditioned for subsequent use */
+                        conditioning_term_to_add *= 1.2; /* multiply the conditioning term so it will grow and eventually satisfy our criteria */
                     }
-#endif
-#if (NUMDIMS==3)
-                    /* three-dimensional case */
-                    detT = SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][2] +
-                        SphP[i].NV_T[0][1] * SphP[i].NV_T[1][2] * SphP[i].NV_T[2][0] +
-                        SphP[i].NV_T[0][2] * SphP[i].NV_T[1][0] * SphP[i].NV_T[2][1] -
-                        SphP[i].NV_T[0][2] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][0] -
-                        SphP[i].NV_T[0][1] * SphP[i].NV_T[1][0] * SphP[i].NV_T[2][2] -
-                        SphP[i].NV_T[0][0] * SphP[i].NV_T[1][2] * SphP[i].NV_T[2][1];
-                    /* check for zero determinant */
-                    if((detT != 0) && !isnan(detT))
-                    {
-                        Tinv[0][0] = (SphP[i].NV_T[1][1] * SphP[i].NV_T[2][2] - SphP[i].NV_T[1][2] * SphP[i].NV_T[2][1]) / detT;
-                        Tinv[0][1] = (SphP[i].NV_T[0][2] * SphP[i].NV_T[2][1] - SphP[i].NV_T[0][1] * SphP[i].NV_T[2][2]) / detT;
-                        Tinv[0][2] = (SphP[i].NV_T[0][1] * SphP[i].NV_T[1][2] - SphP[i].NV_T[0][2] * SphP[i].NV_T[1][1]) / detT;
-                        Tinv[1][0] = (SphP[i].NV_T[1][2] * SphP[i].NV_T[2][0] - SphP[i].NV_T[1][0] * SphP[i].NV_T[2][2]) / detT;
-                        Tinv[1][1] = (SphP[i].NV_T[0][0] * SphP[i].NV_T[2][2] - SphP[i].NV_T[0][2] * SphP[i].NV_T[2][0]) / detT;
-                        Tinv[1][2] = (SphP[i].NV_T[0][2] * SphP[i].NV_T[1][0] - SphP[i].NV_T[0][0] * SphP[i].NV_T[1][2]) / detT;
-                        Tinv[2][0] = (SphP[i].NV_T[1][0] * SphP[i].NV_T[2][1] - SphP[i].NV_T[1][1] * SphP[i].NV_T[2][0]) / detT;
-                        Tinv[2][1] = (SphP[i].NV_T[0][1] * SphP[i].NV_T[2][0] - SphP[i].NV_T[0][0] * SphP[i].NV_T[2][1]) / detT;
-                        Tinv[2][2] = (SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] - SphP[i].NV_T[0][1] * SphP[i].NV_T[1][0]) / detT;
-                    } else {
-                        for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}}
-                    }
-#endif
-                    
-                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {CNumHolder += Tinv[k1][k2]*Tinv[k1][k2];}}
-                    ConditionNumber = sqrt(ConditionNumber*CNumHolder) / NUMDIMS;
-                    if(ConditionNumber<1) ConditionNumber=1;
-                    /* this = sqrt( ||NV_T^-1||*||NV_T|| ) :: should be ~1 for a well-conditioned matrix */
-                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {SphP[i].NV_T[k1][k2]=Tinv[k1][k2];}}
+                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {SphP[i].NV_T[k1][k2] = Tinv[k1][k2] / dimensional_NV_T_normalizer;}} /* re-insert normalization correctly */
                     /* now NV_T holds the inverted matrix elements, for use in hydro */
+                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Face_Area_OneSided_Estimator_out[k1] += 2.*V_i*SphP[i].NV_T[k1][k2]*Face_Area_OneSided_Estimator_in[k2];}} /* calculate mfm/mfv areas that we would have by default, if both sides of reconstruction were symmetric */
+                    for(k1=0;k1<3;k1++) {dimless_face_leak += fabs(Face_Area_OneSided_Estimator_out[k1]) / NUMDIMS;} // average of absolute values
+                    SphP[i].FaceClosureError = dimless_face_leak / (2.*NUMDIMS*pow(dx_i,NUMDIMS-1));
                 } // P[i].Type == 0 //
-                
+
                 /* now check whether we had enough neighbours */
                 double ncorr_ngb = 1.0;
                 double cn=1;
@@ -582,7 +572,7 @@ void density(void)
                     /* use the previous timestep condition number to correct how many neighbors we should use for stability */
                     if((iter==0)&&(ConditionNumber>SphP[i].ConditionNumber))
                     {
-                        /* if we find ourselves with a sudden increase in condition number - check if we have a reasonable 
+                        /* if we find ourselves with a sudden increase in condition number - check if we have a reasonable
                             neighbor number for the previous iteration, and if so, use the new (larger) correction */
                         ncorr_ngb=1; cn=SphP[i].ConditionNumber; if(cn>c0) {ncorr_ngb=sqrt(1.0+(cn-c0)/((double)CONDITION_NUMBER_DANGER));} if(ncorr_ngb>2) ncorr_ngb=2;
                         double dn_ngb = fabs(PPP[i].NumNgb-All.DesNumNgb*ncorr_ngb)/(desnumngbdev_0*ncorr_ngb);
@@ -592,6 +582,7 @@ void density(void)
                         if(dn_ngb < 10.0) SphP[i].ConditionNumber = ConditionNumber;
                     }
                     ncorr_ngb=1; cn=SphP[i].ConditionNumber; if(cn>c0) {ncorr_ngb=sqrt(1.0+(cn-c0)/((double)CONDITION_NUMBER_DANGER));} if(ncorr_ngb>2) ncorr_ngb=2;
+                    double d00=0.35; if(SphP[i].FaceClosureError > d00) {ncorr_ngb = DMAX(ncorr_ngb , DMIN(SphP[i].FaceClosureError/d00 , 2.));}
                 }
                 desnumngb = All.DesNumNgb * ncorr_ngb;
                 desnumngbdev = desnumngbdev_0 * ncorr_ngb;
@@ -602,11 +593,11 @@ void density(void)
                 if(P[i].Type == 5)
                 {
                     desnumngb = All.DesNumNgb * All.BlackHoleNgbFactor;
-#ifdef SINGLE_STAR_SINK_DYNAMICS		    
+#ifdef SINGLE_STAR_SINK_DYNAMICS
                     desnumngbdev = (All.BlackHoleNgbFactor+1);
 #else
-                    desnumngbdev = 4 * (All.BlackHoleNgbFactor+1);     
-#endif		    
+                    desnumngbdev = 4 * (All.BlackHoleNgbFactor+1);
+#endif
                 }
 #endif
 
@@ -649,33 +640,33 @@ void density(void)
 #ifdef GALSF
                     if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
                     // if we're finding this for feedback routines, there isn't any good reason to search beyond a modest physical radius //
-                    double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
+                    double unitlength_in_kpc=UNIT_LENGTH_IN_KPC*All.cf_atime;
                     maxsoft = 2.0 / unitlength_in_kpc;
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES) && (defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL))
-                    if(P[i].SNe_ThisTimeStep>0 || P[i].MassReturn_ThisTimeStep>0 || All.Time==All.TimeBegin) {maxsoft=2.0/unitlength_in_kpc;} else {maxsoft=0.1/unitlength_in_kpc;};
+                    if((P[i].SNe_ThisTimeStep>0) || (P[i].MassReturn_ThisTimeStep>0) || (All.Time==All.TimeBegin)) {maxsoft=2.0/unitlength_in_kpc;} else {maxsoft=0.1/unitlength_in_kpc;};
 #endif
 #endif
                     desnumngbdev = desnumngb / 2; // enforcing exact number not important
                 }
 #endif
-                
+
 #ifdef BLACK_HOLES
                 if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius / All.cf_atime;}  // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
 #ifdef SINGLE_STAR_SINK_DYNAMICS
 		        if(P[i].Type == 5) {minsoft = All.ForceSoftening[5] / All.cf_atime;} // we should always find all neighbours within the softening kernel/accretion radius, which is a lower bound on the accretion radius
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
                 if(P[i].Type == 5) {minsoft = DMAX(minsoft, P[i].SinkRadius);}
-#endif			
-#endif		
+#endif
+#endif
 #endif
 
                 redo_particle = 0;
-                
+
                 /* check if we are in the 'normal' range between the max/min allowed values */
                 if((PPP[i].NumNgb < (desnumngb - desnumngbdev) && PPP[i].Hsml < 0.999*maxsoft) ||
                    (PPP[i].NumNgb > (desnumngb + desnumngbdev) && PPP[i].Hsml > 1.001*minsoft))
                     redo_particle = 1;
-                
+
                 /* check maximum kernel size allowed */
                 particle_set_to_maxhsml_flag = 0;
                 if((PPP[i].Hsml >= 0.999*maxsoft) && (PPP[i].NumNgb < (desnumngb - desnumngbdev)))
@@ -692,7 +683,7 @@ void density(void)
                         particle_set_to_maxhsml_flag = 1;
                     }
                 }
-                
+
                 /* check minimum kernel size allowed */
                 particle_set_to_minhsml_flag = 0;
                 if((PPP[i].Hsml <= 1.001*minsoft) && (PPP[i].NumNgb > (desnumngb + desnumngbdev)))
@@ -710,36 +701,41 @@ void density(void)
                         particle_set_to_minhsml_flag = 1;
                     }
                 }
-                
+
 #ifdef GALSF
                 if((All.ComovingIntegrationOn)&&(All.Time>All.TimeBegin))
                 {
                     if((P[i].Type==4)&&(iter>1)&&(PPP[i].NumNgb>4)&&(PPP[i].NumNgb<100)&&(redo_particle==1)) {redo_particle=0;}
                 }
-#endif    
-                
+#endif
+
                 if((redo_particle==0)&&(P[i].Type == 0))
                 {
                     /* ok we have reached the desired number of neighbors: save the condition number for next timestep */
                     if(ConditionNumber > 1e6 * (double)CONDITION_NUMBER_DANGER) {
-                        PRINT_WARNING("Condition number=%g CNum_prevtimestep=%g Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g",
-                               ConditionNumber,SphP[i].ConditionNumber,PPP[i].NumNgb,desnumngb,PPP[i].Hsml,All.MinHsml,All.MaxHsml);}
+                        PRINT_WARNING("Condition number=%g CNum_prevtimestep=%g CNum_danger=%g iter=%d Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g \n i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)  \n NVT=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g NVT_inv=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g ",
+                               ConditionNumber,SphP[i].ConditionNumber,CONDITION_NUMBER_DANGER,iter,PPP[i].NumNgb,desnumngb,PPP[i].Hsml,All.MinHsml,All.MaxHsml, i, ThisTask,
+                               (unsigned long long) P[i].ID, P[i].Type, PPP[i].Hsml, PPP[i].DhsmlNgbFactor, Left[i], Right[i],
+                               (float) PPP[i].NumNgb, Right[i] - Left[i], particle_set_to_maxhsml_flag, particle_set_to_minhsml_flag, minsoft,
+                               maxsoft, desnumngb, desnumngbdev, redo_particle, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],
+                               SphP[i].NV_T[0][0],SphP[i].NV_T[0][1],SphP[i].NV_T[0][2],SphP[i].NV_T[1][0],SphP[i].NV_T[1][1],SphP[i].NV_T[1][2],SphP[i].NV_T[2][0],SphP[i].NV_T[2][1],SphP[i].NV_T[2][2],
+                               NV_T_prev[0],NV_T_prev[3],NV_T_prev[4],NV_T_prev[3],NV_T_prev[1],NV_T_prev[5],NV_T_prev[4],NV_T_prev[5],NV_T_prev[2]);}
                     SphP[i].ConditionNumber = ConditionNumber;
                 }
-                
+
                 if(redo_particle)
                 {
                     if(iter >= MAXITER - 10)
                     {
-                        PRINT_WARNING("i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)",
-                               i, ThisTask, (unsigned long long) P[i].ID, P[i].Type, PPP[i].Hsml, PPP[i].DhsmlNgbFactor, Left[i], Right[i],
+                        PRINT_WARNING("i=%d task=%d ID=%llu iter=%d Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)",
+                               i, ThisTask, (unsigned long long) P[i].ID, iter, P[i].Type, PPP[i].Hsml, PPP[i].DhsmlNgbFactor, Left[i], Right[i],
                                (float) PPP[i].NumNgb, Right[i] - Left[i], particle_set_to_maxhsml_flag, particle_set_to_minhsml_flag, minsoft,
                                maxsoft, desnumngb, desnumngbdev, redo_particle, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
                     }
-                    
+
                     /* need to redo this particle */
                     npleft++;
-                    
+
                     if(Left[i] > 0 && Right[i] > 0)
                         if((Right[i] - Left[i]) < 1.0e-3 * Left[i])
                         {
@@ -749,7 +745,7 @@ void density(void)
                             SphP[i].ConditionNumber = ConditionNumber;
                             continue;
                         }
-                    
+
                     if((particle_set_to_maxhsml_flag==0)&&(particle_set_to_minhsml_flag==0))
                     {
                         if(PPP[i].NumNgb < (desnumngb - desnumngbdev)) {Left[i] = DMAX(PPP[i].Hsml, Left[i]);}
@@ -757,7 +753,7 @@ void density(void)
                         {
                             if(Right[i] != 0) {if(PPP[i].Hsml < Right[i]) {Right[i] = PPP[i].Hsml;}} else {Right[i] = PPP[i].Hsml;}
                         }
-                        
+
                         // right/left define upper/lower bounds from previous iterations
                         if(Right[i] > 0 && Left[i] > 0)
                         {
@@ -792,14 +788,14 @@ void density(void)
                             {
                                 char buf[1000]; sprintf(buf, "Right[i] == 0 && Left[i] == 0 && PPP[i].Hsml=%g\n", PPP[i].Hsml); terminate(buf);
                             }
-                            
+
                             if(Right[i] == 0 && Left[i] > 0)
                             {
                                 if (PPP[i].NumNgb > 1)
                                     fac_lim = log( desnumngb / PPP[i].NumNgb ) / NUMDIMS; // this would give desnumgb if constant density (+0.231=2x desnumngb)
                                 else
                                     fac_lim = 1.4; // factor ~66 increase in N_NGB in constant-density medium
-                                
+
                                 if((PPP[i].NumNgb < 2*desnumngb)&&(PPP[i].NumNgb > 0.1*desnumngb))
                                 {
                                     double slope = PPP[i].DhsmlNgbFactor;
@@ -807,7 +803,7 @@ void density(void)
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
                                     if(iter>=4)
                                         if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
-                                    
+
                                     if(fac < fac_lim+0.231)
                                     {
                                         PPP[i].Hsml *= exp(fac); // more expensive function, but faster convergence
@@ -822,16 +818,16 @@ void density(void)
                                 else
                                     PPP[i].Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
-                            
+
                             if(Right[i] > 0 && Left[i] == 0)
                             {
                                 if (PPP[i].NumNgb > 1)
                                     fac_lim = log( desnumngb / PPP[i].NumNgb ) / NUMDIMS; // this would give desnumgb if constant density (-0.231=0.5x desnumngb)
                                 else
                                     fac_lim = 1.4; // factor ~66 increase in N_NGB in constant-density medium
-                                
+
                                 if (fac_lim < -1.535) fac_lim = -1.535; // decreasing N_ngb by factor ~100
-                                
+
                                 if((PPP[i].NumNgb < 2*desnumngb)&&(PPP[i].NumNgb > 0.1*desnumngb))
                                 {
                                     double slope = PPP[i].DhsmlNgbFactor;
@@ -839,7 +835,7 @@ void density(void)
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
                                     if(iter>=4)
                                         if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
-                                    
+
                                     if(fac > fac_lim-0.231)
                                     {
                                         PPP[i].Hsml *= exp(fac); // more expensive function, but faster convergence
@@ -873,7 +869,7 @@ void density(void)
         }
     }
     while(ntot > 0);
-    
+
     /* iteration is done - de-malloc everything now */
     #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */
     myfree(Right); myfree(Left);
@@ -883,8 +879,8 @@ void density(void)
     {
         if(P[i].TimeBin < 0) {P[i].TimeBin = -P[i].TimeBin - 1;}
     }
-    
-    
+
+
     /* now that we are DONE iterating to find hsml, we can do the REAL final operations on the results
      ( any quantities that only need to be evaluated once, on the final iteration --
      won't save much b/c the real cost is in the neighbor loop for each particle, but it's something )
@@ -929,8 +925,8 @@ void density(void)
                         SphP[i].DhsmlHydroSumFactor = 0;
                     }
 #endif
-                    
-              
+
+
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
                     for(k1 = 0; k1 < 3; k1++)
                         for(k2 = 0; k2 < 3; k2++)
@@ -960,8 +956,8 @@ void density(void)
                         }
                     SphP[i].NV_dt_DivVel = dtDV[0][0] + dtDV[1][1] + dtDV[2][2];
 #endif
-                    
-                    
+
+
 #if defined(TURB_DRIVING)
                     if(SphP[i].Density > 0)
                     {
@@ -973,7 +969,7 @@ void density(void)
                     }
 #endif
                 }
-                
+
 #ifndef HYDRO_SPH
                 if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
                 {
@@ -987,11 +983,15 @@ void density(void)
                     }
                 }
 #endif
+#ifdef HYDRO_VOLUME_CORRECTIONS
+                SphP[i].Volume_0 = P[i].Mass / SphP[i].Density; // initialize this value for use in the correction loop
+                SphP[i].Volume_1 = SphP[i].Volume_0; // in case this is not set in the subsequent loop because of inactivity, set this first to the zeroth-order estimator
+#endif
                 SphP[i].Pressure = get_pressure(i);		// should account for density independent pressure
 
             } // P[i].Type == 0
 
-            
+
 #if defined(GRAIN_FLUID)
             if((1 << P[i].Type) & (GRAIN_PTYPES))
             {
@@ -1008,8 +1008,8 @@ void density(void)
                 }
             }
 #endif
-            
-            
+
+
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
             /* non-gas particles are handled separately, in the ags_hsml routine */
             if(P[i].Type==0)
@@ -1033,41 +1033,17 @@ void density(void)
                 }
             }
 #endif
-            
-#ifdef PM_HIRES_REGION_CLIPPING
-#ifdef GALSF
-            if(All.ComovingIntegrationOn)
-            {
-                double rho_igm = All.OmegaBaryon*(All.HubbleParam*HUBBLE_CGS)*(All.HubbleParam*HUBBLE_CGS)*(3./(8.*M_PI*GRAVITY_G)) * DMIN(All.cf_a3inv, 1000.);
-                double rho_gas = DMAX( SphP[i].Density , All.DesNumNgb*P[i].Mass/(4.*M_PI/3.*PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml) )* All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;
-                if(P[i].Type == 0 && rho_gas < 1.e-6*rho_igm) {P[i].Mass = 0;}
-                if(P[i].Type != 0 && SphP[i].Density > 0 & rho_gas < 1.e-9*rho_igm) {P[i].Mass = 0;}
-            }
-#endif
-#ifdef BLACK_HOLES
-            if (P[i].Type != 5)
-            {
-#endif
-                if(P[i].Type == 0) if ((SphP[i].Density <= 0) || (PPP[i].NumNgb <= 0)) P[i].Mass = 0;
-                if ((PPP[i].Hsml <= 0) || (PPP[i].Hsml >= PM_HIRES_REGION_CLIPPING)) P[i].Mass = 0;
-                double vmag=0; for(k=0;k<3;k++) vmag+=P[i].Vel[k]*P[i].Vel[k]; vmag = sqrt(vmag);
-                if(vmag>5.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) P[i].Mass=0;
-                if(vmag>1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) for(k=0;k<3;k++) P[i].Vel[k]*=(1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s)/vmag;
-#ifdef BLACK_HOLES
-            }
-#endif // BLACK_HOLES
-#endif // ifdef PM_HIRES_REGION_CLIPPING
-            
-            
+            apply_pm_hires_region_clipping_selection(i);
+
          /* finally, convert NGB to the more useful format, NumNgb^(1/NDIMS),
-            which we can use to obtain the corrected particle sizes. Because of how this number is used above, we --must-- make 
+            which we can use to obtain the corrected particle sizes. Because of how this number is used above, we --must-- make
             sure that this operation is the last in the loop here */
             if(PPP[i].NumNgb > 0) {PPP[i].NumNgb=pow(PPP[i].NumNgb,1./NUMDIMS);} else {PPP[i].NumNgb=0;}
-            
+
         } // density_isactive(i)
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    
-    
+
+
     /* collect some timing information */
     double t1; t1 = WallclockTime = my_second(); timeall = timediff(t00_truestart, t1);
     CPU_Step[CPU_DENSCOMPUTE] += timecomp; CPU_Step[CPU_DENSWAIT] += timewait;
@@ -1076,3 +1052,83 @@ void density(void)
 #include "../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 
 
+
+/* Routines for a loop after the iterative density loop needed to find neighbors, etc, once all have converged, to apply additional correction terms to the cell volumes and faces (for those needed -before- the gradients loop because they alter primitive quantities needed for gradients, such as particle densities, pressures, etc.)
+    This was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO. */
+#ifdef HYDRO_VOLUME_CORRECTIONS
+
+#define MASTER_FUNCTION_NAME cellcorrections_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
+#define INPUTFUNCTION_NAME particle2in_cellcorrections    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
+#define OUTPUTFUNCTION_NAME out2particle_cellcorrections  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(GasGrad_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. for current implementation, only cells eligible for gradients and hydro should be called */
+#include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
+
+/* define structures to use below */
+struct INPUT_STRUCT_NAME {MyDouble Pos[3], Hsml, Volume_0; int NodeList[NODELISTLENGTH];} *DATAIN_NAME, *DATAGET_NAME;
+
+/* define properties to be sent to nodes */
+void particle2in_cellcorrections(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
+{in->Volume_0=SphP[i].Volume_0; in->Hsml=PPP[i].Hsml; int k; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k];}}
+
+/* define output structure to use below */
+struct OUTPUT_STRUCT_NAME {MyFloat Volume_1;} *DATARESULT_NAME, *DATAOUT_NAME;
+
+/* define properties to be collected from nodes */
+void out2particle_cellcorrections(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
+{ASSIGN_ADD(SphP[i].Volume_1, out->Volume_1, mode);}
+
+/* core subroutine. this does not write to shared memory. */
+int cellcorrections_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
+{
+    int j, n, k, startnode, numngb_inbox, listindex = 0; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* generic variables we always use, and set initial memory */
+    if(mode == 0) {particle2in_cellcorrections(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
+    if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode; /* open it */} /* start usual neighbor tree search */
+    while(startnode >= 0) {
+        while(startnode >= 0) {
+            numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            if(numngb_inbox < 0) {return -1;}
+            for(n=0; n<numngb_inbox; n++)
+            {
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
+                double dp[3]; for(k=0;k<3;k++) {dp[k]=local.Pos[k]-P[j].Pos[k];}
+                NEAREST_XYZ(dp[0],dp[1],dp[2],1); // find the closest image in the given box size  //
+                double r2=0; for(k=0;k<3;k++) {r2+=dp[k]*dp[k];} // distance
+                if(r2 >= PPP[j].Hsml*PPP[j].Hsml) {continue;} // need to be inside of 'j's kernel search
+                double u,hinv,hinv3,hinv4,wk,dwk; kernel_hinv(PPP[j].Hsml, &hinv, &hinv3, &hinv4); u=sqrt(r2)*hinv; wk=0; dwk=0; // define kernel-needed variables
+                kernel_main(u, hinv3, hinv4, &wk, &dwk, -1); // calculate the normal kernel weight 'wk'
+                out.Volume_1 += SphP[j].Volume_0 * SphP[j].Volume_0 * wk; // this is the next-order correction to the cell volume quadrature
+            } // for(n = 0; n < numngb; n++)
+        } // while(startnode >= 0)
+        if(mode == 1) {listindex++; if(listindex < NODELISTLENGTH) {startnode=DATAGET_NAME[target].NodeList[listindex]; if(startnode>=0) {startnode=Nodes[startnode].u.d.nextnode;}}} // handle opening nodes
+    } // closes while(startnode >= 0)
+    if(mode == 0) {out2particle_cellcorrections(&out, target, 0, 0);} else {DATARESULT_NAME[target] = out;} /* collect the result at the right place */
+    return 0; /* done */
+}
+
+/* final operations for after the updates are computed */
+void cellcorrections_final_operations_and_cleanup(void)
+{
+    int i; for(i=FirstActiveParticle; i>=0; i=NextActiveParticle[i]) { /* check all active elements */
+        CONDITIONFUNCTION_FOR_EVALUATION /* ensures only the ones which met our criteria above are actually treated here */
+        {
+            if(SphP[i].Volume_1 > 0) {SphP[i].Density = P[i].Mass / SphP[i].Volume_1;} else {SphP[i].Volume_1 = SphP[i].Volume_0;} // set the updated density. other variables that need volumes will all scale off this, so we can rely on it to inform everything else [if bad value here, revert to the 0th-order volume quadrature]
+            SphP[i].Pressure = get_pressure(i);
+        }}
+}
+
+/* parent routine which calls the work loop above */
+void cellcorrections_calc(void)
+{
+    CPU_Step[CPU_DENSMISC] += measure_time(); double t00_truestart = my_second();
+    PRINT_STATUS(" ..calculating first-order corrections to cell sizes/faces");
+    #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
+    #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
+    #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this de-allocates the memory for the MPI/OPENMP/Pthreads parallelization block which must appear above */
+    cellcorrections_final_operations_and_cleanup(); /* do final operations on results */
+    double t1; t1 = WallclockTime = my_second(); timeall = timediff(t00_truestart, t1);
+    CPU_Step[CPU_DENSCOMPUTE] += timecomp; CPU_Step[CPU_DENSWAIT] += timewait; CPU_Step[CPU_DENSCOMM] += timecomm;
+    CPU_Step[CPU_DENSMISC] += timeall - (timecomp + timewait + timecomm); /* collect timings and reset clock for next timing */
+}
+#include "../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
+
+#endif // parent if statement for all code in the HYDRO_VOLUME_CORRECTIONS block

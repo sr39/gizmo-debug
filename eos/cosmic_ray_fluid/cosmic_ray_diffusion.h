@@ -22,7 +22,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     double kappa_j = fabs(SphP[j].CosmicRayDiffusionCoeff[k_CRegy]);
     double d_scalar = scalar_i - scalar_j;
     
-    if(((kappa_i>0)||(kappa_j>0))&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>0)&&(Face_Area_Norm>0)&&(dt_hydrostep>0))
+    if(((kappa_i>MIN_REAL_NUMBER)||(kappa_j>MIN_REAL_NUMBER))&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>MIN_REAL_NUMBER)&&(Face_Area_Norm>MIN_REAL_NUMBER))
     {
 #ifndef COSMIC_RAYS_M1
         // NOT SPH: Now we use the more accurate finite-volume formulation, with the effective faces we have already calculated //
@@ -60,7 +60,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
             if(gnew > 0)
             {
                 gnew = sqrt(gnew);
-                for(k=0;k<3;k++) {grad_ij[k] / grad_mag * gnew;}
+                for(k=0;k<3;k++) {grad_ij[k] *= gnew / grad_mag;}
                 grad_mag = gnew;
             }
         }
@@ -196,7 +196,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_j_to_i] += flux_tmp[k_j_to_i] * SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k_j_to_i];
         Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_i_to_j] += flux_tmp[k_i_to_j] * local.CosmicRayAlfvenEnergy[k_CRegy][k_i_to_j];
         for(k=0;k<2;k++) {out.DtCosmicRayAlfvenEnergy[k_CRegy][k] += Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}
-        if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= Fluxes.CosmicRayAlfvenEnergy[k_CR_egy][k];}}
+        if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}}
 #endif
         
 #endif // COSMIC_RAYS_M1
@@ -204,5 +204,15 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     // actually assign the fluxes //
     out.DtCosmicRayEnergy[k_CRegy] += Fluxes.CosmicRayPressure[k_CRegy];
     if(j_is_active_for_fluxes) {SphP[j].DtCosmicRayEnergy[k_CRegy] -= Fluxes.CosmicRayPressure[k_CRegy];}
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+    double CR_number_to_energy_ratio = 0; // ratio of flux of CR number per unit flux of CR energy, follows whichever cell CRs are flowing 'out' of
+    if(Fluxes.CosmicRayPressure[k_CRegy] > 0) {CR_number_to_energy_ratio =  SphP[j].CosmicRay_Number_in_Bin[k_CRegy] / (SphP[j].CosmicRayEnergy[k_CRegy] + MIN_REAL_NUMBER);} else {CR_number_to_energy_ratio = local.CR_number_to_energy_ratio[k_CRegy];}
+    //CR_number_to_energy_ratio *= 0.98; // = if want a simple approximation to the difference b/t diffusivities in energy vs number: multiply by 1 - 0.103021*epsilon, where epsilon = D_diffusion (0.5-ish) - gamma_slope where L_grad[R] ~ R^gamma_slope and kappa_diffusion ~ R^D_diffusion. reasonable approx is something like gamma_slope ~ (0.5-0.75)*D_diffusion [trends towards D_diffusion in eqm]
+    out.DtCosmicRay_Number_in_Bin[k_CRegy] += Fluxes.CosmicRayPressure[k_CRegy] * CR_number_to_energy_ratio;
+    if(j_is_active_for_fluxes) {SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy] -= Fluxes.CosmicRayPressure[k_CRegy] * CR_number_to_energy_ratio;}
+#endif
 }
+
+    out.Face_DivVel_ForAdOps += -(All.cf_a3inv/V_i) * Face_Area_Norm * (Riemann_out.S_M + face_area_dot_vel);
+    if(j_is_active_for_fluxes) {SphP[j].Face_DivVel_ForAdOps -= -(All.cf_a3inv/V_j) * Face_Area_Norm * (Riemann_out.S_M + face_area_dot_vel);}
 #endif // COSMIC_RAYS

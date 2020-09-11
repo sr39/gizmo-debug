@@ -120,9 +120,9 @@ void fof_fof(int num)
   MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   if(All.TotN_gas)
-    rhodm = (All.Omega0 - All.OmegaBaryon) * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
+    {rhodm = (All.OmegaMatter - All.OmegaBaryon) * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);}
   else
-    rhodm = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
+    {rhodm = All.OmegaMatter * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);}
 
   LinkL = LINKLENGTH * pow(masstot / ndmtot / rhodm, 1.0 / 3);
 
@@ -582,6 +582,7 @@ PRINT_STATUS("Local groups found.");
 }
 
 
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend_local)
 {
   int j, n, links, p, s, ss, listindex = 0;
@@ -1602,15 +1603,9 @@ void fof_find_nearest_dmparticle(void)
 		      fof_nearest_hsml[i] *= 2.0;
 		      if(iter >= MAXITER - 10)
 			{
-#ifndef LONGIDS
-			  printf("i=%d task=%d ID=%u Hsml=%g  pos=(%g|%g|%g)\n",
-				 i, ThisTask, P[i].ID, fof_nearest_hsml[i],
-				 P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
-#else
 			  printf("i=%d task=%d ID=%llu Hsml=%g  pos=(%g|%g|%g)\n",
-				 i, ThisTask, P[i].ID, fof_nearest_hsml[i],
+				 i, ThisTask, (unsigned long long) P[i].ID, fof_nearest_hsml[i],
 				 P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
-#endif
 			  fflush(stdout);
 			}
 		    }
@@ -1643,6 +1638,7 @@ void fof_find_nearest_dmparticle(void)
 }
 
 
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int *nsend_local)
 {
   int j, n, index, listindex = 0;
@@ -1743,7 +1739,8 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
 void fof_make_black_holes(void)
 {
   int i, j, n, ntot;
-  int nexport, nimport, recvTask, level;
+  long nexport, nimport;
+  int recvTask, level;
   int *import_indices, *export_indices;
   gsl_rng *random_generator_forbh;
   double random_number_forbh=0, unitmass_in_msun;
@@ -1754,7 +1751,7 @@ void fof_make_black_holes(void)
   for(i = 0; i < Ngroups; i++)
     {
 #if (BH_SEED_FROM_FOF==0)
-    if(Group[i].MassType[1] >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+    if(Group[i].MassType[1] >= (All.OmegaMatter - All.OmegaBaryon) / All.OmegaMatter * All.MinFoFMassForNewSeed)
 #elif (BH_SEED_FROM_FOF==1)
     if(Group[i].MassType[4] > All.MinFoFMassForNewSeed)
 #endif
@@ -1788,7 +1785,7 @@ void fof_make_black_holes(void)
   for(i = 0; i < Ngroups; i++)
     {
 #if (BH_SEED_FROM_FOF==0)
-        if(Group[i].MassType[1] >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+        if(Group[i].MassType[1] >= (All.OmegaMatter - All.OmegaBaryon) / All.OmegaMatter * All.MinFoFMassForNewSeed)
 #elif (BH_SEED_FROM_FOF==1)
         if(Group[i].MassType[4] > All.MinFoFMassForNewSeed)
 #endif
@@ -1841,7 +1838,7 @@ void fof_make_black_holes(void)
             gsl_rng_set(random_generator_forbh,P[import_indices[n]].ID+17);
             random_number_forbh = gsl_ran_gaussian(random_generator_forbh, All.SeedBlackHoleMassSigma);
             BPP(import_indices[n]).BH_Mass = pow( 10., log10(All.SeedBlackHoleMass) + random_number_forbh );
-            unitmass_in_msun = (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS;
+            unitmass_in_msun = UNIT_MASS_IN_SOLAR;
             if( BPP(import_indices[n]).BH_Mass < 100./unitmass_in_msun )
                 BPP(import_indices[n]).BH_Mass = 100./unitmass_in_msun;      // enforce lower limit of Mseed = 100 x Msun
         } else {
@@ -1856,9 +1853,6 @@ void fof_make_black_holes(void)
             P[import_indices[n]].DensAroundStar = SphP[import_indices[n]].Density;
         }
         /* set some specific BH variables that are needed below */
-#ifdef BH_PHOTONMOMENTUM
-        P[import_indices[n]].BH_disk_hr = 0.333333;
-#endif
 #ifdef BH_INCREASE_DYNAMIC_MASS
         P[import_indices[n]].Mass *= BH_INCREASE_DYNAMIC_MASS;
 #endif
@@ -2220,7 +2214,7 @@ void read_fof(int num)
   MyIDType *ids;
   int *list_of_ngroups, *list_of_nids, *list_of_allgrouplen;
   int *recvoffset;
-  int grnr, ngrp, sendTask, recvTask, imax1, imax2;
+  int grnr, ngrp, sendTask, recvTask;
   int nprocgroup, masterTask, groupTask, nid_previous;
   int fof_compare_P_SubNr(const void *a, const void *b);
     PRINT_STATUS("Trying to read preexisting FoF group catalogues...  (presently allocated=%g MB)",AllocatedBytes / (1024.0 * 1024.0));

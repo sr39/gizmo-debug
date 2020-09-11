@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include "../../allvars.h"
 #include "../../proto.h"
+#include "../../kernel.h"
 /*
 * This file was originally part of the GADGET3 code developed by Volker Springel.
 * It has been updated significantly by PFH for basic compatibility with GIZMO,
@@ -310,7 +311,7 @@ int subfind_contamination_treefind(MyDouble searchcenter[3], MyFloat hsml, int t
 	  p = no;
 	  no = Nextnode[no];
 
-        dist = hsml; double xtmp;
+        dist = hsml; double xtmp; xtmp=0;
 	  dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
 	  if(dx > dist)
 	    continue;
@@ -388,7 +389,7 @@ int subfind_contamination_treefind(MyDouble searchcenter[3], MyFloat hsml, int t
 
 	  no = current->u.d.sibling;	/* in case the node can be discarded */
 
-        dist = hsml + 0.5 * current->len; double xtmp;
+        dist = hsml + 0.5 * current->len; double xtmp; xtmp=0;
       dx = NGB_PERIODIC_BOX_LONG_X(current->center[0] - searchcenter[0], current->center[1] - searchcenter[1], current->center[2] - searchcenter[2], -1);
 	  if(dx > dist)
 	    continue;

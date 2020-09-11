@@ -580,7 +580,7 @@ static inline double kernel_gravity(double u, double hinv, double hinv3, int mod
     }
     else if(mode == 2)
     {
-        wk = 168. + u * (-420. + (360. - 105. u) * u);
+        wk = 168. + u * (-420. + (360. - 105. * u) * u);
         return wk * hinv3*hinv*hinv;
     }
 #endif
@@ -615,7 +615,34 @@ static inline double kernel_gravity(double u, double hinv, double hinv3, int mod
 #endif
     
     
+#if (KERNEL_FUNCTION == 8) /* quadratic 2-step kernel */
+    if(mode == 1)
+    {
+        if(u < KERNEL_U0) {wk=4.*M_PI*(5.-3.*u*u/KERNEL_U0)/15.;} else {wk=-2.*M_PI*(KERNEL_U0*KERNEL_U0*KERNEL_U0*KERNEL_U0+u*u*u*(-10.+3.*u*(5.-2.*u)))/(15.*(1.-KERNEL_U0)*u*u*u);}
+        return KERNEL_NORM * wk * hinv3;
+    }
+    else if(mode == -1)
+    {
+        if(u < KERNEL_U0) {wk=M_PI*(-5.*KERNEL_U0*(1.+KERNEL_U0+KERNEL_U0*KERNEL_U0)+10.*KERNEL_U0*u*u-3.*u*u*u*u)/(15.*KERNEL_U0);} else {wk=M_PI*(2.*KERNEL_U0*KERNEL_U0*KERNEL_U0*KERNEL_U0-5.*u+u*u*u*(10.+u*(3.*u-10.)))/(15.*u*(1.-KERNEL_U0));}
+        return KERNEL_NORM * wk * hinv;
+    }
+    else if(mode == 0)
+    {
+        if(u < KERNEL_U0) {wk=M_PI*(1.+KERNEL_U0*(1.+KERNEL_U0)-6.*u*u+3.*u*u*u*u/KERNEL_U0)/3.;} else {wk=M_PI*(u-1.)*(u-1.)*(u-1.)*(1.+3.*u)/(3.*(KERNEL_U0-1.));}
+        return KERNEL_NORM * wk * hinv * hinv;
+    }
+    else if(mode == 2)
+    {
+        if(u < KERNEL_U0) {wk=8.*M_PI/(5.*KERNEL_U0);} else {wk=-2.*M_PI*(KERNEL_U0*KERNEL_U0*KERNEL_U0*KERNEL_U0+u*u*u*u*(4.*u-KERNEL_U0))/(5.*(1.-KERNEL_U0)*u*u*u*u*u);}
+        return KERNEL_NORM * wk * hinv3*hinv*hinv;
+    }
+#endif
+    
+    
     return 0;
 }
 
+
+
+#define KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER ((-1./kernel_gravity(0,1,1,-1))) /* factor which defines the plummer-equivalent radius for any kernel. multiplying ForceSoftening [radius of compact support] by this number gives the standard Plummer-equivalent definition: e.g. for a cubic spline, this returns 1./2.8, which is the desired conversion factor */
 

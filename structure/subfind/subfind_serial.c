@@ -5,6 +5,7 @@
 #include <math.h>
 #include "../../allvars.h"
 #include "../../proto.h"
+#include "../../kernel.h"
 /*
 * This file was originally part of the GADGET3 code developed by Volker Springel.
 * It has been updated significantly by PFH for basic compatibility with GIZMO,
@@ -38,6 +39,7 @@ static struct cand_dat
 
 
 
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 int subfind_process_group_serial(int gr, int Offs)
 {
   int i, j, k, p, len, subnr, totlen, ss, ngbs, ndiff, N, head = 0, head_attach, count_cand, len_non_gas;
@@ -447,12 +449,10 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
 #elif defined(ADAPTIVE_GRAVSOFT_FORGAS)
         if(P[p].Type == 0) h_grav = PPP[p].Hsml;
 #endif
-      P[p].u.DM_Potential = pot + P[p].Mass / (h_grav/2.8);
+      P[p].u.DM_Potential = pot - P[p].Mass / h_grav * kernel_gravity(0,1,1,-1); // subtracts self-contribution
 	      P[p].u.DM_Potential *= All.G / atime;
 
-	      if(All.TotN_gas > 0 && (FOF_PRIMARY_LINK_TYPES & 1) == 0 &&
-		 (FOF_SECONDARY_LINK_TYPES & 1) == 0 && All.OmegaBaryon > 0)
-		P[p].u.DM_Potential *= All.Omega0 / (All.Omega0 - All.OmegaBaryon);
+	      if(All.TotN_gas > 0 && (FOF_PRIMARY_LINK_TYPES & 1) == 0 && (FOF_SECONDARY_LINK_TYPES & 1) == 0 && All.OmegaBaryon > 0) {P[p].u.DM_Potential *= All.OmegaMatter / (All.OmegaMatter - All.OmegaBaryon);}
 
 	      if(P[p].u.DM_Potential < minpot || minindex == -1)
 		{
@@ -461,8 +461,7 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
 		}
 	    }
 
-	  for(j = 0; j < 3; j++)
-	    pos[j] = P[minindex].Pos[j];	/* position of minimum potential */
+	  for(j = 0; j < 3; j++) {pos[j] = P[minindex].Pos[j];}	/* position of minimum potential */
 	}
       else
 	{
@@ -481,13 +480,11 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
 #elif defined(ADAPTIVE_GRAVSOFT_FORGAS)
         if(P[p].Type == 0) h_grav = PPP[p].Hsml;
 #endif
-      P[p].u.DM_Potential = pot + P[p].Mass / (h_grav/2.8);
+        P[p].u.DM_Potential = pot - P[p].Mass / h_grav * kernel_gravity(0,1,1,-1); // subtract self-contribution
 		  P[p].u.DM_Potential = pot + P[p].Mass / h_grav;
 		  P[p].u.DM_Potential *= All.G / atime;
 
-		  if(All.TotN_gas > 0 && (FOF_PRIMARY_LINK_TYPES & 1) == 0 &&
-		     (FOF_SECONDARY_LINK_TYPES & 1) == 0 && All.OmegaBaryon > 0)
-		    P[p].u.DM_Potential *= All.Omega0 / (All.Omega0 - All.OmegaBaryon);
+		  if(All.TotN_gas > 0 && (FOF_PRIMARY_LINK_TYPES & 1) == 0 && (FOF_SECONDARY_LINK_TYPES & 1) == 0 && All.OmegaBaryon > 0) {P[p].u.DM_Potential *= All.OmegaMatter / (All.OmegaMatter - All.OmegaBaryon);}
 		}
 	    }
 	}
