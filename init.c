@@ -210,10 +210,10 @@ void init(void)
             P[i].a0 = All.TimeBegin; /* Lagrange time of particle */
             /* approximation: perfect Hubble Flow -> peculiar sheet orientation is exactly zero */
             for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GDE_VMATRIX(i,i1,i2) = 0.0;}}
-            /* approximation: initial sream density equals background density */
-            P[i].init_density = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
+            /* approximation: initial stream density equals background density */
+            P[i].init_density = All.OmegaMatter * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 #else
-            All.GDEInitStreamDensity = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
+            All.GDEInitStreamDensity = All.OmegaMatter * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 #endif
 #endif
         }
@@ -1036,8 +1036,8 @@ void check_omega(void)
 #ifdef GR_TABULATED_COSMOLOGY_G
     omega *= All.Gini / All.G;
 #endif
-    if(fabs(omega - All.Omega0) > 1.0e-2) // look for a 1% tolerance of omega-matter
-        {PRINT_WARNING("\n\nMass content in the ICs accounts only for Omega_M=%g,\nbut you specified Omega_M=%g in the parameterfile.\nRun will stop.\n",omega, All.Omega0); endrun(1);}
+    if(fabs(omega - All.OmegaMatter) > 1.0e-2) // look for a 1% tolerance of omega-matter
+        {PRINT_WARNING("\n\nMass content in the ICs accounts only for Omega_M=%g,\nbut you specified Omega_M=%g in the parameterfile.\nRun will stop.\n",omega, All.OmegaMatter); endrun(1);}
 }
 #endif
 
@@ -1093,7 +1093,7 @@ void setup_smoothinglengths(void)
                 } // closes if((RestartFlag == 0)||(P[i].Type != 0))
             }
     }
-    if((RestartFlag==0 || RestartFlag==2) && All.ComovingIntegrationOn) {for(i=0;i<N_gas;i++) {PPP[i].Hsml *= pow(All.Omega0/All.OmegaBaryon,1./NUMDIMS);}} /* correct (crudely) for baryon fraction, used in the estimate above for Hsml */
+    if((RestartFlag==0 || RestartFlag==2) && All.ComovingIntegrationOn) {for(i=0;i<N_gas;i++) {PPP[i].Hsml *= pow(All.OmegaMatter/All.OmegaBaryon,1./NUMDIMS);}} /* correct (crudely) for baryon fraction, used in the estimate above for Hsml */
 
 #ifdef BLACK_HOLES
     if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {if(P[i].Type == 5) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}}}
