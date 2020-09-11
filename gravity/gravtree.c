@@ -462,7 +462,7 @@ void gravity_tree(void)
 #ifdef EVALPOTENTIAL
         P[i].Potential *= All.G;
 #ifdef BOX_PERIODIC
-        if(All.ComovingIntegrationOn) {P[i].Potential -= All.G * 2.8372975 * pow(P[i].Mass, 2.0 / 3) * pow(All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);} else {if(All.OmegaLambda>0) {P[i].Potential -= 0.5*All.OmegaLambda*All.Hubble_H0_CodeUnits*All.Hubble_H0_CodeUnits * (P[i].Pos[0]*P[i].Pos[0]+P[i].Pos[1]*P[i].Pos[1]+P[i].Pos[2]*P[i].Pos[2]);}}
+        if(All.ComovingIntegrationOn) {P[i].Potential -= All.G * 2.8372975 * pow(P[i].Mass, 2.0 / 3) * pow(All.OmegaMatter * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);} else {if(All.OmegaLambda>0) {P[i].Potential -= 0.5*All.OmegaLambda*All.Hubble_H0_CodeUnits*All.Hubble_H0_CodeUnits * (P[i].Pos[0]*P[i].Pos[0]+P[i].Pos[1]*P[i].Pos[1]+P[i].Pos[2]*P[i].Pos[2]);}}
 #endif
 #ifdef PMGRID
         P[i].Potential += P[i].PM_Potential; /* add in long-range potential */
@@ -556,10 +556,10 @@ void gravity_tree(void)
 #endif
 
 #if !defined(BOX_PERIODIC) && !defined(PMGRID) /* some factors here in case we are trying to do comoving simulations in a non-periodic box (special use cases) */
-        if(All.ComovingIntegrationOn) {for(j=0;j<3;j++) {P[i].GravAccel[j] += 0.5*All.Omega0 *All.Hubble_H0_CodeUnits*All.Hubble_H0_CodeUnits * P[i].Pos[j];}}
+        if(All.ComovingIntegrationOn) {for(j=0;j<3;j++) {P[i].GravAccel[j] += 0.5*All.OmegaMatter *All.Hubble_H0_CodeUnits*All.Hubble_H0_CodeUnits * P[i].Pos[j];}}
         if(All.ComovingIntegrationOn==0) {for(j=0;j<3;j++) {P[i].GravAccel[j] += All.OmegaLambda*All.Hubble_H0_CodeUnits*All.Hubble_H0_CodeUnits * P[i].Pos[j];}}
 #ifdef EVALPOTENTIAL
-        if(All.ComovingIntegrationOn) {for(j=0;j<3;j++) {P[i].Potential -= 0.5*All.Omega0 *All.Hubble_H0_CodeUnits*All.Hubble_H0_CodeUnits * P[i].Pos[j]*P[i].Pos[j];}}
+        if(All.ComovingIntegrationOn) {for(j=0;j<3;j++) {P[i].Potential -= 0.5*All.OmegaMatter *All.Hubble_H0_CodeUnits*All.Hubble_H0_CodeUnits * P[i].Pos[j]*P[i].Pos[j];}}
 #endif
 #endif
 

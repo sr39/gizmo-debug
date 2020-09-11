@@ -856,7 +856,7 @@ void read_parameter_file(char *fname)
 
       strcpy(tag[nt], "Omega0");
       strcpy(alternate_tag[nt], "Omega_Matter");
-      addr[nt] = &All.Omega0;
+      addr[nt] = &All.OmegaMatter;
       id[nt++] = REAL;
 
       strcpy(tag[nt], "OmegaBaryon");
@@ -869,6 +869,11 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.OmegaLambda;
       id[nt++] = REAL;
 
+      strcpy(tag[nt], "OmegaRadiation");
+      strcpy(alternate_tag[nt], "Omega_Radiation");
+      addr[nt] = &All.OmegaRadiation;
+      id[nt++] = REAL;
+        
       strcpy(tag[nt], "HubbleParam");
       strcpy(alternate_tag[nt], "Hubble_Param_Little_h");
       addr[nt] = &All.HubbleParam;
@@ -2062,16 +2067,19 @@ void read_parameter_file(char *fname)
                 if(strcmp("SnapshotFileBase",tag[i])==0) {strcpy((char *)addr[i],"snapshot"); printf("Tag %s (%s) not set in parameter file: defaulting to value = 'snapshot' \n",tag[i],alternate_tag[i]); continue;}
                 if(All.ComovingIntegrationOn==0)
                 {
-                    if(strcmp("Omega0",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.Omega0); continue;}
+                    if(strcmp("Omega0",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.OmegaMatter); continue;}
                     if(strcmp("OmegaLambda",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.OmegaLambda); continue;}
-                    if(strcmp("OmegaBaryon",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.OmegaBaryon); continue;}
                     if(strcmp("HubbleParam",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.HubbleParam); continue;}
+                    if(strcmp("OmegaRadiation",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                    if(strcmp("OmegaBaryon",tag[i])==0) {*((double *)addr[i])=0; continue;}
                     if(strcmp("SofteningGasMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
                     if(strcmp("SofteningHaloMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
                     if(strcmp("SofteningDiskMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
                     if(strcmp("SofteningBulgeMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
                     if(strcmp("SofteningStarsMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
                     if(strcmp("SofteningBndryMaxPhys",tag[i])==0) {*((double *)addr[i])=0; continue;}
+                } else {
+                    if(strcmp("OmegaRadiation",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to ignore radiation in expansion (Omega_r = %g) \n",tag[i],alternate_tag[i],All.OmegaRadiation); continue;}
                 }
                 if(All.OutputListOn==0) {
                     if(strcmp("OutputListFilename",tag[i])==0) {strcpy((char *)addr[i],"output_times_dummy.txt"); continue;}

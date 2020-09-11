@@ -3713,7 +3713,7 @@ void write_file(char *fname, int writeTask, int lastTask)
 
     header.num_files = All.NumFilesPerSnapshot;
     header.BoxSize = All.BoxSize;
-    header.Omega0 = All.Omega0;
+    header.OmegaMatter = All.OmegaMatter;
     header.OmegaLambda = All.OmegaLambda;
     header.HubbleParam = All.HubbleParam;
 
@@ -4131,7 +4131,7 @@ void write_header_attributes_in_hdf5(hid_t handle)
 
     hdf5_dataspace = H5Screate(H5S_SCALAR);
     hdf5_attribute = H5Acreate(handle, "Omega0", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &header.Omega0);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &header.OmegaMatter);
     H5Aclose(hdf5_attribute);
     H5Sclose(hdf5_dataspace);
 

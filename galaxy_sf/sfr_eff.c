@@ -128,12 +128,12 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
     {
         a0 = stellar_tform;
         a2 = All.Time;
-        if(fabs(1-(All.Omega0+All.OmegaLambda))<=0.01)
+        if(fabs(1-(All.OmegaMatter+All.OmegaLambda))<=0.01)
         {
-            /* use exact solution for flat universe */
-            x0 = (All.Omega0/(1-All.Omega0))/(a0*a0*a0);
-            x2 = (All.Omega0/(1-All.Omega0))/(a2*a2*a2);
-            age = (2./(3.*sqrt(1-All.Omega0)))*log(sqrt(x0*x2)/((sqrt(1+x2)-1)*(sqrt(1+x0)+1)));
+            /* use exact solution for flat universe, ignoring the radiation-dominated epoch [no stars forming then] */
+            x0 = (All.OmegaMatter/(1-All.OmegaMatter))/(a0*a0*a0);
+            x2 = (All.OmegaMatter/(1-All.OmegaMatter))/(a2*a2*a2);
+            age = (2./(3.*sqrt(1-All.OmegaMatter)))*log(sqrt(x0*x2)/((sqrt(1+x2)-1)*(sqrt(1+x0)+1)));
             age *= 1./All.Hubble_H0_CodeUnits;
         } else {
             /* use simple trap rule integration */
@@ -712,7 +712,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
 #endif
 
 #if (GALSF_SUBGRID_WIND_SCALING == 1)
-       /* wind model where launching scales with halo/galaxy bulk properties (as in Romeel's simulations) */
+    /* wind model where launching scales with halo/galaxy bulk properties (as in Romeel's simulations) */
     if(SphP[i].HostHaloMass > 0 && sm > 0)
     {
         double HaloConcentrationNorm = 9.;  /* concentration c0 of a halo of unit mass */
@@ -720,7 +720,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
 
         double r200c, v_esc, c_halo, wind_energy, wind_momentum, wind_mass;
         double rhocrit = 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
-        rhocrit *= All.Omega0/All.cf_a3inv + (1-All.Omega0-All.OmegaLambda)/All.cf_a2inv + All.OmegaLambda; /* physical critical density at redshift z */
+        rhocrit *= All.OmegaRadiation*All.cf_a2inv*All.cf_a2inv + All.OmegaMatter*All.cf_a3inv + (1-All.OmegaMatter-All.OmegaLambda-All.OmegaRadiation)*All.cf_a2inv + All.OmegaLambda; /* physical critical density at redshift z */
 
         r200c = pow(SphP[i].HostHaloMass / (4 * M_PI / 3.0 * 200 * rhocrit), 1.0 / 3.0);	/* physical r_200,crit value, assuming FoF mass = M_200,crit */
         v_esc = sqrt(All.G * SphP[i].HostHaloMass / r200c);	/* physical circular velocity at r_200,crit */

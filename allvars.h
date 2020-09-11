@@ -2034,12 +2034,11 @@ extern struct global_data_all_processes
 
   /* Cosmology */
   double Hubble_H0_CodeUnits;		/*!< Hubble-constant (unit-ed version: 100 km/s/Mpc) in internal units */
-  double Omega0,		/*!< matter density in units of the critical density (at z=0) */
+  double OmegaMatter,		/*!< matter density in units of the critical density (at z=0) */
     OmegaLambda,		/*!< vaccum energy density relative to crictical density (at z=0) */
     OmegaBaryon,		/*!< baryon density in units of the critical density (at z=0) */
-    HubbleParam;		/*!< little `h', i.e. Hubble constant in units of 100 km/s/Mpc.  Only needed to get absolute
-				 * physical values for cooling physics
-				 */
+    OmegaRadiation,     /*!< radiation [including all relativistic components] density in units of the critical density (at z=0) */
+    HubbleParam;		/*!< little `h', i.e. Hubble constant in units of 100 km/s/Mpc.  Only needed to get absolute physical values for cooling physics */
 
   double BoxSize;		/*!< Boxsize in case periodic boundary conditions are used */
 
@@ -3432,7 +3431,7 @@ extern struct io_header
   int flag_cooling;		    /*!< flags whether cooling was included  */
   int num_files;		    /*!< number of files in multi-file snapshot */
   double BoxSize;		    /*!< box-size of simulation in case periodic boundaries were used */
-  double Omega0;            /*!< matter density in units of critical density */
+  double OmegaMatter;       /*!< matter density in units of critical density */
   double OmegaLambda;		/*!< cosmological constant parameter */
   double HubbleParam;		/*!< Hubble parameter in units of 100 km/sec/Mpc */
   int flag_stellarage;		/*!< flags whether the file contains formation times of star particles */

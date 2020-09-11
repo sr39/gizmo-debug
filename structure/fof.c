@@ -120,9 +120,9 @@ void fof_fof(int num)
   MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   if(All.TotN_gas)
-    rhodm = (All.Omega0 - All.OmegaBaryon) * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
+    {rhodm = (All.OmegaMatter - All.OmegaBaryon) * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);}
   else
-    rhodm = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
+    {rhodm = All.OmegaMatter * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);}
 
   LinkL = LINKLENGTH * pow(masstot / ndmtot / rhodm, 1.0 / 3);
 
@@ -1751,7 +1751,7 @@ void fof_make_black_holes(void)
   for(i = 0; i < Ngroups; i++)
     {
 #if (BH_SEED_FROM_FOF==0)
-    if(Group[i].MassType[1] >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+    if(Group[i].MassType[1] >= (All.OmegaMatter - All.OmegaBaryon) / All.OmegaMatter * All.MinFoFMassForNewSeed)
 #elif (BH_SEED_FROM_FOF==1)
     if(Group[i].MassType[4] > All.MinFoFMassForNewSeed)
 #endif
@@ -1785,7 +1785,7 @@ void fof_make_black_holes(void)
   for(i = 0; i < Ngroups; i++)
     {
 #if (BH_SEED_FROM_FOF==0)
-        if(Group[i].MassType[1] >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+        if(Group[i].MassType[1] >= (All.OmegaMatter - All.OmegaBaryon) / All.OmegaMatter * All.MinFoFMassForNewSeed)
 #elif (BH_SEED_FROM_FOF==1)
         if(Group[i].MassType[4] > All.MinFoFMassForNewSeed)
 #endif

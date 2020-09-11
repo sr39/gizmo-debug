@@ -450,7 +450,7 @@ double subfind_locngb_treefind(MyDouble xyz[3], int desngb, double hguess)
 
   if(hguess == 0)
     {
-      part_dens = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G) / P[0].Mass;
+      part_dens = All.OmegaMatter * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G) / P[0].Mass;
       hguess = pow(3 * desngb / (4 * M_PI) / part_dens, 1.0 / 3);
     }
 
