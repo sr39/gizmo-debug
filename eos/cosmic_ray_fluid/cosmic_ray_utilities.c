@@ -706,49 +706,39 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 /* subroutine to calculate which part of the adiabatic PdV work from the RP gets assigned to the CRs vs the gas; since the CRs are always smooth by definition under this operation this follows simply from the local cell divergence and the effective CR eos */
 double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double eCR_tmp, int mode)
 {
-    double u0; if(mode==0) {u0=SphP[i].InternalEnergy;} else {u0=SphP[i].InternalEnergyPred;} // initial energy
+    double u0, d_CR; if(mode==0) {u0=SphP[i].InternalEnergy;} else {u0=SphP[i].InternalEnergyPred;} // initial energy
     if(u0<All.MinEgySpec) {u0=All.MinEgySpec;} // enforced throughout code
-    double dCR_div;
-#if 1
-    double mdivvdt = -dt_entr * P[i].Particle_DivVel*All.cf_a2inv; // get locally-estimated gas velocity divergence for cells - if using non-Lagrangian method, need to modify. take negative of this [for sign of change to energy] and multiply by timestep
-    if(All.ComovingIntegrationOn) {mdivvdt += -dt_entr * 3.*All.cf_hubble_a;} // include hubble-flow terms
-    mdivvdt = DMAX(-1.5, DMIN(1.5, mdivvdt)); // our timestep limiter should ensure this, but problem is it responds to the -previous- timestep, so we need to impose an additional check here to prevent a numerical divergence when/if the gradients are inaccurate
-    double Ui = u0 * P[i].Mass; // factor for multiplication below, and initial thermal energy
-    double d_CR = mdivvdt * (GAMMA_COSMICRAY-1.) * eCR_tmp; // expected CR change - this is the 'PdV' part of the work, applicable in smooth flows
-    double min_IEgy = P[i].Mass * All.MinEgySpec; // minimum internal energy - in total units -
-    double dtI_hydro = SphP[i].DtInternalEnergy * P[i].Mass * dt_entr; // change given by hydro-step computed delta_InternalEnergy
-    double f_limiter = 0.9; // dimensionless fraction of energy to limit to
-    double Ui_max_increase = fabs(1.e4*Ui); // maximum amount we'll allow Ui to increase from this term in 1 timestep
-    if(mode==1) {f_limiter=0.5;} // use slightly stricter criterion for drifting vs kicking //
-    if(mdivvdt * dtI_hydro > 0) // same sign from hydro and from smooth-flow-estimator, suggests we are in a smooth flow, so we'll use stronger assumptions about the effective 'entropy' here
-    {
-        double abs_limit = fabs(dtI_hydro); // in smooth flow, sum of CR+gas PdV work terms should not exceed this
-        double d_Egas = mdivvdt * (GAMMA(i)-1.) * Ui; // expected gas change - in a smooth flow likewise should be entropy-conserving
-        double d_sum = fabs(d_CR + d_Egas); // sum of the expected adiabatic CR + gas terms estimated as above
-        if(d_sum > abs_limit) {d_CR *= abs_limit/d_sum;} // limit to not exceed
-    } else { // hydro and CRs have opposite sign, indicating non-smooth flow: here limit more strongly to prevent artificial huge increase in gas energy
-        f_limiter = 0.5; // use more conservative limits regardless of drift or kick since we're in a less-smooth flow
-        Ui_max_increase = fabs(2.*Ui); // maximum amount we'll allow Ui to increase from this term in 1 timestep
-    }
-    if(d_CR<0 && fabs(d_CR)>Ui_max_increase) {d_CR *= Ui_max_increase/fabs(d_CR);}
-    double limforU = fabs(f_limiter*Ui); // largest [negative] change in internal energy we will allow, to prevent negative values
-    if(Ui <= min_IEgy) {limforU=0;} else {limforU = DMIN(limforU, fabs(f_limiter*(Ui-min_IEgy)));} // actually more restrictive: prevent crossing the minimum enforced temperature in cooling
-    if(d_CR>0 && d_CR>limforU) {d_CR *= limforU/fabs(d_CR);} // limit to prevent internal energy going negative
-    double limforC = fabs(f_limiter*eCR_tmp); // maximum change in CR energy we will allow, to prevent negative values
-    if(d_CR<0 && d_CR<-limforC) {d_CR *= limforC/fabs(d_CR);} // limit
-    dCR_div = d_CR; // set final value
-#else
-    /* old treatment here */
-    double d_div = (-(GAMMA_COSMICRAY-1.) * P[i].Particle_DivVel*All.cf_a2inv) * dt_entr;
-    if(All.ComovingIntegrationOn) {d_div += (-3.*(GAMMA_COSMICRAY-1.) * All.cf_hubble_a) * dt_entr;} /* adiabatic term from Hubble expansion (needed for cosmological integrations */
-    dCR_div = DMIN(eCR_tmp*d_div , 0.5*u0*P[i].Mass); // limit so don't take away all the gas internal energy [to negative values]
-    if(dCR_div + eCR_tmp < 0) {dCR_div = -eCR_tmp;} // check against energy going negative
-    eCR_tmp += dCR_div; if((eCR_tmp<0)||(isnan(eCR_tmp))) {eCR_tmp=0;} // check against energy going negative or nan
-    dCR_div = eCR_tmp - eCR_0; // actual change that is going to be applied
-    if(dCR_div < -0.5*P[i].Mass*u0) {dCR_div=-0.5*P[i].Mass*u0;} // before re-coupling, ensure this will not cause negative energies
-    if(dCR_div < -0.9*eCR_00) {dCR_div=-0.9*eCR_00;} // before re-coupling, ensure this will not cause negative energies
+
+    double divv_p=-dt_entr*P[i].Particle_DivVel*All.cf_a2inv, divv_f=-dt_entr*SphP[i].Face_DivVel_ForAdOps, divv_u=0; // get locally-estimated gas velocity divergence for cells - if using non-Lagrangian method, need to modify. take negative of this [for sign of change to energy] and multiply by timestep
+    if(All.ComovingIntegrationOn) {double divv_h=-dt_entr*(3.*All.cf_hubble_a); divv_p+=divv_h; divv_f+=divv_h;} // include hubble-flow terms
+    double P_cr = GAMMA_COSMICRAY_MINUS1 * eCR_tmp * SphP[i].Density * All.cf_a3inv / P[i].Mass, P_tot = SphP[i].Pressure * All.cf_a3inv; // define the pressure from CRs and total pressure (physical units)
+#ifdef MAGNETIC
+    double B2=0; int k; for(k=0;k<3;k++) {double B=Get_Gas_BField(i,k)*All.cf_a2inv; B2+=B*B;}
+    P_tot += 0.5*B2; // add magnetic pressure [B^2/2], in physical code units, since it contributes to the PdV work but not included in 'pressure' total above
 #endif
-    return dCR_div;
+    double fac_P = DMAX(0, DMIN(1, P_cr/(P_tot + 1.e-10*P_cr + MIN_REAL_NUMBER))); // fraction of total pressure from CRs
+    double Ui = u0 * P[i].Mass; // factor for multiplication below, and initial thermal energy
+    double dtI_hydro = SphP[i].DtInternalEnergy * P[i].Mass * dt_entr; // change given by hydro-step computed delta_InternalEnergy
+    double min_IEgy = P[i].Mass * All.MinEgySpec; // minimum internal energy - in total units -
+
+    if(divv_p*dtI_hydro > 0 || divv_f*dtI_hydro > 0) // same sign from hydro and from smooth-flow-estimator, suggests we are in a smooth flow, so we'll use stronger assumptions about the effective 'entropy' here
+    {
+        if(divv_p*dtI_hydro <= 0) {divv_u=divv_f;} // if divv_p agrees in sign here, use it
+        if(divv_f*dtI_hydro <= 0) {divv_u=divv_p;} // if divv_u agrees in sign here, use it
+        if(divv_p*divv_f > 0) {if(fabs(divv_p) > fabs(divv_f)) {divv_u=divv_p;} else {divv_u=divv_f;}} // if both agree in sign here, use -larger- since more accurately captures CR-dominated limit
+        d_CR = GAMMA_COSMICRAY_MINUS1 * eCR_tmp * divv_u; // expected PdV CR energy change
+        if(fabs(d_CR) > fabs(dtI_hydro)) {d_CR = dtI_hydro;} // do not allow this to exceed the sum (since all terms have the same sign here, in a well-ordered smooth flow)
+        if(fabs(d_CR) < fac_P*fabs(dtI_hydro)) {d_CR = fac_P*dtI_hydro;} // but also do not allow CR term to be -below- CR pressure fraction times total term, since that should be attributed to the CR (as this is all a quasi-adiabatic term)
+    } else { // both divv terms agree with each other, but dis-agree with the sign of the total change. can't assume anything about smoothness-of-the-flow
+        if(fabs(divv_p) > fabs(divv_f)) {divv_u=divv_f;} else {divv_u=divv_p;} // pick the divv estimator with the smaller absolute magnitude, since it deviates
+        d_CR = GAMMA_COSMICRAY_MINUS1 * eCR_tmp * divv_u; // expected PdV CR energy change
+        double f_limiter, fac_test=fabs(d_CR)/fabs(dtI_hydro); if(fac_test>fac_P) {d_CR*=fac_P/fac_test;} // don't let CR change exceed their pressure fraction
+        if(d_CR > 0) {if(Ui <= min_IEgy) {f_limiter = 1.e-20;} else {f_limiter=0.5;} // gas will be 'cooled', limit so don't overshoot when Pcr is large
+            if(d_CR > f_limiter*(Ui-min_IEgy)) {d_CR = f_limiter*(Ui-min_IEgy);} // limit fractional loss to gas
+        } else {f_limiter = 1000.; if(fabs(d_CR)>f_limiter*Ui) {d_CR=-f_limiter*Ui;}} // gas will be heated, limit fractional gain
+    }
+    SphP[i].Face_DivVel_ForAdOps = -d_CR / (All.cf_a2inv * GAMMA_COSMICRAY_MINUS1 * eCR_tmp * dt_entr + MIN_REAL_NUMBER); // this is the 'effective' divergence here (in code units) which matches exactly the change in CR energy when the above limiters etc are applied. we can save this for use in the other CR subroutines
+    return d_CR; // return final value
 }
 
 
@@ -783,7 +773,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
     reaccel_coeff_0 = DMAX(-0.9/dtime_cgs, DMIN(0.9/dtime_cgs, reaccel_coeff_0)); // our courant-type condition on the timestep should ensure this as well, but just in case, we need to enforce a condition here //
 #endif
     
-    double gamma_ad_eff=4./3., adiabatic_coeff = (gamma_ad_eff-1.) * (P[target].Particle_DivVel*All.cf_a2inv) / UNIT_TIME_IN_CGS ; // coefficient for adiabatic work [compression/expansion terms]. convert to physical units [a2inv], and then cgs for units here. SIGN is flipped from usual convention since we assume convention where positive coefficients = losses, for convenience with everything else below.
+    double gamma_ad_eff=4./3., adiabatic_coeff = (gamma_ad_eff-1.) * (SphP[target].Face_DivVel_ForAdOps*All.cf_a2inv) / UNIT_TIME_IN_CGS ; // coefficient for adiabatic work [compression/expansion terms]. convert to physical units [a2inv], and then cgs for units here. SIGN is flipped from usual convention since we assume convention where positive coefficients = losses, for convenience with everything else below.
     if(All.ComovingIntegrationOn) {adiabatic_coeff += (gamma_ad_eff-1.) * (3.*All.cf_hubble_a) / UNIT_TIME_IN_CGS;} // adiabatic term from Hubble expansion (needed for cosmological integrations. also converted to physical, cgs, and sign convention we use here.
     double adiabatic_min = -0.5*P[target].Mass*DMAX(DMIN(SphP[target].InternalEnergyPred,SphP[target].InternalEnergy)-All.MinEgySpec,0.) / (Ucr_tot*dtime_cgs + MIN_REAL_NUMBER); if(adiabatic_coeff < adiabatic_min) {adiabatic_coeff = adiabatic_min;} // limit adiabatic -gains- of CRs (careful about sign convention here, negative means gain!) as this leads to too-large thermal losses, prevented by limiters in our step computing the exchange between CRs and gas in adiabatic calc above //
     adiabatic_coeff = DMAX(-0.9/dtime_cgs, DMIN(0.9/dtime_cgs , adiabatic_coeff)); // our timestep limiter should ensure this, but problem is it responds to the -previous- timestep, so we need to impose an additional check here to prevent a numerical divergence when/if the gradients are inaccurate
