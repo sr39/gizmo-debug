@@ -89,7 +89,10 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
     if(P[j].Type==0) {m_eff += 4.*M_PI * r_code*r_code*r_code * SphP[j].Density;} // assume an isothermal sphere interior, for Shu-type solution
 #endif
     double hinv = 1./All.ForceSoftening[5], fac=2.*All.G*m_eff/All.cf_atime;
-    return sqrt(-fac*kernel_gravity(r_code*hinv,hinv,hinv*hinv*hinv,-1) + cs_to_add*cs_to_add); // accounts for softening [non-Keplerian inside softening]
+#if defined(BH_REPOSITION_ON_POTMIN)
+    return sqrt(fac/r_code + cs_to_add*cs_to_add); // in this case BH dynamics are intentionally inexact and gravitational BH velocities not well-resolved, so use the larger Keplerian term here
+#endif
+    return sqrt(fac*fabs(kernel_gravity(r_code*hinv,hinv,hinv*hinv*hinv,-1)) + cs_to_add*cs_to_add); // accounts for softening [non-Keplerian inside softening]
 }
 
 
@@ -97,6 +100,10 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
 /* check whether a particle is sufficiently bound to the BH to qualify for 'gravitational capture' */
 int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double sink_radius) // need to know the sink radius, which can be distinct from both the softening and search radii
 {
+#if defined(BH_REPOSITION_ON_POTMIN)
+    if(P[j].Type == 5) {return 1;} // if this module is active, we aren't doing exact BH-BH dynamics, so default is to be unrestrictive for BH-BH mergers //
+#endif
+
     /* if pair is a gas particle make sure to account for its pressure and internal energy */
     double cs=0; if(P[j].Type==0) {cs=Get_Gas_Fast_MHD_wavespeed_i(j);} // use the fast MHD wavespeed to account for magnetic+thermal energy (but not e.g. cosmic ray), in allowing accretion //
 
@@ -115,7 +122,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
     if(v2 < 1)
     {
         double apocenter = dr_code / (1.-v2); // furthest distance the cell -could- get from the sink, on a purely radial orbit [ignoring internal energy effects, in e.g. a Keplerian potential, this is approximately twice the equivalent circular orbit, while for a highly-eccentric orbit, this is exactly the apocentric radius]
-        double apocenter_max = 2.*All.ForceSoftening[5]; // force softening = 2.8*epsilon (softening length); check that this is within 2x epsilon is statement that circular orbit with equivalent energy is entirely inside epsilon //
+        double apocenter_max = 2.*All.ForceSoftening[5]; //  = few x epsilon (softening length); check that this is within 2x epsilon is statement that circular orbit with equivalent energy is entirely inside epsilon //
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS // Bate 1995-style criterion, with a fixed sink/accretion radius that is distinct from both the force softening and the search radius
         if(dr_code>sink_radius) {return 0;} else {return 1;} // simply yes-no, if bound and within sink radius, gets accreted
 #endif
@@ -124,9 +131,6 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
         if(P[j].Type == 0) {r_j = DMAX(r_j , PPP[j].Hsml);}
         apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
         if(P[j].Type == 5) {apocenter_max = DMIN(apocenter_max , 1.*All.ForceSoftening[5]);}
-#endif
-#if defined(BH_REPOSITION_ON_POTMIN)
-        if(P[j].Type == 5) {return 1;} // default is to be unrestrictive for BH-BH mergers //
 #endif
         if(apocenter < apocenter_max) {bound = 1;}
     }
@@ -369,10 +373,10 @@ void set_blackhole_mdot(int i, int n, double dt)
 #endif
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        double reff = All.SofteningTable[5], Gm_i = 1./(All.G*P[n].Mass);
+        double reff = All.ForceSoftening[5], Gm_i = 1./(All.G*P[n].Mass);
 #if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
         double cs_min = 0.2 / UNIT_VEL_IN_KMS;
-        reff = All.G*2.*All.MinMassForParticleMerger/(cs_min*cs_min), Gm_i = 1./(All.G*2.*All.MinMassForParticleMerger); // effectively setting the value to the freefall time the particle has when it forms, for both 'size' of disk and 'effective mass' (for dynamical time below)
+        reff = All.G*All.MeanGasParticleMass/(cs_min*cs_min), Gm_i = 1./(All.G*All.MeanGasParticleMass); // effectively setting the value to the freefall time the particle has when it forms, for both 'size' of disk and 'effective mass' (for dynamical time below)
 #endif
         t_acc_disk = sqrt(reff*reff*reff * Gm_i); // dynamical time at radius "reff", essentially fastest-possible accretion time
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM) && defined(BH_MDOT_FROM_ALPHAMODEL)
@@ -642,7 +646,7 @@ void blackhole_final_operations(void)
     int i, k, n, bin; double dt, mass_disk, mdot_disk, MgasBulge, MstarBulge, r0; k=0;
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
     int count_bhelim=0, tot_bhelim;
-#endif 
+#endif
 
 #ifdef BH_REPOSITION_ON_POTMIN
     for(n = FirstActiveParticle; n >= 0; n = NextActiveParticle[n])
@@ -725,7 +729,7 @@ void blackhole_final_operations(void)
         else { P[n].AccretedThisTimestep = 0; }
 #endif
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-        if(All.ComovingIntegrationOn) {P[n].SinkRadius = DMIN(P[n].SinkRadius, All.SofteningTable[5]);} // update sink radius if simulation has it dynamically evolving. 
+        if(All.ComovingIntegrationOn) {P[n].SinkRadius = DMIN(P[n].SinkRadius, All.ForceSoftening[5]);} // update sink radius if simulation has it dynamically evolving. 
 #endif
 
         /* Correct for the mass loss due to radiation and BAL winds */
@@ -765,7 +769,7 @@ void blackhole_final_operations(void)
         /* DAA: for wind spawning, we only need to subtract the BAL wind mass from BH_Mass (or BH_Mass_AlphaDisk) --> wind mass subtracted from P.Mass in blackhole_spawn_particle_wind_shell()  */
         double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
 #ifdef SINGLE_STAR_FB_JETS
-        if((P[n].BH_Mass * UNIT_MASS_IN_SOLAR < 0.01) || P[n].Mass < 7*All.MinMassForParticleMerger) {dm_wind = 0;} // no jets launched yet if <0.01msun or if we haven't accreted enough to get a reliable jet direction
+        if((P[n].BH_Mass * UNIT_MASS_IN_SOLAR < 0.01) || P[n].Mass < 3.5*All.MeanGasParticleMass) {dm_wind = 0;} // no jets launched yet if <0.01msun or if we haven't accreted enough to get a reliable jet direction
 #endif
         if(dm_wind > P[n].Mass) {dm_wind = P[n].Mass;}
 #if defined(BH_ALPHADISK_ACCRETION)
@@ -792,12 +796,12 @@ void blackhole_final_operations(void)
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             eps = DMAX(eps, P[n].SinkRadius);
 #endif
-            double t_clear=eps/single_star_SN_velocity(n); // time needed spawned wind particles to clear the sink
-            double SN_mdot = (SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger)/t_clear; // we spawn SINGLE_STAR_FB_SNE_N_EJECTA per ejected shell, and we can have maximum 1 shell per t_clear
+            double t_clear = eps/single_star_SN_velocity(n); // time needed spawned wind particles to clear the sink
+            double SN_mdot = (SINGLE_STAR_FB_SNE_N_EJECTA * All.MeanGasParticleMass)/t_clear; // we spawn SINGLE_STAR_FB_SNE_N_EJECTA per ejected shell, and we can have maximum 1 shell per t_clear
             dm_wind = DMIN(SN_mdot*dt, BPP(n).BH_Mass); // We will spawn particles to model the SN ejecta, but not more than what we can handle at the same time, these particles will have the same mass as gas particles, not like wind particles
             printf("Adding SN ejecta of mass %g from star %llu at time %g, unspawned mass at %g\n", dm_wind, (unsigned long long) P[n].ID, All.Time, (BPP(n).unspawned_wind_mass+dm_wind));
             BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
-            if (BPP(n).BH_Mass < 0.5*(SINGLE_STAR_FB_SNE_N_EJECTA * 2.*All.MinMassForParticleMerger)){ // less than half a shell mass left in the star: instead of spawning the last shell with very low mass particles we will make the one before slightly more massive
+            if (BPP(n).BH_Mass < 0.5*(SINGLE_STAR_FB_SNE_N_EJECTA * All.MeanGasParticleMass)){ // less than half a shell mass left in the star: instead of spawning the last shell with very low mass particles we will make the one before slightly more massive
                 dm_wind += BPP(n).BH_Mass; BPP(n).BH_Mass = 0; // add leftover mass to be spawned and zero-out mass
             }
             if (BPP(n).BH_Mass == 0){
@@ -812,7 +816,7 @@ void blackhole_final_operations(void)
 #endif
 
 #ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION
-        P[n].BH_angle_weighted_kernel_sum = BlackholeTempInfo[i].BH_angle_weighted_kernel_sum;
+        P[n].KernelSum_Around_RT_Source = BlackholeTempInfo[i].BH_angle_weighted_kernel_sum;
 #endif            
 
         /* dump the results to the 'blackhole_details' files */

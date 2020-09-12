@@ -120,9 +120,9 @@ void fof_fof(int num)
   MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   if(All.TotN_gas)
-    rhodm = (All.Omega0 - All.OmegaBaryon) * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
+    {rhodm = (All.OmegaMatter - All.OmegaBaryon) * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);}
   else
-    rhodm = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
+    {rhodm = All.OmegaMatter * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);}
 
   LinkL = LINKLENGTH * pow(masstot / ndmtot / rhodm, 1.0 / 3);
 
@@ -582,6 +582,7 @@ PRINT_STATUS("Local groups found.");
 }
 
 
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend_local)
 {
   int j, n, links, p, s, ss, listindex = 0;
@@ -1637,6 +1638,7 @@ void fof_find_nearest_dmparticle(void)
 }
 
 
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int *nsend_local)
 {
   int j, n, index, listindex = 0;
@@ -1737,7 +1739,8 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
 void fof_make_black_holes(void)
 {
   int i, j, n, ntot;
-  int nexport, nimport, recvTask, level;
+  long nexport, nimport;
+  int recvTask, level;
   int *import_indices, *export_indices;
   gsl_rng *random_generator_forbh;
   double random_number_forbh=0, unitmass_in_msun;
@@ -1748,7 +1751,7 @@ void fof_make_black_holes(void)
   for(i = 0; i < Ngroups; i++)
     {
 #if (BH_SEED_FROM_FOF==0)
-    if(Group[i].MassType[1] >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+    if(Group[i].MassType[1] >= (All.OmegaMatter - All.OmegaBaryon) / All.OmegaMatter * All.MinFoFMassForNewSeed)
 #elif (BH_SEED_FROM_FOF==1)
     if(Group[i].MassType[4] > All.MinFoFMassForNewSeed)
 #endif
@@ -1782,7 +1785,7 @@ void fof_make_black_holes(void)
   for(i = 0; i < Ngroups; i++)
     {
 #if (BH_SEED_FROM_FOF==0)
-        if(Group[i].MassType[1] >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+        if(Group[i].MassType[1] >= (All.OmegaMatter - All.OmegaBaryon) / All.OmegaMatter * All.MinFoFMassForNewSeed)
 #elif (BH_SEED_FROM_FOF==1)
         if(Group[i].MassType[4] > All.MinFoFMassForNewSeed)
 #endif

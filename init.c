@@ -210,10 +210,10 @@ void init(void)
             P[i].a0 = All.TimeBegin; /* Lagrange time of particle */
             /* approximation: perfect Hubble Flow -> peculiar sheet orientation is exactly zero */
             for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GDE_VMATRIX(i,i1,i2) = 0.0;}}
-            /* approximation: initial sream density equals background density */
-            P[i].init_density = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
+            /* approximation: initial stream density equals background density */
+            P[i].init_density = All.OmegaMatter * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 #else
-            All.GDEInitStreamDensity = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
+            All.GDEInitStreamDensity = All.OmegaMatter * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 #endif
 #endif
         }
@@ -373,7 +373,7 @@ void init(void)
         All.SolarAbundances[8]=6.44e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4); PS=7.16->3.31e-4
         All.SolarAbundances[9]=1.01e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4); PS=6.38->6.87e-5
         All.SolarAbundances[10]=1.73e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3); PS=7.54->1.38e-3
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // new default abundances; using Asplund et al. 2009 proto-solar abundances ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // new default abundances; using Asplund et al. 2009 proto-solar abundances
         All.SolarAbundances[0]=0.0142; if(NUM_METAL_SPECIES>=10) {
             All.SolarAbundances[1]=0.27030; All.SolarAbundances[2]=2.53e-3; All.SolarAbundances[3]=7.41e-4; All.SolarAbundances[4]=6.13e-3; All.SolarAbundances[5]=1.34e-3;
             All.SolarAbundances[6]=7.57e-4; All.SolarAbundances[7]=7.12e-4; All.SolarAbundances[8]=3.31e-4; All.SolarAbundances[9]=6.87e-5; All.SolarAbundances[10]=1.38e-3;}
@@ -461,7 +461,7 @@ void init(void)
                 singlestar_subgrid_protostellar_evolution_update_track(i,0,0);
 #if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
                 calculate_individual_stellar_luminosity(BPP(i).BH_Mdot, BPP(i).BH_Mass, i);
-#endif
+#endif                
 #endif
 #ifdef GRAIN_FLUID
                 BPP(i).BH_Dust_Mass = 0;
@@ -512,6 +512,7 @@ void init(void)
         P[i].Particle_DivVel = 0;
         SphP[i].ConditionNumber = 1;
         SphP[i].DtInternalEnergy = 0;
+        SphP[i].FaceClosureError = 0;
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
         SphP[i].MaxKineticEnergyNgb = 0;
 #endif
@@ -580,6 +581,10 @@ void init(void)
 #ifdef COOLING
 #ifndef CHIMES
             SphP[i].Ne = 1.0;
+#endif
+#if defined(COOL_MOLECFRAC_NONEQM)
+            SphP[i].MolecularMassFraction = 0.0;
+            SphP[i].MolecularMassFraction_perNeutralH = 0.0;
 #endif
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
@@ -866,8 +871,10 @@ void init(void)
     {
         double mass_min = MAX_REAL_NUMBER;
         double mass_max = -MAX_REAL_NUMBER;
+        double mass_tot = 0;
         for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
         {
+            mass_tot += P[i].Mass;
             if(P[i].Mass > mass_max) mass_max = P[i].Mass;
             if(P[i].Mass < mass_min) mass_min = P[i].Mass;
         }
@@ -876,10 +883,15 @@ void init(void)
         MPI_Allreduce(&mass_min, &mpi_mass_min, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
         MPI_Allreduce(&mass_max, &mpi_mass_max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
         All.MinMassForParticleMerger = 0.49 * mpi_mass_min;
+#ifdef SINGLE_STAR_SINK_DYNAMICS /* Get mean gas mass, used in various subroutiens */
+        double mpi_mass_tot; long mpi_Ngas; long Ngas_l = (long) N_gas;
+        MPI_Allreduce(&mass_tot, &mpi_mass_tot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(&Ngas_l, &mpi_Ngas, 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
+        All.MeanGasParticleMass = mpi_mass_tot/( (double)mpi_Ngas );
+#endif
 #ifdef GALSF_GENERATIONS
         All.MinMassForParticleMerger /= (float)GALSF_GENERATIONS;
 #endif
-        /* All.MaxMassForParticleSplit  = 5.01 * mpi_mass_max; */
         All.MaxMassForParticleSplit  = 3.01 * mpi_mass_max;
 #ifdef MERGESPLIT_HARDCODE_MAX_MASS
         All.MaxMassForParticleSplit = MERGESPLIT_HARDCODE_MAX_MASS;
@@ -950,6 +962,16 @@ void init(void)
         savepositions(RestartSnapNum);
         endrun(0);
     }
+    
+
+#if defined(COOL_MOLECFRAC_NONEQM)
+    if(RestartFlag == 2) // should have read in SphP[i].MolecularMassFraction_perNeutralH
+    {
+        SphP[i].MolecularMassFraction_perNeutralH = DMIN(1,DMAX(0,SphP[i].MolecularMassFraction_perNeutralH));
+        SphP[i].MolecularMassFraction = DMIN(1,DMAX(0, 1.-SphP[i].Ne/1.25)) * SphP[i].MolecularMassFraction_perNeutralH;
+    }
+#endif
+    
 
 #ifdef CHIMES_INITIALISE_IN_EQM
     if (RestartFlag != 1)
@@ -1014,8 +1036,8 @@ void check_omega(void)
 #ifdef GR_TABULATED_COSMOLOGY_G
     omega *= All.Gini / All.G;
 #endif
-    if(fabs(omega - All.Omega0) > 1.0e-2) // look for a 1% tolerance of omega-matter
-        {PRINT_WARNING("\n\nMass content in the ICs accounts only for Omega_M=%g,\nbut you specified Omega_M=%g in the parameterfile.\nRun will stop.\n",omega, All.Omega0); endrun(1);}
+    if(fabs(omega - All.OmegaMatter) > 1.0e-2) // look for a 1% tolerance of omega-matter
+        {PRINT_WARNING("\n\nMass content in the ICs accounts only for Omega_M=%g,\nbut you specified Omega_M=%g in the parameterfile.\nRun will stop.\n",omega, All.OmegaMatter); endrun(1);}
 }
 #endif
 
@@ -1071,14 +1093,13 @@ void setup_smoothinglengths(void)
                 } // closes if((RestartFlag == 0)||(P[i].Type != 0))
             }
     }
-    if((RestartFlag==0 || RestartFlag==2) && All.ComovingIntegrationOn) {for(i=0;i<N_gas;i++) {PPP[i].Hsml *= pow(All.Omega0/All.OmegaBaryon,1./NUMDIMS);}} /* correct (crudely) for baryon fraction, used in the estimate above for Hsml */
+    if((RestartFlag==0 || RestartFlag==2) && All.ComovingIntegrationOn) {for(i=0;i<N_gas;i++) {PPP[i].Hsml *= pow(All.OmegaMatter/All.OmegaBaryon,1./NUMDIMS);}} /* correct (crudely) for baryon fraction, used in the estimate above for Hsml */
 
 #ifdef BLACK_HOLES
     if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {if(P[i].Type == 5) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}}}
 #endif
 
 #ifdef GRAIN_FLUID
-    //if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {if(P[i].Type > 0) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}}}
     if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {PPP[i].Hsml *= pow(2.,1./NUMDIMS);}} /* very rough correction assuming comparable numbers of dust and gas elements */
 #endif
 
@@ -1168,24 +1189,18 @@ void disp_setup_smoothinglengths(void)
                 while(10 * 2.0 * 64 * P[i].Mass > Nodes[no].u.d.mass)
                 {
                     p = Nodes[no].u.d.father;
-                    if(p < 0)
-                        break;
+                    if(p < 0) {break;}
                     no = p;
                 }
                 SphP[i].HsmlDM = pow(1.0/NORM_COEFF * 2.0 * 64 * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
                 if(All.SofteningTable[P[i].Type] != 0)
                 {
-                    if((SphP[i].HsmlDM >1000.*All.SofteningTable[P[i].Type])||(PPP[i].Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
-                        SphP[i].HsmlDM = All.SofteningTable[P[i].Type];
+                    if((SphP[i].HsmlDM >1000.*All.SofteningTable[P[i].Type])||(PPP[i].Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {SphP[i].HsmlDM = All.SofteningTable[P[i].Type];}
                 }
             }
         }
     }
-
-    if(ThisTask == 0)
-    {
-        printf("computing DM Vel_disp around gas particles.\n");
-    }
+    if(ThisTask == 0) {printf("computing DM Vel_disp around gas particles.\n");}
     disp_density();
 }
 #endif

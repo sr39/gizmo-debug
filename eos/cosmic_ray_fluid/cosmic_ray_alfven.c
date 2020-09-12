@@ -39,7 +39,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         if(q_whichupdate==0) {if(mode==0) {SphP[i].CosmicRayEnergy[k_CRegy]=eCR_tmp;} else {SphP[i].CosmicRayEnergyPred[k_CRegy]=eCR_tmp;}} // updated energy
         if(q_whichupdate>0) {if(mode==0) {SphP[i].CosmicRayAlfvenEnergy[k_CRegy][q_whichupdate-1]=eCR_tmp;} else {SphP[i].CosmicRayAlfvenEnergyPred[k_CRegy][q_whichupdate-1]=eCR_tmp;}} // updated energy
         // now need to account for the adiabatic heating/cooling of the 'fluid', here, with gamma=gamma_eff //
-        double eCR_0 = eCR_tmp, d_div = (-(gamma_eff-1.) * P[i].Particle_DivVel*All.cf_a2inv) * dt_entr;
+        double eCR_0 = eCR_tmp, d_div = (-(gamma_eff-1.) * SphP[i].Face_DivVel_ForAdOps*All.cf_a2inv) * dt_entr;
         if(All.ComovingIntegrationOn) {d_div += (-3.*(gamma_eff-1.) * All.cf_hubble_a) * dt_entr;} /* adiabatic term from Hubble expansion (needed for cosmological integrations */
         double dCR_div = DMIN(eCR_tmp*d_div , 0.5*u0*P[i].Mass); // limit so don't take away all the gas internal energy [to negative values]
         if(dCR_div + eCR_tmp < 0) {dCR_div = -eCR_tmp;} // check against energy going negative

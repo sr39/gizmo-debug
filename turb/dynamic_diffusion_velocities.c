@@ -105,6 +105,7 @@ void dynamic_diff_vel_calc_initial_operations_preloop(void)
  *  - D. Rennehan
  *
  */
+/*!   -- this subroutine contains no writes to shared memory -- */
 int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration) {
     /* initialize and check if we should bother doing a neighbor loop */
     int startnode, numngb, listindex = 0, j, k, n;
@@ -135,7 +136,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
             if (numngb < 0) {return -1;}
 
             for (n = 0; n < numngb; n++) {
-                j = ngblist[n];
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
 #ifdef GALSF_SUBGRID_WINDS
                 if (local.DelayTime == 0 && SphP[j].DelayTime > 0) {continue;}
                 if (local.DelayTime > 0 && SphP[j].DelayTime == 0) {continue;}

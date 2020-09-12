@@ -657,13 +657,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_MOLECULARFRACTION:
-#ifdef OUTPUT_MOLECULAR_FRACTION
+#if defined(OUTPUT_MOLECULAR_FRACTION)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
+#if defined(COOL_MOLECFRAC_NONEQM)
+                    *fp++ = (MyOutputFloat) SphP[pindex].MolecularMassFraction_perNeutralH; /* more useful to output this particular value, rather than fH2 */
+#else
                     double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp; u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy); // needs to be in code units
                     temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
                     *fp++ = (MyOutputFloat) SphP[pindex].MolecularMassFraction; /* we call the subroutine above to make sure this quantity is as up-to-the-moment updated as possible, going into our next routine */
+#endif
                     n++;
                 }
 #endif
@@ -1008,6 +1012,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 if(P[pindex].Type == type)
                 {
                     *ip_int++ = BPP(pindex).ProtoStellarStage;
+                    n++;
+                }
+#endif
+            break;
+            
+        case IO_AGE_PROTOSTAR:
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = BPP(pindex).ProtoStellarAge;
                     n++;
                 }
 #endif
@@ -1681,7 +1696,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_STAGE_PROTOSTAR:
             bytes_per_blockelement = sizeof(int);
             break;
-
+        case IO_AGE_PROTOSTAR:
         case IO_MASS:
         case IO_BH_DIST:
         case IO_U:
@@ -1925,7 +1940,6 @@ int get_datatype_in_block(enum iofields blocknr)
         case IO_STAGE_PROTOSTAR:
             typekey = 0;		/* native int */
             break;
-
         default:
             typekey = 1;		/* native MyOutputFloat */
             break;
@@ -1998,6 +2012,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_MASS_D_PROTOSTAR:
         case IO_ZAMS_MASS:
         case IO_STAGE_PROTOSTAR:
+        case IO_AGE_PROTOSTAR:
         case IO_LUM_SINGLESTAR:
         case IO_BHPROGS:
         case IO_CAUSTIC_COUNTER:
@@ -2315,6 +2330,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_MASS_D_PROTOSTAR:
         case IO_ZAMS_MASS:
         case IO_STAGE_PROTOSTAR:
+        case IO_AGE_PROTOSTAR:
         case IO_LUM_SINGLESTAR:
         case IO_BHPROGS:
             for(i = 0; i < 6; i++) {if(i != 5) {typelist[i] = 0;}}
@@ -2477,7 +2493,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_MOLECULARFRACTION:
-#ifdef OUTPUT_MOLECULAR_FRACTION
+#if defined(OUTPUT_MOLECULAR_FRACTION)
             return 1;
 #endif
             break;
@@ -2669,6 +2685,12 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_STAGE_PROTOSTAR:
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
+            return 1;
+#endif
+            break;
+            
+        case IO_AGE_PROTOSTAR:
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
             return 1;
 #endif
@@ -3070,6 +3092,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_STAGE_PROTOSTAR:
             strncpy(label, "PSST", 4);
             break;
+        case IO_AGE_PROTOSTAR:
+            strncpy(label, "PSAG", 4);
+            break;
         case IO_MASS_D_PROTOSTAR:
             strncpy(label, "PSMD", 4);
             break;
@@ -3438,6 +3463,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_STAGE_PROTOSTAR:
             strcpy(buf, "ProtoStellarStage");
             break;
+        case IO_AGE_PROTOSTAR:
+            strcpy(buf, "ProtoStellarAge");
+            break;
         case IO_LUM_SINGLESTAR:
             strcpy(buf, "StarLuminosity_Solar");
             break;
@@ -3685,7 +3713,7 @@ void write_file(char *fname, int writeTask, int lastTask)
 
     header.num_files = All.NumFilesPerSnapshot;
     header.BoxSize = All.BoxSize;
-    header.Omega0 = All.Omega0;
+    header.OmegaMatter = All.OmegaMatter;
     header.OmegaLambda = All.OmegaLambda;
     header.HubbleParam = All.HubbleParam;
 
@@ -4103,7 +4131,7 @@ void write_header_attributes_in_hdf5(hid_t handle)
 
     hdf5_dataspace = H5Screate(H5S_SCALAR);
     hdf5_attribute = H5Acreate(handle, "Omega0", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &header.Omega0);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &header.OmegaMatter);
     H5Aclose(hdf5_attribute);
     H5Sclose(hdf5_dataspace);
 

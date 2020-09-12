@@ -65,9 +65,9 @@ TimeMax     1.0    % End of the simulation
 %---- Cosmological parameters 
 ComovingIntegrationOn   0       % is it cosmological? (yes=1, no=0)
 BoxSize                 10000.  % in code units
-Omega0                  0       % =0 for non-cosmological
-OmegaLambda             0       % =0 for non-cosmological
-OmegaBaryon             0       % =0 for non-cosmological
+Omega_Matter            0       % =0 for non-cosmological
+Omega_Lambda            0       % =0 for non-cosmological
+Omega_Baryon            0       % =0 for non-cosmological
 HubbleParam             1       % little 'h'; =1 for non-cosmological runs
 
 %---- Accuracy of time integration 

@@ -1184,7 +1184,7 @@ void subfind_save_local_catalogue(int num)
 
   header.num_files = NTask;
   header.BoxSize = All.BoxSize;
-  header.Omega0 = All.Omega0;
+  header.OmegaMatter = All.OmegaMatter;
   header.OmegaLambda = All.OmegaLambda;
   header.HubbleParam = All.HubbleParam;
 

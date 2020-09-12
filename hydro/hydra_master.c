@@ -184,6 +184,7 @@ struct INPUT_STRUCT_NAME
     MyFloat Density;
     MyFloat Pressure;
     MyFloat ConditionNumber;
+    MyFloat FaceClosureError;
     MyFloat InternalEnergyPred;
     MyFloat SoundSpeed;
     integertime Timestep;
@@ -225,6 +226,9 @@ struct INPUT_STRUCT_NAME
 
 #if defined(KERNEL_CRK_FACES)
     MyFloat Tensor_CRK_Face_Corrections[16];
+#endif
+#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
+    MyFloat Tensor_MFM_Face_Corrections[9];
 #endif
 #ifdef HYDRO_PRESSURE_SPH
     MyFloat EgyWtRho;
@@ -371,6 +375,7 @@ struct OUTPUT_STRUCT_NAME
 #endif // MAGNETIC //
 
 #ifdef COSMIC_RAYS
+    MyDouble Face_DivVel_ForAdOps;
     MyDouble DtCosmicRayEnergy[N_CR_PARTICLE_BINS];
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
     MyDouble DtCosmicRay_Number_in_Bin[N_CR_PARTICLE_BINS];
@@ -409,6 +414,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
     in->SoundSpeed = Get_Gas_effective_soundspeed_i(i);
     in->Timestep = GET_PARTICLE_INTEGERTIME(i);
     in->ConditionNumber = SphP[i].ConditionNumber;
+    in->FaceClosureError = SphP[i].FaceClosureError;
 #ifdef MHD_CONSTRAINED_GRADIENT
     /* since it is not used elsewhere, we can use the sign of the condition number as a bit
         to conveniently indicate the status of the parent particle flag, for the constrained gradients */
@@ -432,6 +438,9 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #endif
 #if defined(KERNEL_CRK_FACES)
     for(k=0;k<16;k++) {in->Tensor_CRK_Face_Corrections[k] = SphP[i].Tensor_CRK_Face_Corrections[k];}
+#endif
+#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
+    for(k=0;k<9;k++) {in->Tensor_MFM_Face_Corrections[k] = SphP[i].Tensor_MFM_Face_Corrections[k];}
 #endif
 
     int j;
@@ -618,6 +627,7 @@ static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int
 #endif // MAGNETIC //
 
 #ifdef COSMIC_RAYS
+    SphP[i].Face_DivVel_ForAdOps += out->Face_DivVel_ForAdOps;
     for(k=0;k<N_CR_PARTICLE_BINS;k++)
     {
         SphP[i].DtCosmicRayEnergy[k] += out->DtCosmicRayEnergy[k];
@@ -739,21 +749,6 @@ void hydro_final_operations_and_cleanup(void)
 #endif
                 SphP[i].HydroAccel[k] /= P[i].Mass; /* we solved for momentum flux */
             }
-
-#if defined(COSMIC_RAYS)
-            /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
-                (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
-            for(k=0;k<N_CR_PARTICLE_BINS;k++)
-            {
-                double streamfac = CR_get_streaming_loss_rate_coefficient(i,k);
-#if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
-                SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * streamfac; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
-#endif
-                SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * streamfac;
-            }
-#endif
-
-
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtInternalEnergy -= SphP[i].InternalEnergyPred * SphP[i].DtMass;
 #endif
@@ -789,11 +784,11 @@ void hydro_final_operations_and_cleanup(void)
                 for(k=0;k<3;k++) {vdot_h[k] = erad_i * (vel_i[k] + vdot_h[k]);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term. this is the P term //
                 double flux_thin = erad_i * C_LIGHT_CODE_REDUCED; if(flux_mag>0) {flux_mag=sqrt(flux_mag);} else {flux_mag=1.e-20*flux_thin;}
                 if(flux_mag > 0) {
-		  flux_corr = DMIN(1., flux_thin/flux_mag);
+                    flux_corr = DMIN(1., flux_thin/flux_mag);
 #if defined(RT_ENABLE_R15_GRADIENTFIX)
-		  flux_corr = flux_thin/flux_mag; // set to maximum (optically thin limit)
+                    flux_corr = flux_thin/flux_mag; // set to maximum (optically thin limit)
 #endif
-		}  else {flux_corr = 0;}
+                }  else {flux_corr = 0;}
 
                 for(k=0;k<3;k++)
                 {
@@ -823,14 +818,36 @@ void hydro_final_operations_and_cleanup(void)
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME)) /* update the metal masses from exchange */
             for(k=0;k<NUM_METAL_SPECIES;k++) {P[i].Metallicity[k] = DMAX(P[i].Metallicity[k] + SphP[i].Dyield[k] / P[i].Mass , 0.01*P[i].Metallicity[k]);}
 #endif
+            
+            
+#if defined(COSMIC_RAYS)
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) && !defined(COOLING_OPERATOR_SPLIT)
+            /* with the spectrum model, we account here the adiabatic heating/cooling of the 'fluid', here, which was solved in the hydro solver but doesn't resolve which portion goes to CRs and which to internal energy, with gamma=GAMMA_COSMICRAY */
+            double ECR_tot=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {ECR_tot+=SphP[i].CosmicRayEnergyPred[k];} // routine below only depends on the total CR energy, not bin-by-bin energies, when we do it this way here
+            double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt, ECR_tot, 1); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places
+            double u0=DMAX(SphP[i].InternalEnergyPred, All.MinEgySpec) , uf=DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
+            SphP[i].DtInternalEnergy += (uf - u0) / (dt + MIN_REAL_NUMBER); // update gas quantities to be used in cooling function
+#endif
+            /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
+                (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
+            for(k=0;k<N_CR_PARTICLE_BINS;k++)
+            {
+                double streamfac = fabs(CR_get_streaming_loss_rate_coefficient(i,k));
+                SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * streamfac;
+#if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+                SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * streamfac; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
+#endif
+            }
+#endif
+
+
 
 
 #ifdef GALSF_SUBGRID_WINDS
             /* if we have winds, we decouple particles briefly if delaytime>0 */
             if(SphP[i].DelayTime > 0)
             {
-                for(k = 0; k < 3; k++)
-                    SphP[i].HydroAccel[k] = 0;//SphP[i].dMomentum[k] = 0;
+                for(k = 0; k < 3; k++) {SphP[i].HydroAccel[k] = 0;}//SphP[i].dMomentum[k] = 0;
                 SphP[i].DtInternalEnergy = 0; //SphP[i].dInternalEnergy = 0;
                 double windspeed = sqrt(2 * All.WindEnergyFraction * All.FactorSN * All.EgySpecSN / (1 - All.FactorSN) / All.WindEfficiency) * All.Time;
                 windspeed *= fac_mu;
@@ -953,6 +970,7 @@ void hydro_force_initial_operations_preloop(void)
 #endif
 #endif // magnetic //
 #ifdef COSMIC_RAYS
+            SphP[i].Face_DivVel_ForAdOps = 0;
             for(k=0;k<N_CR_PARTICLE_BINS;k++)
             {
                 SphP[i].DtCosmicRayEnergy[k] = 0;

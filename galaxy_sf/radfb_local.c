@@ -13,6 +13,7 @@
  */
 
 #if defined(GALSF_FB_FIRE_RT_LOCALRP) /* first the radiation pressure coupled in the immediate vicinity of the star */
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 void radiation_pressure_winds_consolidated(void)
 {
     double age_threshold_in_gyr = 0.15; // don't bother for older populations, they contribute negligibly here //
@@ -59,7 +60,7 @@ void radiation_pressure_winds_consolidated(void)
                 dv_imparted_perpart_guess += (dE_over_c/P[i].Mass) * tau_IR_guess; // estimate of additional IR term [1+tau_IR]*L/c assumed here as coupling //
                 double prob = dv_imparted_perpart_guess / delta_v_imparted_rp; prob *= 2000.; // need to include a buffer for errors in the estimates above
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-                delta_v_imparted_rp = DMAX( v_grav_guess , v_wind_threshold ); // because of re-written layer below, call this less often
+                delta_v_imparted_rp = 2. * DMAX( v_grav_guess , v_wind_threshold ); // because of re-written layer below [where this is distributed to many cells], call this less often
                 prob = dv_imparted_perpart_guess / delta_v_imparted_rp; // chance of kick
                 if(prob < 1 && prob > 0) {dE_over_c /= prob;} // if assigning low-probability, need to up-weight the kick to statistically couple the right momentum
 #endif
@@ -69,9 +70,9 @@ void radiation_pressure_winds_consolidated(void)
                 { // within loop
                     /* ok, now open the neighbor list for the star particle */
                     N_MIN_KERNEL=10;N_MAX_KERNEL=256;MAXITER_FB=100;NITER=0;wt_sum=0; startnode=All.MaxPart;dummy=0;numngb_inbox=0;h=1.0*P[i].Hsml;pos=P[i].Pos;
-                    if(h<=0) {h=All.SofteningTable[0];} else {if(h>RtauMax) {h=RtauMax;}}
+                    if(h<=0) {h=All.ForceSoftening[0];} else {if(h>RtauMax) {h=RtauMax;}}
                     do {
-                        numngb_inbox = ngb_treefind_pairs_threads(pos, h, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist);
+                        numngb_inbox = ngb_treefind_variable_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
                         if((numngb_inbox>=N_MIN_KERNEL)&&(numngb_inbox<=N_MAX_KERNEL))
                         {
                             wt_sum=0; /* note these lines and many below assume 3D sims! */
@@ -194,8 +195,9 @@ void radiation_pressure_winds_consolidated(void)
 
 
 
-/* Routines for simple FIRE local photo-ionization heating feedback model. This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO. */
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING)
+/* Routines for simple FIRE local photo-ionization heating feedback model. This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO. */
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 void HII_heating_singledomain(void)    /* this version of the HII routine only communicates with particles on the same processor */
 {
 #ifdef RT_CHEM_PHOTOION
@@ -249,11 +251,11 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                 do {
                     jnearest=-1; rnearest=MAX_REAL_NUMBER;
                     R_search = RHII; if(h_i>R_search) {R_search=h_i;}
-                    numngb = ngb_treefind_variable_threads(pos, R_search, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist);
+                    numngb = ngb_treefind_variable_targeted(pos, R_search, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
                     if(numngb>0)
                     {
                         int ngb_list_touse[numngb]; for(n=0; n<numngb; n++) {ngb_list_touse[n]=Ngblist[n];}
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) 
                         qsort(ngb_list_touse, numngb, sizeof(int), compare_densities_for_sort); // sort on densities before processing, so ionize least-dense-first
 #endif
                         for(n = 0; n < numngb; n++)
@@ -269,7 +271,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                 if(SphP[j].InternalEnergy<SphP[j].InternalEnergyPred) {u=SphP[j].InternalEnergy;} else {u=SphP[j].InternalEnergyPred;}
                                 if(SphP[j].DelayTimeHII > 0) {already_ionized=1;}
 #if !defined(CHIMES_HII_REGIONS)
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) 
                                 if((SphP[i].Ne>0.8) || (u>5.*uion)) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
 #else
                                 if(u>uion) {already_ionized=1;}
@@ -299,7 +301,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                 } // if((r<=RHII)&&(already_ionized==0)&&(mionized<mionizable))
 
                                 /* if nearest un-ionized particle, mark as such */
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) 
                                 if((SphP[j].Density<rnearest)&&(already_ionized==0)) {rnearest = SphP[j].Density; jnearest = j;} // rank by density, not distance
 #else
                                 if((r<rnearest)&&(already_ionized==0)) {rnearest = r; jnearest = j;}
@@ -387,13 +389,14 @@ int do_the_local_ionization(int target, double dt, int source)
     // set the quantities desired for this age bin specifically: need a softened radius, for use here //
     double dp[3],r2=0,stellar_mass=P[source].Mass*UNIT_MASS_IN_SOLAR; for(k=0;k<3;k++) {dp[k]=P[source].Pos[k]-P[target].Pos[k];}
     NEAREST_XYZ(dp[0],dp[1],dp[2],1); for(k=0;k<3;k++) {dp[k]*=All.cf_atime*UNIT_LENGTH_IN_CGS; r2+=dp[k]*dp[k];} // separation in cgs
-    double eps_cgs=All.SofteningTable[P[source].Type]*All.cf_atime*UNIT_LENGTH_IN_CGS; r2+=eps_cgs*eps_cgs; // gravitational Softening (cgs units)
+    double eps_cgs=KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER*All.ForceSoftening[P[source].Type]*All.cf_atime*UNIT_LENGTH_IN_CGS; // plummer equivalent softening
+    r2+=eps_cgs*eps_cgs; // gravitational Softening (cgs units)
     SphP[target].Chimes_fluxPhotIon_HII[age_bin] = (1.0 - All.Chimes_f_esc_ion) * chimes_ion_luminosity(stellar_age_myr, stellar_mass) / r2; // cgs flux of H-ionising photons per second seen by the star particle
     SphP[target].Chimes_G0_HII[age_bin] = (1.0 - All.Chimes_f_esc_G0) * chimes_G0_luminosity(stellar_age_myr, stellar_mass) / r2; // cgs flux in the 6-13.6 eV band
 
 #else
 
-#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) // ??
+#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) 
     SphP[target].InternalEnergy = DMAX(SphP[target].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
     SphP[target].InternalEnergyPred = SphP[target].InternalEnergy; /* full reset of the internal energy */
 #else
@@ -405,8 +408,8 @@ int do_the_local_ionization(int target, double dt, int source)
     double t4_eqm = DMIN( 1.5*Theat_star , 3.85/DMAX(log(DMAX(390.*Z_sol/Theat_star,1.001)),0.01) ); // equilibrium H2 region temperature in 1e4 K: 1.5*Theat = eqm temp for pure-H region, while second expression assumes eqm cooling with O+C, etc, but breaks down at low-Z when metals don't dominate cooling.
     double u_eqm = (t4_eqm * HIIRegion_Temp) / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS); // converted to specific internal energy, assuming full ionization
     double u_post_ion_no_cooling = SphP[target].InternalEnergy + delta_U_of_ionization; // energy after ionization, before any cooling
-    double u_final = DMIN( u_post_ion_no_cooling , u_eqm ), du = u_final-SphP[target].InternalEnergy; // don't heat to higher temperature than intial energy of ionization allows
-    SphP[target].InternalEnergy = u_final; SphP[target].InternalEnergyPred = DMAX(SphP[target].InternalEnergyPred + du , 1.e-3*SphP[target].InternalEnergyPred); /* add it */
+    double u_final = DMIN( u_post_ion_no_cooling , u_eqm ); // don't heat to higher temperature than intial energy of ionization allows
+    SphP[target].InternalEnergy = u_final; SphP[target].InternalEnergyPred = u_final; /* add it */
 #endif
     SphP[target].Ne = 1.0 + 2.0*yhelium(target); /* set the cell to fully ionized */
 

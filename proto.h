@@ -52,6 +52,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest);
 double gamma_eos(int i);
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);
+double matrix_invert_ndims(double T[3][3], double Tinv[3][3]);
 #ifdef HERMITE_INTEGRATION
 int eligible_for_hermite(int i);
 void do_hermite_prediction(void);
@@ -79,7 +80,7 @@ double sub_turb_enclosed_mass(double r, double msub, double vmax, double radvmax
 
 void interpolate_fluxes_opacities_gasgrains(void);
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
-double return_grain_absorption_efficiency_Q(int i, int k_freq);
+double return_grain_extinction_efficiency_Q(int i, int k_freq);
 #endif
 int powerspec_turb_find_nearest_evaluate(int target, int mode, int *nexport, int *nsend_local);
 void powerspec_turb_calc_dispersion(void);
@@ -272,6 +273,7 @@ int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend
 double INLINE_FUNC Get_Particle_Size(int i);
 double INLINE_FUNC Get_Gas_density_for_energy_i(int i);
 double INLINE_FUNC Get_Particle_Expected_Area(double h);
+double get_cell_Bfield_in_microGauss(int i);
 double Get_Gas_Ionized_Fraction(int i);
 #ifdef COSMIC_RAYS
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i);
@@ -280,6 +282,7 @@ double Get_CosmicRayGradientLength(int i, int k_CRegy);
 double Get_CosmicRayStreamingVelocity(int i);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
 double CR_cooling_and_gas_heating(int target, double n_elec, double nH_cgs, double dtime_cgs, int mode);
+double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double eCR_tmp, int mode);
 double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, double shock_vel, int return_index_in_bin);
 void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir);
 double Get_AlfvenMachNumber_Local(int i, double vA_idealMHD_codeunits, int use_shear_corrected_vturb_flag);
@@ -292,7 +295,6 @@ double return_CRbin_CR_charge_in_e(int target, int k_CRegy);
 double return_CRbin_kinetic_energy_in_GeV(int target, int k_CRegy);
 double return_CRbin_gamma_factor(int target, int k_CRegy);
 double return_CRbin_beta_factor(int target, int k_CRegy);
-double get_cell_Bfield_in_microGauss(int i);
 double get_cell_Urad_in_eVcm3(int i);
 void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime_cgs);
 double CR_gas_heating(int target, double n_elec, double nHcgs);
@@ -304,8 +306,9 @@ void CR_spectrum_define_bins(void);
 void CR_initialize_multibin_quantities(void);
 void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, double dtime_cgs, int mode_driftkick);
 double CR_return_slope_from_number_and_energy_in_bin(double energy_in_code_units, double number_effective_in_code_units, double bin_centered_energy_in_GeV, int k_bin);
-double CR_return_new_bin_edge_from_rate(double rate_dt_dimless, double x_m_bin, double x_p_bin, int loss_mode, int NR_key);
+double CR_return_new_bin_edge_from_rate(double rate_dt_dimless, double x_m_bin, double x_p_bin, int loss_mode, int NR_key, double additional_variable_dummy);
 double CR_coulomb_energy_integrand(double x, double tau, double slope);
+double CR_reaccel_energy_integrand(double x, double tau, double slope, double delta_slope, int NR_key);
 double CR_compton_energy_integrand(double x, double tau, double slope);
 int CR_check_if_bin_is_nonrelativistic(int k_bin);
 double CR_return_true_number_in_bin(int target, int k_bin);
@@ -327,6 +330,7 @@ double INLINE_FUNC Get_Gas_thermal_soundspeed_i(int i);
 double Get_Gas_Alfven_speed_i(int i);
 double Get_Gas_Fast_MHD_wavespeed_i(int i);
 double Get_Gas_Mean_Molecular_Weight_mu(double T_guess, double rho, double *xH0, double *ne_guess, double urad_from_uvb_in_G0, int target);
+void update_explicit_molecular_fraction(int i, double dtime_cgs);
 double yhelium(int target);
 double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral_fraction, double free_electron_ratio, double urad_from_uvb_in_G0);
 double INLINE_FUNC Get_Gas_BField(int i_particle_id, int k_vector_component);
@@ -456,11 +460,14 @@ void set_injection_accel(void);
 int density_isactive(int n);
 int GasGrad_isactive(int i);
 
+#ifdef HYDRO_VOLUME_CORRECTIONS
+void cellcorrections_calc(void);
+void cellcorrections_final_operations_and_cleanup(void);
+#endif
+
 size_t sizemax(size_t a, size_t b);
 
-
 void reconstruct_timebins(void);
-
 void init_peano_map(void);
 peanokey peano_hilbert_key(int x, int y, int z, int bits);
 peanokey peano_and_morton_key(int x, int y, int z, int bits, peanokey *morton);
@@ -553,6 +560,9 @@ double get_age_tracer_bin_start_time(int k);
 
 #ifdef SINGLE_STAR_FB_JETS
 double single_star_jet_velocity(int n);
+#endif
+#if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_SNE)
+double single_star_fb_velocity(int n);
 #endif
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
 void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt);
@@ -685,10 +695,8 @@ void ensure_neighbours(void);
 
 void output_log_messages(void);
 void ewald_corr(double dx, double dy, double dz, double *fper);
-
 void ewald_force(int ii, int jj, int kk, double x[3], double force[3]);
 void ewald_force_ni(int iii, int jjj, int kkk, double x[3], double force[3]);
-
 void ewald_init(void);
 double ewald_psi(double x[3]);
 double ewald_pot_corr(double dx, double dy, double dz);

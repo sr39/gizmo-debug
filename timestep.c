@@ -339,7 +339,9 @@ integertime get_timestep(int p,		/*!< particle index */
 	         // take a short timestep, so we better not super-timestep otherwise we risk messing up that star's integration. But if it is consistent with the above, then we can safely super-timestep
 	        double Mtot=P[p].comp_Mass+P[p].Mass, dr=0,dv=0,dv_dot_dx=0, binary_dt_2body=0;
 	        for(k=0;k<3;k++) {dr+=P[p].comp_dx[k]*P[p].comp_dx[k]; dv+=P[p].comp_dv[k]*P[p].comp_dv[k]; dv_dot_dx+=P[p].comp_dx[k]*P[p].comp_dv[k];}
-	        dr += All.SofteningTable[5]*All.SofteningTable[5]; dr=sqrt(dr); if(dv>0) {dv=sqrt(dv);} else {dv=0;}
+            double r_effective = KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER * All.ForceSoftening[5]; // plummer-equivalent softening
+	        dr += r_effective*r_effective; // add in quadrature for simple softening estimate
+            dr=sqrt(dr); if(dv>0) {dv=sqrt(dv);} else {dv=0;}
             double dt_2body_base = 1/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
 	        binary_dt_2body = 1. / (dv / dr + sqrt(All.G * Mtot / (dr*dr*dr)));
 	        if(fabs(binary_dt_2body - dt_2body_base)/dt_2body_base < 1e-2)
@@ -354,6 +356,11 @@ integertime get_timestep(int p,		/*!< particle index */
         if(eligible_for_hermite(p)) dt *= 1.4; // gives 10^-6 energy error per orbit for a 0.9 eccentricity binary
 #endif
     }
+#if defined(SINGLE_STAR_FB) && !defined(NOGRAVITY)    
+    if(P[p].Type == 0){
+        dt = DMIN(dt, All.CourantFac * DMIN(P[p].min_bh_fb_time, P[p].min_bh_approach_time));
+    }
+#endif    
 #endif // SINGLE_STAR_TIMESTEPPING
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
@@ -424,7 +431,6 @@ integertime get_timestep(int p,		/*!< particle index */
         {
             csnd = 0.5 * SphP[p].MaxSignalVel * All.cf_afac3;
             double L_particle = Get_Particle_Size(p);
-
             dt_courant = All.CourantFac * (L_particle*All.cf_atime) / csnd;
             if(dt_courant < dt) dt = dt_courant;
 
@@ -624,10 +630,9 @@ integertime get_timestep(int p,		/*!< particle index */
                 
                 /* now consider the (simpler) CFL-type condition required for advective solvers like M1 or intensity/ray integrators */
 #if defined(RT_M1) || defined(RT_LOCALRAYGRID)
-#ifdef SINGLE_STAR_FB_RAD                
-                dt_courant = 0.4 * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED; /* courant-type criterion, using the reduced speed of light - here we hardcode the most aggressive possible Courant factor as an optimization */
-#else
                 dt_courant = All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED; /* courant-type criterion, using the reduced speed of light */
+#if defined(SINGLE_STAR_STARFORGE_DEFAULTS)               
+                dt_courant = 0.4 * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED; /* hacked here for starforge, where mike's experimentation suggests we can get away with a slightly larger courant factor. remains experimental. courant-type criterion, using the reduced speed of light - here we hardcode the most aggressive possible Courant factor as an optimization */
 #endif                
 #if defined(GALSF) && !defined(SINGLE_STAR_SINK_DYNAMICS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) // custom hacks for FIRE-RT tests; can override CFL condition with diffusion timestep certain limits
                 int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++)
@@ -879,7 +884,7 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_accr = 0.05 * DMAX(BPP(p).BH_Mass , All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-            dt_accr = All.MinMassForParticleMerger / BPP(p).BH_Mdot;
+            dt_accr = 0.5*All.MeanGasParticleMass / BPP(p).BH_Mdot;
 #ifdef SINGLE_STAR_FB_JETS
             dt_accr = DMIN(dt_accr, All.BAL_wind_particle_mass / BPP(p).BH_Mdot);
 #endif
@@ -912,14 +917,16 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt > dt_ff && dt_ff > 0) {dt = 1.01 * dt_ff;}
 
             double L_particle = Get_Particle_Size(p);
-            double dt_cour_sink = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / P[p].BH_SurroundingGasVel;
-#if defined(RT_M1) || defined(RT_LOCALRAYGRID)
-	    dt_cour_sink = DMIN(All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED, dt_cour_sink);
-#endif
+            double vsig = P[p].BH_SurroundingGasVel;
+#if defined(SINGLE_STAR_FB) && !defined(NOGRAVITY)
+            vsig += P[p].MaxFeedbackVel;
+#endif                        
+            double dt_cour_sink = All.CourantFac * (L_particle*All.cf_atime) / vsig;
+
             if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
 
 #if defined(SINGLE_STAR_FB_LOCAL_RP) || (defined(SINGLE_STAR_FB_RAD) && defined(RT_RAD_PRESSURE_FORCES))
-            double rad_acc = bh_lum_bol(BPP(p).BH_Mdot, BPP(p).BH_Mass, p) / C_LIGHT_CODE / (2*All.MinMassForParticleMerger); // effective acceleration due to momentum injection at the scale of the cell
+            double rad_acc = bh_lum_bol(BPP(p).BH_Mdot, BPP(p).BH_Mass, p) / C_LIGHT_CODE / (All.MeanGasParticleMass); // effective acceleration due to momentum injection at the scale of the cell
             double dt_radacc = sqrt(0.1 * eps / rad_acc);
             if(dt > dt_radacc && dt_radacc > 0) dt = 1.01 * dt_radacc;
 #endif                    
@@ -975,10 +982,11 @@ integertime get_timestep(int p,		/*!< particle index */
         {
             double ahydro = sqrt(SphP[p].HydroAccel[0]*SphP[p].HydroAccel[0] + SphP[p].HydroAccel[1]*SphP[p].HydroAccel[1] + SphP[p].HydroAccel[2]*SphP[p].HydroAccel[2]);
             PRINT_WARNING("\n Cell-ID=%llu  dt_desired=%g dt_Courant=%g dt_Accel=%g\n accel_tot=%g accel_grav=%g accel_hydro=%g Pos_xyz=(%g|%g|%g) Vel_xyz=(%g|%g|%g)\n Hsml=%g Density=%g InternalEnergy=%g dtInternalEnergy=%g divV=%g Pressure=%g Cs_Eff=%g vAlfven=%g f_ion=%g\n csnd_for_signalspeed=%g eps_forcesoftening=%g mass=%g type=%d condition_number=%g Nngb=%g\n NVT=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g\n",
-                          (unsigned long long) P[p].ID, dt, dt_courant * All.cf_hubble_a, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a,
-                          ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].Vel[0], P[p].Vel[1], P[p].Vel[2],
-                          PPP[p].Hsml, SphP[p].Density, SphP[p].InternalEnergy, SphP[p].DtInternalEnergy, P[p].Particle_DivVel, SphP[p].Pressure, Get_Gas_effective_soundspeed_i(p), Get_Gas_Alfven_speed_i(p), Get_Gas_Ionized_Fraction(p),
-                          csnd, All.SofteningTable[P[p].Type], P[p].Mass, P[p].Type, SphP[p].ConditionNumber, PPP[p].NumNgb,
+                          (unsigned long long) P[p].ID, dt, dt_courant*All.cf_hubble_a, sqrt(2*All.ErrTolIntAccuracy*All.cf_atime*All.ForceSoftening[P[p].Type] / ac)*All.cf_hubble_a,
+                          ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].Vel[0]/All.cf_atime, P[p].Vel[1]/All.cf_atime, P[p].Vel[2]/All.cf_atime,
+                          PPP[p].Hsml*All.cf_atime, SphP[p].Density*All.cf_a3inv, SphP[p].InternalEnergy, SphP[p].DtInternalEnergy, P[p].Particle_DivVel*All.cf_a2inv,
+                          SphP[p].Pressure*All.cf_a3inv, Get_Gas_effective_soundspeed_i(p), Get_Gas_Alfven_speed_i(p), Get_Gas_Ionized_Fraction(p),
+                          csnd, All.ForceSoftening[P[p].Type]*All.cf_atime, P[p].Mass, P[p].Type, SphP[p].ConditionNumber, PPP[p].NumNgb,
                           SphP[p].NV_T[0][0],SphP[p].NV_T[0][1],SphP[p].NV_T[0][2],SphP[p].NV_T[1][0],SphP[p].NV_T[1][1],SphP[p].NV_T[1][2],SphP[p].NV_T[2][0],SphP[p].NV_T[2][1],SphP[p].NV_T[2][2]);
         }
         else // if(P[p].Type == 0)
@@ -1084,7 +1092,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
 #endif
                     dmean = pow(min_mass[type] / (All.OmegaBaryon * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G)), 1.0 / 3);
                 else
-                    dmean = pow(min_mass[type] / ((All.Omega0 - All.OmegaBaryon) * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G)), 1.0 / 3);
+                    dmean = pow(min_mass[type] / ((All.OmegaMatter - All.OmegaBaryon) * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G)), 1.0 / 3);
 
 #ifdef BLACK_HOLES
                 if(type == 5) {dmean = pow(min_mass[type] / (All.OmegaBaryon * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G)), 1.0 / 3);}

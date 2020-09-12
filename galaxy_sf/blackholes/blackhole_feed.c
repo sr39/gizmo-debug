@@ -106,6 +106,7 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 
 
 /* do loop over neighbors to get quantities for accretion */
+/*!   -- this subroutine writes to shared memory [updating the neighbor values]: need to protect these writes for openmp below. none of the modified values are read, so only the write block is protected. */
 int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration);
 int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
@@ -150,7 +151,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
             if(numngb < 0) return -1;
             for(n = 0; n < numngb; n++)
             {
-                j = ngblist[n];
+                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if(P[j].Mass > 0)
                 {
                     for(k=0;k<3;k++) {dpos[k] = P[j].Pos[k] - local.Pos[k]; dvel[k]=P[j].Vel[k]-local.Vel[k];}
@@ -159,10 +160,13 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                     if(r2 < h_i2 || r2 < PPP[j].Hsml*PPP[j].Hsml)
                     {
                         vrel=0; for(k=0;k<3;k++) {vrel += dvel[k]*dvel[k];}
-                        r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime;  /* do this once and use below */
-                        vesc=bh_vesc(j,local.Mass,r, ags_h_i);
+                        r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime;  /* relative velocity in physical units. do this once and use below */
+                        vesc=bh_vesc(j, local.Mass, r, ags_h_i);
                         
-                        
+                        /* note that SwallowID is both read and potentially re-written below: we need to make sure this is done in a thread-safe manner */
+                        MyIDType SwallowID_j;
+                        #pragma omp atomic read
+                        SwallowID_j = P[j].SwallowID; // ok got a clean read. -not- gauranteed two threads won't see this at the same time and compete over it [both think they get it here]. but only one will -actually- get it, and that's ok.
                         
 #ifdef BH_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
@@ -192,15 +196,15 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                         /* check_for_bh_merger.  Easy.  No Edd limit, just a pos and vel criteria. */
 #if !defined(BH_DEBUG_DISABLE_MERGERS)
                         if(P[j].Type == 5)  /* we may have a black hole merger -- check below if allowed */
-                            if((local.ID != P[j].ID) && (P[j].SwallowID == 0) && (BPP(j).BH_Mass < local.BH_Mass)) /* we'll assume most massive BH swallows the other - simplifies analysis and ensures unique results */
+                            if((local.ID != P[j].ID) && (SwallowID_j == 0) && (BPP(j).BH_Mass < local.BH_Mass)) /* we'll assume most massive BH swallows the other - simplifies analysis and ensures unique results */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                            if((r < 1.0001*P[j].min_dist_to_bh) && (r < PPP[j].Hsml) && (r < sink_radius) && (P[j].Mass < local.Mass) && (P[j].Mass < 3*All.MinMassForParticleMerger)) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
+                            if((r < 1.0001*P[j].min_dist_to_bh) && (r < PPP[j].Hsml) && (r < sink_radius) && (P[j].Mass < local.Mass) && (P[j].Mass < 1.5*All.MeanGasParticleMass)) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
 #endif
                             {
-                                if((vrel < BH_CSND_FRAC_BH_MERGE * vesc) && (bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1))
+                                if((vrel < vesc) && (bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1))
                                 {
                                     printf(" ..BH-BH Merger: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) local.ID);
-                                    P[j].SwallowID = local.ID;
+                                    SwallowID_j = local.ID;
                                 } else {
 #if defined(BH_OUTPUT_MOREINFO)     // DAA: BH merger info will be saved in a separate output file
                                     printf(" ..ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, local.ID, P[j].ID, vrel, vesc);
@@ -216,10 +220,10 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                         /* This is a similar loop to what we already did in blackhole_environment, but here we stochastically
                          reduce GRAVCAPT events in order to (statistically) obey the eddington limit */
 #if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
-                        if((P[j].Type != 5) && (P[j].SwallowID < local.ID)) // we have a particle not already marked to swallow
+                        if((P[j].Type != 5) && (SwallowID_j < local.ID)) // we have a particle not already marked to swallow
                         {
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-			                double eps = DMAX(P[j].Hsml/2.8, DMAX(ags_h_i/2.8, r));			    
+                            double eps = DMAX( r , DMAX(P[j].Hsml , ags_h_i) * KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER); // plummer-equivalent
 			                if(eps*eps*eps /(P[j].Mass + local.Mass) <= P[j].SwallowTime)
 #endif
 #if defined(BH_ALPHADISK_ACCRETION)
@@ -238,7 +242,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                                 if( bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1 ) /* bound and apocenter within target distance */
                                 {
 #ifdef BH_GRAVCAPTURE_NONGAS        /* simply swallow non-gas particle if BH_GRAVCAPTURE_NONGAS enabled */
-                                    if(P[j].Type != 0) {P[j].SwallowID = local.ID;}
+                                    if(P[j].Type != 0) {SwallowID_j = local.ID;}
 #endif
 #if defined(BH_GRAVCAPTURE_GAS)     /* now deal with gas */
                                     if(P[j].Type == 0)
@@ -254,10 +258,10 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
 #ifdef BH_OUTPUT_MOREINFO
                                             printf(" ..BH-Food Marked: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) local.ID);
 #endif
-                                            P[j].SwallowID = local.ID;
+                                            SwallowID_j = local.ID;
                                         }
 #else //if defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
-                                        P[j].SwallowID = local.ID; /* in other cases, just swallow the particle */  //particles_swallowed_this_bh_this_process++;
+                                        SwallowID_j = local.ID; /* in other cases, just swallow the particle */  //particles_swallowed_this_bh_this_process++;
 #endif //else defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
                                     } //if (P[j].Type == 0)
 #endif //ifdef BH_GRAVCAPTURE_GAS
@@ -273,7 +277,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                         {
                             u=r*hinv; if(u<1) {kernel_main(u,hinv3,hinv*hinv3,&wk,&dwk,-1);} else {wk=dwk=0;}
 #if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS) /* compute accretion probability, this below is only meaningful if !defined(BH_GRAVCAPTURE_GAS)... */
-                            if(P[j].SwallowID < local.ID)
+                            if(SwallowID_j < local.ID)
                             {
                                 double dm_toacc = bh_mass_withdisk - (local.Mass + mass_markedswallow); if(dm_toacc>0) {p=dm_toacc*wk/local.Density;} else {p=0;}
 #ifdef BH_WIND_KICK /* DAA: for stochastic winds (BH_WIND_KICK) we remove a fraction of mass from gas particles prior to kicking --> need to increase the probability here to balance black hole growth */
@@ -288,12 +292,13 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
 #ifdef BH_OUTPUT_MOREINFO
                                     printf(" ..BH-Food Marked: j %d w %g p %g TO_BE_SWALLOWED \n",j,w,p);
 #endif
-                                    P[j].SwallowID = local.ID; mass_markedswallow += P[j].Mass*f_accreted;
+                                    SwallowID_j = local.ID;
+                                    mass_markedswallow += P[j].Mass*f_accreted;
                                 } // if(w < p)
                             } // swallowID < localID
 #endif // BH_SWALLOWGAS
 #if defined(BH_CALC_LOCAL_ANGLEWEIGHTS) /* calculate the angle-weighting for the photon momentum */
-                            if((local.Dt>0)&&(r>0)&&(P[j].SwallowID==0)&&(P[j].Mass>0)&&(P[j].Type==0))
+                            if((local.Dt>0)&&(r>0)&&(SwallowID_j==0)&&(P[j].Mass>0)&&(P[j].Type==0))
                             { /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
                                 norm=0; for(k=0;k<3;k++) {norm+=(dpos[k]/r)*J_dir[k];}
                                 out.BH_angle_weighted_kernel_sum += bh_angleweight_localcoupling(j,norm,r,h_i);
@@ -301,11 +306,20 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
 #endif
 #ifdef BH_THERMALFEEDBACK
                             double energy = bh_lum_bol(local.Mdot, local.BH_Mass, -1) * local.Dt;
-                            if(local.Density > 0) {SphP[j].Injected_BH_Energy += (wk/local.Density) * energy * P[j].Mass;}
+                            if(local.Density > 0) {
+                                #pragma omp atomic
+                                SphP[j].Injected_BH_Energy += (wk/local.Density) * energy * P[j].Mass;
+                            }
 #endif                            
                         } // if(P[j].Type == 0)
                         
                         
+                        /* ok, before exiting this loop, need to mark whether or not we actually designated a particle for accretion! */
+                        if(SwallowID_j > 0)
+                        {
+                            #pragma omp atomic write
+                            P[j].SwallowID = SwallowID_j;  // ok got a clean write. -not- gauranteed two threads won't see this at the same time and compete over it [both think they get it here]. but only one will -actually- get it, and that's ok.
+                        }
                         
                     } // if(r2 < h_i2)
                 } // if(P[j].Mass > 0)

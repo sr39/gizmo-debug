@@ -83,6 +83,7 @@ void run(void)
 
         set_non_standard_physics_for_current_time();	/* update auxiliary physics for current time */
 
+        int reconstructed_tree = 0;
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
         if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart) {TreeReconstructFlag_local = 1;}
 #endif
@@ -90,8 +91,9 @@ void run(void)
         if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)	/* check whether we have a big step */
         {
             domain_Decomposition(0, 0, 1);      /* do domain decomposition if step is big enough, and set new list of active particles  */
+            reconstructed_tree = 1;
         }
-        else if(TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
+        else if(TreeReconstructFlag) {domain_Decomposition(0, 0, 1); reconstructed_tree = 1;}
         else
         {
             force_update_tree();	/* update tree dynamically with kicks of last step so that it can be reused */
@@ -123,7 +125,15 @@ void run(void)
 #endif
 
         compute_hydro_densities_and_forces();	/* densities, gradients, & hydro-accels for synchronous particles */
-
+        
+#ifdef PARTICLE_MERGE_SPLIT_EVERY_TIMESTEP // do merge/split routines every single timestep - need to do it here if we didn't do it during domain decomp on a coarse timestep
+        if(!reconstructed_tree)
+        {
+            merge_and_split_particles();
+            rearrange_particle_sequence();
+        }
+#endif
+        
         do_second_halfstep_kick();	/* this does the half-step kick at the end of the timestep */
 
         calculate_non_standard_physics();	/* source terms are here treated in a strang-split fashion */
@@ -216,7 +226,7 @@ void set_non_standard_physics_for_current_time(void)
 
 #if defined(COOL_METAL_LINES_BY_SPECIES) && !defined(CHIMES)
     /* load the metal-line cooling tables appropriate for the UV background */
-    if(All.ComovingIntegrationOn) LoadMultiSpeciesTables();
+    if(All.ComovingIntegrationOn) {LoadMultiSpeciesTables();}
 #endif
 
 }

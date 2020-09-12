@@ -103,6 +103,9 @@
 #define PREVENT_PARTICLE_MERGE_SPLIT  /* particle merging/splitting doesn't make sense with frozen grids */
 #endif
 
+#ifdef PARTICLE_MERGE_SPLIT_EVERY_TIMESTEP
+#define MAINTAIN_TREE_IN_REARRANGE
+#endif
 
 
 #ifdef PMGRID
@@ -274,6 +277,7 @@
 #endif
 #if (FIRE_PHYSICS_DEFAULTS == 3)
 #define COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
+#define COOL_MOLECFRAC_NONEQM
 #define OUTPUT_MOLECULAR_FRACTION
 #define OUTPUT_COOLRATE
 #define RT_USE_GRAVTREE_SAVE_RAD_FLUX
@@ -493,6 +497,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_LOCAL_RP))
 #define SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION 2 //we are using the protostellar evolution model from ORION
+#define SINGLE_STAR_FB // general flag indicating feedback is on
 #endif
 #ifdef SINGLE_STAR_FB_RAD
 #define RT_M1
@@ -504,10 +509,10 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_NUV
 #define RT_PHOTOELECTRIC
 #define RT_CHEM_PHOTOION 1
+#define RT_INFRARED
 #endif
 #ifdef RT_INFRARED
 #define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
-#define COOLING_OPERATOR_SPLIT 
 #endif
 #if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY))
 #define RT_USE_TREECOL_FOR_NH 6
@@ -568,7 +573,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #undef SINGLE_STAR_FB_SNE
 #define SINGLE_STAR_FB_SNE 1 // fraction of the SN energy in the kinetic energy of particles vs internal
 #endif
-#define SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT 6 //determines the maximum number of ejecta particles spawned per timestep, see below
+#define SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT 2 //determines the maximum number of ejecta particles spawned per timestep, see below
 #define SINGLE_STAR_FB_SNE_N_EJECTA (4*(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)*((SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)+1)) //Maximum number of ejecta particles spawned per timestep
 #endif
 #endif
@@ -909,7 +914,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 
-#if defined(EOS_SUBSTELLAR_ISM)
+#if defined(EOS_SUBSTELLAR_ISM) || defined(COOL_MOLECFRAC_NONEQM)
 #define EOS_GAMMA_VARIABLE
 #endif
 
@@ -930,6 +935,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #if defined(EOS_GENERAL)
 #define DOGRAD_SOUNDSPEED 1
 #endif
+
+
 
 
 
@@ -1238,11 +1245,16 @@ typedef unsigned long long peanokey;
 
 
 
-
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
 #define HIIRegion_Temp (1.0e4) /* temperature (in K) of heated gas */
 #endif
 
+
+#ifdef COOL_MOLECFRAC_NONEQM
+#ifndef OUTPUT_MOLECULAR_FRACTION
+#define OUTPUT_MOLECULAR_FRACTION
+#endif
+#endif
 
 
 #ifdef METALS
@@ -1619,6 +1631,7 @@ z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
 
 #define FACT1 0.366025403785	/* FACT1 = 0.5 * (sqrt(3)-1) */
 #define FACT2 0.86602540        /* FACT2 = 0.5 * sqrt(3) */
+#define CRSOL_OVER_CTRUE_SQUARED_FOR_BEAMING (((C_LIGHT_CODE_REDUCED*C_LIGHT_CODE_REDUCED)/(C_LIGHT_CODE*C_LIGHT_CODE))) /* factor needed in some places in the code to deal with relativistic terms when we use a RSOL */
 
 
 
@@ -1948,7 +1961,7 @@ extern struct global_data_all_processes
   int NumFilesWrittenInParallel;	/*!< maximum number of files that may be written simultaneously when
                                      writing/reading restart-files, or when writing snapshot files */
   double BufferSize;		/*!< size of communication buffer in MB */
-  int BunchSize;     	        /*!< number of particles fitting into the buffer in the parallel tree algorithm  */
+  long BunchSize;     	        /*!< number of particles fitting into the buffer in the parallel tree algorithm  */
 
   double PartAllocFactor;	/*!< in order to maintain work-load balance, the particle load will usually
 				   NOT be balanced.  Each processor allocates memory for PartAllocFactor times
@@ -1996,7 +2009,9 @@ extern struct global_data_all_processes
 #ifdef PM_HIRES_REGION_CLIPDM
     double MassOfClippedDMParticles; /*!< the mass of high-res DM particles which the low-res particles will target if they enter the highres region */
 #endif
-
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+    double MeanGasParticleMass; /*!< the mean gas particle mass */
+#endif
     double MinMassForParticleMerger; /*!< the minimum mass of a gas particle below which it will be merged into a neighbor */
     double MaxMassForParticleSplit; /*!< the maximum mass of a gas particle above which it will be split into a pair */
 
@@ -2019,12 +2034,11 @@ extern struct global_data_all_processes
 
   /* Cosmology */
   double Hubble_H0_CodeUnits;		/*!< Hubble-constant (unit-ed version: 100 km/s/Mpc) in internal units */
-  double Omega0,		/*!< matter density in units of the critical density (at z=0) */
+  double OmegaMatter,		/*!< matter density in units of the critical density (at z=0) */
     OmegaLambda,		/*!< vaccum energy density relative to crictical density (at z=0) */
     OmegaBaryon,		/*!< baryon density in units of the critical density (at z=0) */
-    HubbleParam;		/*!< little `h', i.e. Hubble constant in units of 100 km/s/Mpc.  Only needed to get absolute
-				 * physical values for cooling physics
-				 */
+    OmegaRadiation,     /*!< radiation [including all relativistic components] density in units of the critical density (at z=0) */
+    HubbleParam;		/*!< little `h', i.e. Hubble constant in units of 100 km/s/Mpc.  Only needed to get absolute physical values for cooling physics */
 
   double BoxSize;		/*!< Boxsize in case periodic boundary conditions are used */
 
@@ -2668,9 +2682,6 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_WAKEUP_GAS /* force all gas within the interaction radius of a sink to timestep at the same rate */
     int LowestBHTimeBin;
 #endif
-#ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION
-    MyFloat BH_angle_weighted_kernel_sum;
-#endif     
 #ifdef BH_FOLLOW_ACCRETED_ANGMOM
     MyFloat BH_Specific_AngMom[3];
 #endif
@@ -2707,13 +2718,16 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
     MyFloat min_bh_freefall_time;
-    MyFloat min_bh_periastron;
     MyFloat min_bh_approach_time;
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     int SuperTimestepFlag; // >=2 if allowed to super-timestep (increases with each drift/kick), 1 if a candidate for super-timestepping, 0 otherwise
     MyDouble COM_dt_tidal; //timescale from tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
 #endif
+#ifdef SINGLE_STAR_FB
+    MyFloat MaxFeedbackVel; // maximum signal velocity of any feedback mechanism emanating from the star
+    MyFloat min_bh_fb_time;  // minimum time for feedback to arrive from a star
+#endif    
 #endif
 #endif
 
@@ -2827,6 +2841,12 @@ extern ALIGN(32) struct particle_data
 #endif
 
 
+#if defined(HYDRO_TENSOR_FACE_CORRECTIONS_NGBITER)
+#define HYDRO_TENSOR_FACE_CORRECTIONS_NUMBER_MOMWTS 15
+#else
+#define HYDRO_TENSOR_FACE_CORRECTIONS_NUMBER_MOMWTS 9
+#endif
+
 
 /* the following struture holds data that is stored for each SPH particle in addition to the collisionless
  * variables.
@@ -2853,6 +2873,11 @@ extern struct sph_particle_data
     //MyDouble dMomentum[3];        /*!< change in momentum from hydro step (conserved variable) */ //manifest-indiv-timestep-debug//
     MyDouble HydroAccel[3];         /*!< acceleration due to hydrodynamical force (for drifting) */
 
+#ifdef HYDRO_VOLUME_CORRECTIONS
+    MyDouble Volume_0;              /*!< 0th-order cell volume for mesh-free (MFM/MFV-type) reconstruction at 0th-order volume quadrature */
+    MyDouble Volume_1;              /*!< 1st-order cell volume for mesh-free (MFM/MFV-type) reconstruction at 1st-order volume quadrature */
+#endif
+
 #ifdef MAGNETIC
     MyDouble Face_Area[3];          /*!< vector sum of effective areas of 'faces'; this is used to check closure for meshless methods */
     MyDouble BPred[3];              /*!< current magnetic field strength */
@@ -2876,12 +2901,16 @@ extern struct sph_particle_data
 #if defined(KERNEL_CRK_FACES)
     MyFloat Tensor_CRK_Face_Corrections[16]; /*!< tensor set for face-area correction terms for the CRK formulation of SPH or MFM/V areas */
 #endif
+#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
+    MyFloat Tensor_MFM_Face_Corrections[9]; /*!< alternative tensor face corrections for linear consistency */
+#endif
 
 #ifdef COSMIC_RAYS
     MyFloat CosmicRayEnergy[N_CR_PARTICLE_BINS];        /*!< total energy of cosmic ray fluid (the conserved variable) */
     MyFloat CosmicRayEnergyPred[N_CR_PARTICLE_BINS];    /*!< total energy of cosmic ray fluid (the conserved variable) */
     MyFloat DtCosmicRayEnergy[N_CR_PARTICLE_BINS];      /*!< time derivative of cosmic ray energy */
     MyFloat CosmicRayDiffusionCoeff[N_CR_PARTICLE_BINS];/*!< diffusion coefficient kappa for cosmic ray fluid */
+    MyFloat Face_DivVel_ForAdOps;                                 /*!< face-centered definition of the velocity divergence, needed to carefully handle adiabatic terms when Pcr >> Pgas */
 #ifdef COSMIC_RAYS_M1
     MyFloat CosmicRayFlux[N_CR_PARTICLE_BINS][3];       /*!< CR flux vector [explicitly evolved] - conserved-variable */
     MyFloat CosmicRayFluxPred[N_CR_PARTICLE_BINS][3];   /*!< CR flux vector [explicitly evolved] - conserved-variable */
@@ -2937,6 +2966,7 @@ extern struct sph_particle_data
     } Gradients;
     MyLongDouble NV_T[3][3];        /*!< holds the tensor used for gradient estimation */
     MyLongDouble ConditionNumber;   /*!< condition number of the gradient matrix: needed to ensure stability */
+    MyDouble FaceClosureError;      /*!< dimensionless measure of face closure */
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     MyDouble MaxKineticEnergyNgb;   /*!< maximum kinetic energy (with respect to neighbors): use for entropy 'switch' */
 #endif
@@ -3053,11 +3083,14 @@ extern struct sph_particle_data
 #endif
 
 #ifdef CONDUCTION
-    MyFloat Kappa_Conduction;           /*!< conduction coefficient */
+    MyFloat Kappa_Conduction;                   /*!< conduction coefficient */
 #endif
 
-#ifdef OUTPUT_MOLECULAR_FRACTION
-    MyFloat MolecularMassFraction;      /*!< holder for molecular mass fraction for sims where we evaluate it on-the-fly and wish to save it [different from detailed chemistry modules] */
+#if defined(OUTPUT_MOLECULAR_FRACTION) || defined(COOL_MOLECFRAC_NONEQM)
+    MyFloat MolecularMassFraction;              /*!< holder for molecular mass fraction for sims where we evaluate it on-the-fly and wish to save it [different from detailed chemistry modules] */
+#if defined(COOL_MOLECFRAC_NONEQM)
+    MyFloat MolecularMassFraction_perNeutralH;  /*! molecular mass fraction -of-the-neutral-gas-, which we retain as a separate variable since we have a hybrid model here using implicit updates for the ionization fraction */
+#endif
 #endif
 
 #ifdef MHD_NON_IDEAL
@@ -3109,6 +3142,7 @@ extern struct sph_particle_data
     MyFloat Radiation_Temperature; /* IR radiation field temperature (evolved variable ^4 power, for convenience) */
     MyFloat Dt_Rad_E_gamma_T_weighted_IR; /* IR radiation temperature-weighted time derivative of photon energy (evolved variable ^4 power, for convenience) */
     MyFloat Dust_Temperature; /* Dust temperature (evolved variable ^4 power, for convenience) */
+    MyFloat LambdaDust; /* Dust cooling rate */
 #endif
 #ifdef RT_CHEM_PHOTOION
     MyFloat HI;                  /* HI fraction */
@@ -3345,13 +3379,15 @@ extern struct gravdata_out
 #ifdef SINGLE_STAR_TIMESTEPPING
     MyFloat min_bh_freefall_time;    // minimum value of sqrt(R^3 / G(M_BH + M_particle)) as calculated from the tree-walk
     MyFloat min_bh_approach_time; // smallest approach time t_a = |v_radial|/r
-    MyFloat min_bh_periastron; // closest anticipated periastron passage
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     MyLongDouble COM_tidal_tensorps[3][3]; //tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
     int COM_calc_flag; //flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
     int SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
 #endif
+#ifdef SINGLE_STAR_FB
+    MyFloat min_bh_fb_time; // minimum time for feedback to arrive from a star
+#endif    
 #endif
 #endif
 }
@@ -3395,7 +3431,7 @@ extern struct io_header
   int flag_cooling;		    /*!< flags whether cooling was included  */
   int num_files;		    /*!< number of files in multi-file snapshot */
   double BoxSize;		    /*!< box-size of simulation in case periodic boundaries were used */
-  double Omega0;            /*!< matter density in units of critical density */
+  double OmegaMatter;       /*!< matter density in units of critical density */
   double OmegaLambda;		/*!< cosmological constant parameter */
   double HubbleParam;		/*!< Hubble parameter in units of 100 km/sec/Mpc */
   int flag_stellarage;		/*!< flags whether the file contains formation times of star particles */
@@ -3456,6 +3492,7 @@ enum iofields
   IO_MASS_D_PROTOSTAR,
   IO_ZAMS_MASS,
   IO_STAGE_PROTOSTAR,
+  IO_AGE_PROTOSTAR,
   IO_LUM_SINGLESTAR,
   IO_BHPROGS,
   IO_BH_DIST,
@@ -3655,7 +3692,10 @@ extern ALIGN(32) struct NODE
 #if defined(SINGLE_STAR_TIMESTEPPING)
   MyFloat bh_vel[3];    /*!< holds the mass-weighted avg. velocity of black holes in the node */
   int N_BH;             /*!< holds the number of BH particles in the node. Used for refinement/search criteria */
+#ifdef SINGLE_STAR_FB
+  MyFloat MaxFeedbackVel;
 #endif
+#endif    
 #endif
 
 #ifdef RT_SEPARATELY_TRACK_LUMPOS

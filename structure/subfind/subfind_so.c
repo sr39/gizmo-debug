@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include "../../allvars.h"
 #include "../../proto.h"
+#include "../../kernel.h"
 /*
 * This file was originally part of the GADGET3 code developed by Volker Springel.
 * It has been updated significantly by PFH for basic compatibility with GIZMO,
@@ -29,6 +30,7 @@ struct Subfind_DensityOtherPropsEval_data_out *Subfind_DensityOtherPropsEval_Dat
  To add similar computations, follow their template (e.g. the "SUBFIND_ADDIO_..." options). This first subroutine is the core computation of the relevant properties
  in the group. compute them/add them into the "out" structure and the code here and other two scripts below should take care of the rest
 */
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
 /*! first define a short structure needed to pass in the group info here */
 static struct Subfind_DensityOtherPropsEval_data_in {MyDouble Pos[3]; MyOutputFloat R200; int NodeList[NODELISTLENGTH]; /* all needed for any version */} *Subfind_DensityOtherPropsEval_DataIn, *Subfind_DensityOtherPropsEval_DataGet;
 /*! now the main routine */
@@ -99,40 +101,40 @@ void Subfind_DensityOtherProps_finaloperations(struct Subfind_DensityOtherPropsE
 
 void Subfind_DensityOtherProps_Loop(void)
 {
-  long long ntot; int i, j, ndone, ndone_flag, npleft, dummy, rep, iter;
-  MyFloat *Left, *Right; char *Todo; int ngrp, recvTask, place, nexport, nimport;
-  double t0, t1, t2, t3, rguess, overdensity, Deltas[SUBFIND_ADDIO_NUMOVERDEN], z;
+    long long ntot; int i, j, ndone, ndone_flag, npleft, dummy, rep, iter;
+    MyFloat *Left, *Right; char *Todo; int ngrp, recvTask, place, nexport, nimport;
+    double t0, t1, t2, t3, rguess, overdensity, Deltas[SUBFIND_ADDIO_NUMOVERDEN], z;
 
-  /* allocate buffers to arrange communication */
-  Ngblist = (int *) mymalloc("Ngblist", NumPart * sizeof(int));
-  Left = (MyFloat *) mymalloc("Left", sizeof(MyFloat) * Ngroups);
-  Right = (MyFloat *) mymalloc("Right", sizeof(MyFloat) * Ngroups);
-  R200 = (MyOutputFloat *) mymalloc("R200", sizeof(MyOutputFloat) * Ngroups);
-  M200 = (MyOutputFloat *) mymalloc("M200", sizeof(MyOutputFloat) * Ngroups);
-  Subfind_DensityOtherPropsEval_GlobalPasser = (struct Subfind_DensityOtherPropsEval_data_out *) mymalloc("Subfind_DensityOtherPropsEval_GlobalPasser",Ngroups * sizeof(struct Subfind_DensityOtherPropsEval_data_out));
-  Todo = (char *)mymalloc("Todo", sizeof(char) * Ngroups);
-  size_t MyBufferSize = (size_t)All.BufferSize;
-  All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) + sizeof(struct Subfind_DensityOtherPropsEval_data_in) + sizeof(struct Subfind_DensityOtherPropsEval_data_out) +
-					     sizemax(sizeof(struct Subfind_DensityOtherPropsEval_data_in), sizeof(struct Subfind_DensityOtherPropsEval_data_out))));
-  DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
-  DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
+    /* allocate buffers to arrange communication */
+    Ngblist = (int *) mymalloc("Ngblist", NumPart * sizeof(int));
+    Left = (MyFloat *) mymalloc("Left", sizeof(MyFloat) * Ngroups);
+    Right = (MyFloat *) mymalloc("Right", sizeof(MyFloat) * Ngroups);
+    R200 = (MyOutputFloat *) mymalloc("R200", sizeof(MyOutputFloat) * Ngroups);
+    M200 = (MyOutputFloat *) mymalloc("M200", sizeof(MyOutputFloat) * Ngroups);
+    Subfind_DensityOtherPropsEval_GlobalPasser = (struct Subfind_DensityOtherPropsEval_data_out *) mymalloc("Subfind_DensityOtherPropsEval_GlobalPasser",Ngroups * sizeof(struct Subfind_DensityOtherPropsEval_data_out));
+    Todo = (char *)mymalloc("Todo", sizeof(char) * Ngroups);
+    size_t MyBufferSize = (size_t)All.BufferSize;
+    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) + sizeof(struct Subfind_DensityOtherPropsEval_data_in) + sizeof(struct Subfind_DensityOtherPropsEval_data_out) +
+                     sizemax(sizeof(struct Subfind_DensityOtherPropsEval_data_in), sizeof(struct Subfind_DensityOtherPropsEval_data_out))));
+    DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
+    DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
 
-  if(All.ComovingIntegrationOn) {z = 1 / All.Time - 1;} else {z = 0;}
-  double rhoback = 3 * All.Omega0 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
-  double omegaz = All.Omega0 * pow(1 + z, 3) / (All.Omega0 * pow(1 + z, 3) + (1 - All.Omega0 - All.OmegaLambda) * pow(1 + z, 2) + All.OmegaLambda);
-  double x = omegaz - 1, DeltaTopHat = (18 * M_PI * M_PI + 82 * x - 39 * x * x) / omegaz;
+    if(All.ComovingIntegrationOn) {z = 1 / All.Time - 1;} else {z = 0;}
+    double rhoback = 3 * All.OmegaMatter * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), zplusone=1.+z;
+    double omegaz = All.OmegaMatter * pow(zplusone,3) / (All.OmegaRadiation * pow(zplusone,4) + All.OmegaMatter * pow(zplusone,3) + (1 - All.OmegaMatter - All.OmegaLambda - All.OmegaRadiation) * pow(zplusone,2) + All.OmegaLambda);
+    double x = omegaz - 1, DeltaTopHat = (18 * M_PI * M_PI + 82 * x - 39 * x * x) / omegaz;
 
-     double Delta_MasterList[10];
-     Delta_MasterList[0] = 200;             /* standard fixed overdensity with respect to background mean density */
-     Delta_MasterList[1] = DeltaTopHat;     /* spherical tophat collapse-model overdensity with respect to background */
-     Delta_MasterList[2] = 200/omegaz;      /* overdensity of 200 relative to critical, expressed relative to background density */
-     Delta_MasterList[3] = 500/omegaz;      /* in this case use crit-500 with respect to background */
-     Delta_MasterList[4] = 1000/omegaz;     /* in this case use crit-1000 with respect to background */
-     Delta_MasterList[5] = 2500/omegaz;     /* in this case use crit-2500 with respect to background */
-     Delta_MasterList[6] = 500;             /* in this case use mean-500 with respect to background */
-     Delta_MasterList[7] = 1000;            /* in this case use mean-1000 with respect to background */
-     Delta_MasterList[8] = 2500;            /* in this case use mean-2500 with respect to background */
-     Delta_MasterList[9] = 5000;            /* in this case use mean-5000 with respect to background */
+    double Delta_MasterList[10];
+    Delta_MasterList[0] = 200;             /* standard fixed overdensity with respect to background mean density */
+    Delta_MasterList[1] = DeltaTopHat;     /* spherical tophat collapse-model overdensity with respect to background */
+    Delta_MasterList[2] = 200/omegaz;      /* overdensity of 200 relative to critical, expressed relative to background density */
+    Delta_MasterList[3] = 500/omegaz;      /* in this case use crit-500 with respect to background */
+    Delta_MasterList[4] = 1000/omegaz;     /* in this case use crit-1000 with respect to background */
+    Delta_MasterList[5] = 2500/omegaz;     /* in this case use crit-2500 with respect to background */
+    Delta_MasterList[6] = 500;             /* in this case use mean-500 with respect to background */
+    Delta_MasterList[7] = 1000;            /* in this case use mean-1000 with respect to background */
+    Delta_MasterList[8] = 2500;            /* in this case use mean-2500 with respect to background */
+    Delta_MasterList[9] = 5000;            /* in this case use mean-5000 with respect to background */
 
   for(j=0;j<SUBFIND_ADDIO_NUMOVERDEN;j++) {Deltas[j]=Delta_MasterList[j];} /* list we will use */
 

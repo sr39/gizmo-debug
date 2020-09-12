@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include "../../allvars.h"
 #include "../../proto.h"
+#include "../../kernel.h"
 #include "../../domain.h"
 /*
 * This file was originally part of the GADGET3 code developed by Volker Springel.
