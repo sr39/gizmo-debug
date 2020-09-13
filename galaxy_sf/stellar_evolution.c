@@ -992,11 +992,12 @@ double single_star_fb_velocity(int n){
 #ifdef SINGLE_STAR_FB_SNE
     if(P[n].ProtoStellarStage == 6){v_fb = DMAX(v_fb, single_star_SN_velocity(n));}
 #endif
-#ifdef SINGLE_STAR_FB_JETS
-    if(P[n].BH_Mdot > 0){v_fb = DMAX(v_fb, single_star_jet_velocity(n));}    
-#endif
+    // jet velocity term does not appear to help timestep stability in tests because jets are always spawned and wakeup the cells they interact with anyway...
+    //#ifdef SINGLE_STAR_FB_JETS 
+    //    if(P[n].BH_Mdot > 0){v_fb = DMAX(v_fb, single_star_jet_velocity(n));}    
+    //#endif
 #ifdef SINGLE_STAR_FB_RAD
-    v_fb = DMAX(v_fb, C_LIGHT_CODE_REDUCED);
+    v_fb = DMAX(v_fb, C_LIGHT_CODE_REDUCED);  // produces a timestep criterion redundant with the RSOL CFL condition, but can be important if running fancy timestepping hacks that violate CFL under special circumstances
 #endif
     return v_fb;
 }
