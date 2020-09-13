@@ -304,10 +304,10 @@ void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
     P[i].AgeDeposition_ThisTimeStep=0; // reset
     if(P[i].Type != 4) {return;} // only new stars are eligible sources
     double rate_normalization = All.AgeTracerRateNormalization; // determines the fraction of time spent depositing tracers, or rate-per-particle
-    if(rate_normalization == 0 || rate_normalization >= 1) {P[i].AgeDeposition_ThisTimeStep=1; return;} // rate_normalization = 0 means deposit every time step
+    if(rate_normalization == 0 || rate_normalization <= -1) {P[i].AgeDeposition_ThisTimeStep=1; return;} // rate_normalization = 0 means deposit every time step
     double stellar_age_myr = evaluate_stellar_age_Gyr(P[i].StellarAge)*1000.; int k = get_age_tracer_bin(stellar_age_myr); // get age in Myr and bin for age
     double bin_dt_myr = get_age_tracer_bin_start_time(k+1)-get_age_tracer_bin_start_time(k); // get bin duration in Myr
-    if(rate_normalization > 0) // there is a constant probability of event -per timestep-, with 'amount returned' depending on timestep duration
+    if(rate_normalization <= 0) // there is a constant probability of event -per timestep-, with 'amount returned' depending on timestep duration
     {
         if(dt*UNIT_TIME_IN_MYR/bin_dt_myr > fabs(rate_normalization)) {P[i].AgeDeposition_ThisTimeStep=1;} else  // if dt is large compared to bin spacing, might 'miss' an event, so we want to always make an event and return
             {if(get_random_number(P[i].ID + 3) < fabs(rate_normalization)) {P[i].AgeDeposition_ThisTimeStep=1./fabs(rate_normalization);}} // rate limit according to the return fraction this represents fraction of time star should be depositing; if selected, deposit age tracer and use this scaling to increase the normalization of the tracer field
@@ -416,8 +416,8 @@ void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
 
     // now deposit tracer fields, with check if multiple bins are crossed
     double t_start=get_age_tracer_bin_start_time(k), t_end=get_age_tracer_bin_start_time(k+1), bin_dt=t_end-t_start; // bin edges in Myr
-    double amount_returned_normalizer = dt / bin_dt; // mode when AgeTracerRateNormalization >= 0 :: there is a constant probability of event -per timestep-, with 'amount returned' depending on timestep duration
-    if(All.AgeTracerRateNormalization < 0) {amount_returned_normalizer = 1.;} // mode when AgeTracerRateNormalization < 0 :: there is a constant probability per -time- (target 'number of events per bin per particle'), with 'amount returned' constant
+    double amount_returned_normalizer = dt / bin_dt; // mode when AgeTracerRateNormalization <= 0 :: there is a constant probability of event -per timestep-, with 'amount returned' depending on timestep duration
+    if(All.AgeTracerRateNormalization > 0) {amount_returned_normalizer = 1.;} // mode when AgeTracerRateNormalization < 0 :: there is a constant probability per -time- (target 'number of events per bin per particle'), with 'amount returned' constant
     M_norm *= amount_returned_normalizer; // re-normalize the total amount returned, appropriate for our timestepping scheme
     if(((k>0) && (age_initial<t_start)) || ((k<NUM_AGE_TRACERS) && (age_final>t_end))) // timestep crosses multiple -valid- bins
     {

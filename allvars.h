@@ -252,7 +252,7 @@
 #define GALSF_FB_FIRE_RT_LONGRANGE          /*! continuous acceleration from starlight (uses luminosity tree) to propagate FIRE RT */
 #define GALSF_FB_FIRE_RT_UVHEATING          /*! use estimate of local spectral information from FIRE RT for photoionization and photoelectric heating */
 //#define GALSF_FB_FIRE_RPROCESS 4          /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
-//#define GALSF_FB_FIRE_AGE_TRACERS 16      /*! tracks a set of passive scalars corresponding to stellar ages for chemical evolution model postprocessing */
+#define GALSF_FB_FIRE_AGE_TRACERS 16        /*! tracks a set of passive scalars corresponding to stellar ages for chemical evolution model postprocessing */
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
 
