@@ -518,6 +518,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_USE_TREECOL_FOR_NH 6
 #endif
 #ifdef COOLING
+#define COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
+#define COOL_MOLECFRAC_NONEQM
+#define OUTPUT_MOLECULAR_FRACTION
 #define EOS_SUBSTELLAR_ISM
 #endif
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
