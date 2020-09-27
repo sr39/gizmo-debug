@@ -610,21 +610,12 @@ int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend
     {
       while(startnode >= 0)
 	{
-	  if(mode == -1)
-	    *nexport = 0;
+	  if(mode == -1) {*nexport = 0;}
 
 	  numngb_inbox = ngb_treefind_fof_primary(pos, LinkL, target, &startnode, mode, nexport, nsend_local, MyFOF_PRIMARY_LINK_TYPES);
+	  if(numngb_inbox < 0) {return -2;}
 
-	  if(numngb_inbox < 0)
-	    return -1;
-
-	  if(mode == -1)
-	    {
-	      if(*nexport == 0)
-		NonlocalFlag[target] = 0;
-	      else
-		NonlocalFlag[target] = 1;
-	    }
+	  if(mode == -1) {if(*nexport == 0) {NonlocalFlag[target] = 0;} else {NonlocalFlag[target] = 1;}}
 
 	  for(n = 0; n < numngb_inbox; n++)
 	    {
@@ -1675,9 +1666,8 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
     {
       while(startnode >= 0)
 	{
-	  numngb_inbox = ngb_treefind_variable_targeted(pos, h, target, &startnode, mode, nexport, nsend_local, MyFOF_PRIMARY_LINK_TYPES); // MyFOF_PRIMARY_LINK_TYPES defines which types of particles we search for
-
-        if(numngb_inbox < 0) {return -1;}
+        numngb_inbox = ngb_treefind_variable_targeted(pos, h, target, &startnode, mode, nexport, nsend_local, MyFOF_PRIMARY_LINK_TYPES); // MyFOF_PRIMARY_LINK_TYPES defines which types of particles we search for
+        if(numngb_inbox < 0) {return -2;}
 
 	  for(n = 0; n < numngb_inbox; n++)
 	    {
@@ -1894,12 +1884,8 @@ struct group_mass_MinID
 
 int compare_group_mass_ID(const void *a, const void *b)
 {
-  if(((struct group_mass_MinID *) a)->MinID < (((struct group_mass_MinID *) b)->MinID))
-    return -1;
-
-  if(((struct group_mass_MinID *) a)->MinID > (((struct group_mass_MinID *) b)->MinID))
-    return +1;
-
+  if(((struct group_mass_MinID *) a)->MinID < (((struct group_mass_MinID *) b)->MinID)) {return -1;}
+  if(((struct group_mass_MinID *) a)->MinID > (((struct group_mass_MinID *) b)->MinID)) {return +1;}
   return 0;
 }
 
@@ -2024,142 +2010,83 @@ void fof_assign_HostHaloMass(void)	/* assigns mass of host FoF group to SphP[].H
 
 int fof_compare_FOF_PList_MinID(const void *a, const void *b)
 {
-  if(((struct fof_particle_list *) a)->MinID < ((struct fof_particle_list *) b)->MinID)
-    return -1;
-
-  if(((struct fof_particle_list *) a)->MinID > ((struct fof_particle_list *) b)->MinID)
-    return +1;
-
+  if(((struct fof_particle_list *) a)->MinID < ((struct fof_particle_list *) b)->MinID) {return -1;}
+  if(((struct fof_particle_list *) a)->MinID > ((struct fof_particle_list *) b)->MinID) {return +1;}
   return 0;
 }
 
 int fof_compare_FOF_GList_MinID(const void *a, const void *b)
 {
-  if(((fof_group_list *) a)->MinID < ((fof_group_list *) b)->MinID)
-    return -1;
-
-  if(((fof_group_list *) a)->MinID > ((fof_group_list *) b)->MinID)
-    return +1;
-
+  if(((fof_group_list *) a)->MinID < ((fof_group_list *) b)->MinID) {return -1;}
+  if(((fof_group_list *) a)->MinID > ((fof_group_list *) b)->MinID) {return +1;}
   return 0;
 }
 
 int fof_compare_FOF_GList_MinIDTask(const void *a, const void *b)
 {
-  if(((fof_group_list *) a)->MinIDTask < ((fof_group_list *) b)->MinIDTask)
-    return -1;
-
-  if(((fof_group_list *) a)->MinIDTask > ((fof_group_list *) b)->MinIDTask)
-    return +1;
-
+  if(((fof_group_list *) a)->MinIDTask < ((fof_group_list *) b)->MinIDTask) {return -1;}
+  if(((fof_group_list *) a)->MinIDTask > ((fof_group_list *) b)->MinIDTask) {return +1;}
   return 0;
 }
 
 int fof_compare_FOF_GList_MinIDTask_MinID(const void *a, const void *b)
 {
-  if(((fof_group_list *) a)->MinIDTask < ((fof_group_list *) b)->MinIDTask)
-    return -1;
-
-  if(((fof_group_list *) a)->MinIDTask > ((fof_group_list *) b)->MinIDTask)
-    return +1;
-
-  if(((fof_group_list *) a)->MinID < ((fof_group_list *) b)->MinID)
-    return -1;
-
-  if(((fof_group_list *) a)->MinID > ((fof_group_list *) b)->MinID)
-    return +1;
-
+  if(((fof_group_list *) a)->MinIDTask < ((fof_group_list *) b)->MinIDTask) {return -1;}
+  if(((fof_group_list *) a)->MinIDTask > ((fof_group_list *) b)->MinIDTask) {return +1;}
+  if(((fof_group_list *) a)->MinID < ((fof_group_list *) b)->MinID) {return -1;}
+  if(((fof_group_list *) a)->MinID > ((fof_group_list *) b)->MinID) {return +1;}
   return 0;
 }
 
 int fof_compare_FOF_GList_LocCountTaskDiffMinID(const void *a, const void *b)
 {
-  if(((fof_group_list *) a)->LocCount > ((fof_group_list *) b)->LocCount)
-    return -1;
-
-  if(((fof_group_list *) a)->LocCount < ((fof_group_list *) b)->LocCount)
-    return +1;
-
-  if(((fof_group_list *) a)->MinID < ((fof_group_list *) b)->MinID)
-    return -1;
-
-  if(((fof_group_list *) a)->MinID > ((fof_group_list *) b)->MinID)
-    return +1;
-
+  if(((fof_group_list *) a)->LocCount > ((fof_group_list *) b)->LocCount) {return -1;}
+  if(((fof_group_list *) a)->LocCount < ((fof_group_list *) b)->LocCount) {return +1;}
+  if(((fof_group_list *) a)->MinID < ((fof_group_list *) b)->MinID) {return -1;}
+  if(((fof_group_list *) a)->MinID > ((fof_group_list *) b)->MinID) {return +1;}
   if((((fof_group_list *) a)->ExtCount - ((fof_group_list *) a)->MinIDTask) <
-     (((fof_group_list *) b)->ExtCount - ((fof_group_list *) b)->MinIDTask))
-    return -1;
-
+     (((fof_group_list *) b)->ExtCount - ((fof_group_list *) b)->MinIDTask)) {return -1;}
   if((((fof_group_list *) a)->ExtCount - ((fof_group_list *) a)->MinIDTask) >
-     (((fof_group_list *) b)->ExtCount - ((fof_group_list *) b)->MinIDTask))
-    return +1;
-
+     (((fof_group_list *) b)->ExtCount - ((fof_group_list *) b)->MinIDTask)) {return +1;}
   return 0;
 }
 
 int fof_compare_FOF_GList_ExtCountMinID(const void *a, const void *b)
 {
-  if(((fof_group_list *) a)->ExtCount < ((fof_group_list *) b)->ExtCount)
-    return -1;
-
-  if(((fof_group_list *) a)->ExtCount > ((fof_group_list *) b)->ExtCount)
-    return +1;
-
-  if(((fof_group_list *) a)->MinID < ((fof_group_list *) b)->MinID)
-    return -1;
-
-  if(((fof_group_list *) a)->MinID > ((fof_group_list *) b)->MinID)
-    return +1;
-
+  if(((fof_group_list *) a)->ExtCount < ((fof_group_list *) b)->ExtCount) {return -1;}
+  if(((fof_group_list *) a)->ExtCount > ((fof_group_list *) b)->ExtCount) {return +1;}
+  if(((fof_group_list *) a)->MinID < ((fof_group_list *) b)->MinID) {return -1;}
+  if(((fof_group_list *) a)->MinID > ((fof_group_list *) b)->MinID) {return +1;}
   return 0;
 }
 
 int fof_compare_Group_MinID(const void *a, const void *b)
 {
-  if(((group_properties *) a)->MinID < ((group_properties *) b)->MinID)
-    return -1;
-
-  if(((group_properties *) a)->MinID > ((group_properties *) b)->MinID)
-    return +1;
-
+  if(((group_properties *) a)->MinID < ((group_properties *) b)->MinID) {return -1;}
+  if(((group_properties *) a)->MinID > ((group_properties *) b)->MinID) {return +1;}
   return 0;
 }
 
 int fof_compare_Group_GrNr(const void *a, const void *b)
 {
-  if(((group_properties *) a)->GrNr < ((group_properties *) b)->GrNr)
-    return -1;
-
-  if(((group_properties *) a)->GrNr > ((group_properties *) b)->GrNr)
-    return +1;
-
+  if(((group_properties *) a)->GrNr < ((group_properties *) b)->GrNr) {return -1;}
+  if(((group_properties *) a)->GrNr > ((group_properties *) b)->GrNr) {return +1;}
   return 0;
 }
 
 int fof_compare_Group_MinIDTask(const void *a, const void *b)
 {
-  if(((group_properties *) a)->MinIDTask < ((group_properties *) b)->MinIDTask)
-    return -1;
-
-  if(((group_properties *) a)->MinIDTask > ((group_properties *) b)->MinIDTask)
-    return +1;
-
+  if(((group_properties *) a)->MinIDTask < ((group_properties *) b)->MinIDTask) {return -1;}
+  if(((group_properties *) a)->MinIDTask > ((group_properties *) b)->MinIDTask) {return +1;}
   return 0;
 }
 
 int fof_compare_Group_MinIDTask_MinID(const void *a, const void *b)
 {
-  if(((group_properties *) a)->MinIDTask < ((group_properties *) b)->MinIDTask)
-    return -1;
-
-  if(((group_properties *) a)->MinIDTask > ((group_properties *) b)->MinIDTask)
-    return +1;
-
-  if(((group_properties *) a)->MinID < ((group_properties *) b)->MinID)
-    return -1;
-
-  if(((group_properties *) a)->MinID > ((group_properties *) b)->MinID)
-    return +1;
+  if(((group_properties *) a)->MinIDTask < ((group_properties *) b)->MinIDTask) {return -1;}
+  if(((group_properties *) a)->MinIDTask > ((group_properties *) b)->MinIDTask) {return +1;}
+  if(((group_properties *) a)->MinID < ((group_properties *) b)->MinID) {return -1;}
+  if(((group_properties *) a)->MinID > ((group_properties *) b)->MinID) {return +1;}
 
   return 0;
 }
@@ -2167,12 +2094,8 @@ int fof_compare_Group_MinIDTask_MinID(const void *a, const void *b)
 
 int fof_compare_Group_Len(const void *a, const void *b)
 {
-  if(((group_properties *) a)->Len > ((group_properties *) b)->Len)
-    return -1;
-
-  if(((group_properties *) a)->Len < ((group_properties *) b)->Len)
-    return +1;
-
+  if(((group_properties *) a)->Len > ((group_properties *) b)->Len) {return -1;}
+  if(((group_properties *) a)->Len < ((group_properties *) b)->Len) {return +1;}
   return 0;
 }
 
@@ -2180,17 +2103,10 @@ int fof_compare_Group_Len(const void *a, const void *b)
 
 int fof_compare_ID_list_GrNrID(const void *a, const void *b)
 {
-  if(((fof_id_list *) a)->GrNr < ((fof_id_list *) b)->GrNr)
-    return -1;
-
-  if(((fof_id_list *) a)->GrNr > ((fof_id_list *) b)->GrNr)
-    return +1;
-
-  if(((fof_id_list *) a)->ID < ((fof_id_list *) b)->ID)
-    return -1;
-
-  if(((fof_id_list *) a)->ID > ((fof_id_list *) b)->ID)
-    return +1;
+  if(((fof_id_list *) a)->GrNr < ((fof_id_list *) b)->GrNr) {return -1;}
+  if(((fof_id_list *) a)->GrNr > ((fof_id_list *) b)->GrNr) {return +1;}
+  if(((fof_id_list *) a)->ID < ((fof_id_list *) b)->ID) {return -1;}
+  if(((fof_id_list *) a)->ID > ((fof_id_list *) b)->ID) {return +1;}
 
   return 0;
 }
@@ -2734,24 +2650,16 @@ void read_fof(int num)
 
 int fof_compare_ID_list_ID(const void *a, const void *b)
 {
-  if(((fof_id_list *) a)->ID < ((fof_id_list *) b)->ID)
-    return -1;
-
-  if(((fof_id_list *) a)->ID > ((fof_id_list *) b)->ID)
-    return +1;
-
+  if(((fof_id_list *) a)->ID < ((fof_id_list *) b)->ID) {return -1;}
+  if(((fof_id_list *) a)->ID > ((fof_id_list *) b)->ID) {return +1;}
   return 0;
 }
 
 
 int fof_compare_P_SubNr(const void *a, const void *b)
 {
-  if(((struct particle_data *) a)->SubNr < (((struct particle_data *) b)->SubNr))
-    return -1;
-
-  if(((struct particle_data *) a)->SubNr > (((struct particle_data *) b)->SubNr))
-    return +1;
-
+  if(((struct particle_data *) a)->SubNr < (((struct particle_data *) b)->SubNr)) {return -1;}
+  if(((struct particle_data *) a)->SubNr > (((struct particle_data *) b)->SubNr)) {return +1;}
   return 0;
 }
 

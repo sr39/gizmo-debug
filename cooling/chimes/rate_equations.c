@@ -553,8 +553,7 @@ int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
 	{
 	  if (data->myGasVars->temp_floor_mode == 0) 
 	    NV_Ith_S(ydot, data->network_size) = (realtype) chimes_max(-calculate_total_cooling_rate(data->myGasVars, data->myGlobalVars, *data, 0), 0.0f);  /* Once T falls below T_floor, set T_dot >= 0 */
-	  else
-	    return -1;
+	  else {return -1;}
 	}
     }
 

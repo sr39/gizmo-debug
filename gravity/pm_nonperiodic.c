@@ -2042,12 +2042,8 @@ int pmpotential_nonperiodic(int grnr)
 
 int pm_nonperiodic_compare_sortindex(const void *a, const void *b)
 {
-  if(part[*(int *) a].globalindex < part[*(int *) b].globalindex)
-    return -1;
-
-  if(part[*(int *) a].globalindex > part[*(int *) b].globalindex)
-    return +1;
-
+  if(part[*(int *) a].globalindex < part[*(int *) b].globalindex) {return -1;}
+  if(part[*(int *) a].globalindex > part[*(int *) b].globalindex) {return +1;}
   return 0;
 }
 

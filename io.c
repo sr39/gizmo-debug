@@ -4262,46 +4262,26 @@ void mpi_printf(const char *fmt, ...)
 #if defined(IO_SUBFIND_READFOF_FROMIC)
 int io_compare_P_ID(const void *a, const void *b)
 {
-    if(((struct particle_data *) a)->ID < (((struct particle_data *) b)->ID))
-        return -1;
-
-    if(((struct particle_data *) a)->ID > (((struct particle_data *) b)->ID))
-        return +1;
-
+    if(((struct particle_data *) a)->ID < (((struct particle_data *) b)->ID)) {return -1;}
+    if(((struct particle_data *) a)->ID > (((struct particle_data *) b)->ID)) {return +1;}
     return 0;
 }
 
 int io_compare_P_GrNr_SubNr(const void *a, const void *b)
 {
-    if(((struct particle_data *) a)->GrNr < (((struct particle_data *) b)->GrNr))
-        return -1;
-
-    if(((struct particle_data *) a)->GrNr > (((struct particle_data *) b)->GrNr))
-        return +1;
-
-    if(((struct particle_data *) a)->SubNr < (((struct particle_data *) b)->SubNr))
-        return -1;
-
-    if(((struct particle_data *) a)->SubNr > (((struct particle_data *) b)->SubNr))
-        return +1;
-
+    if(((struct particle_data *) a)->GrNr < (((struct particle_data *) b)->GrNr)) {return -1;}
+    if(((struct particle_data *) a)->GrNr > (((struct particle_data *) b)->GrNr)) {return +1;}
+    if(((struct particle_data *) a)->SubNr < (((struct particle_data *) b)->SubNr)) {return -1;}
+    if(((struct particle_data *) a)->SubNr > (((struct particle_data *) b)->SubNr)) {return +1;}
     return 0;
 }
 
 int io_compare_P_GrNr_ID(const void *a, const void *b)
 {
-    if(((struct particle_data *) a)->GrNr < (((struct particle_data *) b)->GrNr))
-        return -1;
-
-    if(((struct particle_data *) a)->GrNr > (((struct particle_data *) b)->GrNr))
-        return +1;
-
-    if(((struct particle_data *) a)->ID < (((struct particle_data *) b)->ID))
-        return -1;
-
-    if(((struct particle_data *) a)->ID > (((struct particle_data *) b)->ID))
-        return +1;
-
+    if(((struct particle_data *) a)->GrNr < (((struct particle_data *) b)->GrNr)) {return -1;}
+    if(((struct particle_data *) a)->GrNr > (((struct particle_data *) b)->GrNr)) {return +1;}
+    if(((struct particle_data *) a)->ID < (((struct particle_data *) b)->ID)) {return -1;}
+    if(((struct particle_data *) a)->ID > (((struct particle_data *) b)->ID)) {return +1;}
     return 0;
 }
 

@@ -1670,59 +1670,31 @@ void subfind_save_local_catalogue(int num)
 
 int subfind_compare_ID_list(const void *a, const void *b)
 {
-  if(((struct subfind_id_list *) a)->GrNr < ((struct subfind_id_list *) b)->GrNr)
-    return -1;
-
-  if(((struct subfind_id_list *) a)->GrNr > ((struct subfind_id_list *) b)->GrNr)
-    return +1;
-
-  if(((struct subfind_id_list *) a)->SubNr < ((struct subfind_id_list *) b)->SubNr)
-    return -1;
-
-  if(((struct subfind_id_list *) a)->SubNr > ((struct subfind_id_list *) b)->SubNr)
-    return +1;
-
-  if(((struct subfind_id_list *) a)->BindingEgy < ((struct subfind_id_list *) b)->BindingEgy)
-    return -1;
-
-  if(((struct subfind_id_list *) a)->BindingEgy > ((struct subfind_id_list *) b)->BindingEgy)
-    return +1;
-
+  if(((struct subfind_id_list *) a)->GrNr < ((struct subfind_id_list *) b)->GrNr) {return -1;}
+  if(((struct subfind_id_list *) a)->GrNr > ((struct subfind_id_list *) b)->GrNr) {return +1;}
+  if(((struct subfind_id_list *) a)->SubNr < ((struct subfind_id_list *) b)->SubNr) {return -1;}
+  if(((struct subfind_id_list *) a)->SubNr > ((struct subfind_id_list *) b)->SubNr) {return +1;}
+  if(((struct subfind_id_list *) a)->BindingEgy < ((struct subfind_id_list *) b)->BindingEgy) {return -1;}
+  if(((struct subfind_id_list *) a)->BindingEgy > ((struct subfind_id_list *) b)->BindingEgy) {return +1;}
   return 0;
 }
 
 int subfind_compare_SubGroup_GrNr_SubNr(const void *a, const void *b)
 {
-  if(((struct subgroup_properties *) a)->GrNr < ((struct subgroup_properties *) b)->GrNr)
-    return -1;
-
-  if(((struct subgroup_properties *) a)->GrNr > ((struct subgroup_properties *) b)->GrNr)
-    return +1;
-
-  if(((struct subgroup_properties *) a)->SubNr < ((struct subgroup_properties *) b)->SubNr)
-    return -1;
-
-  if(((struct subgroup_properties *) a)->SubNr > ((struct subgroup_properties *) b)->SubNr)
-    return +1;
-
+  if(((struct subgroup_properties *) a)->GrNr < ((struct subgroup_properties *) b)->GrNr) {return -1;}
+  if(((struct subgroup_properties *) a)->GrNr > ((struct subgroup_properties *) b)->GrNr) {return +1;}
+  if(((struct subgroup_properties *) a)->SubNr < ((struct subgroup_properties *) b)->SubNr) {return -1;}
+  if(((struct subgroup_properties *) a)->SubNr > ((struct subgroup_properties *) b)->SubNr) {return +1;}
   return 0;
 }
 
 
 int subfind_compare_P_GrNr_DM_Density(const void *a, const void *b)
 {
-  if(((struct particle_data *) a)->GrNr < (((struct particle_data *) b)->GrNr))
-    return -1;
-
-  if(((struct particle_data *) a)->GrNr > (((struct particle_data *) b)->GrNr))
-    return +1;
-
-  if(((struct particle_data *) a)->u.DM_Density > (((struct particle_data *) b)->u.DM_Density))
-    return -1;
-
-  if(((struct particle_data *) a)->u.DM_Density < (((struct particle_data *) b)->u.DM_Density))
-    return +1;
-
+  if(((struct particle_data *) a)->GrNr < (((struct particle_data *) b)->GrNr)) {return -1;}
+  if(((struct particle_data *) a)->GrNr > (((struct particle_data *) b)->GrNr)) {return +1;}
+  if(((struct particle_data *) a)->u.DM_Density > (((struct particle_data *) b)->u.DM_Density)) {return -1;}
+  if(((struct particle_data *) a)->u.DM_Density < (((struct particle_data *) b)->u.DM_Density)) {return +1;}
   return 0;
 }
 
@@ -1732,12 +1704,8 @@ int subfind_compare_P_GrNr_DM_Density(const void *a, const void *b)
 
 int subfind_compare_P_origindex(const void *a, const void *b)
 {
-  if(((struct particle_data *) a)->origindex < (((struct particle_data *) b)->origindex))
-    return -1;
-
-  if(((struct particle_data *) a)->origindex > (((struct particle_data *) b)->origindex))
-    return +1;
-
+  if(((struct particle_data *) a)->origindex < (((struct particle_data *) b)->origindex)) {return -1;}
+  if(((struct particle_data *) a)->origindex > (((struct particle_data *) b)->origindex)) {return +1;}
   return 0;
 }
 

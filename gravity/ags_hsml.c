@@ -164,11 +164,8 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
     {
         while(startnode >= 0)
         {
-            numngb_inbox = ngb_treefind_variable_threads_targeted(local.Pos, local.AGS_Hsml, target, &startnode, mode, exportflag,
-                                          exportnodecount, exportindex, ngblist, AGS_kernel_shared_BITFLAG);
-            
-            if(numngb_inbox < 0)
-                return -1;
+            numngb_inbox = ngb_treefind_variable_threads_targeted(local.Pos, local.AGS_Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, AGS_kernel_shared_BITFLAG);
+            if(numngb_inbox < 0) {return -2;}
             
             for(n = 0; n < numngb_inbox; n++)
             {
@@ -883,9 +880,8 @@ int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecoun
 #if defined(DM_SIDM)
             search_len *= 3.0; // need a 'buffer' because we will consider interactions with any kernel -overlap, not just inside one or the other kernel radius
 #endif
-            numngb_inbox = ngb_treefind_pairs_threads_targeted(local.Pos, search_len, target, &startnode, mode, exportflag,
-                                                                  exportnodecount, exportindex, ngblist, AGS_kernel_shared_BITFLAG);
-            if(numngb_inbox < 0) {return -1;} /* no neighbors! */
+            numngb_inbox = ngb_treefind_pairs_threads_targeted(local.Pos, search_len, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, AGS_kernel_shared_BITFLAG);
+            if(numngb_inbox < 0) {return -2;} /* no neighbors! */
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */

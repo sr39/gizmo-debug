@@ -431,12 +431,8 @@ double subfind_loctree_treeevaluate_potential(int target)
 
 int subfind_locngb_compare_key(const void *a, const void *b)
 {
-  if(((struct r2data *) a)->r2 < (((struct r2data *) b)->r2))
-    return -1;
-
-  if(((struct r2data *) a)->r2 > (((struct r2data *) b)->r2))
-    return +1;
-
+  if(((struct r2data *) a)->r2 < (((struct r2data *) b)->r2)) {return -1;}
+  if(((struct r2data *) a)->r2 > (((struct r2data *) b)->r2)) {return +1;}
   return 0;
 }
 

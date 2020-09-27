@@ -207,7 +207,7 @@ int blackhole_environment_evaluate(int target, int mode, int *exportflag, int *e
     while(startnode >= 0) {
         while(startnode >= 0) {
             numngb = ngb_treefind_pairs_threads_targeted(local.Pos, h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, BH_NEIGHBOR_BITFLAG);
-            if(numngb < 0) {return -1;}
+            if(numngb < 0) {return -2;}
             for(n = 0; n < numngb; n++)
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
@@ -419,7 +419,7 @@ int blackhole_environment_second_evaluate(int target, int mode, int *exportflag,
     while(startnode >= 0) {
         while(startnode >= 0) {
             numngb_inbox = ngb_treefind_pairs_threads_targeted(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, BH_NEIGHBOR_BITFLAG);
-            if(numngb_inbox < 0) {return -1;} /* no neighbors! */
+            if(numngb_inbox < 0) {return -2;} /* no neighbors! */
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
