@@ -924,12 +924,6 @@ integertime get_timestep(int p,		/*!< particle index */
             double dt_cour_sink = All.CourantFac * (L_particle*All.cf_atime) / vsig;
 
             if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
-
-#if defined(SINGLE_STAR_FB_LOCAL_RP) || (defined(SINGLE_STAR_FB_RAD) && defined(RT_RAD_PRESSURE_FORCES))
-            double rad_acc = bh_lum_bol(BPP(p).BH_Mdot, BPP(p).BH_Mass, p) / C_LIGHT_CODE / (All.MeanGasParticleMass); // effective acceleration due to momentum injection at the scale of the cell
-            double dt_radacc = sqrt(0.1 * eps / rad_acc);
-            if(dt > dt_radacc && dt_radacc > 0) dt = 1.01 * dt_radacc;
-#endif                    
         }
         if(P[p].StellarAge == All.Time)
         {   // want a brand new sink to be on the lowest occupied timebin
