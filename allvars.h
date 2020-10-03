@@ -639,6 +639,12 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 
+#ifdef ADAPTIVE_GRAVTREE_UPDATE // instead of going into the tree every timestep, only update gravity with a frequency set by this fraction of dynamical timescale (default for gas only)
+#ifndef TIDAL_TIMESTEP_CRITERION 
+#define TIDAL_TIMESTEP_CRITERION // need this to estimate the dynamical time
+#endif    
+#endif    
+
 
 #if (SINGLE_STAR_TIMESTEPPING > 0) /* if single-star timestepping is on, need to make sure the binary-identification flag is active */
 #ifndef SINGLE_STAR_FIND_BINARIES
@@ -2593,6 +2599,10 @@ extern ALIGN(32) struct particle_data
 #endif
 #endif // GDE_DISTORTIONTENSOR //
 
+#ifdef ADAPTIVE_TREEFORCE_UPDATE
+    MyFloat time_since_last_treeforce;
+    MyFloat tdyn_step_for_treeforce;
+#endif
 
 #ifdef GALSF
     MyFloat StellarAge;		/*!< formation time of star particle */
@@ -2736,7 +2746,7 @@ extern ALIGN(32) struct particle_data
 #endif    
 #endif
 #endif
-
+   
 
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
     MyFloat ProtoStellarAge; /*!< record the proto-stellar age instead of age */
