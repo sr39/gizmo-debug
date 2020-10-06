@@ -2596,7 +2596,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 tidal_tensorps[2][1] = tidal_tensorps[1][2];
 #endif // COMPUTE_TIDAL_TENSOR_IN_GRAVTREE //
 #ifdef COMPUTE_JERK_IN_GRAVTREE
-		if(ptype > 0){
+#ifndef ADAPTIVE_TREEFORCE_UPDATE // we want the jerk if we're doing lazy force updates
+		if(ptype > 0)
+#endif                    
+                {
 		    double dv_dot_dx = dx*dvx + dy*dvy + dz*dvz;
 		    jerk[0] += dvx * fac - dv_dot_dx * fac2_tidal * dx;
 		    jerk[1] += dvy * fac - dv_dot_dx * fac2_tidal * dy;

@@ -453,9 +453,16 @@ void gravity_tree(void)
 #ifdef HERMITE_INTEGRATION
         if(HermiteOnlyFlag) {if(!eligible_for_hermite(i)) continue;} /* if we are completing an extra loop required for the Hermite integration, all of the below would be double-calculated, so skip it */
 #endif      
-#ifdef ADAPTIVE_TREEFORCE_UPDATE        
-        if(!needs_new_treeforce(i)) {P[i].time_since_last_treeforce += GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); continue;} else {P[i].time_since_last_treeforce = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);}
-#endif          
+#ifdef ADAPTIVE_TREEFORCE_UPDATE
+        double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
+        if(!needs_new_treeforce(i)) { // if we don't yet need a new tree pass, just update GravAccel according to the jerk term, increment the counter, and go to the next particle           
+            for(j=0; j<3; j++) {P[i].GravAccel[j] += dt * P[i].GravJerk[j];}
+            P[i].time_since_last_treeforce += dt;
+            continue;
+        } else {
+            P[i].time_since_last_treeforce = dt;
+        }
+#endif
         /* before anything: multiply by G for correct units [be sure operations above/below are aware of this!] */
         for(j=0;j<3;j++) {P[i].GravAccel[j] *= All.G;}        
 #if (SINGLE_STAR_TIMESTEPPING > 0)

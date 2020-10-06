@@ -2563,6 +2563,15 @@ extern ALIGN(32) struct particle_data
     double tidal_tensorpsPM[3][3];                /*!< for TreePM simulations, long range tidal field */
 #endif
 #endif
+    
+#ifdef ADAPTIVE_TREEFORCE_UPDATE
+    MyFloat time_since_last_treeforce;
+    MyFloat tdyn_step_for_treeforce;
+#ifndef COMPUTE_JERK_IN_GRAVTREE
+#define COMPUTE_JERK_IN_GRAVTREE    
+#endif    
+#endif
+    
 #ifdef COMPUTE_JERK_IN_GRAVTREE
     double GravJerk[3];
 #endif
@@ -2598,11 +2607,6 @@ extern ALIGN(32) struct particle_data
     MyFloat lc_smear_z;
 #endif
 #endif // GDE_DISTORTIONTENSOR //
-
-#ifdef ADAPTIVE_TREEFORCE_UPDATE
-    MyFloat time_since_last_treeforce;
-    MyFloat tdyn_step_for_treeforce;
-#endif
 
 #ifdef GALSF
     MyFloat StellarAge;		/*!< formation time of star particle */
