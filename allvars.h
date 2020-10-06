@@ -639,7 +639,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 
-#ifdef ADAPTIVE_GRAVTREE_UPDATE // instead of going into the tree every timestep, only update gravity with a frequency set by this fraction of dynamical timescale (default for gas only)
+#ifdef ADAPTIVE_TREEFORCE_UPDATE // instead of going into the tree every timestep, only update gravity with a frequency set by this fraction of dynamical timescale (default for gas only)
 #ifndef TIDAL_TIMESTEP_CRITERION 
 #define TIDAL_TIMESTEP_CRITERION // need this to estimate the dynamical time
 #endif    
