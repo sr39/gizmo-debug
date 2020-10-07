@@ -477,6 +477,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define LONGIDS
 #define OUTPUT_POSITIONS_IN_DOUBLE
 #define INPUT_POSITIONS_IN_DOUBLE
+#define OUTPUT_POTENTIAL
+#define EVALPOTENTIAL 
 #define SINGLE_STAR_SINK_DYNAMICS
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #define ADAPTIVE_GRAVSOFT_FORGAS
@@ -514,10 +516,14 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifdef RT_INFRARED
 #define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
 #endif
-#if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY))
-#define RT_USE_TREECOL_FOR_NH 6
-#endif
+// Below gives a better approximation for column density than the usual scale-length estimator, but is overkill for typical 1e-3msun-resolving simulations that only marginally resolve the opacity limit. Enable for high (<1e-5msun) resolution sims
+//#if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) 
+//#define RT_USE_TREECOL_FOR_NH 6 
+//#endif
 #ifdef COOLING
+#define COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
+#define COOL_MOLECFRAC_NONEQM
+#define OUTPUT_MOLECULAR_FRACTION
 #define EOS_SUBSTELLAR_ISM
 #endif
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
@@ -632,6 +638,12 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion -- otherwise won't effectively leverage the Hermite integrator timesteps
 #endif
 #endif
+
+#ifdef ADAPTIVE_TREEFORCE_UPDATE // instead of going into the tree every timestep, only update gravity with a frequency set by this fraction of dynamical timescale (default for gas only)
+#ifndef TIDAL_TIMESTEP_CRITERION 
+#define TIDAL_TIMESTEP_CRITERION // need this to estimate the dynamical time
+#endif    
+#endif    
 
 
 #if (SINGLE_STAR_TIMESTEPPING > 0) /* if single-star timestepping is on, need to make sure the binary-identification flag is active */
@@ -2551,6 +2563,15 @@ extern ALIGN(32) struct particle_data
     double tidal_tensorpsPM[3][3];                /*!< for TreePM simulations, long range tidal field */
 #endif
 #endif
+    
+#ifdef ADAPTIVE_TREEFORCE_UPDATE
+    MyFloat time_since_last_treeforce;
+    MyFloat tdyn_step_for_treeforce;
+#ifndef COMPUTE_JERK_IN_GRAVTREE
+#define COMPUTE_JERK_IN_GRAVTREE    
+#endif    
+#endif
+    
 #ifdef COMPUTE_JERK_IN_GRAVTREE
     double GravJerk[3];
 #endif
@@ -2586,7 +2607,6 @@ extern ALIGN(32) struct particle_data
     MyFloat lc_smear_z;
 #endif
 #endif // GDE_DISTORTIONTENSOR //
-
 
 #ifdef GALSF
     MyFloat StellarAge;		/*!< formation time of star particle */
@@ -2730,7 +2750,7 @@ extern ALIGN(32) struct particle_data
 #endif    
 #endif
 #endif
-
+   
 
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
     MyFloat ProtoStellarAge; /*!< record the proto-stellar age instead of age */

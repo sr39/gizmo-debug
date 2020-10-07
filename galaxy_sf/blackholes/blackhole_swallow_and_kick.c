@@ -421,12 +421,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #ifdef BH_PHOTONMOMENTUM /* inject radiation pressure: add initial L/c optical/UV coupling to the gas at the dust sublimation radius */
                         double v_kick = All.BH_Rad_MomentumFactor * mom_wt * mom / Mass_j;
                         for(k=0;k<3;k++) {Vel_j[k]+=v_kick*All.cf_atime*dir[k];}
-#ifdef SINGLE_STAR_FB_LOCAL_RP
-                        #pragma omp atomic write
-                        SphP[j].wakeup = 1;
-                        #pragma omp atomic write
-                        NeedToWakeupParticles_local = 1;
-#endif                        
 #endif
 #if defined(BH_COSMIC_RAYS) && defined(BH_WIND_CONTINUOUS) /* inject cosmic rays alongside continuous wind injection */
                         double dEcr = All.BH_CosmicRay_Injection_Efficiency * mom_wt * C_LIGHT_CODE*C_LIGHT_CODE * local.Mdot*local.Dt;

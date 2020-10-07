@@ -473,6 +473,7 @@
 #EVALPOTENTIAL                  # computes gravitational potential
 #GRAVITY_HYBRID_OPENING_CRIT    # use -both- Barnes-Hut + relative angle opening criterion for the gravity tree (normally choose one or the other)
 #TIDAL_TIMESTEP_CRITERION       # replace standard acceleration-based timestep criterion with one based on the tidal tensor norm, which is more accurate and adaptive (testing, but may be promoted to default code)
+#ADAPTIVE_TREEFORCE_UPDATE=0.025      # use the tidal timescale to estimate how often gravity needs to be updated, updating a gas cell's gravity no more often than ADAPTIVE_TREEFORCE_UPDATE * dt_tidal, where dt_tidal is the tidal timestep given in Grudic & Hopkins 2020MNRAS.495.4306G. Should always be <1, smaller is more accurate
 #BH_WAKEUP_GAS                  # force all gas within the interaction radius of a BH/sink particle to timestep at the same rate (set to lowest timebin of any of the interacting neighbors)
 # --------------------
 # ----- Particle IDs

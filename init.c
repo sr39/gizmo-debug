@@ -226,6 +226,11 @@ void init(void)
         if(All.ComovingIntegrationOn) {P[i].stream_density = GDE_INITDENSITY(i) / (All.TimeBegin * All.TimeBegin * All.TimeBegin);} else {P[i].stream_density = GDE_INITDENSITY(i);}
 #endif /* GDE_DISTORTIONTENSOR */
 
+#ifdef ADAPTIVE_TREEFORCE_UPDATE
+        P[i].time_since_last_treeforce = 0;
+        P[i].tdyn_step_for_treeforce = 0;
+#endif        
+        
 
 #ifdef KEEP_DM_HSML_AS_GUESS
         if(RestartFlag != 1)

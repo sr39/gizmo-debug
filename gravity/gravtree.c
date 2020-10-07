@@ -452,13 +452,23 @@ void gravity_tree(void)
     {
 #ifdef HERMITE_INTEGRATION
         if(HermiteOnlyFlag) {if(!eligible_for_hermite(i)) continue;} /* if we are completing an extra loop required for the Hermite integration, all of the below would be double-calculated, so skip it */
+#endif      
+#ifdef ADAPTIVE_TREEFORCE_UPDATE
+        double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
+        if(!needs_new_treeforce(i)) { // if we don't yet need a new tree pass, just update GravAccel according to the jerk term, increment the counter, and go to the next particle           
+            for(j=0; j<3; j++) {P[i].GravAccel[j] += dt * P[i].GravJerk[j];}
+            P[i].time_since_last_treeforce += dt;
+            continue;
+        } else {
+            P[i].time_since_last_treeforce = dt;
+        }
 #endif
-
         /* before anything: multiply by G for correct units [be sure operations above/below are aware of this!] */
-        for(j=0;j<3;j++) {P[i].GravAccel[j] *= All.G;}
+        for(j=0;j<3;j++) {P[i].GravAccel[j] *= All.G;}        
 #if (SINGLE_STAR_TIMESTEPPING > 0)
         for(j=0;j<3;j++) {P[i].COM_GravAccel[j] *= All.G;}
 #endif
+
 #ifdef EVALPOTENTIAL
         P[i].Potential *= All.G;
 #ifdef BOX_PERIODIC
@@ -641,6 +651,9 @@ void *gravity_primary_loop(void *p)
 #ifdef HERMITE_INTEGRATION /* if we are in the Hermite extra loops and a particle is not flagged for this, simply mark it done and move on */
         if(HermiteOnlyFlag && !eligible_for_hermite(i)) {ProcessedFlag[i]=1; continue;}
 #endif
+#ifdef ADAPTIVE_TREEFORCE_UPDATE
+        if(!needs_new_treeforce(i)) {ProcessedFlag[i]=1; continue;}
+#endif                
 
 #if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC) && !defined(PMGRID)
         if(Ewald_iter)
@@ -819,5 +832,16 @@ void subtract_companion_gravity(int i)
 #endif
     P[i].COM_dt_tidal = 0; for(i1=0;i1<3;i1++) for(i2=0;i2<3;i2++) {P[i].COM_dt_tidal += tidal_tensorps[i1][i2]*tidal_tensorps[i1][i2];}
     P[i].COM_dt_tidal = sqrt(1.0 / (All.G * sqrt(P[i].COM_dt_tidal)));
+}
+#endif
+
+#ifdef ADAPTIVE_TREEFORCE_UPDATE
+int needs_new_treeforce(int n){
+    if(P[n].Type > 0){ // in this implementation we only do the lazy updating for gas cells whose timesteps are otherwise constrained by multiphysics (e.g. radiation, feedback)
+        return 1;
+    } else {
+        if(P[n].time_since_last_treeforce >= P[n].tdyn_step_for_treeforce * ADAPTIVE_TREEFORCE_UPDATE) {return 1; }
+        else {return 0;}
+    }
 }
 #endif

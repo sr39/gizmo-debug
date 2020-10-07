@@ -160,7 +160,7 @@ double get_pressure(int i)
       but for more general functionality, we want this index here to be appropriately variable. */
 double gamma_eos(int i)
 {
-#ifdef COOL_MOLECFRAC_NONEQM
+#if defined(COOL_MOLECFRAC_NONEQM) & !defined(EOS_SUBSTELLAR_ISM)
     if(i >= 0) {
         if(P[i].Type==0) {
             double fH = HYDROGEN_MASSFRAC, f = SphP[i].MolecularMassFraction, xe = SphP[i].Ne; // use the variables below to update the EOS as needed
@@ -174,7 +174,11 @@ double gamma_eos(int i)
         if(P[i].Type==0) {
             double T_eff_atomic = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred;
             double nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
+#ifdef COOL_MOLECFRAC_NONEQM
+	    double f_mol = SphP[i].MolecularMassFraction;
+#else
             double T_transition=DMIN(8000.,nH_cgs), f_mol=1./(1. + T_eff_atomic*T_eff_atomic/(T_transition*T_transition));
+#endif
             /* double gamma_mol_atom = (29.-8./(2.-f_mol))/15.; // interpolates between 5/3 (fmol=0) and 7/5 (fmol=1) */
             /* return gamma_mol_atom + (5./3.-gamma_mol_atom) / (1 + T_eff_atomic*T_eff_atomic/(40.*40.)); // interpolates back up to 5/3 when temps fall below ~30K [cant excite upper states] */
             
