@@ -229,7 +229,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
         while(startnode >= 0)
         {
             numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
-            if(numngb_inbox < 0) {return -1;}
+            if(numngb_inbox < 0) {return -2;}
 
             E_coupled = dP_sum = dP_boost_sum = 0;
             for(n = 0; n < numngb_inbox; n++)
@@ -586,7 +586,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
         while(startnode >= 0)
         {
             numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
-            if(numngb_inbox < 0) {return -1;}
+            if(numngb_inbox < 0) {return -2;}
 
             E_coupled = dP_sum = dP_boost_sum = 0;
             for(n = 0; n < numngb_inbox; n++)

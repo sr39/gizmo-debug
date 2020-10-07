@@ -285,7 +285,7 @@ int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnode
     while(startnode >= 0) {
         while(startnode >= 0) {
             numngb_inbox = ngb_treefind_variable_threads_targeted(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, kernel_shared_BITFLAG);
-            if(numngb_inbox < 0) {return -1;} /* no neighbors! */
+            if(numngb_inbox < 0) {return -2;} /* no neighbors! */
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
@@ -453,7 +453,7 @@ int interpolate_fluxes_opacities_gasgrains_evaluate(int target, int mode, int *e
             } else {
                 numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist); /* grains search for gas -they- can see */
             }
-            if(numngb_inbox < 0) {return -1;} /* no neighbors! */
+            if(numngb_inbox < 0) {return -2;} /* no neighbors! */
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */

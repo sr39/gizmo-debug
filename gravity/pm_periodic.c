@@ -1410,12 +1410,8 @@ void pmpotential_periodic(void)
 
 int pm_periodic_compare_sortindex(const void *a, const void *b)
 {
-  if(part[*(int *) a].globalindex < part[*(int *) b].globalindex)
-    return -1;
-
-  if(part[*(int *) a].globalindex > part[*(int *) b].globalindex)
-    return +1;
-
+  if(part[*(int *) a].globalindex < part[*(int *) b].globalindex) {return -1;}
+  if(part[*(int *) a].globalindex > part[*(int *) b].globalindex) {return +1;}
   return 0;
 }
 

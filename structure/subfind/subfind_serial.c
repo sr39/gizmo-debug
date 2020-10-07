@@ -604,24 +604,12 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
 
 int subfind_compare_grp_particles(const void *a, const void *b)
 {
-  if(((struct particle_data *) a)->GrNr < ((struct particle_data *) b)->GrNr)
-    return -1;
-
-  if(((struct particle_data *) a)->GrNr > ((struct particle_data *) b)->GrNr)
-    return +1;
-
-  if(((struct particle_data *) a)->SubNr < ((struct particle_data *) b)->SubNr)
-    return -1;
-
-  if(((struct particle_data *) a)->SubNr > ((struct particle_data *) b)->SubNr)
-    return +1;
-
-  if(((struct particle_data *) a)->v.DM_BindingEnergy < ((struct particle_data *) b)->v.DM_BindingEnergy)
-    return -1;
-
-  if(((struct particle_data *) a)->v.DM_BindingEnergy > ((struct particle_data *) b)->v.DM_BindingEnergy)
-    return +1;
-
+  if(((struct particle_data *) a)->GrNr < ((struct particle_data *) b)->GrNr) {return -1;}
+  if(((struct particle_data *) a)->GrNr > ((struct particle_data *) b)->GrNr) {return +1;}
+  if(((struct particle_data *) a)->SubNr < ((struct particle_data *) b)->SubNr) {return -1;}
+  if(((struct particle_data *) a)->SubNr > ((struct particle_data *) b)->SubNr) {return +1;}
+  if(((struct particle_data *) a)->v.DM_BindingEnergy < ((struct particle_data *) b)->v.DM_BindingEnergy) {return -1;}
+  if(((struct particle_data *) a)->v.DM_BindingEnergy > ((struct particle_data *) b)->v.DM_BindingEnergy) {return +1;}
   return 0;
 }
 
@@ -1178,46 +1166,26 @@ void subfind_col_determine_sub_halo_properties(struct unbind_data *d, int num, d
 
 int subfind_compare_serial_candidates_boundlength(const void *a, const void *b)
 {
-  if(((struct cand_dat *) a)->bound_length > ((struct cand_dat *) b)->bound_length)
-    return -1;
-
-  if(((struct cand_dat *) a)->bound_length < ((struct cand_dat *) b)->bound_length)
-    return +1;
-
-  if(((struct cand_dat *) a)->rank < ((struct cand_dat *) b)->rank)
-    return -1;
-
-  if(((struct cand_dat *) a)->rank > ((struct cand_dat *) b)->rank)
-    return +1;
-
+  if(((struct cand_dat *) a)->bound_length > ((struct cand_dat *) b)->bound_length) {return -1;}
+  if(((struct cand_dat *) a)->bound_length < ((struct cand_dat *) b)->bound_length) {return +1;}
+  if(((struct cand_dat *) a)->rank < ((struct cand_dat *) b)->rank) {return -1;}
+  if(((struct cand_dat *) a)->rank > ((struct cand_dat *) b)->rank) {return +1;}
   return 0;
 }
 
 int subfind_compare_serial_candidates_rank(const void *a, const void *b)
 {
-  if(((struct cand_dat *) a)->rank < ((struct cand_dat *) b)->rank)
-    return -1;
-
-  if(((struct cand_dat *) a)->rank > ((struct cand_dat *) b)->rank)
-    return +1;
-
-  if(((struct cand_dat *) a)->len > ((struct cand_dat *) b)->len)
-    return -1;
-
-  if(((struct cand_dat *) a)->len < ((struct cand_dat *) b)->len)
-    return +1;
-
+  if(((struct cand_dat *) a)->rank < ((struct cand_dat *) b)->rank) {return -1;}
+  if(((struct cand_dat *) a)->rank > ((struct cand_dat *) b)->rank) {return +1;}
+  if(((struct cand_dat *) a)->len > ((struct cand_dat *) b)->len) {return -1;}
+  if(((struct cand_dat *) a)->len < ((struct cand_dat *) b)->len) {return +1;}
   return 0;
 }
 
 int subfind_compare_serial_candidates_subnr(const void *a, const void *b)
 {
-  if(((struct cand_dat *) a)->subnr < ((struct cand_dat *) b)->subnr)
-    return -1;
-
-  if(((struct cand_dat *) a)->subnr > ((struct cand_dat *) b)->subnr)
-    return +1;
-
+  if(((struct cand_dat *) a)->subnr < ((struct cand_dat *) b)->subnr) {return -1;}
+  if(((struct cand_dat *) a)->subnr > ((struct cand_dat *) b)->subnr) {return +1;}
   return 0;
 }
 

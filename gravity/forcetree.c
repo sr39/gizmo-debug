@@ -374,21 +374,18 @@ int force_treebuild_single(int npart, struct unbind_data *mp)
 
                 if((numnodes) >= MaxNodes)
                 {
-                    printf("task %d: maximum number %d of tree-nodes reached for particle %d.\n", ThisTask,
-                           MaxNodes, i);
+                    printf("task %d: maximum number %d of tree-nodes reached for particle %d.\n", ThisTask, MaxNodes, i);
 
                     if(All.TreeAllocFactor > 5.0)
                     {
-                        printf
-                        ("task %d: looks like a serious problem for particle %d, stopping with particle dump.\n",
-                         ThisTask, i);
+                        printf("task %d: looks like a serious problem for particle %d, stopping with particle dump.\n", ThisTask, i);
                         dump_particles();
                         endrun(1);
                     }
                     else
                     {
                         myfree(morton_list);
-                        return -1;
+                        return -1; /* ??? */
                     }
                 }
             }
@@ -2113,8 +2110,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 }
                             }
                             UNLOCK_NEXPORT;
-                            if(exitFlag)
-                                return -1;
+                            if(exitFlag) {return -1;} /* buffer has filled -- important that only this and other buffer-full conditions return the negative condition for the routine */
 
                             exportnodecount[task] = 0;
                             exportindex[task] = nexp;
@@ -3026,8 +3022,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                                 }
                             }
                             UNLOCK_NEXPORT;
-                            if(exitFlag)
-                                return -1;
+                            if(exitFlag) {return -1;} /* buffer has filled -- important that only this and other buffer-full conditions return the negative condition for the routine */
 
                             exportnodecount[task] = 0;
                             exportindex[task] = nexp;
@@ -3400,13 +3395,10 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                             if(*nexport >= All.BunchSize)
                             {
                                 *nexport = nexport_save;
-                                if(nexport_save == 0)
-                                    endrun(13002);	/* in this case, the buffer is too small to process even a single particle */
-                                for(task = 0; task < NTask; task++)
-                                    nsend_local[task] = 0;
-                                for(no = 0; no < nexport_save; no++)
-                                    nsend_local[DataIndexTable[no].Task]++;
-                                return -1;
+                                if(nexport_save == 0) {endrun(13002);} /* in this case, the buffer is too small to process even a single particle */
+                                for(task = 0; task < NTask; task++) {nsend_local[task] = 0;}
+                                for(no = 0; no < nexport_save; no++) {nsend_local[DataIndexTable[no].Task]++;}
+                                return -1; /* buffer has filled -- important that only this and other buffer-full conditions return the negative condition for the routine */
                             }
                             Exportnodecount[task] = 0;
                             Exportindex[task] = *nexport;
@@ -3735,13 +3727,10 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
                             if(*nexport >= All.BunchSize)
                             {
                                 *nexport = nexport_save;
-                                if(nexport_save == 0)
-                                    endrun(13001);	/* in this case, the buffer is too small to process even a single particle */
-                                for(task = 0; task < NTask; task++)
-                                    nsend_local[task] = 0;
-                                for(no = 0; no < nexport_save; no++)
-                                    nsend_local[DataIndexTable[no].Task]++;
-                                return -1;
+                                if(nexport_save == 0) {endrun(13001);} /* in this case, the buffer is too small to process even a single particle */
+                                for(task = 0; task < NTask; task++) {nsend_local[task] = 0;}
+                                for(no = 0; no < nexport_save; no++) {nsend_local[DataIndexTable[no].Task]++;}
+                                return -1; /* buffer has filled -- important that only this and other buffer-full conditions return the negative condition for the routine */
                             }
                             Exportnodecount[task] = 0;
                             Exportindex[task] = *nexport;

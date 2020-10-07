@@ -40,7 +40,8 @@ int Subfind_DensityOtherProps_evaluate(int target, int mode, int *nexport, int *
     if(mode == 0) {subhalo_pos=Group[target].Pos; Hsearch=R200[target];} else {subhalo_pos=Subfind_DensityOtherPropsEval_DataGet[target].Pos; Hsearch=Subfind_DensityOtherPropsEval_DataGet[target].R200;}
     if(mode == 0) {startnode = All.MaxPart;} else {startnode = Subfind_DensityOtherPropsEval_DataGet[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;}
     while(startnode >= 0) {while(startnode >= 0) {
-      ngb = ngb_treefind_variable_targeted(subhalo_pos, Hsearch, target, &startnode, mode, nexport, nsend_local, 63); if(ngb < 0) {return -1;}
+      ngb = ngb_treefind_variable_targeted(subhalo_pos, Hsearch, target, &startnode, mode, nexport, nsend_local, 63);
+      if(ngb < 0) {return -2;}
       for(n = 0; n < ngb; n++)
         { j = Ngblist[n];
             double dp[3]; for(k=0;k<3;k++) {dp[k]=P[j].Pos[k]-subhalo_pos[k];} NEAREST_XYZ(dp[0],dp[1],dp[2],-1); double r2=dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2]; if(r2>Hsearch*Hsearch) continue; /* position offset */
@@ -519,10 +520,7 @@ int Subfind_RvirMvir_evaluate(int target, int mode, int *nexport, int *nsend_loc
       while(startnode >= 0)
 	{
 	  massret = subfind_ovderdens_treefind(pos, h, target, &startnode, mode, nexport, nsend_local);
-
-	  if(massret < 0)
-	    return -1;
-
+	  if(massret < 0) {return -2;}
 	  mass += massret;
 	}
 
@@ -603,13 +601,10 @@ double subfind_ovderdens_treefind(MyDouble searchcenter[3], MyFloat hsml, int ta
 		      if(*nexport >= All.BunchSize)
 			{
 			  *nexport = nexport_save;
-			  if(nexport_save == 0)
-			    endrun(13005);	/* in this case, the buffer is too small to process even a single particle */
-			  for(task = 0; task < NTask; task++)
-			    nsend_local[task] = 0;
-			  for(no = 0; no < nexport_save; no++)
-			    nsend_local[DataIndexTable[no].Task]++;
-			  return -1;
+			  if(nexport_save == 0) {endrun(13005);}	/* in this case, the buffer is too small to process even a single particle */
+			  for(task = 0; task < NTask; task++) {nsend_local[task] = 0;}
+			  for(no = 0; no < nexport_save; no++) {nsend_local[DataIndexTable[no].Task]++;}
+			  return -1; /* buffer has filled -- important that only this and other buffer-full conditions return the negative condition for the routine */
 			}
 		      Exportnodecount[task] = 0;
 		      Exportindex[task] = *nexport;

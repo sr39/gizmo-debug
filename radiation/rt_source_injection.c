@@ -138,7 +138,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 #else            
             numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #endif            
-            if(numngb_inbox < 0) {return -1;}
+            if(numngb_inbox < 0) {return -2;}
             for(n = 0; n < numngb_inbox; n++)
             {
                 /* figure out if the neighbor is eligible to receive photons, calculate some useful quantities ahead of time */

@@ -1372,25 +1372,17 @@ struct tasklist_data
 
 int domain_sort_task(const void *a, const void *b)
 {
-  if(((struct domain_segments_data *) a)->task < (((struct domain_segments_data *) b)->task))
-    return -1;
-
-  if(((struct domain_segments_data *) a)->task > (((struct domain_segments_data *) b)->task))
-    return +1;
-
+  if(((struct domain_segments_data *) a)->task < (((struct domain_segments_data *) b)->task)) {return -1;}
+  if(((struct domain_segments_data *) a)->task > (((struct domain_segments_data *) b)->task)) {return +1;}
   return 0;
 }
 
 int domain_sort_load(const void *a, const void *b)
 {
   if(((struct domain_segments_data *) a)->normalized_load >
-     (((struct domain_segments_data *) b)->normalized_load))
-    return -1;
-
+     (((struct domain_segments_data *) b)->normalized_load)) {return -1;}
   if(((struct domain_segments_data *) a)->normalized_load <
-     (((struct domain_segments_data *) b)->normalized_load))
-    return +1;
-
+     (((struct domain_segments_data *) b)->normalized_load)) {return +1;}
   return 0;
 }
 
@@ -2124,12 +2116,8 @@ void domain_walktoptree(int no)
 
 int domain_compare_key(const void *a, const void *b)
 {
-  if(((struct peano_hilbert_data *) a)->key < (((struct peano_hilbert_data *) b)->key))
-    return -1;
-
-  if(((struct peano_hilbert_data *) a)->key > (((struct peano_hilbert_data *) b)->key))
-    return +1;
-
+  if(((struct peano_hilbert_data *) a)->key < (((struct peano_hilbert_data *) b)->key)) {return -1;}
+  if(((struct peano_hilbert_data *) a)->key > (((struct peano_hilbert_data *) b)->key)) {return +1;}
   return 0;
 }
 

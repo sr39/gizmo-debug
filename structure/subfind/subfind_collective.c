@@ -2024,86 +2024,50 @@ void subfind_distlinklist_set_all(long long index, long long head, long long tai
 
 int subfind_compare_P_GrNrGrNr(const void *a, const void *b)
 {
-  if(abs(((struct particle_data *) a)->GrNr - GrNr) < abs(((struct particle_data *) b)->GrNr - GrNr))
-    return -1;
-
-  if(abs(((struct particle_data *) a)->GrNr - GrNr) > abs(((struct particle_data *) b)->GrNr - GrNr))
-    return +1;
-
-  if(((struct particle_data *) a)->ID < ((struct particle_data *) b)->ID)
-    return -1;
-
-  if(((struct particle_data *) a)->ID > ((struct particle_data *) b)->ID)
-    return +1;
-
+  if(abs(((struct particle_data *) a)->GrNr - GrNr) < abs(((struct particle_data *) b)->GrNr - GrNr)) {return -1;}
+  if(abs(((struct particle_data *) a)->GrNr - GrNr) > abs(((struct particle_data *) b)->GrNr - GrNr)) {return +1;}
+  if(((struct particle_data *) a)->ID < ((struct particle_data *) b)->ID) {return -1;}
+  if(((struct particle_data *) a)->ID > ((struct particle_data *) b)->ID) {return +1;}
   return 0;
 }
 
 int subfind_compare_P_submark(const void *a, const void *b)
 {
-  if(((struct particle_data *) a)->submark < ((struct particle_data *) b)->submark)
-    return -1;
-
-  if(((struct particle_data *) a)->submark > ((struct particle_data *) b)->submark)
-    return +1;
-
+  if(((struct particle_data *) a)->submark < ((struct particle_data *) b)->submark) {return -1;}
+  if(((struct particle_data *) a)->submark > ((struct particle_data *) b)->submark) {return +1;}
   return 0;
 }
 
 
 int subfind_compare_candidates_subnr(const void *a, const void *b)
 {
-  if(((struct cand_dat *) a)->subnr < ((struct cand_dat *) b)->subnr)
-    return -1;
-
-  if(((struct cand_dat *) a)->subnr > ((struct cand_dat *) b)->subnr)
-    return +1;
-
+  if(((struct cand_dat *) a)->subnr < ((struct cand_dat *) b)->subnr) {return -1;}
+  if(((struct cand_dat *) a)->subnr > ((struct cand_dat *) b)->subnr) {return +1;}
   return 0;
 }
 
 int subfind_compare_candidates_nsubs(const void *a, const void *b)
 {
-  if(((struct cand_dat *) a)->nsub < ((struct cand_dat *) b)->nsub)
-    return -1;
-
-  if(((struct cand_dat *) a)->nsub > ((struct cand_dat *) b)->nsub)
-    return +1;
-
+  if(((struct cand_dat *) a)->nsub < ((struct cand_dat *) b)->nsub) {return -1;}
+  if(((struct cand_dat *) a)->nsub > ((struct cand_dat *) b)->nsub) {return +1;}
   return 0;
 }
 
 int subfind_compare_candidates_boundlength(const void *a, const void *b)
 {
-  if(((struct cand_dat *) a)->bound_length > ((struct cand_dat *) b)->bound_length)
-    return -1;
-
-  if(((struct cand_dat *) a)->bound_length < ((struct cand_dat *) b)->bound_length)
-    return +1;
-
-  if(((struct cand_dat *) a)->rank < ((struct cand_dat *) b)->rank)
-    return -1;
-
-  if(((struct cand_dat *) a)->rank > ((struct cand_dat *) b)->rank)
-    return +1;
-
+  if(((struct cand_dat *) a)->bound_length > ((struct cand_dat *) b)->bound_length) {return -1;}
+  if(((struct cand_dat *) a)->bound_length < ((struct cand_dat *) b)->bound_length) {return +1;}
+  if(((struct cand_dat *) a)->rank < ((struct cand_dat *) b)->rank) {return -1;}
+  if(((struct cand_dat *) a)->rank > ((struct cand_dat *) b)->rank) {return +1;}
   return 0;
 }
 
 int subfind_compare_candidates_rank(const void *a, const void *b)
 {
-  if(((struct cand_dat *) a)->rank < ((struct cand_dat *) b)->rank)
-    return -1;
-
-  if(((struct cand_dat *) a)->rank > ((struct cand_dat *) b)->rank)
-    return +1;
-
-  if(((struct cand_dat *) a)->len > ((struct cand_dat *) b)->len)
-    return -1;
-
-  if(((struct cand_dat *) a)->len < ((struct cand_dat *) b)->len)
-    return +1;
-
+  if(((struct cand_dat *) a)->rank < ((struct cand_dat *) b)->rank) {return -1;}
+  if(((struct cand_dat *) a)->rank > ((struct cand_dat *) b)->rank) {return +1;}
+  if(((struct cand_dat *) a)->len > ((struct cand_dat *) b)->len) {return -1;}
+  if(((struct cand_dat *) a)->len < ((struct cand_dat *) b)->len) {return +1;}
   return 0;
 }
 
@@ -2112,35 +2076,23 @@ int subfind_compare_candidates_rank(const void *a, const void *b)
 
 int subfind_compare_dist_rotcurve(const void *a, const void *b)
 {
-  if(((sort_r2list *) a)->r < ((sort_r2list *) b)->r)
-    return -1;
-
-  if(((sort_r2list *) a)->r > ((sort_r2list *) b)->r)
-    return +1;
-
+  if(((sort_r2list *) a)->r < ((sort_r2list *) b)->r) {return -1;}
+  if(((sort_r2list *) a)->r > ((sort_r2list *) b)->r) {return +1;}
   return 0;
 }
 
 int subfind_compare_binding_energy(const void *a, const void *b)
 {
-  if(*((double *) a) > *((double *) b))
-    return -1;
-
-  if(*((double *) a) < *((double *) b))
-    return +1;
-
+  if(*((double *) a) > *((double *) b)) {return -1;}
+  if(*((double *) a) < *((double *) b)) {return +1;}
   return 0;
 }
 
 
 int subfind_compare_densities(const void *a, const void *b)	/* largest density first */
 {
-  if(((struct sort_density_data *) a)->density > (((struct sort_density_data *) b)->density))
-    return -1;
-
-  if(((struct sort_density_data *) a)->density < (((struct sort_density_data *) b)->density))
-    return +1;
-
+  if(((struct sort_density_data *) a)->density > (((struct sort_density_data *) b)->density)) {return -1;}
+  if(((struct sort_density_data *) a)->density < (((struct sort_density_data *) b)->density)) {return +1;}
   return 0;
 }
 

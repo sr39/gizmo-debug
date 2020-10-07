@@ -419,23 +419,20 @@ int subfind_density_evaluate(int target, int mode, int *nexport, int *nsend_loca
 	{
 #ifdef FOF_DENSITY_SPLIT_TYPES
 	  if(tp < 0)
-	    ngb = subfind_ngb_treefind_linkpairs(pos, h, target, &startnode, mode, &hmax, nexport, nsend_local);
+	    {ngb = subfind_ngb_treefind_linkpairs(pos, h, target, &startnode, mode, &hmax, nexport, nsend_local);}
 	  else
-	    ngb = subfind_ngb_treefind_linkngb(pos, h, target, &startnode, mode, &hmax, nexport, nsend_local);
+	    {ngb = subfind_ngb_treefind_linkngb(pos, h, target, &startnode, mode, &hmax, nexport, nsend_local);}
 #else
 	  ngb = subfind_ngb_treefind_linkngb(pos, h, target, &startnode, mode, &hmax, nexport, nsend_local);
 #endif
-	  if(ngb < 0)
-	    return -1;
+	  if(ngb < 0) {return -2;}
 
 	  if(tp >= 0)
 	    if(mode == 0 && hmax > 0)
 	      {
-		P[target].DM_Hsml = hmax;
-		h = hmax;
-
-		if(ngb != All.DesLinkNgb)
-		  endrun(121);
+              P[target].DM_Hsml = hmax;
+              h = hmax;
+              if(ngb != All.DesLinkNgb) {endrun(121);}
 	      }
 
 	  numngb += ngb;
@@ -443,7 +440,6 @@ int subfind_density_evaluate(int target, int mode, int *nexport, int *nsend_loca
 	  for(n = 0; n < ngb; n++)
 	    {
 	      j = Ngblist[n];
-
 	      r2 = Dist2list[n];
 
 #ifdef FOF_DENSITY_SPLIT_TYPES
@@ -451,17 +447,13 @@ int subfind_density_evaluate(int target, int mode, int *nexport, int *nsend_loca
 #endif
 
 	      h2 = h * h;
-
 	      if(r2 < h2)
 		{
 		  r = sqrt(r2);
-
 		  kernel_hinv(h, &hinv, &hinv3, &hinv4);
 		  u = r * hinv;
 		  kernel_main(u, hinv3, hinv4, &wk, &dwk, -1);
-
 		  mass_j = P[j].Mass;
-
 		  rho += (mass_j * wk);
 		}
 
@@ -558,12 +550,8 @@ static struct hsml_data
 
 int subfind_compare_hsml_data(const void *a, const void *b)
 {
-  if(((struct hsml_data *) a)->ID < ((struct hsml_data *) b)->ID)
-    return -1;
-
-  if(((struct hsml_data *) a)->ID > ((struct hsml_data *) b)->ID)
-    return +1;
-
+  if(((struct hsml_data *) a)->ID < ((struct hsml_data *) b)->ID) {return -1;}
+  if(((struct hsml_data *) a)->ID > ((struct hsml_data *) b)->ID) {return +1;}
   return 0;
 }
 
