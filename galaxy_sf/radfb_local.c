@@ -125,7 +125,7 @@ void radiation_pressure_winds_consolidated(void)
                                 double kappa_ir_codeunits = rt_kappa(j,RT_FREQ_BIN_FIRE_IR); // opacity in code units
                                 double dv_imparted_multiplescattering = All.RP_Local_Momentum_Renormalization * (dE_over_c / P[j].Mass) * kappa_ir_codeunits * (P[j].Mass/(4.*M_PI*r2*All.cf_atime*All.cf_atime));
 #if defined(GALSF_FB_FIRE_RT_CONTINUOUSRP) || (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-                                delta_v_imparted_rp = dv_imparted_multiplescattering + dv_imparted_singlescattering; prob = 1;
+                                delta_v_imparted_rp = dv_imparted_multiplescattering + dv_imparted_singlescattering;
 #else
                                 prob = (dv_imparted_multiplescattering+dv_imparted_singlescattering) / delta_v_imparted_rp; if(prob>1) {delta_v_imparted_rp *= prob;}
                                 if(n>0) {p_random=get_random_number(P[j].ID+P[i].ID +ThisTask+ 3);} //else p_random=0;
