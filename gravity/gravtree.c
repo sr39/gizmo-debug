@@ -223,7 +223,10 @@ void gravity_tree(void)
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
                 GravDataIn[j].Mass = P[place].Mass;
 #endif
-#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE)
+#if defined(BH_DYNFRICTION_FROMTREE)
+                if(P[place].Type==5) {GravDataIn[j].BH_Mass = P[place].BH_Mass;}
+#endif
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
                 for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
