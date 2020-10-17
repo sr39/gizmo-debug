@@ -58,6 +58,9 @@ int eligible_for_hermite(int i);
 void do_hermite_prediction(void);
 void do_hermite_correction(void);
 #endif
+#ifdef ADAPTIVE_TREEFORCE_UPDATE
+int needs_new_treeforce(int i);
+#endif
 void find_timesteps(void);
 #ifdef GALSF
 void compute_stellar_feedback(void);

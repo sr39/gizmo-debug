@@ -318,11 +318,19 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 #ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
-    double dt_tidal = 0.; {int k; for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}} // this is diagonalized already in the gravity loop
-    dt_tidal = sqrt(2. * All.ErrTolIntAccuracy / sqrt(dt_tidal / 6)); // recovers sqrt(eta) * tdyn for a Keplerian potential
+    double dt_tidal = 0.; {int k; for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k] * All.cf_a3inv * All.cf_a3inv;}} // this is diagonalized already in the gravity loop
+    dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal / 6)); // recovers sqrt(eta) * tdyn for a Keplerian potential
+    
+    if(P[p].Type == 0) {dt_tidal = DMIN(sqrt(All.ErrTolIntAccuracy/(All.G*SphP[p].Density*All.cf_a3inv)), dt_tidal);} // gas self-gravity timescale as a bare minimum
+    
+    if(All.ComovingIntegrationOn){ // floor to the dynamical time of the universe
+        double rho0 = (H0_CGS*H0_CGS*(3./(8.*M_PI*GRAVITY_G))*All.cf_a3inv / UNIT_DENSITY_IN_CGS);
+        dt_tidal = DMIN(dt_tidal, sqrt(All.ErrTolIntAccuracy / (All.G * rho0)));
+    } 
 #ifdef ADAPTIVE_TREEFORCE_UPDATE
     P[p].tdyn_step_for_treeforce = dt_tidal; // hang onto this to decide how frequently to update the treeforce
-#endif    
+#endif
+    
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     if(P[p].SuperTimestepFlag>=2) {dt_tidal = sqrt(2*All.ErrTolIntAccuracy) * P[p].COM_dt_tidal;}
 #endif
