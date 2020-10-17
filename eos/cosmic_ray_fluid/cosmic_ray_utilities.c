@@ -710,6 +710,7 @@ double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double 
     if(u0<All.MinEgySpec) {u0=All.MinEgySpec;} // enforced throughout code
 
     double divv_p=-dt_entr*P[i].Particle_DivVel*All.cf_a2inv, divv_f=-dt_entr*SphP[i].Face_DivVel_ForAdOps, divv_u=0; // get locally-estimated gas velocity divergence for cells - if using non-Lagrangian method, need to modify. take negative of this [for sign of change to energy] and multiply by timestep
+    adiabatic_coeff = (gamma_ad_eff-1.) * (P[target].Particle_DivVel*All.cf_a2inv) / UNIT_TIME_IN_CGS; // need to use full DivVel to get the right answer here for CR EOS scaling at high-p
     if(All.ComovingIntegrationOn) {double divv_h=-dt_entr*(3.*All.cf_hubble_a); divv_p+=divv_h; divv_f+=divv_h;} // include hubble-flow terms
     double P_cr = GAMMA_COSMICRAY_MINUS1 * eCR_tmp * SphP[i].Density * All.cf_a3inv / P[i].Mass, P_tot = SphP[i].Pressure * All.cf_a3inv; // define the pressure from CRs and total pressure (physical units)
 #ifdef MAGNETIC
