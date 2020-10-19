@@ -979,7 +979,7 @@ void rt_set_simple_inits(int RestartFlag)
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
                 double q_a = (0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX) / (All.Grain_Internal_Density*All.Grain_Size_Max), e0 = All.Vertical_Grain_Accel / q_a, kappa_0 = q_a * All.Dust_to_Gas_Mass_Ratio, cell_vol = (P[i].Mass/SphP[i].Density);
                 double rho_base_setup = 1., H_scale_setup = 1.; // define in code units the -assumed- initial scaling of the base gas density and vertical scale-length (PROBLEM SPECIFIC HERE!)
-#if GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
+#ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
                 kappa_0 *= sqrt(All.Grain_Size_Max / All.Grain_Size_Min); // opacity must be corrected for dependence of Q on grainsize or lack thereof
 #endif
                 double E_cell = e0 * cell_vol * exp(-kappa0*rho_base_setup*H_scale_setup*(1.-exp(-P[i].Pos[2]/H_scale_setup))); // attenuate according to equilibrium expectation, if we're using single-scattering radiation pressure [otherwise comment this line out] //
