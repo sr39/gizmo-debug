@@ -102,7 +102,12 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
         SET_ACTIVE_RT_CHECK(); // flag that tells the code that indeed this particle should be active!
         lum[RT_FREQ_BIN_GENERIC_USER_FREQ] = 0; // set the actual luminosity here for your test problem!
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION /* assume special units for this problem, and that total mass of 'sources' is 1 */
-        lum[RT_FREQ_BIN_GENERIC_USER_FREQ] = P[i].Mass * All.Vertical_Grain_Accel * C_LIGHT_CODE / (0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/All.Grain_Size_Max); // special behavior for particular test of stratified boxes compared to explicit dust opacities
+        double m_total_expected = 1; // assume total mass of sources is 1, and we want to weight such that fractional emission per source is equal to their mass fraction
+        double A_base = boxSize_X * boxSize_X; // area of the base of the box used for scaling to get the desired flux
+#if (NUMDIMS == 3)
+        A_base = boxSize_X * boxSize_Y;
+#endif
+        lum[RT_FREQ_BIN_GENERIC_USER_FREQ] = (P[i].Mass/1.) * All.Vertical_Grain_Accel * C_LIGHT_CODE * (All.Grain_Internal_Density*All.Grain_Size_Max) * A_base / (0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX); // special behavior for particular test of stratified boxes compared to explicit dust opacities
 #endif
     }
 #endif
@@ -134,7 +139,7 @@ double rt_kappa(int i, int k_freq)
 
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION /* special test problem implementation */
-    return 1*SphP[i].Interpolated_Opacity[k_freq] + 0.001 * All.Dust_to_Gas_Mass_Ratio * 0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/All.Grain_Size_Max; /* enforce minimum */
+    return SphP[i].Interpolated_Opacity[k_freq] + 1.e-3 * All.Dust_to_Gas_Mass_Ratio*0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/(All.Grain_Internal_Density*All.Grain_Size_Max); /* enforce minimum */
 #endif
     return MIN_REAL_NUMBER + SphP[i].Interpolated_Opacity[k_freq]; /* this is calculated in a different routine, just return it now */
 #endif
@@ -972,11 +977,15 @@ void rt_set_simple_inits(int RestartFlag)
 #endif
                 
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
-                double q_a=0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/All.Grain_Size_Max, e0=All.Vertical_Grain_Accel/q_a, kappa0=All.Dust_to_Gas_Mass_Ratio*q_a;
-                e0 *= (P[i].Mass/SphP[i].Density) * exp(-kappa0*(1.-exp(-P[i].Pos[2]))); // attenuate according to equilibrium expectation, if we're using single-scattering radiation pressure [otherwise comment this line out] //
-                SphP[i].Rad_E_gamma_Pred[k]=SphP[i].Rad_E_gamma[k]=e0;
+                double q_a = (0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX) / (All.Grain_Internal_Density*All.Grain_Size_Max), e0 = All.Vertical_Grain_Accel / q_a, kappa_0 = q_a * All.Dust_to_Gas_Mass_Ratio, cell_vol = (P[i].Mass/SphP[i].Density);
+                double rho_base_setup = 1., H_scale_setup = 1.; // define in code units the -assumed- initial scaling of the base gas density and vertical scale-length (PROBLEM SPECIFIC HERE!)
+#if GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
+                kappa_0 *= sqrt(All.Grain_Size_Max / All.Grain_Size_Min); // opacity must be corrected for dependence of Q on grainsize or lack thereof
+#endif
+                double E_cell = e0 * cell_vol * exp(-kappa0*rho_base_setup*H_scale_setup*(1.-exp(-P[i].Pos[2]/H_scale_setup))); // attenuate according to equilibrium expectation, if we're using single-scattering radiation pressure [otherwise comment this line out] //
+                SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k] = E_cell;
 #if defined(RT_EVOLVE_FLUX)
-                SphP[i].Rad_Flux_Pred[k][2]=SphP[i].Rad_Flux[k][2] = e0*C_LIGHT_CODE_REDUCED;
+                SphP[i].Rad_Flux_Pred[k][2]=SphP[i].Rad_Flux[k][2] = E_cell*C_LIGHT_CODE_REDUCED;
                 SphP[i].Rad_Flux[k][0]=SphP[i].Rad_Flux[k][1]=SphP[i].Rad_Flux_Pred[k][0]=SphP[i].Rad_Flux_Pred[k][1]=0;
 #endif
 #endif
