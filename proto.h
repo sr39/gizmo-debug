@@ -286,7 +286,7 @@ double Get_CosmicRayStreamingVelocity(int i);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
 double CR_cooling_and_gas_heating(int target, double n_elec, double nH_cgs, double dtime_cgs, int mode);
 double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double eCR_tmp, int mode);
-double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, double shock_vel, int return_index_in_bin);
+double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, double shock_vel, int return_index_in_bin, int target);
 void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir);
 double Get_AlfvenMachNumber_Local(int i, double vA_idealMHD_codeunits, int use_shear_corrected_vturb_flag);
 double diffusion_coefficient_constant(int target, int k_CRegy);
@@ -295,6 +295,7 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
 double return_CRbin_numberdensity_in_cgs(int target, int k_CRegy);
 double return_CRbin_CR_energies_in_GeV(int target, int k_CRegy);
 double return_CRbin_CR_charge_in_e(int target, int k_CRegy);
+int return_CRbin_CR_species_ID(int k_CRegy);
 double return_CRbin_kinetic_energy_in_GeV(int target, int k_CRegy);
 double return_CRbin_gamma_factor(int target, int k_CRegy);
 double return_CRbin_beta_factor(int target, int k_CRegy);

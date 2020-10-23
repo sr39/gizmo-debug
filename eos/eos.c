@@ -172,10 +172,10 @@ double gamma_eos(int i)
 #ifdef EOS_SUBSTELLAR_ISM
     if(i>=0) {
         if(P[i].Type==0) {
-            double T_eff_atomic = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred;
-            double nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
+            double T_eff_atomic = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred, nH_cgs;
+            nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
 #ifdef COOL_MOLECFRAC_NONEQM
-	    double f_mol = SphP[i].MolecularMassFraction;
+            double f_mol = SphP[i].MolecularMassFraction;
 #else
             double T_transition=DMIN(8000.,nH_cgs), f_mol=1./(1. + T_eff_atomic*T_eff_atomic/(T_transition*T_transition));
 #endif

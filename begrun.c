@@ -2177,8 +2177,10 @@ void read_parameter_file(char *fname)
 #endif
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
                 if(strcmp("AgeTracerEventsPerTimeBin",tag[i])==0) {*((double *)addr[i])=10; printf("Tag %s (%s) not set in parameter file: defaulting to aim for ~10 age-tracer deposition events per timebin (=%g) \n",tag[i],alternate_tag[i],All.AgeTracerRateNormalization); continue;}
+#if !defined(GALSF_FB_FIRE_AGE_TRACERS_CUSTOM)
                 if(strcmp("AgeTracerBinStart",tag[i])==0) {*((double *)addr[i])=1.; printf("Tag %s (%s) not set in parameter file: left-edge of first age-tracer bin is early in stellar evolution (=%g Myr) \n",tag[i],alternate_tag[i],All.AgeTracerBinStart); continue;}
                 if(strcmp("AgeTracerBinEnd",tag[i])==0) {*((double *)addr[i])=14000.; printf("Tag %s (%s) not set in parameter file: right-edge of last age-tracer bin is at ~t_Hubble (=%g Myr) \n",tag[i],alternate_tag[i],All.AgeTracerBinEnd); continue;}
+#endif
 #endif
                 printf("ERROR. I miss a required value for tag '%s' (or alternate name '%s') in parameter file '%s'.\n", tag[i], alternate_tag[i], fname);
                 errorFlag = 1;

@@ -339,7 +339,9 @@ void init(void)
 #endif
                 w0 /= sqrt((1.+tau2)*(1.+tau2*ct2)); // ensures normalization to unity with convention below //
                 A_cross_B[0]=A[1]*B[2]-A[2]*B[1]; A_cross_B[1]=A[2]*B[0]-A[0]*B[2]; A_cross_B[2]=A[0]*B[1]-A[1]*B[0];
+#if !defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
                 for(k=0;k<3;k++) {P[i].Vel[k]=w0*(A[k] + sqrt(tau2)*A_cross_B[k] + tau2*ct*B[k]);}
+#endif
 #ifdef BOX_SHEARING
                 // now add linearly the NHS drift solution for our shearing box setup
                 double v00 = -All.Pressure_Gradient_Accel / (2. * BOX_SHEARING_OMEGA_BOX_CENTER);
@@ -627,10 +629,40 @@ void init(void)
         //if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_PwrLaw_Slopes_in_Bin[j] = -2.5; SphP[i].CosmicRay_Number_in_Bin[j] = 0; SphP[i].DtCosmicRay_Number_in_Bin[j] = 0;}} // initialize a flat spectrum in each bin
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_Number_in_Bin[j] = 0; SphP[i].DtCosmicRay_Number_in_Bin[j] = 0;}} // initialize the number in each bin
         if(RestartFlag == 2) { // if we don't directly evolve the slopes, we do write them out and read them in, so need to re-construct the correct number in bin from what we actually read, which was the -slope- information
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART)
+            double e0 = 0.5 * P[i].Mass * SphP[i].InternalEnergy; // snapshot from which we read does not have the full CR info, so we need to initialize it from something //
+#if (COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART==1)
+            e0 = SphP[i].CosmicRayEnergy[0]; // we had one value of energy (total) available to read in //
+#endif
+            // now define the desired spectrum //
+            for(j=0;j<N_CR_PARTICLE_BINS;j++) {
+                int species = CR_species_ID_in_bin[j];
+                double f_norm = 1.e-20;
+                if(species == -1) {f_norm = f_elec;} // e-
+                if(species == +1) {f_norm = 1.-f_elec;} // p
+                if(species == -2) {f_norm = 0.05 * f_elec;} // e+ (few percent of e- in e+, plausible, but can vary)
+                if(species > 1)
+                {
+                    Zfac = P[target].Metallicity[0]/All.SolarAbundances[0]; // scale heavier elements to the metallicity of the gas into which CRs are being accelerated
+                    if(species == 2) {f_norm = 3.7e-9 * Zfac;} // B (for standard elements initialize to solar ratios assuming similar energy/nucleon)
+                    if(species == 3) {f_norm = 2.4e-3 * Zfac;} // C
+                    if(species == 4) {f_norm = 1.4e-10 * Zfac;} // Be9 (stable)
+                    if(species == 5) {f_norm = 1.4e-20 * Zfac;} // Be10 (radioactive)
+                    if(species == 6) {f_norm = 0.0094 * Zfac;} // CNO
+                }
+                double e_tmp = f_norm * e0, x_RGV = CR_global_rigidity_at_bin_center[j];
+                double fac = 2.3 / (pow(x_RGV,-0.6) + pow(x_RGV,0.8)), slope = (3. - 4.*pow(x_RGV,1.4)) / (5. + 5.*pow(x_RGV,1.4)) - 2.; // adopt an extremely simple two-power law spectrum, identical in E space for everything, except normalization, to initialize
+                if(CR_check_if_bin_is_nonrelativistic(j)) {slope -= 1.;} // correct for NR terms
+                SphP[i].CosmicRayEnergy[j] = e_tmp * fac; SphP[i].CosmicRay_Number_in_Bin[j] = slope; // actually assign the energy and power-law slope
+            }
+
+#endif
+            /* now initialize the number in each bin from the slopes that we have either read in or assumed */
             for(j=0;j<N_CR_PARTICLE_BINS;j++) {
                 double slope_from_snapshot = SphP[i].CosmicRay_Number_in_Bin[j];
                 SphP[i].CosmicRay_Number_in_Bin[j] = CR_get_number_in_bin_from_slope(i,j,SphP[i].CosmicRayEnergy[j],slope_from_snapshot);
-            }}
+            }
+        }
 #endif
 #endif
 #ifdef MAGNETIC
