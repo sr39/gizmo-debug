@@ -223,7 +223,10 @@ void gravity_tree(void)
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
                 GravDataIn[j].Mass = P[place].Mass;
 #endif
-#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE)
+#if defined(BH_DYNFRICTION_FROMTREE)
+                if(P[place].Type==5) {GravDataIn[j].BH_Mass = P[place].BH_Mass;}
+#endif
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
                 for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
@@ -456,7 +459,7 @@ void gravity_tree(void)
 #ifdef ADAPTIVE_TREEFORCE_UPDATE
         double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
         if(!needs_new_treeforce(i)) { // if we don't yet need a new tree pass, just update GravAccel according to the jerk term, increment the counter, and go to the next particle           
-            for(j=0; j<3; j++) {P[i].GravAccel[j] += dt * P[i].GravJerk[j];}
+            for(j=0; j<3; j++) {P[i].GravAccel[j] += dt * P[i].GravJerk[j] * All.cf_a2inv;} // a^-1 from converting velocity term in the jerk to physical; a^-3 from the 1/r^3; a^2 from converting the physical dt * j increment to GravAccel back to the units for GravAccel; result is a^-2; note that Ewald and PMGRID terms are neglected from the jerk at present
             P[i].time_since_last_treeforce += dt;
             continue;
         } else {
