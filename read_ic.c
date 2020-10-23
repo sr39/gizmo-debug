@@ -488,15 +488,19 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 
         case IO_COSMICRAY_ENERGY:
 #ifdef COSMIC_RAYS
+#ifdef COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART
+            for(n = 0; n < pc; n++) {SphP[offset + n].CosmicRayEnergy[0] = *fp++;}
+#else
             for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {SphP[offset + n].CosmicRayEnergy[k] = *fp++;}}
+#endif
 #endif
             break;
 
         case IO_COSMICRAY_SLOPES:
 #if defined(COSMIC_RAYS) && defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
-            //for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {SphP[offset + n].CosmicRay_PwrLaw_Slopes_in_Bin[k] = *fp++;}} // read the slope directly
-            for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {
-                SphP[offset + n].CosmicRay_Number_in_Bin[k] = *fp++;}} // NOTE this still contains the SLOPE information; in init.c we convert back to number, our evolved variable!
+#if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART) /* normal behavior - read the same list in that we would use */
+            for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {SphP[offset + n].CosmicRay_Number_in_Bin[k] = *fp++;}} // NOTE this still contains the SLOPE information; in init.c we convert back to number, our evolved variable!
+#endif
 #endif
             break;
 
@@ -924,15 +928,18 @@ void read_file(char *fname, int readTask, int lastTask)
                 continue;
 #endif
 #endif
+            
+#ifdef COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART
+            if(RestartFlag == 2 && blocknr == IO_COSMICRAY_SLOPES) {continue;}
+#if (COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART==2)
+            if(RestartFlag == 2 && blocknr == IO_COSMICRAY_ENERGY) {continue;}
+#endif
+#endif
 
-
-            if(blocknr == IO_HSMS)
-                continue;
+            if(blocknr == IO_HSMS) {continue;}
 
 #ifdef TURB_DIFF_DYNAMIC
-            if (RestartFlag == 0 && blocknr == IO_TURB_DYNAMIC_COEFF) {
-                continue;
-            }
+            if (RestartFlag == 0 && blocknr == IO_TURB_DYNAMIC_COEFF) {continue;}
 #endif
 
             if(ThisTask == readTask)
@@ -942,6 +949,10 @@ void read_file(char *fname, int readTask, int lastTask)
             }
 
             bytes_per_blockelement = get_bytes_per_blockelement(blocknr, 1);
+            
+#if (COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART==1)
+            if(RestartFlag == 2 && blocknr == IO_COSMICRAY_ENERGY) {bytes_per_blockelement = (1) * sizeof(MyInputFloat);}
+#endif
 
             size_t MyBufferSize = All.BufferSize;
             blockmaxlen = (size_t) ((MyBufferSize * 1024 * 1024) / bytes_per_blockelement);
@@ -1020,6 +1031,9 @@ void read_file(char *fname, int readTask, int lastTask)
 
                                         dims[0] = header.npart[type];
                                         dims[1] = get_values_per_blockelement(blocknr);
+#if (COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART==1)
+                                        if(RestartFlag == 2 && blocknr == IO_COSMICRAY_ENERGY) {dims[1] = 1;}
+#endif
                                         if(dims[1] == 1)
                                             rank = 1;
                                         else
@@ -1035,6 +1049,9 @@ void read_file(char *fname, int readTask, int lastTask)
 
                                         count[0] = pc;
                                         count[1] = get_values_per_blockelement(blocknr);
+#if (COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART==1)
+                                        if(RestartFlag == 2 && blocknr == IO_COSMICRAY_ENERGY) {count[1] = 1;}
+#endif
                                         pcsum += pc;
 
                                         H5Sselect_hyperslab(hdf5_dataspace_in_file, H5S_SELECT_SET,

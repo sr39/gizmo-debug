@@ -10,7 +10,7 @@
 #include <grackle.h>
 #define ENDRUNVAL 91234
 
-#define GRACKLE_API_VERSION 1.0 /* define the version of the API being used here. there were a number of large changes to the grackle api around version 2.2 or so of grackle, which require completely different calls below */
+#define GRACKLE_API_VERSION 1 /* define the version of the API being used here. there were a number of large changes to the grackle api around version 2.2 or so of grackle, which require completely different calls below */
 
 //
 // 'mode' -- tells the routine what to do
@@ -288,7 +288,7 @@ void InitGrackle(void)
     All.GrackleUnits.a_units              = 1.0; // units for the expansion factor
     
     // Second, create a chemistry object for parameters and rate data.
-#if (GRACKLE_API_VERSION < 2.2)
+#if (GRACKLE_API_VERSION < 2)
     if (set_default_chemistry_parameters() == 0) {fprintf(stderr, "Error in set_default_chemistry_parameters.\n"); endrun(ENDRUNVAL);}
 #else
     chemistry_data *my_grackle_data;
@@ -296,7 +296,7 @@ void InitGrackle(void)
     if (set_default_chemistry_parameters(my_grackle_data) == 0) {fprintf(stderr, "Error in set_default_chemistry_parameters.\n"); endrun(ENDRUNVAL);}
 #endif
     // Third, set parameter values for chemistry & cooling
-    int three_body_rate=0, metal_cooling=0, h2_on_dust=0, photoelectric_heating=0, cmb_temperature_floor=1, UVbackground=1, Compton_xray_heating=1, cie_cooling=0, h2_optical_depth_approximation=0, LWbackground_intensity=0, LWbackground_sawtooth_suppression=0, use_grackle=1, with_radiative_cooling=1, primordial_chemistry=0, dust_chemistry=0, H2_self_shielding=1, self_shielding_method=3; double photoelectric_heating_rate=8.5e-26, Gamma_touse=5./3.;
+    int three_body_rate=0, metal_cooling=0, h2_on_dust=0, photoelectric_heating=0, cmb_temperature_floor=1, UVbackground=1, Compton_xray_heating=1, cie_cooling=0, h2_optical_depth_approximation=0, LWbackground_intensity=0, LWbackground_sawtooth_suppression=0, use_grackle=1, with_radiative_cooling=1, primordial_chemistry=0, dust_chemistry=0, H2_self_shielding=1, self_shielding_method=3; double photoelectric_heating_rate=8.5e-26, Gamma_touse=5./3.; dust_chemistry=0;
 
     /* optional flags:: */
     three_body_rate = 0; /* Flag to control which three-body H2 formation rate is used.
@@ -331,7 +331,7 @@ void InitGrackle(void)
 #endif
 
 
-#if (GRACKLE_API_VERSION < 2.2)
+#if (GRACKLE_API_VERSION < 2)
     grackle_data.grackle_data_file = All.GrackleDataFile; // Path to the data file containing the metal cooling and UV background tables
     grackle_data.three_body_rate = three_body_rate;
     grackle_data.metal_cooling = metal_cooling;
@@ -377,7 +377,7 @@ void InitGrackle(void)
     double a_value = 1.0; if(All.ComovingIntegrationOn) {a_value = All.TimeBegin;}
     
     // Finally, initialize the chemistry object.
-#if (GRACKLE_API_VERSION < 2.2)
+#if (GRACKLE_API_VERSION < 2)
     if (initialize_chemistry_data(&All.GrackleUnits, a_value) == 0) {fprintf(stderr, "Error in initialize_chemistry_data.\n"); endrun(ENDRUNVAL);}
 #else
     if (initialize_chemistry_data(&All.GrackleUnits) == 0) {fprintf(stderr, "Error in initialize_chemistry_data.\n"); endrun(ENDRUNVAL);}

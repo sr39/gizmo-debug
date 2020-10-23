@@ -978,11 +978,7 @@ Computes the maximum signal velocity of _any_ feedback mechanism emanating from 
  */
 double single_star_fb_velocity(int n){   
     if(P[n].Type != 5) {return 0;}
-    double v_fb = 0;
-    double force = 0;
-    double h = Get_Particle_Size(n);
-    double rho = P[n].DensAroundStar;
-    double v_shell;
+    double v_fb, force, h, rho, v_shell; v_fb=0; force=0; h=Get_Particle_Size(n); rho=P[n].DensAroundStar; v_shell=0;
 #ifdef SINGLE_STAR_FB_WINDS
     double v_wind = single_star_wind_velocity(n);
     double mdot = single_star_wind_mdot(n, 0);

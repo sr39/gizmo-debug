@@ -1821,8 +1821,20 @@ double CR_global_min_rigidity_in_bin[N_CR_PARTICLE_BINS];
 double CR_global_max_rigidity_in_bin[N_CR_PARTICLE_BINS];
 double CR_global_rigidity_at_bin_center[N_CR_PARTICLE_BINS];
 double CR_global_charge_in_bin[N_CR_PARTICLE_BINS];
+int CR_species_ID_in_bin[N_CR_PARTICLE_BINS];
 #define N_CR_SPECTRUM_LUT 101 /*!< number of elements per bin in the look-up-tables we will pre-compute to use for inverting the energy-number relation to determine the spectral slope */
 double CR_global_slope_lut[N_CR_PARTICLE_BINS][N_CR_SPECTRUM_LUT]; /*!< holder for the actual look-up-tables */
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK)
+#define N_CR_PARTICLE_SPECIES 7
+int CR_secondary_species_listref[N_CR_PARTICLE_SPECIES][N_CR_PARTICLE_SPECIES]; /*!< list for each type of the different secondaries to which it can decay */
+int CR_secondary_target_bin[N_CR_PARTICLE_BINS][N_CR_PARTICLE_SPECIES]; /*!< destination bin for the secondaries produced by different primaries */
+double CR_frag_secondary_coeff[N_CR_PARTICLE_BINS][N_CR_PARTICLE_SPECIES]; /*!< coefficients for fragmentation to the given secondaries (also pre-computed for simplicity) */
+double CR_frag_coeff[N_CR_PARTICLE_SPECIES]; /*!< total coefficients for fragmentation processes (pre-compute b/c cross-sections are complicated) */
+double CR_rad_decay_coeff[N_CR_PARTICLE_SPECIES]; /*!< radioactive decay coefficients (pre-computed for ease, also because of dilation dependence) */
+#else
+#define N_CR_PARTICLE_SPECIES 2 /* total number of CR species to be evolved. must be set here because of references below*/
+#endif
+int CR_species_ID_active_list[N_CR_PARTICLE_SPECIES]; /*!< holds the list of species ids to loop over */
 #endif
 
 
