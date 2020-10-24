@@ -19,14 +19,16 @@ void CR_spectrum_define_bins(void)
 {
     int k;
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK)
-    int species_list={-2, -1, +1, 2,   6, 4, 5}; // {-2=positrons, -1=electrons, 1=protons, 2=B, 3=C, 4=Be7+9, 5=Be10, 6=CNO}
-    double charge_v ={ 1, -1,  1, 5, 7.4, 4, 4}; // list of charge for each of the species above, matched to their codes
-    int n_bins_lepton=11; int n_bins_nuclei=8; double R[N_CR_PARTICLE_BINS], Z[N_CR_PARTICLE_BINS]; int spec[N_CR_PARTICLE_BINS], ispec, n0=0;
-    double R_lepton[n_bins_lepton]={3.16227766e-03, 1.00000000e-02, 3.16227766e-02, 1.00000000e-01, 3.16227766e-01, 1.00000000e+00, 3.16227766e+00, 1.00000000e+01, 3.16227766e+01, 1.00000000e+02, 3.16227766e+02};
-    double R_nuclei[n_bins_nuclei]={1.00000000e-01, 3.16227766e-01, 1.00000000e+00, 3.16227766e+00, 1.00000000e+01, 3.16227766e+01, 1.00000000e+02, 3.16227766e+02};
+    int species_list[N_CR_PARTICLE_SPECIES]={-2, -1, +1, 2,   6, 4, 5}; // {-2=positrons, -1=electrons, 1=protons, 2=B, 3=C, 4=Be7+9, 5=Be10, 6=CNO}
+    double charge_v[N_CR_PARTICLE_SPECIES] ={ 1, -1,  1, 5, 7.4, 4, 4}; // list of charge for each of the species above, matched to their codes
+#define CR_NUMBER_OF_R_BINS_FOR_LEPTONIC_SPECIES 11 // needs to be defined to match below, both hard-coded here
+#define CR_NUMBER_OF_R_BINS_FOR_HADRONIC_SPECIES 8  // needs to be defined to match below, both hard-coded here
+    double R[N_CR_PARTICLE_BINS], Z[N_CR_PARTICLE_BINS]; int spec[N_CR_PARTICLE_BINS], ispec, n0=0;
+    double R_lepton[CR_NUMBER_OF_R_BINS_FOR_LEPTONIC_SPECIES]={3.16227766e-03, 1.00000000e-02, 3.16227766e-02, 1.00000000e-01, 3.16227766e-01, 1.00000000e+00, 3.16227766e+00, 1.00000000e+01, 3.16227766e+01, 1.00000000e+02, 3.16227766e+02};
+    double R_nuclei[CR_NUMBER_OF_R_BINS_FOR_HADRONIC_SPECIES]={1.00000000e-01, 3.16227766e-01, 1.00000000e+00, 3.16227766e+00, 1.00000000e+01, 3.16227766e+01, 1.00000000e+02, 3.16227766e+02};
     for(ispec=0;ispec<N_CR_PARTICLE_SPECIES;ispec++)
     {
-        int is_lepton=0, nmax=n_bins_nuclei; if(species_list[ispec] < 0) {is_lepton=1; nmax=n_bins_lepton;}
+        int is_lepton=0, nmax=CR_NUMBER_OF_R_BINS_FOR_HADRONIC_SPECIES; if(species_list[ispec] < 0) {is_lepton=1; nmax=CR_NUMBER_OF_R_BINS_FOR_LEPTONIC_SPECIES;}
         for(k=0;k<nmax;k++) {Z[n0]=charge_v[ispec]; spec[n0]=species_list[ispec]; if(is_lepton) {R[n0]=R_lepton[k];} else {R[n0]=R_nuclei[k];} n0++;}
     }
 #else
@@ -65,7 +67,7 @@ void CR_spectrum_define_bins(void)
         for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {if(secondary_spec[j] > -100) {CR_secondary_species_listref[k][j] = temp_species_map[secondary_spec[j]+id_map_offset];} else {CR_secondary_species_listref[k][j]=-200;}}
     }
     /* also need to figure out the 'destination bin' for each type of secondary -- we will assume nucleon-nucleon conserves energy per nucleon, while cascades to positrons and secondary electrons are treated slightly differently */
-    double E_GeV[N_CR_PARTICLE_BINS], A_wt[N_CR_PARTICLE_BINS]; for(k=0;k<N_CR_PARTICLE_BINS;k++) {E_GeV[k]=return_CRbin_kinetic_energy_in_GeV_binvalsNRR(k); A_mu[k]=return_CRbin_CRmass_in_mp(-1,k);}
+    double E_GeV[N_CR_PARTICLE_BINS], A_wt[N_CR_PARTICLE_BINS]; for(k=0;k<N_CR_PARTICLE_BINS;k++) {E_GeV[k]=return_CRbin_kinetic_energy_in_GeV_binvalsNRR(k); A_wt[k]=return_CRbin_CRmass_in_mp(-1,k);}
     for(k=0;k<N_CR_PARTICLE_BINS;k++)
     {
         int primary_id = CR_species_ID_in_bin[k];
@@ -95,7 +97,7 @@ void CR_spectrum_define_bins(void)
         if(CR_species_ID_in_bin[k] == -2)
         {
             double gamma_fac=return_CRbin_gamma_factor(-1,k), gamma_COM=sqrt(gamma_fac), gamma_minus_1=gamma_COM, fac=0;
-            if(gamma_minus_1 > 1.e-2) {fac=((gamma_COM*gamma_COM+4.*gamma_COM+1.)*log(gamma_COM+sqrt(gamma_COM*gamma_COM-1.))*/(gamma_COM*gamma_COM-1.) - (gamma_COM+3.)/sqrt(gamma_COM*gamma_COM-1.))/(gamma_COM+1.);} else {fac=1./sqrt(2.*DMAX(gamma_minus_1,1.e-8));}
+            if(gamma_minus_1 > 1.e-2) {fac=((gamma_COM*gamma_COM+4.*gamma_COM+1.)*log(gamma_COM+sqrt(gamma_COM*gamma_COM-1.))/(gamma_COM*gamma_COM-1.) - (gamma_COM+3.)/sqrt(gamma_COM*gamma_COM-1.))/(gamma_COM+1.);} else {fac=1./sqrt(2.*DMAX(gamma_minus_1,1.e-8));}
             CR_frag_coeff[k] = 7.479e-15 * beta_fac * fac; // e+ annihilation with ISM (rest) e- to gamma rays
         }
         if(CR_species_ID_in_bin[k] == 1) {if(E_GeV[k] > 0.28) {CR_frag_coeff[k] = 6.37e-16;}} // coefficient for hadronic/catastrophic interactions/pionic losses: dEtot/dt = -(coeff) *nnucleoncgs* Etot, or dPtot/dt = -(coeff)*nnucleoncgs* Ptot (since all p effected are in rel limit, and works by deleting N not by lowering individual E. Mannheim & Schlickeiser 1994
@@ -103,7 +105,7 @@ void CR_spectrum_define_bins(void)
         {
             double sigma_frag_tot = 45. * pow(A_wt[k],0.7) * (1.+0.016*sin(1.3-2.63*log(A_wt[k])));
             if(E_GeV[k] < 2.0) {sigma_frag_tot *= (1.-0.62*exp(-E_GeV[k]/0.2)*sin(1.57553/pow(E_GeV[k],0.28)));}
-            CR_frag_coeff[k] = cx_mb_to_coeff * sigma_tot; // rate depends on 'v', need to include beta here
+            CR_frag_coeff[k] = cx_mb_to_coeff * sigma_frag_tot; // rate depends on 'v', need to include beta here
         }
         for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {CR_frag_secondary_coeff[k][j]=0;} // initialize this to null
         if(CR_frag_coeff[k] > 0) {for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {if(CR_secondary_target_bin[k][j] >= 0) // desired secondary products exist
