@@ -106,9 +106,9 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 
     /* if pair is a gas particle make sure to account for its pressure and internal energy */
     double cs=0; if(P[j].Type==0) {
-      double vA = Get_Gas_Alfven_speed_i(j);
-      if(GAMMA(j) <= 1.01) {cs = sqrt(vA*vA + 3 * SphP[j].Pressure/SphP[j].Density);} // assume you're running gamma ~ 1 to hack an isothermal EOS, so we assume gamma=5/3 for boundedness calculation
-      else {cs = sqrt(vA*vA + 2*SphP[j].InternalEnergy);} // effective speed to add to relative velocity to compare with escape speed for boundedness check
+        double vA = Get_Gas_Alfven_speed_i(j);
+        if(fabs(GAMMA(j)-1) < 0.1) {cs = sqrt(vA*vA + 3.*SphP[j].Pressure/SphP[j].Density);} // assume you're running gamma ~ 1 to hack an isothermal EOS, so we assume gamma=5/3 for boundedness calculation
+        else {cs = sqrt(vA*vA + 2.*SphP[j].InternalEnergy);} // effective speed [since what we really want is internal energy] to add to relative velocity to compare with escape speed for boundedness check
     } // use the fast MHD wavespeed to account for magnetic+thermal energy (but not e.g. cosmic ray), in allowing accretion //
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
