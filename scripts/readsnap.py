@@ -115,8 +115,8 @@ def readsnap(sdir,snum,ptype,
     nL = 0 # initial particle point to start at 
     if(fname_ext=='.hdf5'):
         file = h5py.File(fname,'r') # Open hdf5 snapshot file
-        header_master = file["Header"] # Load header dictionary (to parse below)
-        header_toparse = header_master.attrs
+        header_topdict = file["Header"] # Load header dictionary (to parse below)
+        header_toparse = header_topdict.attrs
     else:
         file = open(fname) # Open binary snapshot file
         header_toparse = load_gadget_format_binary_header(file)

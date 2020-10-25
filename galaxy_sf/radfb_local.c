@@ -64,7 +64,7 @@ void radiation_pressure_winds_consolidated(void)
                 prob = dv_imparted_perpart_guess / delta_v_imparted_rp; // chance of kick
                 if(prob < 1 && prob > 0) {dE_over_c /= prob;} // if assigning low-probability, need to up-weight the kick to statistically couple the right momentum
 #endif
-                double p_random = get_random_number(P[i].ID+ThisTask+i+2); // master random number for use below
+                double p_random = get_random_number(P[i].ID+ThisTask+i+2); // random number for use below
                 if(p_random <= prob) // alright, its worth doing the loop!
 #endif
                 { // within loop

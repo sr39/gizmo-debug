@@ -70,7 +70,7 @@
 # --------------------------------------- Additional Fluid Physics
 ####################################################################################################
 ## ----------------------------------------------------------------------------------------------------
-# --------------------------------------- Gas (or Material) Equations-of-State
+# --------------------------------------- Gas (or Material) Equations-of-State [some EOS options for specific regimes, like galaxy or star formation simulations, are also described in the blocks below for those sections]
 #EOS_GAMMA=(5.0/3.0)            # Polytropic Index of Gas (for an ideal gas law): if not set and no other (more complex) EOS set, defaults to GAMMA=5/3
 #EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of state); if additional tables needed, download at http://www.tapir.caltech.edu/~phopkins/public/helm_table.dat (or the BitBucket site)
 #EOS_TILLOTSON                  # Use Tillotson (1962) EOS (for solid/liquid+vapor bodies, impacts); custom EOS params can be specified or pre-computed materials used. see User Guide and Deng et al., arXiv:1711.04589
@@ -79,7 +79,7 @@
 # --------------------------------- Magneto-Hydrodynamics
 # ---------------------------------  these modules are public, but if used, the user should also cite the MHD-specific GIZMO methods paper
 # ---------------------------------  (Hopkins 2015: 'Accurate, Meshless Methods for Magneto-Hydrodynamics') as well as the standard GIZMO paper
-#MAGNETIC                       # master switch for MHD, regardless of which Hydro solver is used
+#MAGNETIC                       # top-level switch for MHD, regardless of which Hydro solver is used
 #MHD_B_SET_IN_PARAMS            # set initial fields (Bx,By,Bz) in parameter file
 #MHD_NON_IDEAL                  # enable non-ideal MHD terms: Ohmic resistivity, Hall effect, and ambipolar diffusion (solved explicitly); Users should cite Hopkins 2017, MNRAS, 466, 3387, in addition to the MHD paper
 #MHD_CONSTRAINED_GRADIENT=1     # use CG method (in addition to cleaning, optional!) to maintain low divB: set this value to control how aggressive the div-reduction is:
@@ -95,7 +95,7 @@
 #VISCOSITY                      # Navier-stokes equations solved *explicitly*: isotropic coefficients if MAGNETIC off, otherwise anisotropic
 #VISCOSITY_BRAGINSKII           # Braginskii viscosity tensor for ideal MHD [cite Su et al., 2017, MNRAS, 471, 144, in addition to the viscosity methods paper above]. Requires COOLING to calculate local thermal state of gas.
 ## ----------------------------------------------------------------------------------------------------
-# -------------------------------------- Radiative Cooling physics (mostly geared towards galactic/extragalactic cooling)
+# -------------------------------------- Radiative Cooling physics (mostlym but not all, geared towards galactic/extragalactic cooling)
 # -------------------------- These modules were originally developed for a combination of proprietary physics modules. However they are now written in
 # --------------------------   a form which allows them to be modular (and public). Users are free to use the Grackle modules and standard 'COOLING' flags,
 # --------------------------   provided proper credit/citations are provided to the relevant methods papers given in the Users Guide ---
@@ -179,7 +179,7 @@
 #GRAVITY_ACCURATE_FEWBODY_INTEGRATION # enables a suite: GRAVITY_HYBRID_OPENING_CRIT, TIDAL_TIMESTEP_CRITERION, LONG_INTEGER_TIME, to more accurately follow few-body point-like dynamics in the tree. currently compatible only with pure-tree gravity.
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------- arbitrary time-dependent dark energy equations-of-state, expansion histories, or gravitational constants
-#GR_TABULATED_COSMOLOGY         # enable reading tabulated cosmological/gravitational parameters (master switch)
+#GR_TABULATED_COSMOLOGY         # enable reading tabulated cosmological/gravitational parameters (top-level switch)
 #GR_TABULATED_COSMOLOGY_W       # read pre-tabulated dark energy equation-of-state w(z)
 #GR_TABULATED_COSMOLOGY_H       # read pre-tabulated hubble function (expansion history) H(z)
 #GR_TABULATED_COSMOLOGY_G       # read pre-tabulated gravitational constant G(z) [also rescales H(z) appropriately]
@@ -197,7 +197,7 @@
 ## ----------------------------------------------------------------------------------------------------
 # ------------------------------------- Friends-of-friends on-the-fly finder options (source in fof.c)
 # -----------------------------------------------------------------------------------------------------
-#FOF                                # master switch: enable FoF searching on-the-fly and outputs (set parameter LINKLENGTH=x to control LinkingLength; default=0.2)
+#FOF                                # top-level switch: enable FoF searching on-the-fly and outputs (set parameter LINKLENGTH=x to control LinkingLength; default=0.2)
 #FOF_PRIMARY_LINK_TYPES=2           # bitflag: sum of 2^type for the primary type used to define initial FOF groups (use a common type to ensure 'start' in reasonable locations)
 #FOF_SECONDARY_LINK_TYPES=1+16+32   # bitflag: sum of 2^type for the seconary types which can be linked to nearest primaries (will be 'seen' when calculating group properties)
 #FOF_DENSITY_SPLIT_TYPES=1+2+16+32  # bitflag: sum of 2^type for which the densities should be calculated seperately (i.e. if 1+2+16+32, fof densities are separately calculated for types 0,1,4,5, and shared for types 2,3)
@@ -205,7 +205,7 @@
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------  Subhalo on-the-fly finder options (uses "subfind" source code).
 ## ----------------------------------------------------------------------------------------------------
-#SUBFIND                            # master switch to enable substructure-finding with the SubFind algorithm
+#SUBFIND                            # top-level switch to enable substructure-finding with the SubFind algorithm
 #SUBFIND_ADDIO_NUMOVERDEN=1         # for M200,R200-type properties, compute values within in this number of different overdensities (default=1=)
 #SUBFIND_ADDIO_VELDISP              # add the mass-weighted 1D velocity dispersions to properties computed in parent group[s], within the chosen overdensities
 #SUBFIND_ADDIO_BARYONS              # add gas mass, mass-weighted temperature, and x-ray luminosity (assuming ionized primoridal gas), and stellar masses, to properties computed in parent group[s], within the chosen overdensities
@@ -220,7 +220,7 @@
 # ----------------- Galaxy formation & Galactic Star formation
 ####################################################################################################
 ## ---------------------------------------------------------------------------------------------------
-#GALSF                           # master switch for galactic star formation model: enables SF, stellar ages, generations, etc. [cite Springel+Hernquist 2003, MNRAS, 339, 289]
+#GALSF                           # top-level switch for galactic star formation model: enables SF, stellar ages, generations, etc. [cite Springel+Hernquist 2003, MNRAS, 339, 289]
 ## ----------------------------------------------------------------------------------------------------
 # --- star formation law/particle spawning (additional options: otherwise all star particles will reflect IMF-averaged populations and form strictly based on a density criterion) ---- #
 ## ----------------------------------------------------------------------------------------------------
@@ -235,7 +235,7 @@
 # -------- the SUBGRID_WINDS models are variations of the Springel & Hernquist 2005 sub-grid models for the ISM, star formation, and winds.
 # -------- Volker has granted permissions for their use, provided users properly cite the sources for the relevant models and scalings (described below)
 #GALSF_EFFECTIVE_EQS            # Springel-Hernquist 'effective equation of state' model for the ISM and star formation [cite Springel & Hernquist, MNRAS, 2003, 339, 289]
-#GALSF_SUBGRID_WINDS            # sub-grid winds ('kicks' as in Oppenheimer+Dave,Springel+Hernquist,Boothe+Schaye,etc): enable this master switch for basic functionality [cite Springel & Hernquist, MNRAS, 2003, 339, 289]
+#GALSF_SUBGRID_WINDS            # sub-grid winds ('kicks' as in Oppenheimer+Dave,Springel+Hernquist,Boothe+Schaye,etc): enable this top-level switch for basic functionality [cite Springel & Hernquist, MNRAS, 2003, 339, 289]
 #GALSF_SUBGRID_WIND_SCALING=0   # set wind velocity scaling: 0 (default)=constant v [and mass-loading]; 1=velocity scales with halo mass (cite Oppenheimer & Dave, 2006, MNRAS, 373, 1265), requires FOF modules; 2=scale with local DM dispersion as Vogelsberger 13 (cite Zhu & Li, ApJ, 2016, 831, 52)
 #GALSF_WINDS_ORIENTATION=0      # directs wind orientation [0=isotropic/random, 1=polar, 2=along density gradient]
 #GALSF_FB_TURNOFF_COOLING       # turn off cooling for SNe-heated particles (as Stinson+ 2006 GASOLINE model, cite it); requires GALSF_FB_THERMAL
@@ -245,13 +245,17 @@
 # -------- users are encouraged to explore their own stellar evolution models and include various types of feedback (e.g. SNe, stellar mass-loss, NS mergers, etc)
 #GALSF_FB_MECHANICAL            # explicit algorithm including thermal+kinetic/momentum terms from Hopkins+ 2018 (MNRAS, 477, 1578): manifestly conservative+isotropic, and accounts properly for un-resolved PdV work+cooling during blastwave expansion. cite Hopkins et al. 2018, MNRAS, 477, 1578, and Hopkins+ 2014 (MNRAS 445, 581)
 #GALSF_FB_THERMAL               # simple 'pure thermal energy dump' feedback: mass, metals, and thermal energy are injected locally in simple kernel-weighted fashion around young stars. tends to severely over-cool owing to lack of mechanical/kinetic treatment at finite resolution (better algorithm is mechanical)
+##-----------------------------------------------------------------------------------------------------
+# ---- additional cooling/chemistry options of specific interest for galaxy and star-formation simulations, listed here for their relevance
+#COOL_UVB_SELFSHIELD_RAHMATI    # use an updated (Hopkins+2021, in prep) version [fixes problematic behavior at densities >> 100 cm^-3] version of the Rahmati et al. 2013MNRAS.431.2261R UV background self-shielding
+#COOL_MOLECFRAC_KMT             # estimate molecular fractions for thermochemistry+cooling from approximate large-scale expressions from Krumholz, McKee, & Tumlinson (2009ApJ...693..216K)
+#COOL_MOLECFRAC_GD              # estimate molecular fractions for thermochemistry+cooling from approximate large-scale expressions from Gnedin & Draine (2014ApJ...795...37G)
 ## ----------------------------------------------------------------------------------------------------
 #------ FIRE simulation modules for mechanical+radiative FB with full evolution+yield tracks (Hopkins et al. 2014, Hopkins et al., 2017a, arXiv:1702.06148) ------ ##
 ##-------- [FIRE_PHYSICS_DEFAULTS, GALSF_FB_FIRE_STELLAREVOLUTION, GALSF_FB_FIRE_RPROCESS, GALSF_FB_FIRE_RT_LONGRANGE, GALSF_FB_FIRE_RT_UVHEATING, GALSF_FB_FIRE_RT_LOCALRP, GALSF_FB_FIRE_RT_HIIHEATING, GALSF_FB_FIRE_RT_CONTINUOUSRP, FIRE_UNPROTECT_FROZEN]
 #--------- Use of these follows the FIRE authorship policy. Modules are NOT to be used without authors permission (including P. Hopkins, E. Quataert, D. Keres, and C.A. Faucher-Giguere), even if you are already using the development GIZMO code. (PFH does not have sole authority to grant permission for the modules)
 #--------- New projects using these modules must FIRST be PRE-APPROVED by the collaboration (after permission to use the modules has been explicitly granted), and subsequently are required to follow the collaboration's paper approval and submission policies
 #FIRE_PHYSICS_DEFAULTS           # enable standard set of FIRE physics packages; note use policy above
-##-----------------------------------------------------------------------------------------------------
 ############################################################################################################################
 
 
@@ -262,7 +266,7 @@
 # -------------------- (unlike GALSF options, these sinks are individual accretors, not populations). Much in common with Black Hole modules below.
 # -------------------- These are proprietary right now, in development with Mike Grudic, David Guszejnov, and PFH: modules not to be used without authors permission, though basic modules may be ok there is a lot of development happening here]
 ## ----------------------------------------------------------------------------------------------------
-#SINGLE_STAR_SINK_DYNAMICS      # master switch to enable any other modules in this section
+#SINGLE_STAR_SINK_DYNAMICS      # top-level switch to enable any other modules in this section
 ## ----------------------------------------------------------------------------------------------------
 # ----- time integration, regularization, and explicit small-N-body dynamical treatments (for e.g. hard binaries, etc)
 ## ----------------------------------------------------------------------------------------------------
@@ -279,12 +283,15 @@
 #SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION=1 # sinks are assumed to be proto-stars and follow protostellar evolution tracks as they accrete to evolve radii+luminosities, determines proto-stellar feedback properties. 1=simple model [PFH], 2=fancy model [DG+MG]
 #SINGLE_STAR_FB_RT_HEATING      # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
 #SINGLE_STAR_FB_JETS            # kinematic jets from sinks: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow. for now cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840 (for algorithm, developed for black hole jets), though now using SPAWN algorithm developed by KY Su
+#EOS_SUBSTELLAR_ISM             # allows for the local equation of state polytropic index to vary between 7/5 and 5/3 and outside this range following the detailed fit from Vaidya et al. A&A 580, A110 (2015) for n_H ~ 10^7, which accounts for collisional dissociation at 2000K and ionization at 10^4K, and take the fmol-weighted average with 5./3 at the end to interpolate between atomic/not self-shielding and molecular/self-shielding. Gamma should technically really come from calculating the species number-weighted specific heats, but fmol is very approximate so this should be OK. See the code and uncomment the noted lines in EOS.c if you want to use the exact version from Vaidya+15, which rolls the heat of ionization into the EOS. cite Grudic+ arXiv:2010.11254
+#EOS_GMC_BAROTROPIC             # Barotropic EOS calibratied to Masunaga & Inutsuka 2000; useful for test problems in small-scale star formation such as cloud collapse, jet launching. See Federrath et al. 2014ApJ...790..128F. Can also set to a numerical value =1 to instead use EOS used in Bate Bonnell & Bromm 2003
 ## ----------------------------------------------------------------------------------------------------
 # ----- optional and de-bugging modules (intended for specific behaviors)
 ## ----------------------------------------------------------------------------------------------------
 #BH_ACCRETE_NEARESTFIRST        # place all weight for sink/BH 'swallowing' in continuous/stochastic accretion models on single nearest gas element, instead of spreading over same kernel used to calculate mdot
 #BH_RETURN_ANGMOM_TO_GAS        # BH/sink particles return accreted angular momentum to surrounding gas (per Hubber+13) to represent AM transfer (loss in accreting material)
 #BH_DEBUG_DISABLE_MERGERS       # disable BH-BH (sink-sink) mergers in all the various sink routines
+#SINGLE_STAR_FIND_BINARIES      # manually enable identification of close binaries (normally enabled automatically if actually used for e.g. hermite timestepping). cite Grudic+ arXiv:2010.11254
 ############################################################################################################################
 
 
@@ -292,7 +299,7 @@
 ####################################################################################################
 # ---------------- Black Holes (Sink-Particles with Accretion and Feedback)
 ####################################################################################################
-#BLACK_HOLES                    # master switch to enable BHs
+#BLACK_HOLES                    # top-level switch to enable BHs
 ## ----------------------------------------------------------------------------------------------------
 # ----- seeding / BH-particle spawning
 ## ----------------------------------------------------------------------------------------------------
@@ -308,7 +315,7 @@
 ## ----------------------------------------------------------------------------------------------------
 # ----- accretion models (modules for gas or other particle accretion)
 ## ----------------------------------------------------------------------------------------------------
-#BH_SWALLOWGAS                  # 'master switch' for accretion (should always be enabled if accretion is on). enables BH to actually eliminate gas particles and take their mass.
+#BH_SWALLOWGAS                  # 'top-level switch' for accretion (should always be enabled if accretion is on). enables BH to actually eliminate gas particles and take their mass.
 #BH_ALPHADISK_ACCRETION         # gas accreted goes into a 'virtual' alpha-disk (mass reservoir), which then accretes onto the BH at the viscous rate (determining luminosity, etc). cite GIZMO methods (or PFH private communication)
 #BH_SUBGRIDBHVARIABILITY        # model variability below resolved dynamical time for BH (convolve accretion rate with a uniform power spectrum of fluctuations on timescales below the minimum resolved dynamical time). cite Hopkins & Quataert 2011, MNRAS, 415, 1027. Requires GALSF.
 #BH_GRAVCAPTURE_NONGAS          # accretion determined only by resolved gravitational capture by the BH, for non-gas particles (can be enabled with other accretion models for gas). cite Hopkins et al., 2016, MNRAS, 458, 816
@@ -389,6 +396,9 @@
 #RT_DISABLE_UV_BACKGROUND               # disable extenal UV background in cooling functions (to isolate pure effects of local RT, or if simulating the background directly)
 #RT_TIMESTEP_LIMIT_RECOMBINATION        # limit timesteps to the explicit recombination time when transporting ionizing photons. note our chemistry solvers are all implicit and can handle larger timesteps, but no gaurantee of transport accuracy for much larger steps since opacities depend on ionization states.
 #RT_INJECT_PHOTONS_DISCRETELY           # do photon injection in discrete packets, instead of sharing a continuous source function. works better with adaptive timestepping (default with GALSF)
+#RT_USE_GRAVTREE_SAVE_RAD_FLUX          # save radiative fluxes incident on each cell if using RHD methods that propagate fluxes through the gravity tree when these wouldn't be saved by default
+#RT_REPROCESS_INJECTED_PHOTONS          # re-process photon energy while doing the discrete injection operation conserving photon energy, put only the un-absorbed component of the current band into that band, putting the rest in its "donation" bin (ionizing->optical, all others->IR). This would happen anyway during the routine for resolved absorption, but this may more realistically handle situations where e.g. your dust destruction front is at totally unresolved scales and you don't want to spuriously ionize stuff on larger scales. Assume isotropic re-radiation, so inject only energy for the donated bin and not net flux/momentum. follows STARFORGE methods (Grudic+ arXiv:2010.11254) - cite this
+#RT_BH_ANGLEWEIGHT_PHOTON_INJECTION     # uses a solid-angle as opposed to simple kernel weight (requires extra passes) for depositing radiation from sinks/BHs when the direct deposition is used. also ensures the sink uses a 2-way search to ensure overlapping diffuse gas gets radiation. cite Grudic+ arXiv:2010.11254
 ####################################################################################################
 
 
@@ -396,7 +406,7 @@
 ####################################################################################################
 # --------------------------------------- Multi-Threading and Parallelization options
 ####################################################################################################
-#OPENMP=2                       # Masterswitch for explicit OpenMP implementation
+#OPENMP=2                       # top-level switch for explicit OpenMP implementation
 #PTHREADS_NUM_THREADS=4         # custom PTHREADs implementation (don't enable with OPENMP)
 #MULTIPLEDOMAINS=16             # Multi-Domain option for the top-tree level (alters load-balancing)
 ####################################################################################################
@@ -435,6 +445,7 @@
 #IO_SUBFIND_IN_OLD_ASCII_FORMAT # write sub-find outputs in the old massive ascii-table format (unweildy and can cause lots of filesystem issues, but here for backwards compatibility)
 #IO_SUBFIND_READFOF_FROMIC      # try read already existing FOF files associated with a run instead of recomputing them: not de-bugged
 #IO_TURB_DIFF_DYNAMIC_ERROR     # save error terms from localized dynamic Smagorinsky model to snapshots
+#IO_MOLECFRAC_NOT_IN_ICFILE     # special flag needed if using certain molecular modules with restart flag=2 where molecular data was not in that snapshot, to tell code not to read it
 ####################################################################################################
 
 
@@ -461,7 +472,6 @@
 #ENERGY_ENTROPY_SWITCH_IS_ACTIVE # enable energy-entropy switch as described in GIZMO methods paper. This can greatly improve performance on some problems where the
                                 # the flow is very cold and highly super-sonic. it can cause problems in multi-phase flows with strong cooling, though, and is not compatible with non-barytropic equations of state
 #FORCE_ENTROPIC_EOS_BELOW=(0.01) # set (manually) the alternative energy-entropy switch which is enabled by default in MFM/MFV: if relative velocities are below this threshold, it uses the entropic EOS
-#EOS_GMC_BAROTROPIC             # Barotropic EOS calibratied to Masunaga & Inutsuka 2000; useful for test problems in small-scale star formation such as cloud collapse, jet launching. See Federrath et al. 2014ApJ...790..128F. Can also set to a numerical value =1 to instead use EOS used in Bate Bonnell & Bromm 2003
 #DISABLE_SPH_PARTICLE_WAKEUP    # don't let gas particles move to lower timesteps based on neighbor activity (use for debugging)
 #DO_UPWIND_TIME_CENTERING       # this (and DO_HALFSTEP_FOR_MESHLESS_METHODS) use alternative methods for up-winding the fluxes in the MFM/MFV schemes. this up-weighting can be more accurate in hydrostatic problems with a large sound-speed discontinuity -if- the pressure gradient is steady-state, but if they are moving or unstable, it is less accurate (and can suppress mixing)
 # --------------------
@@ -475,6 +485,8 @@
 #TIDAL_TIMESTEP_CRITERION       # replace standard acceleration-based timestep criterion with one based on the tidal tensor norm, which is more accurate and adaptive (testing, but may be promoted to default code)
 #ADAPTIVE_TREEFORCE_UPDATE=0.025      # use the tidal timescale to estimate how often gravity needs to be updated, updating a gas cell's gravity no more often than ADAPTIVE_TREEFORCE_UPDATE * dt_tidal, where dt_tidal is the tidal timestep given in Grudic & Hopkins 2020MNRAS.495.4306G. Should always be <1, smaller is more accurate
 #BH_WAKEUP_GAS                  # force all gas within the interaction radius of a BH/sink particle to timestep at the same rate (set to lowest timebin of any of the interacting neighbors)
+#MAINTAIN_TREE_IN_REARRANGE     # don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed. cite Grudic+ arXiv:2010.11254
+#RANDOMIZE_GRAVTREE             # move the top tree node around randomly so that treeforce errors are not correlated between one treebuild and another. cite Grudic+ arXiv:2010.11254
 # --------------------
 # ----- Particle IDs
 #TEST_FOR_IDUNIQUENESS          # explicitly check if particles have unique id numbers (only use for special behaviors)
@@ -506,7 +518,6 @@
 #ALLOW_IMBALANCED_GASPARTICLELOAD # increases All.MaxPartSph to All.MaxPart: can allow better load-balancing in some cases, but uses more memory. But use me if you run into errors where it can't fit the domain (where you would increase PartAllocFac, but can't for some reason)
 #SEPARATE_STELLARDOMAINDECOMP   # separate stars (ptype=4) and other non-gas particles in domain decomposition (may help load-balancing)
 ####################################################################################################
-
 
 
 
@@ -550,13 +561,27 @@
 #NUCLEARNET_OUTPUT_TIMEEVOLUTION
 ####################################################################################################-
 
-####################################################################################################-
-#BH_DEBUG_SPAWN_JET_TEST        #- BH outflow/particle spawn in jet (currently testing/early-dev, doesn't work for general problems! units hardcoded!)
-####################################################################################################-
+
 
 ####################################################################################################-
+## some code options that will be made public as soon as the appropriate methods papers are published so it can be cited
+##
 #PIC_MHD                        #- hybrid MHD-PIC simulations for cosmic rays (particle type=3). need to set 'subtype'. in early testing.
 #PIC_SPEEDOFLIGHT_REDUCTION=1   #- factor to reduce the speed-of-light for mhd-pic simulations.
+#COOL_MOLECFRAC_NONEQM          #- estimate molecular fractions for thermochemistry+cooling with explicitly-evolved non-equilibirum H2 formation+destruction with clumping and self-shielding (Hopkins+2021, in prep)
+#COOL_MOLECFRAC_LOCALEQM        #- estimate molecular fractions for thermochemistry+cooling from local equilibrium H2 formation+destruction with clumping and self-shielding (Hopkins+2021, in prep)
+#GALSF_FB_FIRE_AGE_TRACERS      #- add explicit tracking of tracer species for arbitrary stellar yields as a function of age from different stellar populations, developed by Andrew Emerick (2020, in prep)
+#SINGLE_STAR_FB                 #- top-level flag indicating feedback is on, following STARFORGE methods (Grudic+ 2020)
+#SINGLE_STAR_FB_RAD             #- following STARFORGE methods (Grudic+ 2020)
+#SINGLE_STAR_FB_WINDS           #- enable continuous main-sequence mechanical feedback from single stellar sources accounting for OB/AGB/WR winds following STARFORGE methods (Grudic+ arXiv:2010.11254), non public for now
+#SINGLE_STAR_FB_SNE=1           #- enable SNe single stellar sources at end of main-sequence lifetime using particle spawning in shells following STARFORGE methods (Grudic+ arXiv:2010.11254), non public for now
+#SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT=2 #- determines the maximum number of ejecta particles spawned per timestep, see below
+#SINGLE_STAR_FB_SNE_N_EJECTA=(4*(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)*((SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)+1)) #- Maximum number of ejecta particles spawned per timestep
+#SINGLE_STAR_FB_LOCAL_RP        #-
+#COSMIC_RAYS_EVOLVE_SPECTRUM    #-
+#COSMIC_RAYS_DIFFUSIVE_REACCELERATION #-
+#COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK #-
+#COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART=1 #-
 ####################################################################################################-
 
 

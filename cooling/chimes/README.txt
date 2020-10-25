@@ -1,4 +1,4 @@
-The CHIMES flag is the 'master' switch. When this is switched on, the following changes occur: 
+The CHIMES flag is the 'top-level' switch. When this is switched on, the following changes occur: 
   - A 'global variables' structure for the CHIMES parameters is created. 
   - An array of 'gas variables' structures is created, one for each SPH particle. The array is 
     'MaxPartSph' long on each processor (same as SphP). However, memory for the abundance 

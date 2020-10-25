@@ -681,7 +681,7 @@ double single_star_jet_velocity(int n){
 
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) /* begins large block of 'fancy' protostar-through-MS stellar evolution models */
 
-/* 'master' function to update the size (and other properties like effective temperature) of accreting protostars along relevant stellar evolution tracks */
+/* 'top-level' function to update the size (and other properties like effective temperature) of accreting protostars along relevant stellar evolution tracks */
 void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt)
 {
 #if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 1)

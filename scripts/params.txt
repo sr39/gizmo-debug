@@ -135,7 +135,7 @@ ConductionCoeff                1.0       % set/multiply conduction coefficient
 ShearViscosityCoeff            1.0       % set/multiply shear viscosity coefficient
 BulkViscosityCoeff             1.0       % set/multiply bulk viscosity coefficient
 
-%---- Turbulent Diffusion Master Switch (TURB_DIFFUSION on)
+%---- Turbulent Diffusion Top-level Switch (TURB_DIFFUSION on)
 TurbDiffusionCoefficient       1.0       % Normalizes diffusion rates relative to Smagorinsky-Lilly theory [best calibration] (~0.5-2)
 
 %---- Cosmic Ray + Gas Fluids (COSMIC_RAYS on)

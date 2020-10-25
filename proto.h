@@ -406,8 +406,7 @@ int io_compare_P_GrNr_ID(const void *a, const void *b);
 
 void write_file(char *fname, int readTask, int lastTask);
 
-void distribute_file(int nfiles, int firstfile, int firsttask, int lasttask, int *filenr, int *master,
-		     int *last);
+void distribute_file(int nfiles, int firstfile, int firsttask, int lasttask, int *filenr, int *primary_taskID, int *last);
 
 int get_values_per_blockelement(enum iofields blocknr);
 

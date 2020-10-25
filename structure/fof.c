@@ -1122,7 +1122,7 @@ void fof_finish_group_properties(void)
 
 void fof_save_groups(int num)
 {
-  int i, j, start, lenloc, nprocgroup, masterTask, groupTask, ngr, totlen;
+  int i, j, start, lenloc, nprocgroup, primaryTask, groupTask, ngr, totlen;
   long long totNids;
   char buf[500];
   double t0, t1;
@@ -1279,10 +1279,10 @@ void fof_save_groups(int num)
   nprocgroup = NTask / All.NumFilesWrittenInParallel;
   if((NTask % All.NumFilesWrittenInParallel))
     nprocgroup++;
-  masterTask = (ThisTask / nprocgroup) * nprocgroup;
+  primaryTask = (ThisTask / nprocgroup) * nprocgroup;
   for(groupTask = 0; groupTask < nprocgroup; groupTask++)
     {
-      if(ThisTask == (masterTask + groupTask))	/* ok, it's this processor's turn */
+      if(ThisTask == (primaryTask + groupTask))	/* ok, it's this processor's turn */
 	fof_save_local_catalogue(num);
       MPI_Barrier(MPI_COMM_WORLD);	/* wait inside the group */
     }
@@ -2131,7 +2131,7 @@ void read_fof(int num)
   int *list_of_ngroups, *list_of_nids, *list_of_allgrouplen;
   int *recvoffset;
   int grnr, ngrp, sendTask, recvTask;
-  int nprocgroup, masterTask, groupTask, nid_previous;
+  int nprocgroup, primaryTask, groupTask, nid_previous;
   int fof_compare_P_SubNr(const void *a, const void *b);
     PRINT_STATUS("Trying to read preexisting FoF group catalogues...  (presently allocated=%g MB)",AllocatedBytes / (1024.0 * 1024.0));
   domain_Decomposition(1, 0, 0);
@@ -2383,10 +2383,10 @@ void read_fof(int num)
       nprocgroup = NTask / All.NumFilesWrittenInParallel;
       if((NTask % All.NumFilesWrittenInParallel))
 	nprocgroup++;
-      masterTask = (ThisTask / nprocgroup) * nprocgroup;
+      primaryTask = (ThisTask / nprocgroup) * nprocgroup;
       for(groupTask = 0; groupTask < nprocgroup; groupTask++)
 	{
-	  if(ThisTask == (masterTask + groupTask))	/* ok, it's this processor's turn */
+	  if(ThisTask == (primaryTask + groupTask))	/* ok, it's this processor's turn */
 	    {
 
 	      sprintf(fname, "%s/groups_%03d/%s_%03d.%d", All.OutputDir, num, "group_tab", num, ThisTask);

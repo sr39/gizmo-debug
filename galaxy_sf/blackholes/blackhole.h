@@ -6,7 +6,7 @@
 * see notes in blackhole.c for details on code history.
 */
 
-#ifdef BLACK_HOLES // master flag [needs to be here to prevent compiler breaking when this is not active] //
+#ifdef BLACK_HOLES // top-level flag [needs to be here to prevent compiler breaking when this is not active] //
 
 
 #define BHPOTVALUEINIT 1.0e30
@@ -106,4 +106,4 @@ void set_blackhole_long_range_rp(int i, int n);
 
 
 
-#endif // master flag
+#endif // top-level flag

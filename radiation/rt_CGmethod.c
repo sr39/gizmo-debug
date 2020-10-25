@@ -118,7 +118,7 @@ for(k=0;k<N_RT_FREQ_BINS;k++) x[k] = (double *) malloc(N_gas * sizeof(double));\
 for(k=0;k<N_RT_FREQ_BINS;k++) memset(x[k], 0, N_gas * sizeof(double));}
 
 
-/*! routine to do the master loop for the CG iteration - this is the actual solver; it calls various subroutines
+/*! routine to do the top-level loop for the CG iteration - this is the actual solver; it calls various subroutines
  to do the weights/matrix calculation on all particles */
 void rt_diffusion_cg_solve(void)
 {

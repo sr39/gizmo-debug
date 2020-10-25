@@ -254,25 +254,25 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
   hid_t file_id, dataset;
 
   /* When we read the main data file, we will first 
-   * read each reaction group in to a 'master' 
+   * read each reaction group in to a 'primarytable'
    * table structure. We will then copy them over 
    * to global table structures, but including 
    * only those reactions that are to be included 
    * in the network, based on the element_incl flags. */ 
-  struct chimes_T_dependent_struct chimes_master_T_dependent; 
-  struct chimes_constant_struct chimes_master_constant; 
-  struct chimes_recombination_AB_struct chimes_master_recombination_AB; 
-  struct chimes_grain_recombination_struct chimes_master_grain_recombination; 
-  struct chimes_cosmic_ray_struct chimes_master_cosmic_ray; 
-  struct chimes_CO_cosmic_ray_struct chimes_master_CO_cosmic_ray; 
-  struct chimes_photoion_fuv_struct chimes_master_photoion_fuv; 
-  struct chimes_photoion_euv_struct chimes_master_photoion_euv; 
-  struct chimes_photoion_auger_fuv_struct chimes_master_photoion_auger_fuv; 
-  struct chimes_photoion_auger_euv_struct chimes_master_photoion_auger_euv; 
-  struct chimes_photodissoc_group1_struct chimes_master_photodissoc_group1; 
-  struct chimes_photodissoc_group2_struct chimes_master_photodissoc_group2; 
-  struct chimes_CO_photodissoc_struct chimes_master_CO_photodissoc; 
-  struct chimes_cooling_struct chimes_master_cooling; 
+  struct chimes_T_dependent_struct chimes_primarytable_T_dependent;
+  struct chimes_constant_struct chimes_primarytable_constant;
+  struct chimes_recombination_AB_struct chimes_primarytable_recombination_AB; 
+  struct chimes_grain_recombination_struct chimes_primarytable_grain_recombination;
+  struct chimes_cosmic_ray_struct chimes_primarytable_cosmic_ray;
+  struct chimes_CO_cosmic_ray_struct chimes_primarytable_CO_cosmic_ray;
+  struct chimes_photoion_fuv_struct chimes_primarytable_photoion_fuv;
+  struct chimes_photoion_euv_struct chimes_primarytable_photoion_euv;
+  struct chimes_photoion_auger_fuv_struct chimes_primarytable_photoion_auger_fuv;
+  struct chimes_photoion_auger_euv_struct chimes_primarytable_photoion_auger_euv;
+  struct chimes_photodissoc_group1_struct chimes_primarytable_photodissoc_group1;
+  struct chimes_photodissoc_group2_struct chimes_primarytable_photodissoc_group2;
+  struct chimes_CO_photodissoc_struct chimes_primarytable_CO_photodissoc;
+  struct chimes_cooling_struct chimes_primarytable_cooling;
 
   ChimesFloat log_chimes_flt_min = chimes_log10(CHIMES_FLT_MIN);
 
@@ -672,48 +672,48 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
   // Read number of reactions in group 
   dataset = H5Dopen(file_id, "T_dependent/N_reactions", H5P_DEFAULT);
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_T_dependent.N_reactions);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_T_dependent.N_reactions);
   H5Dclose(dataset); 
 
-  N_reactions_all = chimes_master_T_dependent.N_reactions[1]; 
+  N_reactions_all = chimes_primarytable_T_dependent.N_reactions[1];
 
   // Allocate memory in table structure 
-  chimes_master_T_dependent.reactants = (int *) malloc(N_reactions_all * 3 * sizeof(int)); 
-  chimes_master_T_dependent.products = (int *) malloc(N_reactions_all * 3 * sizeof(int)); 
-  chimes_master_T_dependent.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int)); 
-  chimes_master_T_dependent.rates = (ChimesFloat *) malloc(N_reactions_all * chimes_table_bins.N_Temperatures * sizeof(ChimesFloat));
-  chimes_master_T_dependent.molecular_flag = (int *) malloc(N_reactions_all * sizeof(int)); 
+  chimes_primarytable_T_dependent.reactants = (int *) malloc(N_reactions_all * 3 * sizeof(int));
+  chimes_primarytable_T_dependent.products = (int *) malloc(N_reactions_all * 3 * sizeof(int));
+  chimes_primarytable_T_dependent.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
+  chimes_primarytable_T_dependent.rates = (ChimesFloat *) malloc(N_reactions_all * chimes_table_bins.N_Temperatures * sizeof(ChimesFloat));
+  chimes_primarytable_T_dependent.molecular_flag = (int *) malloc(N_reactions_all * sizeof(int));
 
   // Read data arrays 
   dataset = H5Dopen(file_id, "T_dependent/reactants", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_T_dependent.reactants);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_T_dependent.reactants);
   H5Dclose(dataset); 
 
   dataset = H5Dopen(file_id, "T_dependent/products", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_T_dependent.products);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_T_dependent.products);
   H5Dclose(dataset); 
 
   dataset = H5Dopen(file_id, "T_dependent/element_incl", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_T_dependent.element_incl);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_T_dependent.element_incl);
   H5Dclose(dataset); 
   
   dataset = H5Dopen(file_id, "T_dependent/molecular_flag", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_T_dependent.molecular_flag);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_T_dependent.molecular_flag);
   H5Dclose(dataset); 
 
   dataset = H5Dopen(file_id, "T_dependent/H2_collis_dissoc_heating_reaction_index", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &(chimes_master_T_dependent.H2_collis_dissoc_heating_reaction_index));
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &(chimes_primarytable_T_dependent.H2_collis_dissoc_heating_reaction_index));
   H5Dclose(dataset); 
 
   dataset = H5Dopen(file_id, "T_dependent/H2_form_heating_reaction_index", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &(chimes_master_T_dependent.H2_form_heating_reaction_index));
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &(chimes_primarytable_T_dependent.H2_form_heating_reaction_index));
   H5Dclose(dataset); 
 
   array_buffer_float = (float *) malloc(N_reactions_all * chimes_table_bins.N_Temperatures * sizeof(float)); 
   dataset = H5Dopen(file_id, "T_dependent/rates", H5P_DEFAULT);
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < N_reactions_all * chimes_table_bins.N_Temperatures; i++)
-    chimes_master_T_dependent.rates[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
+    chimes_primarytable_T_dependent.rates[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset);
   free(array_buffer_float); 
   
@@ -723,44 +723,44 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
   // Read number of reactions in group 
   dataset = H5Dopen(file_id, "constant/N_reactions", H5P_DEFAULT);
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_constant.N_reactions);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_constant.N_reactions);
   H5Dclose(dataset); 
 
-  N_reactions_all = chimes_master_constant.N_reactions[1]; 
+  N_reactions_all = chimes_primarytable_constant.N_reactions[1];
 
   // Allocate memory in table structure 
-  chimes_master_constant.reactants = (int *) malloc(N_reactions_all * 2 * sizeof(int)); 
-  chimes_master_constant.products = (int *) malloc(N_reactions_all * 3 * sizeof(int)); 
-  chimes_master_constant.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
-  chimes_master_constant.molecular_flag = (int *) malloc(N_reactions_all * sizeof(int));
-  chimes_master_constant.rates = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat)); 
+  chimes_primarytable_constant.reactants = (int *) malloc(N_reactions_all * 2 * sizeof(int));
+  chimes_primarytable_constant.products = (int *) malloc(N_reactions_all * 3 * sizeof(int));
+  chimes_primarytable_constant.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
+  chimes_primarytable_constant.molecular_flag = (int *) malloc(N_reactions_all * sizeof(int));
+  chimes_primarytable_constant.rates = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat));
 
   // Read data arrays 
   dataset = H5Dopen(file_id, "constant/reactants", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_constant.reactants);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_constant.reactants);
   H5Dclose(dataset);
   
   dataset = H5Dopen(file_id, "constant/products", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_constant.products);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_constant.products);
   H5Dclose(dataset);
   
   dataset = H5Dopen(file_id, "constant/element_incl", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_constant.element_incl);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_constant.element_incl);
   H5Dclose(dataset);  
 
   dataset = H5Dopen(file_id, "constant/molecular_flag", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_constant.molecular_flag);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_constant.molecular_flag);
   H5Dclose(dataset); 
   
   dataset = H5Dopen(file_id, "constant/H2_form_heating_reaction_index", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &(chimes_master_constant.H2_form_heating_reaction_index));
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &(chimes_primarytable_constant.H2_form_heating_reaction_index));
   H5Dclose(dataset); 
 
   array_buffer_float = (float *) malloc(N_reactions_all * sizeof(float)); 
   dataset = H5Dopen(file_id, "constant/rates", H5P_DEFAULT); 
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < N_reactions_all; i++) 
-    chimes_master_constant.rates[i] = (ChimesFloat) array_buffer_float[i];
+    chimes_primarytable_constant.rates[i] = (ChimesFloat) array_buffer_float[i];
   H5Dclose(dataset);
   free(array_buffer_float); 
 
@@ -770,33 +770,33 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
   // Read number of reactions in group 
   dataset = H5Dopen(file_id, "recombination_AB/N_reactions", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_recombination_AB.N_reactions);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_recombination_AB.N_reactions);
   H5Dclose(dataset); 
 
-  N_reactions_all = chimes_master_recombination_AB.N_reactions[1]; 
+  N_reactions_all = chimes_primarytable_recombination_AB.N_reactions[1];
 
   // Allocate memory in table structure 
-  chimes_master_recombination_AB.reactants = (int *) malloc(N_reactions_all * 2 * sizeof(int)); 
-  chimes_master_recombination_AB.products = (int *) malloc(N_reactions_all * sizeof(int)); 
-  chimes_master_recombination_AB.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int)); 
-  chimes_master_recombination_AB.molecular_flag = (int *) malloc(N_reactions_all * sizeof(int)); 
-  chimes_master_recombination_AB.rates = (ChimesFloat *) malloc(N_reactions_all * 2 * chimes_table_bins.N_Temperatures * sizeof(ChimesFloat));
+  chimes_primarytable_recombination_AB.reactants = (int *) malloc(N_reactions_all * 2 * sizeof(int));
+  chimes_primarytable_recombination_AB.products = (int *) malloc(N_reactions_all * sizeof(int));
+  chimes_primarytable_recombination_AB.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
+  chimes_primarytable_recombination_AB.molecular_flag = (int *) malloc(N_reactions_all * sizeof(int));
+  chimes_primarytable_recombination_AB.rates = (ChimesFloat *) malloc(N_reactions_all * 2 * chimes_table_bins.N_Temperatures * sizeof(ChimesFloat));
 
   // Read data arrays 
   dataset = H5Dopen(file_id, "recombination_AB/reactants", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_recombination_AB.reactants);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_recombination_AB.reactants);
   H5Dclose(dataset);
 
   dataset = H5Dopen(file_id, "recombination_AB/products", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_recombination_AB.products);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_recombination_AB.products);
   H5Dclose(dataset);   
 
   dataset = H5Dopen(file_id, "recombination_AB/element_incl", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_recombination_AB.element_incl);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_recombination_AB.element_incl);
   H5Dclose(dataset);
 
   dataset = H5Dopen(file_id, "recombination_AB/molecular_flag", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_recombination_AB.molecular_flag);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_recombination_AB.molecular_flag);
   H5Dclose(dataset);
 
   array_buffer_float = (float *) malloc(N_reactions_all * chimes_table_bins.N_Temperatures * sizeof(float));
@@ -805,14 +805,14 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < N_reactions_all; i++)
     for (j = 0; j < chimes_table_bins.N_Temperatures; j++)
-      chimes_master_recombination_AB.rates[chimes_flatten_index_3d(i, 0, j, 2, chimes_table_bins.N_Temperatures)] = chimes_max((ChimesFloat) array_buffer_float[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Temperatures)], log_chimes_flt_min);
+      chimes_primarytable_recombination_AB.rates[chimes_flatten_index_3d(i, 0, j, 2, chimes_table_bins.N_Temperatures)] = chimes_max((ChimesFloat) array_buffer_float[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Temperatures)], log_chimes_flt_min);
   H5Dclose(dataset);
 
   dataset = H5Dopen(file_id, "recombination_AB/rates_caseB", H5P_DEFAULT); 
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < N_reactions_all; i++)
     for (j = 0; j < chimes_table_bins.N_Temperatures; j++)
-      chimes_master_recombination_AB.rates[chimes_flatten_index_3d(i, 1, j, 2, chimes_table_bins.N_Temperatures)] = chimes_max((ChimesFloat) array_buffer_float[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Temperatures)], log_chimes_flt_min);
+      chimes_primarytable_recombination_AB.rates[chimes_flatten_index_3d(i, 1, j, 2, chimes_table_bins.N_Temperatures)] = chimes_max((ChimesFloat) array_buffer_float[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Temperatures)], log_chimes_flt_min);
   H5Dclose(dataset);
   
   free(array_buffer_float); 
@@ -823,35 +823,35 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
   // Read number of reactions in group 
   dataset = H5Dopen(file_id, "grain_recombination/N_reactions", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_grain_recombination.N_reactions);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_grain_recombination.N_reactions);
   H5Dclose(dataset); 
 
-  N_reactions_all = chimes_master_grain_recombination.N_reactions[1]; 
+  N_reactions_all = chimes_primarytable_grain_recombination.N_reactions[1];
 
   // Allocate memory in table structure 
-  chimes_master_grain_recombination.reactants = (int *) malloc(N_reactions_all * 2 * sizeof(int)); 
-  chimes_master_grain_recombination.products = (int *) malloc(N_reactions_all * sizeof(int)); 
-  chimes_master_grain_recombination.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int)); 
-  chimes_master_grain_recombination.rates = (ChimesFloat *) malloc(N_reactions_all * chimes_table_bins.N_Temperatures * chimes_table_bins.N_Psi * sizeof(ChimesFloat));
+  chimes_primarytable_grain_recombination.reactants = (int *) malloc(N_reactions_all * 2 * sizeof(int));
+  chimes_primarytable_grain_recombination.products = (int *) malloc(N_reactions_all * sizeof(int));
+  chimes_primarytable_grain_recombination.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
+  chimes_primarytable_grain_recombination.rates = (ChimesFloat *) malloc(N_reactions_all * chimes_table_bins.N_Temperatures * chimes_table_bins.N_Psi * sizeof(ChimesFloat));
   
   // Read data arrays 
   dataset = H5Dopen(file_id, "grain_recombination/reactants", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_grain_recombination.reactants);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_grain_recombination.reactants);
   H5Dclose(dataset);
   
   dataset = H5Dopen(file_id, "grain_recombination/products", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_grain_recombination.products);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_grain_recombination.products);
   H5Dclose(dataset);
   
   dataset = H5Dopen(file_id, "grain_recombination/element_incl", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_grain_recombination.element_incl);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_grain_recombination.element_incl);
   H5Dclose(dataset); 
 
   array_buffer_float = (float *) malloc(N_reactions_all * chimes_table_bins.N_Temperatures * chimes_table_bins.N_Psi * sizeof(float)); 
   dataset = H5Dopen(file_id, "grain_recombination/rates", H5P_DEFAULT);
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < N_reactions_all * chimes_table_bins.N_Temperatures * chimes_table_bins.N_Psi; i++)
-    chimes_master_grain_recombination.rates[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
+    chimes_primarytable_grain_recombination.rates[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset);
   free(array_buffer_float); 
 
@@ -861,54 +861,54 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
   // Read number of reactions in group 
   dataset = H5Dopen(file_id, "cosmic_ray/N_reactions", H5P_DEFAULT);
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_cosmic_ray.N_reactions);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_cosmic_ray.N_reactions);
   H5Dclose(dataset); 
 
-  N_reactions_all = chimes_master_cosmic_ray.N_reactions[1]; 
+  N_reactions_all = chimes_primarytable_cosmic_ray.N_reactions[1];
 
   // Allocate memory in table structure 
-  chimes_master_cosmic_ray.reactants = (int *) malloc(N_reactions_all * sizeof(int)); 
-  chimes_master_cosmic_ray.products = (int *) malloc(N_reactions_all * 3 * sizeof(int)); 
-  chimes_master_cosmic_ray.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
-  chimes_master_cosmic_ray.molecular_flag = (int *) malloc(N_reactions_all * sizeof(int));
-  chimes_master_cosmic_ray.rates = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat)); 
-  chimes_master_cosmic_ray.secondary_base_reaction = (int *) malloc(2 * sizeof(int));  
-  chimes_master_cosmic_ray.secondary_ratio = (ChimesFloat *) malloc(2 * chimes_table_bins.N_secondary_cosmic_ray_xHII * sizeof(ChimesFloat));
+  chimes_primarytable_cosmic_ray.reactants = (int *) malloc(N_reactions_all * sizeof(int));
+  chimes_primarytable_cosmic_ray.products = (int *) malloc(N_reactions_all * 3 * sizeof(int));
+  chimes_primarytable_cosmic_ray.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
+  chimes_primarytable_cosmic_ray.molecular_flag = (int *) malloc(N_reactions_all * sizeof(int));
+  chimes_primarytable_cosmic_ray.rates = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat));
+  chimes_primarytable_cosmic_ray.secondary_base_reaction = (int *) malloc(2 * sizeof(int));
+  chimes_primarytable_cosmic_ray.secondary_ratio = (ChimesFloat *) malloc(2 * chimes_table_bins.N_secondary_cosmic_ray_xHII * sizeof(ChimesFloat));
 
   // Read data arrays 
   dataset = H5Dopen(file_id, "cosmic_ray/reactants", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_cosmic_ray.reactants);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_cosmic_ray.reactants);
   H5Dclose(dataset); 
 
   dataset = H5Dopen(file_id, "cosmic_ray/products", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_cosmic_ray.products);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_cosmic_ray.products);
   H5Dclose(dataset); 
   
   dataset = H5Dopen(file_id, "cosmic_ray/element_incl", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_cosmic_ray.element_incl);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_cosmic_ray.element_incl);
   H5Dclose(dataset);
   
   dataset = H5Dopen(file_id, "cosmic_ray/molecular_flag", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_cosmic_ray.molecular_flag);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_cosmic_ray.molecular_flag);
   H5Dclose(dataset); 
 
   array_buffer_float = (float *) malloc(N_reactions_all * sizeof(float)); 
   dataset = H5Dopen(file_id, "cosmic_ray/rates", H5P_DEFAULT); 
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < N_reactions_all; i++) 
-    chimes_master_cosmic_ray.rates[i] = (ChimesFloat) array_buffer_float[i]; 
+    chimes_primarytable_cosmic_ray.rates[i] = (ChimesFloat) array_buffer_float[i];
   H5Dclose(dataset); 
   free(array_buffer_float); 
 
   dataset = H5Dopen(file_id, "cosmic_ray/secondary_base_reaction", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_cosmic_ray.secondary_base_reaction);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_cosmic_ray.secondary_base_reaction);
   H5Dclose(dataset); 
 
   array_buffer_float = (float *) malloc(2 * chimes_table_bins.N_secondary_cosmic_ray_xHII * sizeof(float)); 
   dataset = H5Dopen(file_id, "cosmic_ray/secondary_ratio", H5P_DEFAULT);
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < 2 * chimes_table_bins.N_secondary_cosmic_ray_xHII; i++) 
-    chimes_master_cosmic_ray.secondary_ratio[i] = (ChimesFloat) array_buffer_float[i];
+    chimes_primarytable_cosmic_ray.secondary_ratio[i] = (ChimesFloat) array_buffer_float[i];
   H5Dclose(dataset);
   free(array_buffer_float);
   
@@ -918,37 +918,37 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
   // Read number of reactions in group 
   dataset = H5Dopen(file_id, "CO_cosmic_ray/N_reactions", H5P_DEFAULT);
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_CO_cosmic_ray.N_reactions);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_CO_cosmic_ray.N_reactions);
   H5Dclose(dataset); 
 
-  N_reactions_all = chimes_master_CO_cosmic_ray.N_reactions[1]; 
+  N_reactions_all = chimes_primarytable_CO_cosmic_ray.N_reactions[1];
 
   // Allocate memory in table structure 
-  chimes_master_CO_cosmic_ray.reactants = (int *) malloc(N_reactions_all * sizeof(int)); 
-  chimes_master_CO_cosmic_ray.products = (int *) malloc(N_reactions_all * 2 * sizeof(int)); 
-  chimes_master_CO_cosmic_ray.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int)); 
-  chimes_master_CO_cosmic_ray.rates = (ChimesFloat *) malloc(N_reactions_all * chimes_table_bins.N_Temperatures * sizeof(ChimesFloat));
+  chimes_primarytable_CO_cosmic_ray.reactants = (int *) malloc(N_reactions_all * sizeof(int));
+  chimes_primarytable_CO_cosmic_ray.products = (int *) malloc(N_reactions_all * 2 * sizeof(int));
+  chimes_primarytable_CO_cosmic_ray.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
+  chimes_primarytable_CO_cosmic_ray.rates = (ChimesFloat *) malloc(N_reactions_all * chimes_table_bins.N_Temperatures * sizeof(ChimesFloat));
     
   array_buffer_int = (int *) malloc(N_reactions_all * sizeof(int)); 
 
   // Read data arrays 
   dataset = H5Dopen(file_id, "CO_cosmic_ray/reactants", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_CO_cosmic_ray.reactants);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_CO_cosmic_ray.reactants);
   H5Dclose(dataset);
 
   dataset = H5Dopen(file_id, "CO_cosmic_ray/products", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_CO_cosmic_ray.products);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_CO_cosmic_ray.products);
   H5Dclose(dataset); 
   
   dataset = H5Dopen(file_id, "CO_cosmic_ray/element_incl", H5P_DEFAULT);
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_CO_cosmic_ray.element_incl);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_CO_cosmic_ray.element_incl);
   H5Dclose(dataset); 
 
   array_buffer_float = (float *) malloc(N_reactions_all * chimes_table_bins.N_Temperatures * sizeof(float)); 
   dataset = H5Dopen(file_id, "CO_cosmic_ray/rates", H5P_DEFAULT);
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < N_reactions_all * chimes_table_bins.N_Temperatures; i++)
-    chimes_master_CO_cosmic_ray.rates[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
+    chimes_primarytable_CO_cosmic_ray.rates[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset);
   free(array_buffer_float); 
  
@@ -960,35 +960,35 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
       // Read number of reactions in group 
       dataset = H5Dopen(file_id, "photoion_fuv/N_reactions", H5P_DEFAULT);
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_fuv.N_reactions);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_fuv.N_reactions);
       H5Dclose(dataset); 
 
-      N_reactions_all = chimes_master_photoion_fuv.N_reactions[1]; 
+      N_reactions_all = chimes_primarytable_photoion_fuv.N_reactions[1];
 
       // Allocate memory in table structure 
-      chimes_master_photoion_fuv.reactants = (int *) malloc(N_reactions_all * sizeof(int)); 
-      chimes_master_photoion_fuv.products = (int *) malloc(N_reactions_all * 2 * sizeof(int)); 
-      chimes_master_photoion_fuv.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
-      chimes_master_photoion_fuv.gamma = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat)); 
+      chimes_primarytable_photoion_fuv.reactants = (int *) malloc(N_reactions_all * sizeof(int));
+      chimes_primarytable_photoion_fuv.products = (int *) malloc(N_reactions_all * 2 * sizeof(int));
+      chimes_primarytable_photoion_fuv.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
+      chimes_primarytable_photoion_fuv.gamma = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat));
 
       // Read data arrays 
       dataset = H5Dopen(file_id, "photoion_fuv/reactants", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_fuv.reactants);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_fuv.reactants);
       H5Dclose(dataset);
   
       dataset = H5Dopen(file_id, "photoion_fuv/products", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_fuv.products);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_fuv.products);
       H5Dclose(dataset); 
   
       dataset = H5Dopen(file_id, "photoion_fuv/element_incl", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_fuv.element_incl);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_fuv.element_incl);
       H5Dclose(dataset); 
 
       array_buffer_float = (float *) malloc(N_reactions_all * sizeof(float));   
       dataset = H5Dopen(file_id, "photoion_fuv/gamma", H5P_DEFAULT); 
       H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
       for (i = 0; i < N_reactions_all; i++) 
-	chimes_master_photoion_fuv.gamma[i] = (ChimesFloat) array_buffer_float[i]; 
+	chimes_primarytable_photoion_fuv.gamma[i] = (ChimesFloat) array_buffer_float[i];
       H5Dclose(dataset);
       free(array_buffer_float); 
 
@@ -998,41 +998,41 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
       // Read number of reactions in group 
       dataset = H5Dopen(file_id, "photoion_euv/N_reactions", H5P_DEFAULT);
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_euv.N_reactions);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_euv.N_reactions);
       H5Dclose(dataset); 
 
-      N_reactions_all = chimes_master_photoion_euv.N_reactions[1]; 
+      N_reactions_all = chimes_primarytable_photoion_euv.N_reactions[1];
 
       // Allocate memory in table structure 
-      chimes_master_photoion_euv.reactants = (int *) malloc(N_reactions_all * sizeof(int)); 
-      chimes_master_photoion_euv.products = (int *) malloc(N_reactions_all * 2 * sizeof(int)); 
-      chimes_master_photoion_euv.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
-      chimes_master_photoion_euv.E_thresh = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat)); 
-      chimes_master_photoion_euv.molecular_flag = (int *) malloc(N_reactions_all * sizeof(int)); 
+      chimes_primarytable_photoion_euv.reactants = (int *) malloc(N_reactions_all * sizeof(int));
+      chimes_primarytable_photoion_euv.products = (int *) malloc(N_reactions_all * 2 * sizeof(int));
+      chimes_primarytable_photoion_euv.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
+      chimes_primarytable_photoion_euv.E_thresh = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat));
+      chimes_primarytable_photoion_euv.molecular_flag = (int *) malloc(N_reactions_all * sizeof(int));
   
       // Read data arrays 
       dataset = H5Dopen(file_id, "photoion_euv/reactants", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_euv.reactants);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_euv.reactants);
       H5Dclose(dataset);
   
 
       dataset = H5Dopen(file_id, "photoion_euv/products", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_euv.products);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_euv.products);
       H5Dclose(dataset); 
       
       dataset = H5Dopen(file_id, "photoion_euv/element_incl", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_euv.element_incl);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_euv.element_incl);
       H5Dclose(dataset); 
       
       dataset = H5Dopen(file_id, "photoion_euv/molecular_flag", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_euv.molecular_flag);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_euv.molecular_flag);
       H5Dclose(dataset);
 
       array_buffer_float = (float *) malloc(N_reactions_all * sizeof(float)); 
       dataset = H5Dopen(file_id, "photoion_euv/E_thresh", H5P_DEFAULT); 
       H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
       for (i = 0; i < N_reactions_all; i++) 
-	chimes_master_photoion_euv.E_thresh[i] = (ChimesFloat) array_buffer_float[i]; 
+	chimes_primarytable_photoion_euv.E_thresh[i] = (ChimesFloat) array_buffer_float[i];
       H5Dclose(dataset);
       free(array_buffer_float); 
 
@@ -1042,33 +1042,33 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
       // Read number of reactions in group 
       dataset = H5Dopen(file_id, "photoion_auger_fuv/N_reactions", H5P_DEFAULT);
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_auger_fuv.N_reactions);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_auger_fuv.N_reactions);
       H5Dclose(dataset); 
 
-      N_reactions_all = chimes_master_photoion_auger_fuv.N_reactions[1]; 
+      N_reactions_all = chimes_primarytable_photoion_auger_fuv.N_reactions[1];
 
       // Allocate memory in table structure 
-      chimes_master_photoion_auger_fuv.reactants = (int *) malloc(N_reactions_all * sizeof(int)); 
-      chimes_master_photoion_auger_fuv.products = (int *) malloc(N_reactions_all * 2 * sizeof(int)); 
-      chimes_master_photoion_auger_fuv.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
-      chimes_master_photoion_auger_fuv.base_reaction = (int *) malloc(N_reactions_all * sizeof(int)); 
+      chimes_primarytable_photoion_auger_fuv.reactants = (int *) malloc(N_reactions_all * sizeof(int));
+      chimes_primarytable_photoion_auger_fuv.products = (int *) malloc(N_reactions_all * 2 * sizeof(int));
+      chimes_primarytable_photoion_auger_fuv.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
+      chimes_primarytable_photoion_auger_fuv.base_reaction = (int *) malloc(N_reactions_all * sizeof(int));
   
       // Read data arrays 
       dataset = H5Dopen(file_id, "photoion_auger_fuv/reactants", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_auger_fuv.reactants);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_auger_fuv.reactants);
       H5Dclose(dataset);
   
 
       dataset = H5Dopen(file_id, "photoion_auger_fuv/products", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_auger_fuv.products);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_auger_fuv.products);
       H5Dclose(dataset);
 
       dataset = H5Dopen(file_id, "photoion_auger_fuv/element_incl", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_auger_fuv.element_incl);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_auger_fuv.element_incl);
       H5Dclose(dataset);
 
       dataset = H5Dopen(file_id, "photoion_auger_fuv/base_reaction", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_auger_fuv.base_reaction);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_auger_fuv.base_reaction);
       H5Dclose(dataset);
 
 
@@ -1078,32 +1078,32 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
       // Read number of reactions in group 
       dataset = H5Dopen(file_id, "photoion_auger_euv/N_reactions", H5P_DEFAULT);
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_auger_euv.N_reactions);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_auger_euv.N_reactions);
       H5Dclose(dataset); 
 
-      N_reactions_all = chimes_master_photoion_auger_euv.N_reactions[1]; 
+      N_reactions_all = chimes_primarytable_photoion_auger_euv.N_reactions[1];
 
       // Allocate memory in table structure 
-      chimes_master_photoion_auger_euv.reactants = (int *) malloc(N_reactions_all * sizeof(int)); 
-      chimes_master_photoion_auger_euv.products = (int *) malloc(N_reactions_all * 2 * sizeof(int)); 
-      chimes_master_photoion_auger_euv.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
-      chimes_master_photoion_auger_euv.base_reaction = (int *) malloc(N_reactions_all * sizeof(int)); 
+      chimes_primarytable_photoion_auger_euv.reactants = (int *) malloc(N_reactions_all * sizeof(int));
+      chimes_primarytable_photoion_auger_euv.products = (int *) malloc(N_reactions_all * 2 * sizeof(int));
+      chimes_primarytable_photoion_auger_euv.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
+      chimes_primarytable_photoion_auger_euv.base_reaction = (int *) malloc(N_reactions_all * sizeof(int));
   
       // Read data arrays 
       dataset = H5Dopen(file_id, "photoion_auger_euv/reactants", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_auger_euv.reactants);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_auger_euv.reactants);
       H5Dclose(dataset);
       
       dataset = H5Dopen(file_id, "photoion_auger_euv/products", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_auger_euv.products);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_auger_euv.products);
       H5Dclose(dataset);
       
       dataset = H5Dopen(file_id, "photoion_auger_euv/element_incl", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_auger_euv.element_incl);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_auger_euv.element_incl);
       H5Dclose(dataset);
 
       dataset = H5Dopen(file_id, "photoion_auger_euv/base_reaction", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photoion_auger_euv.base_reaction);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photoion_auger_euv.base_reaction);
       H5Dclose(dataset);
       
       /********************************** 
@@ -1112,35 +1112,35 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
       // Read number of reactions in group 
       dataset = H5Dopen(file_id, "photodissoc_group1/N_reactions", H5P_DEFAULT);
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photodissoc_group1.N_reactions);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photodissoc_group1.N_reactions);
       H5Dclose(dataset); 
 
-      N_reactions_all = chimes_master_photodissoc_group1.N_reactions[1]; 
+      N_reactions_all = chimes_primarytable_photodissoc_group1.N_reactions[1];
 
       // Allocate memory in table structure 
-      chimes_master_photodissoc_group1.reactants = (int *) malloc(N_reactions_all * sizeof(int)); 
-      chimes_master_photodissoc_group1.products = (int *) malloc(N_reactions_all * 2 * sizeof(int)); 
-      chimes_master_photodissoc_group1.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
-      chimes_master_photodissoc_group1.gamma = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat)); 
-      chimes_master_photodissoc_group1.rates = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat)); 
-      chimes_master_photodissoc_group1.molecular_flag = (int *) malloc(N_reactions_all * sizeof(int)); 
+      chimes_primarytable_photodissoc_group1.reactants = (int *) malloc(N_reactions_all * sizeof(int));
+      chimes_primarytable_photodissoc_group1.products = (int *) malloc(N_reactions_all * 2 * sizeof(int));
+      chimes_primarytable_photodissoc_group1.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
+      chimes_primarytable_photodissoc_group1.gamma = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat));
+      chimes_primarytable_photodissoc_group1.rates = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat));
+      chimes_primarytable_photodissoc_group1.molecular_flag = (int *) malloc(N_reactions_all * sizeof(int));
 
       // Read data arrays 
       dataset = H5Dopen(file_id, "photodissoc_group1/reactants", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photodissoc_group1.reactants);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photodissoc_group1.reactants);
       H5Dclose(dataset);
       
       dataset = H5Dopen(file_id, "photodissoc_group1/products", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photodissoc_group1.products);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photodissoc_group1.products);
       H5Dclose(dataset);
   
 
       dataset = H5Dopen(file_id, "photodissoc_group1/element_incl", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photodissoc_group1.element_incl);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photodissoc_group1.element_incl);
       H5Dclose(dataset);
       
       dataset = H5Dopen(file_id, "photodissoc_group1/molecular_flag", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photodissoc_group1.molecular_flag);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photodissoc_group1.molecular_flag);
       H5Dclose(dataset);
       
       array_buffer_float = (float *) malloc(N_reactions_all * sizeof(float));
@@ -1148,13 +1148,13 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
       dataset = H5Dopen(file_id, "photodissoc_group1/gamma", H5P_DEFAULT); 
       H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
       for (i = 0; i < N_reactions_all; i++) 
-	chimes_master_photodissoc_group1.gamma[i] = (ChimesFloat) array_buffer_float[i]; 
+	chimes_primarytable_photodissoc_group1.gamma[i] = (ChimesFloat) array_buffer_float[i];
       H5Dclose(dataset);
       
       dataset = H5Dopen(file_id, "photodissoc_group1/rates", H5P_DEFAULT); 
       H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
       for (i = 0; i < N_reactions_all; i++) 
-	chimes_master_photodissoc_group1.rates[i] = (ChimesFloat) array_buffer_float[i]; 
+	chimes_primarytable_photodissoc_group1.rates[i] = (ChimesFloat) array_buffer_float[i];
       H5Dclose(dataset);
 
       free(array_buffer_float); 
@@ -1165,36 +1165,36 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
       // Read number of reactions in group 
       dataset = H5Dopen(file_id, "photodissoc_group2/N_reactions", H5P_DEFAULT);
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photodissoc_group2.N_reactions);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photodissoc_group2.N_reactions);
       H5Dclose(dataset); 
 
-      N_reactions_all = chimes_master_photodissoc_group2.N_reactions[1]; 
+      N_reactions_all = chimes_primarytable_photodissoc_group2.N_reactions[1];
 
       // Allocate memory in table structure 
-      chimes_master_photodissoc_group2.reactants = (int *) malloc(N_reactions_all * sizeof(int)); 
-      chimes_master_photodissoc_group2.products = (int *) malloc(N_reactions_all * 2 * sizeof(int)); 
-      chimes_master_photodissoc_group2.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
-      chimes_master_photodissoc_group2.gamma_coeff = (ChimesFloat *) malloc(3 * sizeof(ChimesFloat)); 
-      chimes_master_photodissoc_group2.rates = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat)); 
+      chimes_primarytable_photodissoc_group2.reactants = (int *) malloc(N_reactions_all * sizeof(int));
+      chimes_primarytable_photodissoc_group2.products = (int *) malloc(N_reactions_all * 2 * sizeof(int));
+      chimes_primarytable_photodissoc_group2.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
+      chimes_primarytable_photodissoc_group2.gamma_coeff = (ChimesFloat *) malloc(3 * sizeof(ChimesFloat));
+      chimes_primarytable_photodissoc_group2.rates = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat));
 
       // Read data arrays 
       dataset = H5Dopen(file_id, "photodissoc_group2/reactants", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photodissoc_group2.reactants);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photodissoc_group2.reactants);
       H5Dclose(dataset);
 
       dataset = H5Dopen(file_id, "photodissoc_group2/products", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photodissoc_group2.products);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photodissoc_group2.products);
       H5Dclose(dataset);
       
       dataset = H5Dopen(file_id, "photodissoc_group2/element_incl", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_photodissoc_group2.element_incl);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_photodissoc_group2.element_incl);
       H5Dclose(dataset);
       
       array_buffer_float = (float *) malloc(N_reactions_all * sizeof(float)); 
       dataset = H5Dopen(file_id, "photodissoc_group2/rates", H5P_DEFAULT); 
       H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
       for (i = 0; i < N_reactions_all; i++) 
-	chimes_master_photodissoc_group2.rates[i] = (ChimesFloat) array_buffer_float[i]; 
+	chimes_primarytable_photodissoc_group2.rates[i] = (ChimesFloat) array_buffer_float[i];
       H5Dclose(dataset);
       free(array_buffer_float); 
 
@@ -1202,7 +1202,7 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
       dataset = H5Dopen(file_id, "photodissoc_group2/gamma_coeff", H5P_DEFAULT); 
       H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
       for (i = 0; i < 3; i++) 
-	chimes_master_photodissoc_group2.gamma_coeff[i] = (ChimesFloat) array_buffer_float[i]; 
+	chimes_primarytable_photodissoc_group2.gamma_coeff[i] = (ChimesFloat) array_buffer_float[i];
       H5Dclose(dataset);
       free(array_buffer_float); 
       
@@ -1274,30 +1274,30 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
       
       // Read number of reactions in group 
       dataset = H5Dopen(file_id, "CO_photodissoc/N_reactions", H5P_DEFAULT);
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_CO_photodissoc.N_reactions);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_CO_photodissoc.N_reactions);
       H5Dclose(dataset); 
 
-      N_reactions_all = chimes_master_CO_photodissoc.N_reactions[1]; 
+      N_reactions_all = chimes_primarytable_CO_photodissoc.N_reactions[1];
 
       // Allocate memory in table structure 
-      chimes_master_CO_photodissoc.reactants = (int *) malloc(N_reactions_all * sizeof(int));
-      chimes_master_CO_photodissoc.products = (int *) malloc(N_reactions_all * 2 * sizeof(int)); 
-      chimes_master_CO_photodissoc.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
-      chimes_master_CO_photodissoc.gamma = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat)); 
-      chimes_master_CO_photodissoc.rates = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat)); 
-      chimes_master_CO_photodissoc.self_shielding = (ChimesFloat *) malloc(N_reactions_all * chimes_table_bins.N_COself_column_densities * chimes_table_bins.N_H2CO_column_densities * sizeof(ChimesFloat));
+      chimes_primarytable_CO_photodissoc.reactants = (int *) malloc(N_reactions_all * sizeof(int));
+      chimes_primarytable_CO_photodissoc.products = (int *) malloc(N_reactions_all * 2 * sizeof(int));
+      chimes_primarytable_CO_photodissoc.element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
+      chimes_primarytable_CO_photodissoc.gamma = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat));
+      chimes_primarytable_CO_photodissoc.rates = (ChimesFloat *) malloc(N_reactions_all * sizeof(ChimesFloat));
+      chimes_primarytable_CO_photodissoc.self_shielding = (ChimesFloat *) malloc(N_reactions_all * chimes_table_bins.N_COself_column_densities * chimes_table_bins.N_H2CO_column_densities * sizeof(ChimesFloat));
 
       // Read data arrays 
       dataset = H5Dopen(file_id, "CO_photodissoc/reactants", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_CO_photodissoc.reactants);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_CO_photodissoc.reactants);
       H5Dclose(dataset);
   
       dataset = H5Dopen(file_id, "CO_photodissoc/products", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_CO_photodissoc.products);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_CO_photodissoc.products);
       H5Dclose(dataset);
 
       dataset = H5Dopen(file_id, "CO_photodissoc/element_incl", H5P_DEFAULT); 
-      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_CO_photodissoc.element_incl);
+      H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_CO_photodissoc.element_incl);
       H5Dclose(dataset);
       
       array_buffer_float = (float *) malloc(N_reactions_all * sizeof(float)); 
@@ -1305,13 +1305,13 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
       dataset = H5Dopen(file_id, "CO_photodissoc/gamma", H5P_DEFAULT); 
       H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
       for (i = 0; i < N_reactions_all; i++) 
-	chimes_master_CO_photodissoc.gamma[i] = (ChimesFloat) array_buffer_float[i]; 
+	chimes_primarytable_CO_photodissoc.gamma[i] = (ChimesFloat) array_buffer_float[i];
       H5Dclose(dataset);
       
       dataset = H5Dopen(file_id, "CO_photodissoc/rates", H5P_DEFAULT); 
       H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
       for (i = 0; i < N_reactions_all; i++) 
-	chimes_master_CO_photodissoc.rates[i] = (ChimesFloat) array_buffer_float[i]; 
+	chimes_primarytable_CO_photodissoc.rates[i] = (ChimesFloat) array_buffer_float[i];
       H5Dclose(dataset);
 
       free(array_buffer_float);
@@ -1320,7 +1320,7 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
       dataset = H5Dopen(file_id, "CO_photodissoc/self_shielding", H5P_DEFAULT);
       H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
       for (i = 0; i < N_reactions_all * chimes_table_bins.N_COself_column_densities * chimes_table_bins.N_H2CO_column_densities; i++)
-	chimes_master_CO_photodissoc.self_shielding[i] = (ChimesFloat) array_buffer_float[i];
+	chimes_primarytable_CO_photodissoc.self_shielding[i] = (ChimesFloat) array_buffer_float[i];
       H5Dclose(dataset);
       free(array_buffer_float); 
     }
@@ -1332,7 +1332,7 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
   /* This group has only one reactions, and 
    * it only contains hydrogen, so we can 
    * read this straight into the global 
-   * table, no need to go through a master 
+   * table, no need to go through a primarytable
    * table first. */ 
 
   // Allocate memory in table structure 
@@ -1372,7 +1372,7 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
   /* The reactions in this group only involve 
   * H and He, so no need to first read them 
-  * into a 'master' table - we can just read 
+  * into a 'primarytable' table - we can just read
   * straight into the global table. Also, 
   * they all involve molecules (i.e. molecular 
   * flag of 1). */ 
@@ -1457,40 +1457,40 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
   // Read number of coolants 
   dataset = H5Dopen(file_id, "cooling/N_coolants", H5P_DEFAULT);
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &(chimes_master_cooling.N_coolants));
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &(chimes_primarytable_cooling.N_coolants));
   H5Dclose(dataset); 
 
   dataset = H5Dopen(file_id, "cooling/N_coolants_2d", H5P_DEFAULT);
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &(chimes_master_cooling.N_coolants_2d));
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &(chimes_primarytable_cooling.N_coolants_2d));
   H5Dclose(dataset); 
 
   dataset = H5Dopen(file_id, "cooling/N_coolants_4d", H5P_DEFAULT);
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &(chimes_master_cooling.N_coolants_4d));
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &(chimes_primarytable_cooling.N_coolants_4d));
   H5Dclose(dataset); 
 
   // Allocate memory in table structure 
-  chimes_master_cooling.coolants = (int *) malloc(chimes_master_cooling.N_coolants * sizeof(int)); 
-  chimes_master_cooling.coolants_2d = (int *) malloc(chimes_master_cooling.N_coolants_2d * sizeof(int)); 
-  chimes_master_cooling.coolants_4d = (int *) malloc(chimes_master_cooling.N_coolants_4d * sizeof(int)); 
+  chimes_primarytable_cooling.coolants = (int *) malloc(chimes_primarytable_cooling.N_coolants * sizeof(int));
+  chimes_primarytable_cooling.coolants_2d = (int *) malloc(chimes_primarytable_cooling.N_coolants_2d * sizeof(int));
+  chimes_primarytable_cooling.coolants_4d = (int *) malloc(chimes_primarytable_cooling.N_coolants_4d * sizeof(int));
 
-  chimes_master_cooling.rates = (ChimesFloat *) malloc(chimes_master_cooling.N_coolants * chimes_table_bins.N_Temperatures * sizeof(ChimesFloat));
+  chimes_primarytable_cooling.rates = (ChimesFloat *) malloc(chimes_primarytable_cooling.N_coolants * chimes_table_bins.N_Temperatures * sizeof(ChimesFloat));
 
-  chimes_master_cooling.rates_2d = (ChimesFloat *) malloc(chimes_master_cooling.N_coolants_2d * chimes_table_bins.N_cool_2d_Temperatures * chimes_table_bins.N_cool_2d_ElectronDensities * sizeof(ChimesFloat)); 
-  chimes_master_cooling.rates_hiT_2d = (ChimesFloat *) malloc(chimes_master_cooling.N_coolants_2d * chimes_table_bins.N_cool_hiT_2d_Temperatures * sizeof(ChimesFloat));
+  chimes_primarytable_cooling.rates_2d = (ChimesFloat *) malloc(chimes_primarytable_cooling.N_coolants_2d * chimes_table_bins.N_cool_2d_Temperatures * chimes_table_bins.N_cool_2d_ElectronDensities * sizeof(ChimesFloat));
+  chimes_primarytable_cooling.rates_hiT_2d = (ChimesFloat *) malloc(chimes_primarytable_cooling.N_coolants_2d * chimes_table_bins.N_cool_hiT_2d_Temperatures * sizeof(ChimesFloat));
 
-  chimes_master_cooling.rates_4d = (ChimesFloat *) malloc(chimes_master_cooling.N_coolants_4d * chimes_table_bins.N_cool_4d_Temperatures * chimes_table_bins.N_cool_4d_HIDensities * chimes_table_bins.N_cool_4d_ElectronDensities * chimes_table_bins.N_cool_4d_HIIDensities * sizeof(ChimesFloat)); 
-  chimes_master_cooling.rates_hiT_4d = (ChimesFloat *) malloc(chimes_master_cooling.N_coolants_4d * chimes_table_bins.N_cool_hiT_4d_Temperatures * sizeof(ChimesFloat));
+  chimes_primarytable_cooling.rates_4d = (ChimesFloat *) malloc(chimes_primarytable_cooling.N_coolants_4d * chimes_table_bins.N_cool_4d_Temperatures * chimes_table_bins.N_cool_4d_HIDensities * chimes_table_bins.N_cool_4d_ElectronDensities * chimes_table_bins.N_cool_4d_HIIDensities * sizeof(ChimesFloat));
+  chimes_primarytable_cooling.rates_hiT_4d = (ChimesFloat *) malloc(chimes_primarytable_cooling.N_coolants_4d * chimes_table_bins.N_cool_hiT_4d_Temperatures * sizeof(ChimesFloat));
 
-  chimes_master_cooling.photoelectric_heating = (ChimesFloat *) malloc(chimes_table_bins.N_Temperatures * chimes_table_bins.N_Psi * sizeof(ChimesFloat)); 
-  chimes_master_cooling.grain_recombination = (ChimesFloat *) malloc(chimes_table_bins.N_Temperatures * chimes_table_bins.N_Psi * sizeof(ChimesFloat));
-  chimes_master_cooling.gas_grain_transfer = (ChimesFloat *) malloc(chimes_table_bins.N_Temperatures * sizeof(ChimesFloat)); 
+  chimes_primarytable_cooling.photoelectric_heating = (ChimesFloat *) malloc(chimes_table_bins.N_Temperatures * chimes_table_bins.N_Psi * sizeof(ChimesFloat));
+  chimes_primarytable_cooling.grain_recombination = (ChimesFloat *) malloc(chimes_table_bins.N_Temperatures * chimes_table_bins.N_Psi * sizeof(ChimesFloat));
+  chimes_primarytable_cooling.gas_grain_transfer = (ChimesFloat *) malloc(chimes_table_bins.N_Temperatures * sizeof(ChimesFloat));
 
-  chimes_master_cooling.H2_cool_lowDens_H2 = (ChimesFloat *) malloc(chimes_table_bins.N_mol_cool_Temperatures * sizeof(ChimesFloat)); 
-  chimes_master_cooling.H2_cool_lowDens_HI = (ChimesFloat *) malloc(chimes_table_bins.N_mol_cool_Temperatures * sizeof(ChimesFloat)); 
-  chimes_master_cooling.H2_cool_lowDens_HII = (ChimesFloat *) malloc(chimes_table_bins.N_mol_cool_Temperatures * sizeof(ChimesFloat)); 
-  chimes_master_cooling.H2_cool_lowDens_HeI = (ChimesFloat *) malloc(chimes_table_bins.N_mol_cool_Temperatures * sizeof(ChimesFloat)); 
-  chimes_master_cooling.H2_cool_lowDens_elec = (ChimesFloat *) malloc(chimes_table_bins.N_mol_cool_Temperatures * sizeof(ChimesFloat)); 
-  chimes_master_cooling.H2_cool_LTE = (ChimesFloat *) malloc(chimes_table_bins.N_mol_cool_Temperatures * sizeof(ChimesFloat)); 
+  chimes_primarytable_cooling.H2_cool_lowDens_H2 = (ChimesFloat *) malloc(chimes_table_bins.N_mol_cool_Temperatures * sizeof(ChimesFloat));
+  chimes_primarytable_cooling.H2_cool_lowDens_HI = (ChimesFloat *) malloc(chimes_table_bins.N_mol_cool_Temperatures * sizeof(ChimesFloat));
+  chimes_primarytable_cooling.H2_cool_lowDens_HII = (ChimesFloat *) malloc(chimes_table_bins.N_mol_cool_Temperatures * sizeof(ChimesFloat));
+  chimes_primarytable_cooling.H2_cool_lowDens_HeI = (ChimesFloat *) malloc(chimes_table_bins.N_mol_cool_Temperatures * sizeof(ChimesFloat));
+  chimes_primarytable_cooling.H2_cool_lowDens_elec = (ChimesFloat *) malloc(chimes_table_bins.N_mol_cool_Temperatures * sizeof(ChimesFloat));
+  chimes_primarytable_cooling.H2_cool_LTE = (ChimesFloat *) malloc(chimes_table_bins.N_mol_cool_Temperatures * sizeof(ChimesFloat));
 
 
   /* CO_cool and H2O_cool arrays can be read 
@@ -1528,54 +1528,54 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
   
   // Read data arrays 
   dataset = H5Dopen(file_id, "cooling/coolants", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_cooling.coolants);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_cooling.coolants);
   H5Dclose(dataset); 
   
   dataset = H5Dopen(file_id, "cooling/coolants_2d", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_cooling.coolants_2d);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_cooling.coolants_2d);
   H5Dclose(dataset); 
   
   dataset = H5Dopen(file_id, "cooling/coolants_4d", H5P_DEFAULT); 
-  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_master_cooling.coolants_4d);
+  H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, chimes_primarytable_cooling.coolants_4d);
   H5Dclose(dataset); 
   
-  array_buffer_float = (float *) malloc(chimes_master_cooling.N_coolants * chimes_table_bins.N_Temperatures * sizeof(float)); 
+  array_buffer_float = (float *) malloc(chimes_primarytable_cooling.N_coolants * chimes_table_bins.N_Temperatures * sizeof(float));
   dataset = H5Dopen(file_id, "cooling/rates", H5P_DEFAULT);
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
-  for (i = 0; i < chimes_master_cooling.N_coolants * chimes_table_bins.N_Temperatures; i++) 
-    chimes_master_cooling.rates[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
+  for (i = 0; i < chimes_primarytable_cooling.N_coolants * chimes_table_bins.N_Temperatures; i++)
+    chimes_primarytable_cooling.rates[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset);
   free(array_buffer_float); 
 
-  array_buffer_float = (float *) malloc(chimes_master_cooling.N_coolants_2d * chimes_table_bins.N_cool_2d_Temperatures * chimes_table_bins.N_cool_2d_ElectronDensities * sizeof(float)); 
+  array_buffer_float = (float *) malloc(chimes_primarytable_cooling.N_coolants_2d * chimes_table_bins.N_cool_2d_Temperatures * chimes_table_bins.N_cool_2d_ElectronDensities * sizeof(float));
   dataset = H5Dopen(file_id, "cooling/rates_2d", H5P_DEFAULT);
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
-  for (i = 0; i < chimes_master_cooling.N_coolants_2d * chimes_table_bins.N_cool_2d_Temperatures * chimes_table_bins.N_cool_2d_ElectronDensities; i++)
-    chimes_master_cooling.rates_2d[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
+  for (i = 0; i < chimes_primarytable_cooling.N_coolants_2d * chimes_table_bins.N_cool_2d_Temperatures * chimes_table_bins.N_cool_2d_ElectronDensities; i++)
+    chimes_primarytable_cooling.rates_2d[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset);
   free(array_buffer_float); 
   
-  array_buffer_float = (float *) malloc(chimes_master_cooling.N_coolants_2d * chimes_table_bins.N_cool_hiT_2d_Temperatures * sizeof(float)); 
+  array_buffer_float = (float *) malloc(chimes_primarytable_cooling.N_coolants_2d * chimes_table_bins.N_cool_hiT_2d_Temperatures * sizeof(float));
   dataset = H5Dopen(file_id, "cooling/rates_hiT_2d", H5P_DEFAULT);
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
-  for (i = 0; i < chimes_master_cooling.N_coolants_2d * chimes_table_bins.N_cool_hiT_2d_Temperatures; i++)
-    chimes_master_cooling.rates_hiT_2d[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
+  for (i = 0; i < chimes_primarytable_cooling.N_coolants_2d * chimes_table_bins.N_cool_hiT_2d_Temperatures; i++)
+    chimes_primarytable_cooling.rates_hiT_2d[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset);
   free(array_buffer_float); 
 
-  array_buffer_float = (float *) malloc(chimes_master_cooling.N_coolants_4d * chimes_table_bins.N_cool_4d_Temperatures * chimes_table_bins.N_cool_4d_HIDensities * chimes_table_bins.N_cool_4d_ElectronDensities * chimes_table_bins.N_cool_4d_HIIDensities * sizeof(float)); 
+  array_buffer_float = (float *) malloc(chimes_primarytable_cooling.N_coolants_4d * chimes_table_bins.N_cool_4d_Temperatures * chimes_table_bins.N_cool_4d_HIDensities * chimes_table_bins.N_cool_4d_ElectronDensities * chimes_table_bins.N_cool_4d_HIIDensities * sizeof(float));
   dataset = H5Dopen(file_id, "cooling/rates_4d", H5P_DEFAULT);
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
-  for (i = 0; i < chimes_master_cooling.N_coolants_4d * chimes_table_bins.N_cool_4d_Temperatures * chimes_table_bins.N_cool_4d_HIDensities * chimes_table_bins.N_cool_4d_ElectronDensities * chimes_table_bins.N_cool_4d_HIIDensities; i++)
-    chimes_master_cooling.rates_4d[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
+  for (i = 0; i < chimes_primarytable_cooling.N_coolants_4d * chimes_table_bins.N_cool_4d_Temperatures * chimes_table_bins.N_cool_4d_HIDensities * chimes_table_bins.N_cool_4d_ElectronDensities * chimes_table_bins.N_cool_4d_HIIDensities; i++)
+    chimes_primarytable_cooling.rates_4d[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset);
   free(array_buffer_float); 
 
-  array_buffer_float = (float *) malloc(chimes_master_cooling.N_coolants_4d * chimes_table_bins.N_cool_hiT_4d_Temperatures * sizeof(float)); 
+  array_buffer_float = (float *) malloc(chimes_primarytable_cooling.N_coolants_4d * chimes_table_bins.N_cool_hiT_4d_Temperatures * sizeof(float));
   dataset = H5Dopen(file_id, "cooling/rates_hiT_4d", H5P_DEFAULT);
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
-  for (i = 0; i < chimes_master_cooling.N_coolants_4d * chimes_table_bins.N_cool_hiT_4d_Temperatures; i++)
-    chimes_master_cooling.rates_hiT_4d[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
+  for (i = 0; i < chimes_primarytable_cooling.N_coolants_4d * chimes_table_bins.N_cool_hiT_4d_Temperatures; i++)
+    chimes_primarytable_cooling.rates_hiT_4d[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset);
   free(array_buffer_float); 
 
@@ -1584,13 +1584,13 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
   dataset = H5Dopen(file_id, "cooling/photoelectric_heating", H5P_DEFAULT);
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < chimes_table_bins.N_Temperatures * chimes_table_bins.N_Psi; i++)
-    chimes_master_cooling.photoelectric_heating[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
+    chimes_primarytable_cooling.photoelectric_heating[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset);
   
   dataset = H5Dopen(file_id, "cooling/grain_recombination", H5P_DEFAULT);
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < chimes_table_bins.N_Temperatures * chimes_table_bins.N_Psi; i++)
-    chimes_master_cooling.grain_recombination[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
+    chimes_primarytable_cooling.grain_recombination[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset);
   
   free(array_buffer_float); 
@@ -1599,7 +1599,7 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
   dataset = H5Dopen(file_id, "cooling/gas_grain_transfer", H5P_DEFAULT); 
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < chimes_table_bins.N_Temperatures; i++) 
-    chimes_master_cooling.gas_grain_transfer[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min); 
+    chimes_primarytable_cooling.gas_grain_transfer[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset); 
   free(array_buffer_float); 
   
@@ -1608,37 +1608,37 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
   dataset = H5Dopen(file_id, "cooling/H2_cool_lowDens_H2", H5P_DEFAULT); 
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < chimes_table_bins.N_mol_cool_Temperatures; i++) 
-    chimes_master_cooling.H2_cool_lowDens_H2[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min); 
+    chimes_primarytable_cooling.H2_cool_lowDens_H2[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset); 
 
   dataset = H5Dopen(file_id, "cooling/H2_cool_lowDens_HI", H5P_DEFAULT); 
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < chimes_table_bins.N_mol_cool_Temperatures; i++) 
-    chimes_master_cooling.H2_cool_lowDens_HI[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min); 
+    chimes_primarytable_cooling.H2_cool_lowDens_HI[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset); 
 
   dataset = H5Dopen(file_id, "cooling/H2_cool_lowDens_HII", H5P_DEFAULT); 
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < chimes_table_bins.N_mol_cool_Temperatures; i++) 
-    chimes_master_cooling.H2_cool_lowDens_HII[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min); 
+    chimes_primarytable_cooling.H2_cool_lowDens_HII[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset); 
 
   dataset = H5Dopen(file_id, "cooling/H2_cool_lowDens_HeI", H5P_DEFAULT); 
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < chimes_table_bins.N_mol_cool_Temperatures; i++) 
-    chimes_master_cooling.H2_cool_lowDens_HeI[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min); 
+    chimes_primarytable_cooling.H2_cool_lowDens_HeI[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset); 
 
   dataset = H5Dopen(file_id, "cooling/H2_cool_lowDens_elec", H5P_DEFAULT); 
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < chimes_table_bins.N_mol_cool_Temperatures; i++) 
-    chimes_master_cooling.H2_cool_lowDens_elec[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min); 
+    chimes_primarytable_cooling.H2_cool_lowDens_elec[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset); 
 
   dataset = H5Dopen(file_id, "cooling/H2_cool_LTE", H5P_DEFAULT); 
   H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, array_buffer_float);
   for (i = 0; i < chimes_table_bins.N_mol_cool_Temperatures; i++) 
-    chimes_master_cooling.H2_cool_LTE[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min); 
+    chimes_primarytable_cooling.H2_cool_LTE[i] = chimes_max((ChimesFloat) array_buffer_float[i], log_chimes_flt_min);
   H5Dclose(dataset);
 
   free(array_buffer_float); 
@@ -1804,14 +1804,14 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
   /* We now need to read the cross-sections 
    * tables for each spectrum into the 
-   * various chimes_master_photoion_XYZ 
+   * various chimes_primarytable_photoion_XYZ
    * structures. */    
   if (myGlobalVars->N_spectra > 0) 
-    read_cross_sections_tables(&chimes_table_bins, &chimes_master_photoion_fuv, &chimes_master_photoion_euv, &chimes_master_photoion_auger_fuv, &chimes_master_photoion_auger_euv, &chimes_table_spectra, myGlobalVars); 
+    read_cross_sections_tables(&chimes_table_bins, &chimes_primarytable_photoion_fuv, &chimes_primarytable_photoion_euv, &chimes_primarytable_photoion_auger_fuv, &chimes_primarytable_photoion_auger_euv, &chimes_table_spectra, myGlobalVars);
 
   /********************************************
    ** Now that we have read the data into    ** 
-   ** the master tables, we need to          **
+   ** the primarytable tables, we need to          **
    ** determine which reactions are included ** 
    ** in the network, and copy them over to  **
    ** to the global tables.                  **
@@ -1822,12 +1822,12 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
    ***************************/
   chimes_table_T_dependent.N_reactions[0] = 0; 
   chimes_table_T_dependent.N_reactions[1] = 0; 
-  for (i = 0; i < chimes_master_T_dependent.N_reactions[1]; i++) 
+  for (i = 0; i < chimes_primarytable_T_dependent.N_reactions[1]; i++)
     {
-      if(compare_element_incl_arrays(chimes_master_T_dependent.element_incl, i, myGlobalVars->element_included)) 
+      if(compare_element_incl_arrays(chimes_primarytable_T_dependent.element_incl, i, myGlobalVars->element_included))
 	{
 	  chimes_table_T_dependent.N_reactions[1] += 1; 
-	  if (chimes_master_T_dependent.molecular_flag[i] == 0) 
+	  if (chimes_primarytable_T_dependent.molecular_flag[i] == 0)
 	    chimes_table_T_dependent.N_reactions[0] += 1; 
 	}
     } 
@@ -1843,38 +1843,38 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
   
   // Copy table data 
   incl_index = 0; 
-  for (i = 0; i < chimes_master_T_dependent.N_reactions[1]; i++) 
+  for (i = 0; i < chimes_primarytable_T_dependent.N_reactions[1]; i++)
     {
-      if(compare_element_incl_arrays(chimes_master_T_dependent.element_incl, i, myGlobalVars->element_included)) 
+      if(compare_element_incl_arrays(chimes_primarytable_T_dependent.element_incl, i, myGlobalVars->element_included))
 	{		 
 	  for (j = 0; j < 3; j++) 
 	    {
 	      /* The reactants and products arrays need to be translated into 
 	       * the indices in the reduced network, as given by myGlobalVars->speciesIndices. 
 	       * However, an index of -1 should be left as -1. */
-	      if (chimes_master_T_dependent.reactants[chimes_flatten_index_2d(i, j, 3)] < 0) 
-		chimes_table_T_dependent.reactants[chimes_flatten_index_2d(incl_index, j, 3)] = chimes_master_T_dependent.reactants[chimes_flatten_index_2d(i, j, 3)]; 
+	      if (chimes_primarytable_T_dependent.reactants[chimes_flatten_index_2d(i, j, 3)] < 0)
+		chimes_table_T_dependent.reactants[chimes_flatten_index_2d(incl_index, j, 3)] = chimes_primarytable_T_dependent.reactants[chimes_flatten_index_2d(i, j, 3)];
 	      else 
-		chimes_table_T_dependent.reactants[chimes_flatten_index_2d(incl_index, j, 3)] = myGlobalVars->speciesIndices[chimes_master_T_dependent.reactants[chimes_flatten_index_2d(i, j, 3)]]; 
+		chimes_table_T_dependent.reactants[chimes_flatten_index_2d(incl_index, j, 3)] = myGlobalVars->speciesIndices[chimes_primarytable_T_dependent.reactants[chimes_flatten_index_2d(i, j, 3)]];
 
-	      if (chimes_master_T_dependent.products[chimes_flatten_index_2d(i, j, 3)] < 0) 
-		chimes_table_T_dependent.products[chimes_flatten_index_2d(incl_index, j, 3)] = chimes_master_T_dependent.products[chimes_flatten_index_2d(i, j, 3)]; 
+	      if (chimes_primarytable_T_dependent.products[chimes_flatten_index_2d(i, j, 3)] < 0)
+		chimes_table_T_dependent.products[chimes_flatten_index_2d(incl_index, j, 3)] = chimes_primarytable_T_dependent.products[chimes_flatten_index_2d(i, j, 3)];
 	      else 
-		chimes_table_T_dependent.products[chimes_flatten_index_2d(incl_index, j, 3)] = myGlobalVars->speciesIndices[chimes_master_T_dependent.products[chimes_flatten_index_2d(i, j, 3)]]; 
+		chimes_table_T_dependent.products[chimes_flatten_index_2d(incl_index, j, 3)] = myGlobalVars->speciesIndices[chimes_primarytable_T_dependent.products[chimes_flatten_index_2d(i, j, 3)]];
 	    }
 
 	  for (j = 0; j < 9; j++) 
-	    chimes_table_T_dependent.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_master_T_dependent.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+	    chimes_table_T_dependent.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_primarytable_T_dependent.element_incl[chimes_flatten_index_2d(i, j, 9)];
 
 	  for (j = 0; j < chimes_table_bins.N_Temperatures; j++) 
-	    chimes_table_T_dependent.rates[chimes_flatten_index_2d(incl_index, j, chimes_table_bins.N_Temperatures)] = chimes_master_T_dependent.rates[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Temperatures)]; 
+	    chimes_table_T_dependent.rates[chimes_flatten_index_2d(incl_index, j, chimes_table_bins.N_Temperatures)] = chimes_primarytable_T_dependent.rates[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Temperatures)];
 
-	  chimes_table_T_dependent.molecular_flag[incl_index] = chimes_master_T_dependent.molecular_flag[i]; 
+	  chimes_table_T_dependent.molecular_flag[incl_index] = chimes_primarytable_T_dependent.molecular_flag[i];
 
-	  if (i == chimes_master_T_dependent.H2_collis_dissoc_heating_reaction_index) 
+	  if (i == chimes_primarytable_T_dependent.H2_collis_dissoc_heating_reaction_index)
 	    chimes_table_T_dependent.H2_collis_dissoc_heating_reaction_index = incl_index; 
 
-	  if (i == chimes_master_T_dependent.H2_form_heating_reaction_index) 
+	  if (i == chimes_primarytable_T_dependent.H2_form_heating_reaction_index)
 	    chimes_table_T_dependent.H2_form_heating_reaction_index = incl_index; 
 
 	  incl_index++; 
@@ -1888,12 +1888,12 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
    ************************/
   chimes_table_constant.N_reactions[0] = 0; 
   chimes_table_constant.N_reactions[1] = 0; 
-  for (i = 0; i < chimes_master_constant.N_reactions[1]; i++) 
+  for (i = 0; i < chimes_primarytable_constant.N_reactions[1]; i++)
     {
-      if(compare_element_incl_arrays(chimes_master_constant.element_incl, i, myGlobalVars->element_included)) 
+      if(compare_element_incl_arrays(chimes_primarytable_constant.element_incl, i, myGlobalVars->element_included))
 	{
 	  chimes_table_constant.N_reactions[1] += 1; 
-	  if (chimes_master_constant.molecular_flag[i] == 0) 
+	  if (chimes_primarytable_constant.molecular_flag[i] == 0)
 	    chimes_table_constant.N_reactions[0] += 1; 
 	}
     } 
@@ -1909,36 +1909,36 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
   // Copy table data 
   incl_index = 0; 
-  for (i = 0; i < chimes_master_constant.N_reactions[1]; i++) 
+  for (i = 0; i < chimes_primarytable_constant.N_reactions[1]; i++)
     {
-      if(compare_element_incl_arrays(chimes_master_constant.element_incl, i, myGlobalVars->element_included)) 
+      if(compare_element_incl_arrays(chimes_primarytable_constant.element_incl, i, myGlobalVars->element_included))
 	{
 	  /* The reactants and products arrays need to be translated into 
 	   * the indices in the reduced network, as given by myGlobalVars->speciesIndices. 
 	   * However, an index of -1 should be left as -1. */
 	  for (j = 0; j < 2; j++) 
 	    {
-	      if (chimes_master_constant.reactants[chimes_flatten_index_2d(i, j, 2)] < 0) 
-		chimes_table_constant.reactants[chimes_flatten_index_2d(incl_index, j, 2)] = chimes_master_constant.reactants[chimes_flatten_index_2d(i, j, 2)]; 
+	      if (chimes_primarytable_constant.reactants[chimes_flatten_index_2d(i, j, 2)] < 0)
+		chimes_table_constant.reactants[chimes_flatten_index_2d(incl_index, j, 2)] = chimes_primarytable_constant.reactants[chimes_flatten_index_2d(i, j, 2)];
 	      else 
-		chimes_table_constant.reactants[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_master_constant.reactants[chimes_flatten_index_2d(i, j, 2)]]; 
+		chimes_table_constant.reactants[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_primarytable_constant.reactants[chimes_flatten_index_2d(i, j, 2)]];
 	    }
 
 	  for (j = 0; j < 3; j++) 
 	    {
-	      if (chimes_master_constant.products[chimes_flatten_index_2d(i, j, 3)] < 0) 
-		chimes_table_constant.products[chimes_flatten_index_2d(incl_index, j, 3)] = chimes_master_constant.products[chimes_flatten_index_2d(i, j, 3)]; 
+	      if (chimes_primarytable_constant.products[chimes_flatten_index_2d(i, j, 3)] < 0)
+		chimes_table_constant.products[chimes_flatten_index_2d(incl_index, j, 3)] = chimes_primarytable_constant.products[chimes_flatten_index_2d(i, j, 3)];
 	      else 
-		chimes_table_constant.products[chimes_flatten_index_2d(incl_index, j, 3)] = myGlobalVars->speciesIndices[chimes_master_constant.products[chimes_flatten_index_2d(i, j, 3)]]; 
+		chimes_table_constant.products[chimes_flatten_index_2d(incl_index, j, 3)] = myGlobalVars->speciesIndices[chimes_primarytable_constant.products[chimes_flatten_index_2d(i, j, 3)]];
 	    }
 
 	  for (j = 0; j < 9; j++) 
-	    chimes_table_constant.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_master_constant.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+	    chimes_table_constant.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_primarytable_constant.element_incl[chimes_flatten_index_2d(i, j, 9)];
 
-	  chimes_table_constant.rates[incl_index] = chimes_master_constant.rates[i]; 
-	  chimes_table_constant.molecular_flag[incl_index] = chimes_master_constant.molecular_flag[i]; 
+	  chimes_table_constant.rates[incl_index] = chimes_primarytable_constant.rates[i];
+	  chimes_table_constant.molecular_flag[incl_index] = chimes_primarytable_constant.molecular_flag[i];
 
-	  if (i == chimes_master_constant.H2_form_heating_reaction_index) 
+	  if (i == chimes_primarytable_constant.H2_form_heating_reaction_index)
 	    chimes_table_constant.H2_form_heating_reaction_index = incl_index; 
 
 	  incl_index++; 
@@ -1951,12 +1951,12 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
    ********************************/
   chimes_table_recombination_AB.N_reactions[0] = 0; 
   chimes_table_recombination_AB.N_reactions[1] = 0; 
-  for (i = 0; i < chimes_master_recombination_AB.N_reactions[1]; i++) 
+  for (i = 0; i < chimes_primarytable_recombination_AB.N_reactions[1]; i++)
     {
-      if(compare_element_incl_arrays(chimes_master_recombination_AB.element_incl, i, myGlobalVars->element_included)) 
+      if(compare_element_incl_arrays(chimes_primarytable_recombination_AB.element_incl, i, myGlobalVars->element_included))
 	{
 	  chimes_table_recombination_AB.N_reactions[1] += 1; 
-	  if (chimes_master_recombination_AB.molecular_flag[i] == 0) 
+	  if (chimes_primarytable_recombination_AB.molecular_flag[i] == 0)
 	    chimes_table_recombination_AB.N_reactions[0] += 1; 
 	}
     } 
@@ -1972,36 +1972,36 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
   // Copy table data 
   incl_index = 0; 
-  for (i = 0; i < chimes_master_recombination_AB.N_reactions[1]; i++) 
+  for (i = 0; i < chimes_primarytable_recombination_AB.N_reactions[1]; i++)
     {
-      if(compare_element_incl_arrays(chimes_master_recombination_AB.element_incl, i, myGlobalVars->element_included)) 
+      if(compare_element_incl_arrays(chimes_primarytable_recombination_AB.element_incl, i, myGlobalVars->element_included))
 	{
 	  for (j = 0; j < 2; j++) 
 	    {
 	      /* The reactants and products arrays need to be translated into 
 	       * the indices in the reduced network, as given by myGlobalVars->speciesIndices. 
 	       * However, an index of -1 should be left as -1. */
-	      if (chimes_master_recombination_AB.reactants[chimes_flatten_index_2d(i, j, 2)] < 0) 
-		chimes_table_recombination_AB.reactants[chimes_flatten_index_2d(incl_index, j, 2)] = chimes_master_recombination_AB.reactants[chimes_flatten_index_2d(i, j, 2)]; 
+	      if (chimes_primarytable_recombination_AB.reactants[chimes_flatten_index_2d(i, j, 2)] < 0)
+		chimes_table_recombination_AB.reactants[chimes_flatten_index_2d(incl_index, j, 2)] = chimes_primarytable_recombination_AB.reactants[chimes_flatten_index_2d(i, j, 2)];
 	      else 
-		chimes_table_recombination_AB.reactants[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_master_recombination_AB.reactants[chimes_flatten_index_2d(i, j, 2)]]; 
+		chimes_table_recombination_AB.reactants[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_primarytable_recombination_AB.reactants[chimes_flatten_index_2d(i, j, 2)]];
 	    }
 
-	  if (chimes_master_recombination_AB.products[i] < 0) 
-	    chimes_table_recombination_AB.products[incl_index] = chimes_master_recombination_AB.products[i]; 
+	  if (chimes_primarytable_recombination_AB.products[i] < 0)
+	    chimes_table_recombination_AB.products[incl_index] = chimes_primarytable_recombination_AB.products[i];
 	  else 
-	    chimes_table_recombination_AB.products[incl_index] = myGlobalVars->speciesIndices[chimes_master_recombination_AB.products[i]]; 
+	    chimes_table_recombination_AB.products[incl_index] = myGlobalVars->speciesIndices[chimes_primarytable_recombination_AB.products[i]];
 
 	  for (j = 0; j < 9; j++) 
-	    chimes_table_recombination_AB.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_master_recombination_AB.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+	    chimes_table_recombination_AB.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_primarytable_recombination_AB.element_incl[chimes_flatten_index_2d(i, j, 9)];
 
 	  for (j = 0; j < chimes_table_bins.N_Temperatures; j++) 
 	    {
-	      chimes_table_recombination_AB.rates[chimes_flatten_index_3d(incl_index, 0, j, 2, chimes_table_bins.N_Temperatures)] = chimes_master_recombination_AB.rates[chimes_flatten_index_3d(i, 0, j, 2, chimes_table_bins.N_Temperatures)]; 
-	      chimes_table_recombination_AB.rates[chimes_flatten_index_3d(incl_index, 1, j, 2, chimes_table_bins.N_Temperatures)] = chimes_master_recombination_AB.rates[chimes_flatten_index_3d(i, 1, j, 2, chimes_table_bins.N_Temperatures)]; 
+	      chimes_table_recombination_AB.rates[chimes_flatten_index_3d(incl_index, 0, j, 2, chimes_table_bins.N_Temperatures)] = chimes_primarytable_recombination_AB.rates[chimes_flatten_index_3d(i, 0, j, 2, chimes_table_bins.N_Temperatures)];
+	      chimes_table_recombination_AB.rates[chimes_flatten_index_3d(incl_index, 1, j, 2, chimes_table_bins.N_Temperatures)] = chimes_primarytable_recombination_AB.rates[chimes_flatten_index_3d(i, 1, j, 2, chimes_table_bins.N_Temperatures)];
 	    }
 
-	  chimes_table_recombination_AB.molecular_flag[incl_index] = chimes_master_recombination_AB.molecular_flag[i]; 
+	  chimes_table_recombination_AB.molecular_flag[incl_index] = chimes_primarytable_recombination_AB.molecular_flag[i];
 	  incl_index++; 
 	}
     }
@@ -2012,9 +2012,9 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
    ********************************/
   chimes_table_grain_recombination.N_reactions[0] = 0; 
   chimes_table_grain_recombination.N_reactions[1] = 0; 
-  for (i = 0; i < chimes_master_grain_recombination.N_reactions[1]; i++) 
+  for (i = 0; i < chimes_primarytable_grain_recombination.N_reactions[1]; i++)
     {
-      if(compare_element_incl_arrays(chimes_master_grain_recombination.element_incl, i, myGlobalVars->element_included)) 
+      if(compare_element_incl_arrays(chimes_primarytable_grain_recombination.element_incl, i, myGlobalVars->element_included))
 	{
 	  // All reactions are non-molecular 
 	  chimes_table_grain_recombination.N_reactions[0] += 1; 
@@ -2032,22 +2032,22 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
   // Copy table data 
   incl_index = 0; 
-  for (i = 0; i < chimes_master_grain_recombination.N_reactions[1]; i++) 
+  for (i = 0; i < chimes_primarytable_grain_recombination.N_reactions[1]; i++)
     {
-      if(compare_element_incl_arrays(chimes_master_grain_recombination.element_incl, i, myGlobalVars->element_included)) 
+      if(compare_element_incl_arrays(chimes_primarytable_grain_recombination.element_incl, i, myGlobalVars->element_included))
 	{
 	  for (j = 0; j < 2; j++) 
-	    chimes_table_grain_recombination.reactants[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_master_grain_recombination.reactants[chimes_flatten_index_2d(i, j, 2)]]; 
+	    chimes_table_grain_recombination.reactants[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_primarytable_grain_recombination.reactants[chimes_flatten_index_2d(i, j, 2)]];
 
-	  chimes_table_grain_recombination.products[incl_index] = myGlobalVars->speciesIndices[chimes_master_grain_recombination.products[i]]; 
+	  chimes_table_grain_recombination.products[incl_index] = myGlobalVars->speciesIndices[chimes_primarytable_grain_recombination.products[i]];
 
 	  for (j = 0; j < 9; j++) 
-	    chimes_table_grain_recombination.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_master_grain_recombination.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+	    chimes_table_grain_recombination.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_primarytable_grain_recombination.element_incl[chimes_flatten_index_2d(i, j, 9)];
 
 	  for (j = 0; j < chimes_table_bins.N_Temperatures; j++) 
 	    {
 	      for (k = 0; k < chimes_table_bins.N_Psi; k++)
-		chimes_table_grain_recombination.rates[chimes_flatten_index_3d(incl_index, j, k, chimes_table_bins.N_Temperatures, chimes_table_bins.N_Psi)] = chimes_master_grain_recombination.rates[chimes_flatten_index_3d(i, j, k, chimes_table_bins.N_Temperatures, chimes_table_bins.N_Psi)]; 
+		chimes_table_grain_recombination.rates[chimes_flatten_index_3d(incl_index, j, k, chimes_table_bins.N_Temperatures, chimes_table_bins.N_Psi)] = chimes_primarytable_grain_recombination.rates[chimes_flatten_index_3d(i, j, k, chimes_table_bins.N_Temperatures, chimes_table_bins.N_Psi)];
 	    }
 
 	  incl_index++; 
@@ -2060,12 +2060,12 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
    **************************/
   chimes_table_cosmic_ray.N_reactions[0] = 0; 
   chimes_table_cosmic_ray.N_reactions[1] = 0; 
-  for (i = 0; i < chimes_master_cosmic_ray.N_reactions[1]; i++) 
+  for (i = 0; i < chimes_primarytable_cosmic_ray.N_reactions[1]; i++)
     {
-      if(compare_element_incl_arrays(chimes_master_cosmic_ray.element_incl, i, myGlobalVars->element_included)) 
+      if(compare_element_incl_arrays(chimes_primarytable_cosmic_ray.element_incl, i, myGlobalVars->element_included))
 	{
 	  chimes_table_cosmic_ray.N_reactions[1] += 1; 
-	  if (chimes_master_cosmic_ray.molecular_flag[i] == 0) 
+	  if (chimes_primarytable_cosmic_ray.molecular_flag[i] == 0)
 	    chimes_table_cosmic_ray.N_reactions[0] += 1; 
 	}
     } 
@@ -2083,34 +2083,34 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
   
   // Copy table data 
   incl_index = 0; 
-  for (i = 0; i < chimes_master_cosmic_ray.N_reactions[1]; i++) 
+  for (i = 0; i < chimes_primarytable_cosmic_ray.N_reactions[1]; i++)
     {
-      if(compare_element_incl_arrays(chimes_master_cosmic_ray.element_incl, i, myGlobalVars->element_included)) 
+      if(compare_element_incl_arrays(chimes_primarytable_cosmic_ray.element_incl, i, myGlobalVars->element_included))
 	{
-	  chimes_table_cosmic_ray.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_master_cosmic_ray.reactants[i]]; 
+	  chimes_table_cosmic_ray.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_primarytable_cosmic_ray.reactants[i]];
 
 	  for (j = 0; j < 3; j++) 
 	    {
-	      if (chimes_master_cosmic_ray.products[chimes_flatten_index_2d(i, j, 3)] < 0) 
-		chimes_table_cosmic_ray.products[chimes_flatten_index_2d(incl_index, j, 3)] = chimes_master_cosmic_ray.products[chimes_flatten_index_2d(i, j, 3)]; 
+	      if (chimes_primarytable_cosmic_ray.products[chimes_flatten_index_2d(i, j, 3)] < 0)
+		chimes_table_cosmic_ray.products[chimes_flatten_index_2d(incl_index, j, 3)] = chimes_primarytable_cosmic_ray.products[chimes_flatten_index_2d(i, j, 3)];
 	      else 
-		chimes_table_cosmic_ray.products[chimes_flatten_index_2d(incl_index, j, 3)] = myGlobalVars->speciesIndices[chimes_master_cosmic_ray.products[chimes_flatten_index_2d(i, j, 3)]]; 
+		chimes_table_cosmic_ray.products[chimes_flatten_index_2d(incl_index, j, 3)] = myGlobalVars->speciesIndices[chimes_primarytable_cosmic_ray.products[chimes_flatten_index_2d(i, j, 3)]];
 	    }
 
 	  for (j = 0; j < 9; j++) 
-	    chimes_table_cosmic_ray.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_master_cosmic_ray.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+	    chimes_table_cosmic_ray.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_primarytable_cosmic_ray.element_incl[chimes_flatten_index_2d(i, j, 9)];
 
-	  chimes_table_cosmic_ray.rates[incl_index] = chimes_master_cosmic_ray.rates[i]; 
-	  chimes_table_cosmic_ray.molecular_flag[incl_index] = chimes_master_cosmic_ray.molecular_flag[i]; 
+	  chimes_table_cosmic_ray.rates[incl_index] = chimes_primarytable_cosmic_ray.rates[i];
+	  chimes_table_cosmic_ray.molecular_flag[incl_index] = chimes_primarytable_cosmic_ray.molecular_flag[i];
 
 	  for (j = 0; j < 2; j++) 
 	    {
-	      if (i == chimes_master_cosmic_ray.secondary_base_reaction[j]) 
+	      if (i == chimes_primarytable_cosmic_ray.secondary_base_reaction[j])
 		{
 		  chimes_table_cosmic_ray.secondary_base_reaction[j] = incl_index; 
 
 		  for (k = 0; k < chimes_table_bins.N_secondary_cosmic_ray_xHII; k++) 
-		    chimes_table_cosmic_ray.secondary_ratio[chimes_flatten_index_2d(j, k, chimes_table_bins.N_secondary_cosmic_ray_xHII)] = chimes_master_cosmic_ray.secondary_ratio[chimes_flatten_index_2d(j, k, chimes_table_bins.N_secondary_cosmic_ray_xHII)]; 
+		    chimes_table_cosmic_ray.secondary_ratio[chimes_flatten_index_2d(j, k, chimes_table_bins.N_secondary_cosmic_ray_xHII)] = chimes_primarytable_cosmic_ray.secondary_ratio[chimes_flatten_index_2d(j, k, chimes_table_bins.N_secondary_cosmic_ray_xHII)];
 		}
 	    }
 
@@ -2124,9 +2124,9 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
    *****************************/
   chimes_table_CO_cosmic_ray.N_reactions[0] = 0; 
   chimes_table_CO_cosmic_ray.N_reactions[1] = 0; 
-  for (i = 0; i < chimes_master_CO_cosmic_ray.N_reactions[1]; i++) 
+  for (i = 0; i < chimes_primarytable_CO_cosmic_ray.N_reactions[1]; i++)
     {
-      if(compare_element_incl_arrays(chimes_master_CO_cosmic_ray.element_incl, i, myGlobalVars->element_included)) 
+      if(compare_element_incl_arrays(chimes_primarytable_CO_cosmic_ray.element_incl, i, myGlobalVars->element_included))
 	{
 	  // Only molecular reactions in this group. 
 	  chimes_table_CO_cosmic_ray.N_reactions[1] += 1; 
@@ -2143,20 +2143,20 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
   // Copy table data 
   incl_index = 0; 
-  for (i = 0; i < chimes_master_CO_cosmic_ray.N_reactions[1]; i++) 
+  for (i = 0; i < chimes_primarytable_CO_cosmic_ray.N_reactions[1]; i++)
     {
-      if(compare_element_incl_arrays(chimes_master_CO_cosmic_ray.element_incl, i, myGlobalVars->element_included)) 
+      if(compare_element_incl_arrays(chimes_primarytable_CO_cosmic_ray.element_incl, i, myGlobalVars->element_included))
 	{
-	  chimes_table_CO_cosmic_ray.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_master_CO_cosmic_ray.reactants[i]]; 
+	  chimes_table_CO_cosmic_ray.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_primarytable_CO_cosmic_ray.reactants[i]];
 
 	  for (j = 0; j < 2; j++) 
-	    chimes_table_CO_cosmic_ray.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_master_CO_cosmic_ray.products[chimes_flatten_index_2d(i, j, 2)]]; 
+	    chimes_table_CO_cosmic_ray.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_primarytable_CO_cosmic_ray.products[chimes_flatten_index_2d(i, j, 2)]];
 
 	  for (j = 0; j < 9; j++) 
-	    chimes_table_CO_cosmic_ray.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_master_CO_cosmic_ray.element_incl[chimes_flatten_index_2d(i, j, 9)];
+	    chimes_table_CO_cosmic_ray.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_primarytable_CO_cosmic_ray.element_incl[chimes_flatten_index_2d(i, j, 9)];
 
 	  for (j = 0; j < chimes_table_bins.N_Temperatures; j++) 
-	    chimes_table_CO_cosmic_ray.rates[chimes_flatten_index_2d(incl_index, j, chimes_table_bins.N_Temperatures)] = chimes_master_CO_cosmic_ray.rates[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Temperatures)]; 
+	    chimes_table_CO_cosmic_ray.rates[chimes_flatten_index_2d(incl_index, j, chimes_table_bins.N_Temperatures)] = chimes_primarytable_CO_cosmic_ray.rates[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Temperatures)];
 
 	  incl_index++; 
 	}
@@ -2170,9 +2170,9 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
        ***************************/
       chimes_table_photoion_fuv.N_reactions[0] = 0; 
       chimes_table_photoion_fuv.N_reactions[1] = 0; 
-      for (i = 0; i < chimes_master_photoion_fuv.N_reactions[1]; i++) 
+      for (i = 0; i < chimes_primarytable_photoion_fuv.N_reactions[1]; i++)
 	{
-	  if(compare_element_incl_arrays(chimes_master_photoion_fuv.element_incl, i, myGlobalVars->element_included)) 
+	  if(compare_element_incl_arrays(chimes_primarytable_photoion_fuv.element_incl, i, myGlobalVars->element_included))
 	    {
 	      // No molecular reactions in this group 
 	      chimes_table_photoion_fuv.N_reactions[0] += 1; 
@@ -2192,27 +2192,27 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
       // Copy table data 
       incl_index = 0; 
-      for (i = 0; i < chimes_master_photoion_fuv.N_reactions[1]; i++) 
+      for (i = 0; i < chimes_primarytable_photoion_fuv.N_reactions[1]; i++)
 	{
-	  if(compare_element_incl_arrays(chimes_master_photoion_fuv.element_incl, i, myGlobalVars->element_included)) 
+	  if(compare_element_incl_arrays(chimes_primarytable_photoion_fuv.element_incl, i, myGlobalVars->element_included))
 	    {
 	      /* The reactants and products arrays need to be translated into 
 	       * the indices in the reduced network, as given by myGlobalVars->speciesIndices. */
-	      chimes_table_photoion_fuv.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_master_photoion_fuv.reactants[i]]; 
+	      chimes_table_photoion_fuv.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_primarytable_photoion_fuv.reactants[i]];
 
 	      for (j = 0; j < 2; j++) 
-		chimes_table_photoion_fuv.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_master_photoion_fuv.products[chimes_flatten_index_2d(i, j, 2)]]; 
+		chimes_table_photoion_fuv.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_primarytable_photoion_fuv.products[chimes_flatten_index_2d(i, j, 2)]];
 
 	      for (j = 0; j < 9; j++) 
-		chimes_table_photoion_fuv.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_master_photoion_fuv.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+		chimes_table_photoion_fuv.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_primarytable_photoion_fuv.element_incl[chimes_flatten_index_2d(i, j, 9)];
 	      
 	      for (j = 0; j < myGlobalVars->N_spectra; j++) 
 		{
-		  chimes_table_photoion_fuv.sigmaPhot[chimes_flatten_index_2d(j, incl_index, N_reactions_all)] = chimes_master_photoion_fuv.sigmaPhot[chimes_flatten_index_2d(j, i, chimes_master_photoion_fuv.N_reactions[1])]; 
-		  chimes_table_photoion_fuv.epsilonPhot[chimes_flatten_index_2d(j, incl_index, N_reactions_all)] = chimes_master_photoion_fuv.epsilonPhot[chimes_flatten_index_2d(j, i, chimes_master_photoion_fuv.N_reactions[1])]; 
+		  chimes_table_photoion_fuv.sigmaPhot[chimes_flatten_index_2d(j, incl_index, N_reactions_all)] = chimes_primarytable_photoion_fuv.sigmaPhot[chimes_flatten_index_2d(j, i, chimes_primarytable_photoion_fuv.N_reactions[1])];
+		  chimes_table_photoion_fuv.epsilonPhot[chimes_flatten_index_2d(j, incl_index, N_reactions_all)] = chimes_primarytable_photoion_fuv.epsilonPhot[chimes_flatten_index_2d(j, i, chimes_primarytable_photoion_fuv.N_reactions[1])];
 		}
 
-	      chimes_table_photoion_fuv.gamma[incl_index] = chimes_master_photoion_fuv.gamma[i]; 
+	      chimes_table_photoion_fuv.gamma[incl_index] = chimes_primarytable_photoion_fuv.gamma[i];
 	      incl_index++; 
 	    }
 	}
@@ -2223,12 +2223,12 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
        ***************************/
       chimes_table_photoion_euv.N_reactions[0] = 0; 
       chimes_table_photoion_euv.N_reactions[1] = 0; 
-      for (i = 0; i < chimes_master_photoion_euv.N_reactions[1]; i++) 
+      for (i = 0; i < chimes_primarytable_photoion_euv.N_reactions[1]; i++)
 	{
-	  if(compare_element_incl_arrays(chimes_master_photoion_euv.element_incl, i, myGlobalVars->element_included)) 
+	  if(compare_element_incl_arrays(chimes_primarytable_photoion_euv.element_incl, i, myGlobalVars->element_included))
 	    {
 	      chimes_table_photoion_euv.N_reactions[1] += 1; 
-	      if (chimes_master_photoion_euv.molecular_flag[i] == 0)
+	      if (chimes_primarytable_photoion_euv.molecular_flag[i] == 0)
 		chimes_table_photoion_euv.N_reactions[0] += 1; 
 	    }
 	} 
@@ -2247,28 +2247,28 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
       // Copy table data 
       incl_index = 0; 
-      for (i = 0; i < chimes_master_photoion_euv.N_reactions[1]; i++) 
+      for (i = 0; i < chimes_primarytable_photoion_euv.N_reactions[1]; i++)
 	{
-	  if(compare_element_incl_arrays(chimes_master_photoion_euv.element_incl, i, myGlobalVars->element_included)) 
+	  if(compare_element_incl_arrays(chimes_primarytable_photoion_euv.element_incl, i, myGlobalVars->element_included))
 	    {
 	      /* The reactants and products arrays need to be translated into 
 	       * the indices in the reduced network, as given by myGlobalVars->speciesIndices. */
-	      chimes_table_photoion_euv.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_master_photoion_euv.reactants[i]]; 
+	      chimes_table_photoion_euv.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_primarytable_photoion_euv.reactants[i]];
 
 	      for (j = 0; j < 2; j++) 
-		chimes_table_photoion_euv.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_master_photoion_euv.products[chimes_flatten_index_2d(i, j, 2)]]; 
+		chimes_table_photoion_euv.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_primarytable_photoion_euv.products[chimes_flatten_index_2d(i, j, 2)]];
 
 	      for (j = 0; j < 9; j++) 
-		chimes_table_photoion_euv.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_master_photoion_euv.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+		chimes_table_photoion_euv.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_primarytable_photoion_euv.element_incl[chimes_flatten_index_2d(i, j, 9)];
 	      
 	      for (j = 0; j < myGlobalVars->N_spectra; j++) 
 		{
-		  chimes_table_photoion_euv.sigmaPhot[chimes_flatten_index_2d(j, incl_index, N_reactions_all)] = chimes_master_photoion_euv.sigmaPhot[chimes_flatten_index_2d(j, i, chimes_master_photoion_euv.N_reactions[1])]; 
+		  chimes_table_photoion_euv.sigmaPhot[chimes_flatten_index_2d(j, incl_index, N_reactions_all)] = chimes_primarytable_photoion_euv.sigmaPhot[chimes_flatten_index_2d(j, i, chimes_primarytable_photoion_euv.N_reactions[1])];
 
 		  for (k = 0; k < 3; k++) 
 		    {
 		      for (l = 0; l < chimes_table_bins.N_Column_densities; l++) 
-			chimes_table_photoion_euv.shieldFactor_1D[chimes_flatten_index_4d(incl_index, j, k, l, myGlobalVars->N_spectra, 3, chimes_table_bins.N_Column_densities)] = chimes_master_photoion_euv.shieldFactor_1D[chimes_flatten_index_4d(i, j, k, l, myGlobalVars->N_spectra, 3, chimes_table_bins.N_Column_densities)]; 
+			chimes_table_photoion_euv.shieldFactor_1D[chimes_flatten_index_4d(incl_index, j, k, l, myGlobalVars->N_spectra, 3, chimes_table_bins.N_Column_densities)] = chimes_primarytable_photoion_euv.shieldFactor_1D[chimes_flatten_index_4d(i, j, k, l, myGlobalVars->N_spectra, 3, chimes_table_bins.N_Column_densities)];
 		    }
 
 		  for (k = 0; k < 6; k++) 
@@ -2276,13 +2276,13 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 		      for (l = 0; l < chimes_table_bins.N_Column_densities; l++) 
 			{
 			  for (m = 0; m < chimes_table_bins.N_Column_densities; m++) 
-			    chimes_table_photoion_euv.shieldFactor_2D[chimes_flatten_index_5d(incl_index, j, k, l, m, myGlobalVars->N_spectra, 6, chimes_table_bins.N_Column_densities, chimes_table_bins.N_Column_densities)] = chimes_master_photoion_euv.shieldFactor_2D[chimes_flatten_index_5d(i, j, k, l, m, myGlobalVars->N_spectra, 6, chimes_table_bins.N_Column_densities, chimes_table_bins.N_Column_densities)]; 
+			    chimes_table_photoion_euv.shieldFactor_2D[chimes_flatten_index_5d(incl_index, j, k, l, m, myGlobalVars->N_spectra, 6, chimes_table_bins.N_Column_densities, chimes_table_bins.N_Column_densities)] = chimes_primarytable_photoion_euv.shieldFactor_2D[chimes_flatten_index_5d(i, j, k, l, m, myGlobalVars->N_spectra, 6, chimes_table_bins.N_Column_densities, chimes_table_bins.N_Column_densities)];
 			}
 		    }
 		}
 	      
-	      chimes_table_photoion_euv.molecular_flag[incl_index] = chimes_master_photoion_euv.molecular_flag[i]; 
-	      chimes_table_photoion_euv.E_thresh[incl_index] = chimes_master_photoion_euv.E_thresh[i]; 
+	      chimes_table_photoion_euv.molecular_flag[incl_index] = chimes_primarytable_photoion_euv.molecular_flag[i];
+	      chimes_table_photoion_euv.E_thresh[incl_index] = chimes_primarytable_photoion_euv.E_thresh[i];
 	      incl_index++; 
 	    }
 	}
@@ -2293,9 +2293,9 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
        **********************************/
       chimes_table_photoion_auger_fuv.N_reactions[0] = 0; 
       chimes_table_photoion_auger_fuv.N_reactions[1] = 0; 
-      for (i = 0; i < chimes_master_photoion_auger_fuv.N_reactions[1]; i++) 
+      for (i = 0; i < chimes_primarytable_photoion_auger_fuv.N_reactions[1]; i++)
 	{
-	  if(compare_element_incl_arrays(chimes_master_photoion_auger_fuv.element_incl, i, myGlobalVars->element_included)) 
+	  if(compare_element_incl_arrays(chimes_primarytable_photoion_auger_fuv.element_incl, i, myGlobalVars->element_included))
 	    {
 	      // No molecular reactions in this group 
 	      chimes_table_photoion_auger_fuv.N_reactions[0] += 1; 
@@ -2315,30 +2315,30 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
       // Copy table data 
       incl_index = 0; 
-      for (i = 0; i < chimes_master_photoion_auger_fuv.N_reactions[1]; i++) 
+      for (i = 0; i < chimes_primarytable_photoion_auger_fuv.N_reactions[1]; i++)
 	{
-	  if(compare_element_incl_arrays(chimes_master_photoion_auger_fuv.element_incl, i, myGlobalVars->element_included)) 
+	  if(compare_element_incl_arrays(chimes_primarytable_photoion_auger_fuv.element_incl, i, myGlobalVars->element_included))
 	    {
 	      /* The reactants and products arrays need to be translated into 
 	       * the indices in the reduced network, as given by myGlobalVars->speciesIndices. */
-	      chimes_table_photoion_auger_fuv.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_master_photoion_auger_fuv.reactants[i]]; 
+	      chimes_table_photoion_auger_fuv.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_primarytable_photoion_auger_fuv.reactants[i]];
 
 	      for (j = 0; j < 2; j++) 
-		chimes_table_photoion_auger_fuv.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_master_photoion_auger_fuv.products[chimes_flatten_index_2d(i, j, 2)]]; 
+		chimes_table_photoion_auger_fuv.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_primarytable_photoion_auger_fuv.products[chimes_flatten_index_2d(i, j, 2)]];
 
 	      for (j = 0; j < 9; j++) 
-		chimes_table_photoion_auger_fuv.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_master_photoion_auger_fuv.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+		chimes_table_photoion_auger_fuv.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_primarytable_photoion_auger_fuv.element_incl[chimes_flatten_index_2d(i, j, 9)];
 	      
 	      for (j = 0; j < myGlobalVars->N_spectra; j++) 
-		chimes_table_photoion_auger_fuv.sigmaPhot[chimes_flatten_index_2d(j, incl_index, N_reactions_all)] = chimes_master_photoion_auger_fuv.sigmaPhot[chimes_flatten_index_2d(j, i, chimes_master_photoion_auger_fuv.N_reactions[1])]; 
+		chimes_table_photoion_auger_fuv.sigmaPhot[chimes_flatten_index_2d(j, incl_index, N_reactions_all)] = chimes_primarytable_photoion_auger_fuv.sigmaPhot[chimes_flatten_index_2d(j, i, chimes_primarytable_photoion_auger_fuv.N_reactions[1])];
 	      
 	      base_incl_index = 0;
               found_base = 0;
-              for (base_index = 0; base_index < chimes_master_photoion_fuv.N_reactions[1]; base_index++)
+              for (base_index = 0; base_index < chimes_primarytable_photoion_fuv.N_reactions[1]; base_index++)
                 {
-                  if(compare_element_incl_arrays(chimes_master_photoion_fuv.element_incl, base_index, myGlobalVars->element_included))
+                  if(compare_element_incl_arrays(chimes_primarytable_photoion_fuv.element_incl, base_index, myGlobalVars->element_included))
                     {
-                      if (base_index == chimes_master_photoion_auger_fuv.base_reaction[i])
+                      if (base_index == chimes_primarytable_photoion_auger_fuv.base_reaction[i])
                         {
                           chimes_table_photoion_auger_fuv.base_reaction[incl_index] = base_incl_index;
                           found_base = 1;
@@ -2359,7 +2359,7 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 	       * are released in the reaction, which is given by 
 	       * the difference between the final and initial 
 	       * ionisation state. */ 
-	      chimes_table_photoion_auger_fuv.number_of_electrons[incl_index] = chimes_master_photoion_auger_fuv.products[chimes_flatten_index_2d(i, 0, 2)] - chimes_master_photoion_auger_fuv.reactants[i]; 
+	      chimes_table_photoion_auger_fuv.number_of_electrons[incl_index] = chimes_primarytable_photoion_auger_fuv.products[chimes_flatten_index_2d(i, 0, 2)] - chimes_primarytable_photoion_auger_fuv.reactants[i];
 
 	      incl_index++; 
 	    }
@@ -2371,9 +2371,9 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
        **********************************/
       chimes_table_photoion_auger_euv.N_reactions[0] = 0; 
       chimes_table_photoion_auger_euv.N_reactions[1] = 0; 
-      for (i = 0; i < chimes_master_photoion_auger_euv.N_reactions[1]; i++) 
+      for (i = 0; i < chimes_primarytable_photoion_auger_euv.N_reactions[1]; i++)
 	{
-	  if(compare_element_incl_arrays(chimes_master_photoion_auger_euv.element_incl, i, myGlobalVars->element_included)) 
+	  if(compare_element_incl_arrays(chimes_primarytable_photoion_auger_euv.element_incl, i, myGlobalVars->element_included))
 	    {
 	      // No molecular reactions in this group 
 	      chimes_table_photoion_auger_euv.N_reactions[0] += 1; 
@@ -2393,30 +2393,30 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
       // Copy table data 
       incl_index = 0; 
-      for (i = 0; i < chimes_master_photoion_auger_euv.N_reactions[1]; i++) 
+      for (i = 0; i < chimes_primarytable_photoion_auger_euv.N_reactions[1]; i++)
 	{
-	  if(compare_element_incl_arrays(chimes_master_photoion_auger_euv.element_incl, i, myGlobalVars->element_included)) 
+	  if(compare_element_incl_arrays(chimes_primarytable_photoion_auger_euv.element_incl, i, myGlobalVars->element_included))
 	    {
 	      /* The reactants and products arrays need to be translated into 
 	       * the indices in the reduced network, as given by myGlobalVars->speciesIndices. */
-	      chimes_table_photoion_auger_euv.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_master_photoion_auger_euv.reactants[i]]; 
+	      chimes_table_photoion_auger_euv.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_primarytable_photoion_auger_euv.reactants[i]];
 
 	      for (j = 0; j < 2; j++) 
-		chimes_table_photoion_auger_euv.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_master_photoion_auger_euv.products[chimes_flatten_index_2d(i, j, 2)]]; 
+		chimes_table_photoion_auger_euv.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_primarytable_photoion_auger_euv.products[chimes_flatten_index_2d(i, j, 2)]];
 
 	      for (j = 0; j < 9; j++) 
-		chimes_table_photoion_auger_euv.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_master_photoion_auger_euv.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+		chimes_table_photoion_auger_euv.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_primarytable_photoion_auger_euv.element_incl[chimes_flatten_index_2d(i, j, 9)];
 	      
 	      for (j = 0; j < myGlobalVars->N_spectra; j++) 
-		chimes_table_photoion_auger_euv.sigmaPhot[chimes_flatten_index_2d(j, incl_index, N_reactions_all)] = chimes_master_photoion_auger_euv.sigmaPhot[chimes_flatten_index_2d(j, i, chimes_master_photoion_auger_euv.N_reactions[1])]; 
+		chimes_table_photoion_auger_euv.sigmaPhot[chimes_flatten_index_2d(j, incl_index, N_reactions_all)] = chimes_primarytable_photoion_auger_euv.sigmaPhot[chimes_flatten_index_2d(j, i, chimes_primarytable_photoion_auger_euv.N_reactions[1])];
 
 	      base_incl_index = 0;
               found_base = 0;
-              for (base_index = 0; base_index < chimes_master_photoion_euv.N_reactions[1]; base_index++)
+              for (base_index = 0; base_index < chimes_primarytable_photoion_euv.N_reactions[1]; base_index++)
                 {
-                  if(compare_element_incl_arrays(chimes_master_photoion_euv.element_incl, base_index, myGlobalVars->element_included))
+                  if(compare_element_incl_arrays(chimes_primarytable_photoion_euv.element_incl, base_index, myGlobalVars->element_included))
                     {
-                      if (base_index == chimes_master_photoion_auger_euv.base_reaction[i])
+                      if (base_index == chimes_primarytable_photoion_auger_euv.base_reaction[i])
                         {
                           chimes_table_photoion_auger_euv.base_reaction[incl_index] = base_incl_index;
                           found_base = 1;
@@ -2437,7 +2437,7 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 	       * are released in the reaction, which is given by 
 	       * the difference between the final and initial 
 	       * ionisation state. */ 
-	      chimes_table_photoion_auger_euv.number_of_electrons[incl_index] = chimes_master_photoion_auger_euv.products[chimes_flatten_index_2d(i, 0, 2)] - chimes_master_photoion_auger_euv.reactants[i]; 
+	      chimes_table_photoion_auger_euv.number_of_electrons[incl_index] = chimes_primarytable_photoion_auger_euv.products[chimes_flatten_index_2d(i, 0, 2)] - chimes_primarytable_photoion_auger_euv.reactants[i];
 
 	      incl_index++; 
 	    }
@@ -2449,12 +2449,12 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
        **********************************/
       chimes_table_photodissoc_group1.N_reactions[0] = 0; 
       chimes_table_photodissoc_group1.N_reactions[1] = 0; 
-      for (i = 0; i < chimes_master_photodissoc_group1.N_reactions[1]; i++) 
+      for (i = 0; i < chimes_primarytable_photodissoc_group1.N_reactions[1]; i++)
 	{
-	  if(compare_element_incl_arrays(chimes_master_photodissoc_group1.element_incl, i, myGlobalVars->element_included)) 
+	  if(compare_element_incl_arrays(chimes_primarytable_photodissoc_group1.element_incl, i, myGlobalVars->element_included))
 	    {
 	      chimes_table_photodissoc_group1.N_reactions[1] += 1; 
-	      if (chimes_master_photodissoc_group1.molecular_flag[i] == 0) 
+	      if (chimes_primarytable_photodissoc_group1.molecular_flag[i] == 0)
 		chimes_table_photodissoc_group1.N_reactions[0] += 1; 
 	    }
 	} 
@@ -2471,23 +2471,23 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
       // Copy table data 
       incl_index = 0; 
-      for (i = 0; i < chimes_master_photodissoc_group1.N_reactions[1]; i++) 
+      for (i = 0; i < chimes_primarytable_photodissoc_group1.N_reactions[1]; i++)
 	{
-	  if(compare_element_incl_arrays(chimes_master_photodissoc_group1.element_incl, i, myGlobalVars->element_included)) 
+	  if(compare_element_incl_arrays(chimes_primarytable_photodissoc_group1.element_incl, i, myGlobalVars->element_included))
 	    {
 	      /* The reactants and products arrays need to be translated into 
 	       * the indices in the reduced network, as given by myGlobalVars->speciesIndices. */
-	      chimes_table_photodissoc_group1.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_master_photodissoc_group1.reactants[i]]; 
+	      chimes_table_photodissoc_group1.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_primarytable_photodissoc_group1.reactants[i]];
 
 	      for (j = 0; j < 2; j++) 
-		chimes_table_photodissoc_group1.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_master_photodissoc_group1.products[chimes_flatten_index_2d(i, j, 2)]]; 
+		chimes_table_photodissoc_group1.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_primarytable_photodissoc_group1.products[chimes_flatten_index_2d(i, j, 2)]];
 
 	      for (j = 0; j < 9; j++) 
-		chimes_table_photodissoc_group1.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_master_photodissoc_group1.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+		chimes_table_photodissoc_group1.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_primarytable_photodissoc_group1.element_incl[chimes_flatten_index_2d(i, j, 9)];
 	      
-	      chimes_table_photodissoc_group1.gamma[incl_index] = chimes_master_photodissoc_group1.gamma[i]; 
-	      chimes_table_photodissoc_group1.rates[incl_index] = chimes_master_photodissoc_group1.rates[i]; 
-	      chimes_table_photodissoc_group1.molecular_flag[incl_index] = chimes_master_photodissoc_group1.molecular_flag[i]; 
+	      chimes_table_photodissoc_group1.gamma[incl_index] = chimes_primarytable_photodissoc_group1.gamma[i];
+	      chimes_table_photodissoc_group1.rates[incl_index] = chimes_primarytable_photodissoc_group1.rates[i];
+	      chimes_table_photodissoc_group1.molecular_flag[incl_index] = chimes_primarytable_photodissoc_group1.molecular_flag[i];
 	      incl_index++; 
 	    }
 	}
@@ -2498,9 +2498,9 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
        **********************************/
       chimes_table_photodissoc_group2.N_reactions[0] = 0; 
       chimes_table_photodissoc_group2.N_reactions[1] = 0; 
-      for (i = 0; i < chimes_master_photodissoc_group2.N_reactions[1]; i++) 
+      for (i = 0; i < chimes_primarytable_photodissoc_group2.N_reactions[1]; i++)
 	{
-	  if(compare_element_incl_arrays(chimes_master_photodissoc_group2.element_incl, i, myGlobalVars->element_included)) 
+	  if(compare_element_incl_arrays(chimes_primarytable_photodissoc_group2.element_incl, i, myGlobalVars->element_included))
 	    {
 	      // Only molecular reactions 
 	      chimes_table_photodissoc_group2.N_reactions[1] += 1; 
@@ -2518,27 +2518,27 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
       // Copy table data 
       incl_index = 0; 
-      for (i = 0; i < chimes_master_photodissoc_group2.N_reactions[1]; i++) 
+      for (i = 0; i < chimes_primarytable_photodissoc_group2.N_reactions[1]; i++)
 	{
-	  if(compare_element_incl_arrays(chimes_master_photodissoc_group2.element_incl, i, myGlobalVars->element_included)) 
+	  if(compare_element_incl_arrays(chimes_primarytable_photodissoc_group2.element_incl, i, myGlobalVars->element_included))
 	    {
 	      /* The reactants and products arrays need to be translated into 
 	       * the indices in the reduced network, as given by myGlobalVars->speciesIndices. */
-	      chimes_table_photodissoc_group2.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_master_photodissoc_group2.reactants[i]]; 
+	      chimes_table_photodissoc_group2.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_primarytable_photodissoc_group2.reactants[i]];
 
 	      for (j = 0; j < 2; j++) 
-		chimes_table_photodissoc_group2.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_master_photodissoc_group2.products[chimes_flatten_index_2d(i, j, 2)]]; 
+		chimes_table_photodissoc_group2.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_primarytable_photodissoc_group2.products[chimes_flatten_index_2d(i, j, 2)]];
 
 	      for (j = 0; j < 9; j++) 
-		chimes_table_photodissoc_group2.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_master_photodissoc_group2.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+		chimes_table_photodissoc_group2.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_primarytable_photodissoc_group2.element_incl[chimes_flatten_index_2d(i, j, 9)];
 	      
-	      chimes_table_photodissoc_group2.rates[incl_index] = chimes_master_photodissoc_group2.rates[i]; 
+	      chimes_table_photodissoc_group2.rates[incl_index] = chimes_primarytable_photodissoc_group2.rates[i];
 	      incl_index++; 
 	    }
 	}
 
       for (i = 0; i < 3; i++) 
-	chimes_table_photodissoc_group2.gamma_coeff[i] = chimes_master_photodissoc_group2.gamma_coeff[i]; 
+	chimes_table_photodissoc_group2.gamma_coeff[i] = chimes_primarytable_photodissoc_group2.gamma_coeff[i];
 
 
       /********************************** 
@@ -2546,9 +2546,9 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
        **********************************/
       chimes_table_CO_photodissoc.N_reactions[0] = 0; 
       chimes_table_CO_photodissoc.N_reactions[1] = 0; 
-      for (i = 0; i < chimes_master_CO_photodissoc.N_reactions[1]; i++) 
+      for (i = 0; i < chimes_primarytable_CO_photodissoc.N_reactions[1]; i++)
 	{
-	  if(compare_element_incl_arrays(chimes_master_CO_photodissoc.element_incl, i, myGlobalVars->element_included)) 
+	  if(compare_element_incl_arrays(chimes_primarytable_CO_photodissoc.element_incl, i, myGlobalVars->element_included))
 	    {
 	      // Only molecular reactions. 
 	      chimes_table_CO_photodissoc.N_reactions[1] += 1; 
@@ -2567,27 +2567,27 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 
       // Copy table data 
       incl_index = 0; 
-      for (i = 0; i < chimes_master_CO_photodissoc.N_reactions[1]; i++) 
+      for (i = 0; i < chimes_primarytable_CO_photodissoc.N_reactions[1]; i++)
 	{
-	  if(compare_element_incl_arrays(chimes_master_CO_photodissoc.element_incl, i, myGlobalVars->element_included)) 
+	  if(compare_element_incl_arrays(chimes_primarytable_CO_photodissoc.element_incl, i, myGlobalVars->element_included))
 	    {
 	      /* The reactants and products arrays need to be translated into 
 	       * the indices in the reduced network, as given by myGlobalVars->speciesIndices. */
-	      chimes_table_CO_photodissoc.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_master_CO_photodissoc.reactants[i]]; 
+	      chimes_table_CO_photodissoc.reactants[incl_index] = myGlobalVars->speciesIndices[chimes_primarytable_CO_photodissoc.reactants[i]];
 
 	      for (j = 0; j < 2; j++) 
-		chimes_table_CO_photodissoc.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_master_CO_photodissoc.products[chimes_flatten_index_2d(i, j, 2)]];
+		chimes_table_CO_photodissoc.products[chimes_flatten_index_2d(incl_index, j, 2)] = myGlobalVars->speciesIndices[chimes_primarytable_CO_photodissoc.products[chimes_flatten_index_2d(i, j, 2)]];
 
 	      for (j = 0; j < 9; j++) 
-		chimes_table_CO_photodissoc.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_master_CO_photodissoc.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+		chimes_table_CO_photodissoc.element_incl[chimes_flatten_index_2d(incl_index, j, 9)] = chimes_primarytable_CO_photodissoc.element_incl[chimes_flatten_index_2d(i, j, 9)];
 	      
-	      chimes_table_CO_photodissoc.gamma[incl_index] = chimes_master_CO_photodissoc.gamma[i]; 
-	      chimes_table_CO_photodissoc.rates[incl_index] = chimes_master_CO_photodissoc.rates[i]; 
+	      chimes_table_CO_photodissoc.gamma[incl_index] = chimes_primarytable_CO_photodissoc.gamma[i];
+	      chimes_table_CO_photodissoc.rates[incl_index] = chimes_primarytable_CO_photodissoc.rates[i];
 
 	      for (j = 0; j < chimes_table_bins.N_COself_column_densities; j++) 
 		{
 		  for (k = 0; k < chimes_table_bins.N_H2CO_column_densities; k++) 
-		    chimes_table_CO_photodissoc.self_shielding[chimes_flatten_index_3d(incl_index, j, k, chimes_table_bins.N_COself_column_densities, chimes_table_bins.N_H2CO_column_densities)] = chimes_master_CO_photodissoc.self_shielding[chimes_flatten_index_3d(i, j, k, chimes_table_bins.N_COself_column_densities, chimes_table_bins.N_H2CO_column_densities)]; 
+		    chimes_table_CO_photodissoc.self_shielding[chimes_flatten_index_3d(incl_index, j, k, chimes_table_bins.N_COself_column_densities, chimes_table_bins.N_H2CO_column_densities)] = chimes_primarytable_CO_photodissoc.self_shielding[chimes_flatten_index_3d(i, j, k, chimes_table_bins.N_COself_column_densities, chimes_table_bins.N_H2CO_column_densities)];
 		}
 
 	      incl_index++; 
@@ -2606,21 +2606,21 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
   /* Use the speciesIndices array to determine 
    * which coolants are included in the network. 
    * It will be -1 for excluded species. */
-  for (i = 0; i < chimes_master_cooling.N_coolants; i++) 
+  for (i = 0; i < chimes_primarytable_cooling.N_coolants; i++)
     {
-      if (myGlobalVars->speciesIndices[chimes_master_cooling.coolants[i]] >= 0) 
+      if (myGlobalVars->speciesIndices[chimes_primarytable_cooling.coolants[i]] >= 0)
 	chimes_table_cooling.N_coolants++; 
     } 
 
-  for (i = 0; i < chimes_master_cooling.N_coolants_2d; i++) 
+  for (i = 0; i < chimes_primarytable_cooling.N_coolants_2d; i++)
     {
-      if (myGlobalVars->speciesIndices[chimes_master_cooling.coolants_2d[i]] >= 0) 
+      if (myGlobalVars->speciesIndices[chimes_primarytable_cooling.coolants_2d[i]] >= 0)
 	chimes_table_cooling.N_coolants_2d++; 
     }
   
-  for (i = 0; i < chimes_master_cooling.N_coolants_4d; i++) 
+  for (i = 0; i < chimes_primarytable_cooling.N_coolants_4d; i++)
     {
-      if (myGlobalVars->speciesIndices[chimes_master_cooling.coolants_4d[i]] >= 0) 
+      if (myGlobalVars->speciesIndices[chimes_primarytable_cooling.coolants_4d[i]] >= 0)
 	chimes_table_cooling.N_coolants_4d++; 
     }
 
@@ -2649,46 +2649,46 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
   chimes_table_cooling.H2_cool_LTE = (ChimesFloat *) malloc(chimes_table_bins.N_mol_cool_Temperatures * sizeof(ChimesFloat)); 
 
 
-  // Copy over data from master tables 
+  // Copy over data from primarytable tables
   incl_index = 0; 
-  for (i = 0; i < chimes_master_cooling.N_coolants; i++) 
+  for (i = 0; i < chimes_primarytable_cooling.N_coolants; i++)
     {
-      if (myGlobalVars->speciesIndices[chimes_master_cooling.coolants[i]] >= 0) 
+      if (myGlobalVars->speciesIndices[chimes_primarytable_cooling.coolants[i]] >= 0)
 	{
-	  chimes_table_cooling.coolants[incl_index] = myGlobalVars->speciesIndices[chimes_master_cooling.coolants[i]]; 
+	  chimes_table_cooling.coolants[incl_index] = myGlobalVars->speciesIndices[chimes_primarytable_cooling.coolants[i]];
 	  for (j = 0; j < chimes_table_bins.N_Temperatures; j++) 
-	    chimes_table_cooling.rates[chimes_flatten_index_2d(incl_index, j, chimes_table_bins.N_Temperatures)] = chimes_master_cooling.rates[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Temperatures)]; 
+	    chimes_table_cooling.rates[chimes_flatten_index_2d(incl_index, j, chimes_table_bins.N_Temperatures)] = chimes_primarytable_cooling.rates[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Temperatures)];
 
 	  incl_index++; 
 	}
     }
 
   incl_index = 0; 
-  for (i = 0; i < chimes_master_cooling.N_coolants_2d; i++) 
+  for (i = 0; i < chimes_primarytable_cooling.N_coolants_2d; i++)
     {
-      if (myGlobalVars->speciesIndices[chimes_master_cooling.coolants_2d[i]] >= 0) 
+      if (myGlobalVars->speciesIndices[chimes_primarytable_cooling.coolants_2d[i]] >= 0)
 	{
-	  chimes_table_cooling.coolants_2d[incl_index] = myGlobalVars->speciesIndices[chimes_master_cooling.coolants_2d[i]]; 
+	  chimes_table_cooling.coolants_2d[incl_index] = myGlobalVars->speciesIndices[chimes_primarytable_cooling.coolants_2d[i]];
 
 	  for (j = 0; j < chimes_table_bins.N_cool_2d_Temperatures; j++) 
 	    {
 	      for (k = 0; k < chimes_table_bins.N_cool_2d_ElectronDensities; k++) 
-		chimes_table_cooling.rates_2d[chimes_flatten_index_3d(incl_index, j, k, chimes_table_bins.N_cool_2d_Temperatures, chimes_table_bins.N_cool_2d_ElectronDensities)] = chimes_master_cooling.rates_2d[chimes_flatten_index_3d(i, j, k, chimes_table_bins.N_cool_2d_Temperatures, chimes_table_bins.N_cool_2d_ElectronDensities)];  
+		chimes_table_cooling.rates_2d[chimes_flatten_index_3d(incl_index, j, k, chimes_table_bins.N_cool_2d_Temperatures, chimes_table_bins.N_cool_2d_ElectronDensities)] = chimes_primarytable_cooling.rates_2d[chimes_flatten_index_3d(i, j, k, chimes_table_bins.N_cool_2d_Temperatures, chimes_table_bins.N_cool_2d_ElectronDensities)];
 	    }
 	  
 	  for (j = 0; j < chimes_table_bins.N_cool_hiT_2d_Temperatures; j++) 
-	    chimes_table_cooling.rates_hiT_2d[chimes_flatten_index_2d(incl_index, j, chimes_table_bins.N_cool_hiT_2d_Temperatures)] = chimes_master_cooling.rates_hiT_2d[chimes_flatten_index_2d(i, j, chimes_table_bins.N_cool_hiT_2d_Temperatures)]; 
+	    chimes_table_cooling.rates_hiT_2d[chimes_flatten_index_2d(incl_index, j, chimes_table_bins.N_cool_hiT_2d_Temperatures)] = chimes_primarytable_cooling.rates_hiT_2d[chimes_flatten_index_2d(i, j, chimes_table_bins.N_cool_hiT_2d_Temperatures)];
 
 	  incl_index++; 
 	}
     } 
 
   incl_index = 0; 
-  for (i = 0; i < chimes_master_cooling.N_coolants_4d; i++) 
+  for (i = 0; i < chimes_primarytable_cooling.N_coolants_4d; i++)
     {
-      if (myGlobalVars->speciesIndices[chimes_master_cooling.coolants_4d[i]] >= 0) 
+      if (myGlobalVars->speciesIndices[chimes_primarytable_cooling.coolants_4d[i]] >= 0)
 	{
-	  chimes_table_cooling.coolants_4d[incl_index] = myGlobalVars->speciesIndices[chimes_master_cooling.coolants_4d[i]]; 
+	  chimes_table_cooling.coolants_4d[incl_index] = myGlobalVars->speciesIndices[chimes_primarytable_cooling.coolants_4d[i]];
 	  
 	  for (j = 0; j < chimes_table_bins.N_cool_4d_Temperatures; j++) 
 	    {
@@ -2697,13 +2697,13 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
 		  for (l = 0; l < chimes_table_bins.N_cool_4d_ElectronDensities; l++) 
 		    {
 		      for (m = 0; m < chimes_table_bins.N_cool_4d_HIIDensities; m++) 
-			chimes_table_cooling.rates_4d[chimes_flatten_index_5d(incl_index, j, k, l, m, chimes_table_bins.N_cool_4d_Temperatures, chimes_table_bins.N_cool_4d_HIDensities, chimes_table_bins.N_cool_4d_ElectronDensities, chimes_table_bins.N_cool_4d_HIIDensities)] = chimes_master_cooling.rates_4d[chimes_flatten_index_5d(i, j, k, l, m, chimes_table_bins.N_cool_4d_Temperatures, chimes_table_bins.N_cool_4d_HIDensities, chimes_table_bins.N_cool_4d_ElectronDensities, chimes_table_bins.N_cool_4d_HIIDensities)]; 
+			chimes_table_cooling.rates_4d[chimes_flatten_index_5d(incl_index, j, k, l, m, chimes_table_bins.N_cool_4d_Temperatures, chimes_table_bins.N_cool_4d_HIDensities, chimes_table_bins.N_cool_4d_ElectronDensities, chimes_table_bins.N_cool_4d_HIIDensities)] = chimes_primarytable_cooling.rates_4d[chimes_flatten_index_5d(i, j, k, l, m, chimes_table_bins.N_cool_4d_Temperatures, chimes_table_bins.N_cool_4d_HIDensities, chimes_table_bins.N_cool_4d_ElectronDensities, chimes_table_bins.N_cool_4d_HIIDensities)];
 		    }
 		}
 	    }
 
 	  for (j = 0; j < chimes_table_bins.N_cool_hiT_4d_Temperatures; j++) 
-	    chimes_table_cooling.rates_hiT_4d[chimes_flatten_index_2d(incl_index, j, chimes_table_bins.N_cool_hiT_4d_Temperatures)] = chimes_master_cooling.rates_hiT_4d[chimes_flatten_index_2d(i, j, chimes_table_bins.N_cool_hiT_4d_Temperatures)]; 
+	    chimes_table_cooling.rates_hiT_4d[chimes_flatten_index_2d(incl_index, j, chimes_table_bins.N_cool_hiT_4d_Temperatures)] = chimes_primarytable_cooling.rates_hiT_4d[chimes_flatten_index_2d(i, j, chimes_table_bins.N_cool_hiT_4d_Temperatures)];
 	  
 	  incl_index++; 
 	}
@@ -2713,21 +2713,21 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
     {
       for (j = 0; j < chimes_table_bins.N_Psi; j++) 
 	{
-	  chimes_table_cooling.photoelectric_heating[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Psi)] = chimes_master_cooling.photoelectric_heating[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Psi)]; 
-	  chimes_table_cooling.grain_recombination[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Psi)] = chimes_master_cooling.grain_recombination[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Psi)]; 
+	  chimes_table_cooling.photoelectric_heating[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Psi)] = chimes_primarytable_cooling.photoelectric_heating[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Psi)];
+	  chimes_table_cooling.grain_recombination[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Psi)] = chimes_primarytable_cooling.grain_recombination[chimes_flatten_index_2d(i, j, chimes_table_bins.N_Psi)];
 	}
 
-      chimes_table_cooling.gas_grain_transfer[i] = chimes_master_cooling.gas_grain_transfer[i]; 
+      chimes_table_cooling.gas_grain_transfer[i] = chimes_primarytable_cooling.gas_grain_transfer[i];
     }
 
   for (i = 0; i < chimes_table_bins.N_mol_cool_Temperatures; i++) 
     {
-      chimes_table_cooling.H2_cool_lowDens_H2[i] = chimes_master_cooling.H2_cool_lowDens_H2[i]; 
-      chimes_table_cooling.H2_cool_lowDens_HI[i] = chimes_master_cooling.H2_cool_lowDens_HI[i]; 
-      chimes_table_cooling.H2_cool_lowDens_HII[i] = chimes_master_cooling.H2_cool_lowDens_HII[i]; 
-      chimes_table_cooling.H2_cool_lowDens_HeI[i] = chimes_master_cooling.H2_cool_lowDens_HeI[i]; 
-      chimes_table_cooling.H2_cool_lowDens_elec[i] = chimes_master_cooling.H2_cool_lowDens_elec[i]; 
-      chimes_table_cooling.H2_cool_LTE[i] = chimes_master_cooling.H2_cool_LTE[i]; 
+      chimes_table_cooling.H2_cool_lowDens_H2[i] = chimes_primarytable_cooling.H2_cool_lowDens_H2[i];
+      chimes_table_cooling.H2_cool_lowDens_HI[i] = chimes_primarytable_cooling.H2_cool_lowDens_HI[i];
+      chimes_table_cooling.H2_cool_lowDens_HII[i] = chimes_primarytable_cooling.H2_cool_lowDens_HII[i];
+      chimes_table_cooling.H2_cool_lowDens_HeI[i] = chimes_primarytable_cooling.H2_cool_lowDens_HeI[i];
+      chimes_table_cooling.H2_cool_lowDens_elec[i] = chimes_primarytable_cooling.H2_cool_lowDens_elec[i];
+      chimes_table_cooling.H2_cool_LTE[i] = chimes_primarytable_cooling.H2_cool_LTE[i];
     }
 
   if (myGlobalVars->redshift_dependent_UVB_index >= 0) 
@@ -2745,155 +2745,155 @@ void initialise_main_data(struct globalVariables *myGlobalVars)
        * These will be used to re-construct the 
        * reduced reaction lists every time we 
        * load a new UVB spectrum. */ 
-      N_reactions_all = chimes_master_photoion_fuv.N_reactions[1]; 
+      N_reactions_all = chimes_primarytable_photoion_fuv.N_reactions[1];
       chimes_table_redshift_dependent_UVB.photoion_fuv_element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
       
       for (i = 0; i < N_reactions_all; i++) 
 	{
 	  for (j = 0; j < 9; j++) 
-	    chimes_table_redshift_dependent_UVB.photoion_fuv_element_incl[chimes_flatten_index_2d(i, j, 9)] = chimes_master_photoion_fuv.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+	    chimes_table_redshift_dependent_UVB.photoion_fuv_element_incl[chimes_flatten_index_2d(i, j, 9)] = chimes_primarytable_photoion_fuv.element_incl[chimes_flatten_index_2d(i, j, 9)];
 	}
 
-      N_reactions_all = chimes_master_photoion_euv.N_reactions[1]; 
+      N_reactions_all = chimes_primarytable_photoion_euv.N_reactions[1];
       chimes_table_redshift_dependent_UVB.photoion_euv_element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
       
       for (i = 0; i < N_reactions_all; i++) 
 	{
 	  for (j = 0; j < 9; j++) 
-	    chimes_table_redshift_dependent_UVB.photoion_euv_element_incl[chimes_flatten_index_2d(i, j, 9)] = chimes_master_photoion_euv.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+	    chimes_table_redshift_dependent_UVB.photoion_euv_element_incl[chimes_flatten_index_2d(i, j, 9)] = chimes_primarytable_photoion_euv.element_incl[chimes_flatten_index_2d(i, j, 9)];
 	}
 
-      N_reactions_all = chimes_master_photoion_auger_fuv.N_reactions[1]; 
+      N_reactions_all = chimes_primarytable_photoion_auger_fuv.N_reactions[1];
       chimes_table_redshift_dependent_UVB.photoion_auger_fuv_element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
 
       
       for (i = 0; i < N_reactions_all; i++) 
 	{
 	  for (j = 0; j < 9; j++) 
-	    chimes_table_redshift_dependent_UVB.photoion_auger_fuv_element_incl[chimes_flatten_index_2d(i, j, 9)] = chimes_master_photoion_auger_fuv.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+	    chimes_table_redshift_dependent_UVB.photoion_auger_fuv_element_incl[chimes_flatten_index_2d(i, j, 9)] = chimes_primarytable_photoion_auger_fuv.element_incl[chimes_flatten_index_2d(i, j, 9)];
 	}
 
-      N_reactions_all = chimes_master_photoion_auger_euv.N_reactions[1]; 
+      N_reactions_all = chimes_primarytable_photoion_auger_euv.N_reactions[1];
       chimes_table_redshift_dependent_UVB.photoion_auger_euv_element_incl = (int *) malloc(N_reactions_all * 9 * sizeof(int));
 
       for (i = 0; i < N_reactions_all; i++) 
 	{
 	  for (j = 0; j < 9; j++) 
-	    chimes_table_redshift_dependent_UVB.photoion_auger_euv_element_incl[chimes_flatten_index_2d(i, j, 9)] = chimes_master_photoion_auger_euv.element_incl[chimes_flatten_index_2d(i, j, 9)]; 
+	    chimes_table_redshift_dependent_UVB.photoion_auger_euv_element_incl[chimes_flatten_index_2d(i, j, 9)] = chimes_primarytable_photoion_auger_euv.element_incl[chimes_flatten_index_2d(i, j, 9)];
 	}
     }
 
   
   /**********************************
-   ** Free memory in master tables ** 
+   ** Free memory in primarytable tables ** 
    **********************************/  
-  free(chimes_master_T_dependent.reactants); 
-  free(chimes_master_T_dependent.products); 
-  free(chimes_master_T_dependent.element_incl); 
-  free(chimes_master_T_dependent.rates); 
-  free(chimes_master_T_dependent.molecular_flag); 
+  free(chimes_primarytable_T_dependent.reactants);
+  free(chimes_primarytable_T_dependent.products);
+  free(chimes_primarytable_T_dependent.element_incl);
+  free(chimes_primarytable_T_dependent.rates);
+  free(chimes_primarytable_T_dependent.molecular_flag);
 
-  free(chimes_master_constant.reactants); 
-  free(chimes_master_constant.products); 
-  free(chimes_master_constant.element_incl); 
-  free(chimes_master_constant.molecular_flag); 
-  free(chimes_master_constant.rates); 
+  free(chimes_primarytable_constant.reactants);
+  free(chimes_primarytable_constant.products);
+  free(chimes_primarytable_constant.element_incl);
+  free(chimes_primarytable_constant.molecular_flag);
+  free(chimes_primarytable_constant.rates);
 
-  free(chimes_master_recombination_AB.reactants); 
-  free(chimes_master_recombination_AB.products); 
-  free(chimes_master_recombination_AB.element_incl); 
-  free(chimes_master_recombination_AB.molecular_flag); 
-  free(chimes_master_recombination_AB.rates); 
+  free(chimes_primarytable_recombination_AB.reactants);
+  free(chimes_primarytable_recombination_AB.products);
+  free(chimes_primarytable_recombination_AB.element_incl);
+  free(chimes_primarytable_recombination_AB.molecular_flag);
+  free(chimes_primarytable_recombination_AB.rates);
   
-  free(chimes_master_grain_recombination.reactants); 
-  free(chimes_master_grain_recombination.products); 
-  free(chimes_master_grain_recombination.element_incl); 
-  free(chimes_master_grain_recombination.rates); 
+  free(chimes_primarytable_grain_recombination.reactants);
+  free(chimes_primarytable_grain_recombination.products);
+  free(chimes_primarytable_grain_recombination.element_incl);
+  free(chimes_primarytable_grain_recombination.rates);
 
-  free(chimes_master_cosmic_ray.secondary_ratio); 
-  free(chimes_master_cosmic_ray.secondary_base_reaction); 
-  free(chimes_master_cosmic_ray.reactants); 
-  free(chimes_master_cosmic_ray.products); 
-  free(chimes_master_cosmic_ray.element_incl); 
-  free(chimes_master_cosmic_ray.rates); 
-  free(chimes_master_cosmic_ray.molecular_flag); 
+  free(chimes_primarytable_cosmic_ray.secondary_ratio);
+  free(chimes_primarytable_cosmic_ray.secondary_base_reaction);
+  free(chimes_primarytable_cosmic_ray.reactants);
+  free(chimes_primarytable_cosmic_ray.products);
+  free(chimes_primarytable_cosmic_ray.element_incl);
+  free(chimes_primarytable_cosmic_ray.rates);
+  free(chimes_primarytable_cosmic_ray.molecular_flag);
 
-  free(chimes_master_CO_cosmic_ray.reactants); 
-  free(chimes_master_CO_cosmic_ray.products); 
-  free(chimes_master_CO_cosmic_ray.element_incl); 
-  free(chimes_master_CO_cosmic_ray.rates); 
+  free(chimes_primarytable_CO_cosmic_ray.reactants);
+  free(chimes_primarytable_CO_cosmic_ray.products);
+  free(chimes_primarytable_CO_cosmic_ray.element_incl);
+  free(chimes_primarytable_CO_cosmic_ray.rates);
 
   if (myGlobalVars->N_spectra > 0) 
     {
-      free(chimes_master_photoion_fuv.reactants); 
-      free(chimes_master_photoion_fuv.products); 
-      free(chimes_master_photoion_fuv.element_incl); 
-      free(chimes_master_photoion_fuv.gamma); 
-      free(chimes_master_photoion_fuv.sigmaPhot); 
-      free(chimes_master_photoion_fuv.epsilonPhot); 
+      free(chimes_primarytable_photoion_fuv.reactants);
+      free(chimes_primarytable_photoion_fuv.products);
+      free(chimes_primarytable_photoion_fuv.element_incl);
+      free(chimes_primarytable_photoion_fuv.gamma);
+      free(chimes_primarytable_photoion_fuv.sigmaPhot);
+      free(chimes_primarytable_photoion_fuv.epsilonPhot);
 
-      free(chimes_master_photoion_euv.reactants); 
-      free(chimes_master_photoion_euv.products); 
-      free(chimes_master_photoion_euv.element_incl); 
-      free(chimes_master_photoion_euv.molecular_flag); 
-      free(chimes_master_photoion_euv.E_thresh); 
-      free(chimes_master_photoion_euv.sigmaPhot); 
-      free(chimes_master_photoion_euv.shieldFactor_1D); 
-      free(chimes_master_photoion_euv.shieldFactor_2D); 
+      free(chimes_primarytable_photoion_euv.reactants);
+      free(chimes_primarytable_photoion_euv.products);
+      free(chimes_primarytable_photoion_euv.element_incl);
+      free(chimes_primarytable_photoion_euv.molecular_flag);
+      free(chimes_primarytable_photoion_euv.E_thresh);
+      free(chimes_primarytable_photoion_euv.sigmaPhot);
+      free(chimes_primarytable_photoion_euv.shieldFactor_1D);
+      free(chimes_primarytable_photoion_euv.shieldFactor_2D);
 
-      free(chimes_master_photoion_auger_fuv.reactants); 
-      free(chimes_master_photoion_auger_fuv.products); 
-      free(chimes_master_photoion_auger_fuv.element_incl); 
-      free(chimes_master_photoion_auger_fuv.base_reaction); 
-      free(chimes_master_photoion_auger_fuv.sigmaPhot); 
+      free(chimes_primarytable_photoion_auger_fuv.reactants);
+      free(chimes_primarytable_photoion_auger_fuv.products);
+      free(chimes_primarytable_photoion_auger_fuv.element_incl);
+      free(chimes_primarytable_photoion_auger_fuv.base_reaction);
+      free(chimes_primarytable_photoion_auger_fuv.sigmaPhot);
 
-      free(chimes_master_photoion_auger_euv.reactants); 
-      free(chimes_master_photoion_auger_euv.products); 
-      free(chimes_master_photoion_auger_euv.element_incl); 
-      free(chimes_master_photoion_auger_euv.base_reaction); 
-      free(chimes_master_photoion_auger_euv.sigmaPhot); 
+      free(chimes_primarytable_photoion_auger_euv.reactants);
+      free(chimes_primarytable_photoion_auger_euv.products);
+      free(chimes_primarytable_photoion_auger_euv.element_incl);
+      free(chimes_primarytable_photoion_auger_euv.base_reaction);
+      free(chimes_primarytable_photoion_auger_euv.sigmaPhot);
 
-      free(chimes_master_photodissoc_group1.reactants); 
-      free(chimes_master_photodissoc_group1.products); 
-      free(chimes_master_photodissoc_group1.element_incl); 
-      free(chimes_master_photodissoc_group1.gamma); 
-      free(chimes_master_photodissoc_group1.rates); 
-      free(chimes_master_photodissoc_group1.molecular_flag); 
+      free(chimes_primarytable_photodissoc_group1.reactants);
+      free(chimes_primarytable_photodissoc_group1.products);
+      free(chimes_primarytable_photodissoc_group1.element_incl);
+      free(chimes_primarytable_photodissoc_group1.gamma);
+      free(chimes_primarytable_photodissoc_group1.rates);
+      free(chimes_primarytable_photodissoc_group1.molecular_flag);
 
-      free(chimes_master_photodissoc_group2.reactants); 
-      free(chimes_master_photodissoc_group2.products); 
-      free(chimes_master_photodissoc_group2.element_incl); 
-      free(chimes_master_photodissoc_group2.gamma_coeff); 
-      free(chimes_master_photodissoc_group2.rates); 
+      free(chimes_primarytable_photodissoc_group2.reactants);
+      free(chimes_primarytable_photodissoc_group2.products);
+      free(chimes_primarytable_photodissoc_group2.element_incl);
+      free(chimes_primarytable_photodissoc_group2.gamma_coeff);
+      free(chimes_primarytable_photodissoc_group2.rates);
 
-      free(chimes_master_CO_photodissoc.reactants); 
-      free(chimes_master_CO_photodissoc.products); 
-      free(chimes_master_CO_photodissoc.element_incl); 
-      free(chimes_master_CO_photodissoc.gamma); 
-      free(chimes_master_CO_photodissoc.rates); 
-      free(chimes_master_CO_photodissoc.self_shielding); 
+      free(chimes_primarytable_CO_photodissoc.reactants);
+      free(chimes_primarytable_CO_photodissoc.products);
+      free(chimes_primarytable_CO_photodissoc.element_incl);
+      free(chimes_primarytable_CO_photodissoc.gamma);
+      free(chimes_primarytable_CO_photodissoc.rates);
+      free(chimes_primarytable_CO_photodissoc.self_shielding);
     }
 
-  free(chimes_master_cooling.rates); 
-  free(chimes_master_cooling.coolants); 
+  free(chimes_primarytable_cooling.rates);
+  free(chimes_primarytable_cooling.coolants);
 
-  free(chimes_master_cooling.rates_2d); 
-  free(chimes_master_cooling.rates_hiT_2d); 
-  free(chimes_master_cooling.coolants_2d); 
+  free(chimes_primarytable_cooling.rates_2d);
+  free(chimes_primarytable_cooling.rates_hiT_2d);
+  free(chimes_primarytable_cooling.coolants_2d);
 
-  free(chimes_master_cooling.rates_4d); 
-  free(chimes_master_cooling.rates_hiT_4d); 
-  free(chimes_master_cooling.coolants_4d); 
+  free(chimes_primarytable_cooling.rates_4d);
+  free(chimes_primarytable_cooling.rates_hiT_4d);
+  free(chimes_primarytable_cooling.coolants_4d);
 
-  free(chimes_master_cooling.photoelectric_heating); 
-  free(chimes_master_cooling.grain_recombination); 
-  free(chimes_master_cooling.gas_grain_transfer); 
-  free(chimes_master_cooling.H2_cool_lowDens_H2); 
-  free(chimes_master_cooling.H2_cool_lowDens_HI); 
-  free(chimes_master_cooling.H2_cool_lowDens_HII); 
-  free(chimes_master_cooling.H2_cool_lowDens_HeI); 
-  free(chimes_master_cooling.H2_cool_lowDens_elec); 
-  free(chimes_master_cooling.H2_cool_LTE); 
+  free(chimes_primarytable_cooling.photoelectric_heating);
+  free(chimes_primarytable_cooling.grain_recombination);
+  free(chimes_primarytable_cooling.gas_grain_transfer);
+  free(chimes_primarytable_cooling.H2_cool_lowDens_H2);
+  free(chimes_primarytable_cooling.H2_cool_lowDens_HI);
+  free(chimes_primarytable_cooling.H2_cool_lowDens_HII);
+  free(chimes_primarytable_cooling.H2_cool_lowDens_HeI);
+  free(chimes_primarytable_cooling.H2_cool_lowDens_elec);
+  free(chimes_primarytable_cooling.H2_cool_LTE);
     
   return; 
 }

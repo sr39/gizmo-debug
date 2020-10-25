@@ -133,7 +133,7 @@
 
 
 #if (defined(HYDRO_DENSITY_SPH) || defined(HYDRO_PRESSURE_SPH)) && !defined(HYDRO_SPH)
-#define HYDRO_SPH               /* master flag for SPH: must be enabled if any SPH method is used */
+#define HYDRO_SPH               /* top-level flag for SPH: must be enabled if any SPH method is used */
 #endif
 #ifdef HYDRO_SPH
 #if !defined(SPH_DISABLE_CD10_ARTVISC) && !(defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)) // fancy viscosity switches assume positive pressures //
@@ -232,10 +232,10 @@
 #define FIRE_PHYSICS_DEFAULTS 2             /*! defaults currently to FIRE-2 baseline */
 #endif
 
-#define COOLING                             /*! master switch for cooling */
+#define COOLING                             /*! top-level switch for cooling */
 #define COOL_LOW_TEMPERATURES               /*! include low-temperature (<1e4 K) cooling */
 #define COOL_METAL_LINES_BY_SPECIES         /*! include high-temperature metal-line cooling, species-by-species */
-#define GALSF                               /*! master switch for star formation */
+#define GALSF                               /*! top-level switch for star formation */
 #define METALS                              /*! follow metals as passive scalars, use in cooling, etc */
 #define TURB_DIFF_METALS                    /*! explicit sub-grid diffusivity for metals/passive scalars */
 #define TURB_DIFF_METALS_LOWORDER           /*! memory-saving custom mod */
@@ -245,7 +245,7 @@
 #if !defined(GALSF_SFR_VIRIAL_SF_CRITERION)
 #define GALSF_SFR_VIRIAL_SF_CRITERION 0     /*! sink-particle like self-gravity requirement for star formation: original implementation */
 #endif
-#define GALSF_FB_MECHANICAL                 /*! master switch for mechanical feedback modules */
+#define GALSF_FB_MECHANICAL                 /*! top-level switch for mechanical feedback modules */
 #define GALSF_FB_FIRE_STELLAREVOLUTION (FIRE_PHYSICS_DEFAULTS) /*! turns on default FIRE processes+lookup tables including gas return, SNe, R-process, etc. this carries a number matching the defaults set you choose */
 #define GALSF_FB_FIRE_RT_HIIHEATING         /*! gas within HII regions around young stars is photo-heated to 10^4 K - local stromgren approximation */
 #define GALSF_FB_FIRE_RT_LOCALRP            /*! turn on local radiation pressure coupling to gas - account for local multiple-scattering and isotropic local absorption */
@@ -276,7 +276,7 @@
 // currently uses default settings above, but keep this here for future use //
 #endif
 #if (FIRE_PHYSICS_DEFAULTS == 3)
-#define COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
+#define COOL_UVB_SELFSHIELD_RAHMATI
 #define COOL_MOLECFRAC_NONEQM
 #define OUTPUT_MOLECULAR_FRACTION
 #define OUTPUT_COOLRATE
@@ -294,7 +294,7 @@
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
 
 #if defined(FIRE_MHD)
-#define MAGNETIC            /* master flag */
+#define MAGNETIC            /* top-level flag */
 #define MHD_B_SET_IN_PARAMS /* B-field must be set in ICs */
 #define CONDUCTION          /* enable conduction */
 #define CONDUCTION_SPITZER  /* compute proper coefficients and anisotropy for conduction */
@@ -304,7 +304,7 @@
 #endif // FIRE_MHD
 
 #if defined(FIRE_CRS)
-#define COSMIC_RAYS /*! master flag */
+#define COSMIC_RAYS /*! top-level flag */
 #if (FIRE_CRS <= 0)
 #if !defined(COSMIC_RAYS_M1)
 #define COSMIC_RAYS_M1 (500.)           /*! maximum CR transport speed: 500 safe for our default diffusivities in constant-kappa model */
@@ -330,7 +330,7 @@
 #endif // FIRE_CRS
 
 #if defined(FIRE_BHS)
-#define BLACK_HOLES                 /* master flag */
+#define BLACK_HOLES                 /* top-level flag */
 #define BH_SEED_FROM_LOCALGAS       /* seed BHs locally in SF-ing gas */
 #define BH_REPOSITION_ON_POTMIN 2   /* anchor BHs to centers smoothly */
 #define BH_SWALLOWGAS               /* allow BHs to accrete in principle */
@@ -506,7 +506,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_SOURCES 32
 #define RT_SPEEDOFLIGHT_REDUCTION 1e-4
 #define RT_REPROCESS_INJECTED_PHOTONS
-#define BH_ANGLEWEIGHT_PHOTON_INJECTION
+#define RT_BH_ANGLEWEIGHT_PHOTON_INJECTION
 #define RT_OPTICAL_NIR
 #define RT_NUV
 #define RT_PHOTOELECTRIC
@@ -521,7 +521,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 //#define RT_USE_TREECOL_FOR_NH 6 
 //#endif
 #ifdef COOLING
-#define COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
+#define COOL_UVB_SELFSHIELD_RAHMATI
 #define COOL_MOLECFRAC_NONEQM
 #define OUTPUT_MOLECULAR_FRACTION
 #define EOS_SUBSTELLAR_ISM
@@ -533,7 +533,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-#define GALSF // master switch needed to enable various frameworks
+#define GALSF // top-level switch needed to enable various frameworks
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
 #define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
@@ -609,7 +609,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif // SINGLE_STAR_SINK_DYNAMICS
 
 
-#if (SINGLE_STAR_SINK_FORMATION & 1) // figure out flags needed for the chosen sink formation model [note these CAN be used even if single-star master flag is off, as additional SF/sink formation criteria for e.g. GALSF sims]
+#if (SINGLE_STAR_SINK_FORMATION & 1) // figure out flags needed for the chosen sink formation model [note these CAN be used even if single-star top-level flag is off, as additional SF/sink formation criteria for e.g. GALSF sims]
 #define GALSF_SFR_VIRIAL_SF_CRITERION 2
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
@@ -680,7 +680,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 
 
-/* force 'master' flags to be enabled for the appropriate methods, if we have enabled something using those methods */
+/* force 'parent' or 'top-level' flags to be enabled for the appropriate methods, if we have enabled something using those methods */
 
 
 /* ----- giant block of options for RHD modules ------ */
@@ -849,7 +849,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 
 #if defined(TURB_DIFF_ENERGY) || defined(TURB_DIFF_VELOCITY) || defined(TURB_DIFF_MASS) || defined(TURB_DIFF_METALS)
-#define TURB_DIFFUSION /* master switch to calculate properties needed for scalar turbulent diffusion/mixing: must enable with any specific version */
+#define TURB_DIFFUSION /* top-level switch to calculate properties needed for scalar turbulent diffusion/mixing: must enable with any specific version */
 #if defined(TURB_DIFF_VELOCITY) && !defined(VISCOSITY)
 #define VISCOSITY
 #endif
@@ -1695,7 +1695,7 @@ extern double TimeBin_BH_mass[TIMEBINS];
 extern double TimeBin_BH_dynamicalmass[TIMEBINS];
 extern double TimeBin_BH_Mdot[TIMEBINS];
 extern double TimeBin_BH_Medd[TIMEBINS];
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_ANGLEWEIGHT_PHOTON_INJECTION)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(RT_BH_ANGLEWEIGHT_PHOTON_INJECTION)
 #define BH_CALC_LOCAL_ANGLEWEIGHTS
 #endif
 #if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NONGAS) || defined(BH_CALC_LOCAL_ANGLEWEIGHTS) || defined(BH_DYNFRICTION)

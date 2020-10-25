@@ -423,7 +423,7 @@ double CR_gas_heating(int target, double n_elec, double nHcgs)
 
 
 
-/* master routine to assign diffusion coefficients. for the most relevant physical models, we do a lot of utility here but do the more interesting
+/* parent routine to assign diffusion coefficients. for the most relevant physical models, we do a lot of utility here but do the more interesting
     (and uncertain) physical calculation in the relevant sub-routines above, so you don't need to modify all of this in most cases */
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 {

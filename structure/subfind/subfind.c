@@ -475,7 +475,7 @@ void subfind(int num)
 
 void subfind_save_final(int num)
 {
-  int i, j, totsubs, masterTask, groupTask, nprocgroup;
+  int i, j, totsubs, primaryTask, groupTask, nprocgroup;
   char buf[1000];
   double t0, t1;
 
@@ -579,10 +579,10 @@ void subfind_save_final(int num)
   nprocgroup = NTask / All.NumFilesWrittenInParallel;
   if((NTask % All.NumFilesWrittenInParallel))
     nprocgroup++;
-  masterTask = (ThisTask / nprocgroup) * nprocgroup;
+  primaryTask = (ThisTask / nprocgroup) * nprocgroup;
   for(groupTask = 0; groupTask < nprocgroup; groupTask++)
     {
-      if(ThisTask == (masterTask + groupTask))	/* ok, it's this processor's turn */
+      if(ThisTask == (primaryTask + groupTask))	/* ok, it's this processor's turn */
 	subfind_save_local_catalogue(num);
       MPI_Barrier(MPI_COMM_WORLD);	/* wait inside the group */
     }

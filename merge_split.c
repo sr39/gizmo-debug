@@ -98,7 +98,7 @@ double target_mass_renormalization_factor_for_mergesplit(int i)
 }
 
 
-/*! This is the master routine to actually determine if mergers/splits need to be performed, and if so, to do them
+/*! This is the parent routine to actually determine if mergers/splits need to be performed, and if so, to do them
   modified by Takashi Okamoto (t.t.okamoto@gmail.com) on 20/6/2019
  */
 /*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */

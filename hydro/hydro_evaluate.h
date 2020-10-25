@@ -282,9 +282,9 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                     the code has been compiled in */
                 /* --------------------------------------------------------------------------------- */
 #ifdef HYDRO_SPH
-#include "hydra_core_sph.h"
+#include "hydro_core_sph.h"
 #else
-#include "hydra_core_meshless.h"
+#include "hydro_core_meshless.h"
 #endif
 
 #ifdef FREEZE_HYDRO

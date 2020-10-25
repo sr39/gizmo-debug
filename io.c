@@ -35,7 +35,7 @@ void savepositions(int num)
 {
     size_t bytes;
     char buf[500];
-    int n, filenr, gr, ngroups, masterTask, lastTask;
+    int n, filenr, gr, ngroups, primaryTask, lastTask;
 
     CPU_Step[CPU_MISC] += measure_time();
 
@@ -94,7 +94,7 @@ void savepositions(int num)
         sumup_large_ints(6, n_type, ntot_type_all);
 
         /* assign processors to output files */
-        distribute_file(All.NumFilesPerSnapshot, 0, 0, NTask - 1, &filenr, &masterTask, &lastTask);
+        distribute_file(All.NumFilesPerSnapshot, 0, 0, NTask - 1, &filenr, &primaryTask, &lastTask);
 
         if(All.NumFilesPerSnapshot > 1)
         {
@@ -119,7 +119,7 @@ void savepositions(int num)
         {
             if((filenr / All.NumFilesWrittenInParallel) == gr)	/* ok, it's this processor's turn */
             {
-                write_file(buf, masterTask, lastTask);
+                write_file(buf, primaryTask, lastTask);
             }
             MPI_Barrier(MPI_COMM_WORLD);
         }

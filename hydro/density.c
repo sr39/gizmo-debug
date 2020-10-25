@@ -98,7 +98,7 @@ int density_isactive(int n)
 
 
 
-#define MASTER_FUNCTION_NAME density_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
+#define CORE_FUNCTION_NAME density_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME hydrokerneldensity_particle2in    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
 #define OUTPUTFUNCTION_NAME hydrokerneldensity_out2particle  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
 #define CONDITIONFUNCTION_FOR_EVALUATION if(density_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
@@ -251,7 +251,7 @@ void hydrokerneldensity_out2particle(struct OUTPUT_STRUCT_NAME *out, int i, int 
 #endif
 
 #if defined(RT_SOURCE_INJECTION)
-#if defined(BH_ANGLEWEIGHT_PHOTON_INJECTION)
+#if defined(RT_BH_ANGLEWEIGHT_PHOTON_INJECTION)
     if(All.TimeStep == 0) // we only do this on the 0'th timestep, since we haven't done a BH loop yet to get the angle weights we'll use normally
 #endif    
     if((1 << P[i].Type) & (RT_SOURCES)) {ASSIGN_ADD(P[i].KernelSum_Around_RT_Source, out->KernelSum_Around_RT_Source, mode);}
@@ -317,7 +317,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if(local.Type == 0 && kernel.r==0) {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * SphP[j].VelPred[kv];}} // just the self-contribution //
 #endif
 #if defined(RT_SOURCE_INJECTION)
-#if defined(BH_ANGLEWEIGHT_PHOTON_INJECTION)
+#if defined(RT_BH_ANGLEWEIGHT_PHOTON_INJECTION)
                     if(All.TimeStep == 0) // we only do this on the 0'th timestep, since we haven't done a BH loop yet to get the angle weights we'll use normally
 #endif                        
                     if((1 << local.Type) & (RT_SOURCES)) {out.KernelSum_Around_RT_Source += 1.-u*u;}
@@ -1057,7 +1057,7 @@ void density(void)
     This was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO. */
 #ifdef HYDRO_VOLUME_CORRECTIONS
 
-#define MASTER_FUNCTION_NAME cellcorrections_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
+#define CORE_FUNCTION_NAME cellcorrections_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME particle2in_cellcorrections    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
 #define OUTPUTFUNCTION_NAME out2particle_cellcorrections  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
 #define CONDITIONFUNCTION_FOR_EVALUATION if(GasGrad_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. for current implementation, only cells eligible for gradients and hydro should be called */

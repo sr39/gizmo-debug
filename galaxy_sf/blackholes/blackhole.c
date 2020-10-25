@@ -28,10 +28,10 @@
  *   code standards and be properly multi-threaded.
  */
 
-#ifdef BLACK_HOLES // master flag [needs to be here to prevent compiler breaking when this is not active] //
+#ifdef BLACK_HOLES // top-level flag [needs to be here to prevent compiler breaking when this is not active] //
 
 
-/*  This is the master routine for the BH physics modules.
+/*  This is the parent routine for the BH physics modules.
  *  It is called in calculate_non_standard_physics in run.c */
 void blackhole_accretion(void)
 {
@@ -819,7 +819,7 @@ void blackhole_final_operations(void)
         if(BPP(n).unspawned_wind_mass>MaxUnSpanMassBH) {MaxUnSpanMassBH=BPP(n).unspawned_wind_mass;}
 #endif
 
-#ifdef BH_ANGLEWEIGHT_PHOTON_INJECTION
+#ifdef RT_BH_ANGLEWEIGHT_PHOTON_INJECTION
         P[n].KernelSum_Around_RT_Source = BlackholeTempInfo[i].BH_angle_weighted_kernel_sum;
 #endif            
 

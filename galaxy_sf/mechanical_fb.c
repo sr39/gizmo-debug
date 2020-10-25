@@ -109,7 +109,7 @@ void determine_where_SNe_occur(void)
 
 
 
-#define MASTER_FUNCTION_NAME addFB_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
+#define CORE_FUNCTION_NAME addFB_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME particle2in_addFB    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
 #define OUTPUTFUNCTION_NAME out2particle_addFB  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
 #define CONDITIONFUNCTION_FOR_EVALUATION if(addFB_evaluate_active_check(i,loop_iteration)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
@@ -183,7 +183,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     else
     local = DATAGET_NAME[target];
 
-    if(local.Msne<=0) return 0; // no SNe for the master particle! nothing to do here //
+    if(local.Msne<=0) return 0; // no SNe for the origin particle! nothing to do here //
     if(local.Hsml<=0) return 0; // zero-extent kernel, no particles //
     h2 = local.Hsml*local.Hsml;
     kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
@@ -516,7 +516,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 
     /* Load the data for the particle injecting feedback */
     if(mode == 0) {particle2in_addFB(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
-    if(local.Msne<=0) {return 0;} // no SNe for the master particle! nothing to do here //
+    if(local.Msne<=0) {return 0;} // no SNe for the origin particle! nothing to do here //
     if(local.Hsml<=0) {return 0;} // zero-extent kernel, no particles //
 
     // some units (just used below, but handy to define for clarity) //
@@ -889,7 +889,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif // GALSF_USE_SNE_ONELOOP_SCHEME else
 
 
-/* master routine which calls the relevant loops */
+/* parent routine which calls the relevant loops */
 void mechanical_fb_calc(int fb_loop_iteration)
 {
     PRINT_STATUS(" ..mechanical feedback loop: iteration %d",fb_loop_iteration);

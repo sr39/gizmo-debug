@@ -3,7 +3,7 @@
 #include <stdarg.h>
 #include <sys/types.h>
 
-#ifdef NUCLEAR_NETWORK // master flag [needs to be here to prevent compiler breaking when this is not active] //
+#ifdef NUCLEAR_NETWORK // top-level flag [needs to be here to prevent compiler breaking when this is not active] //
 
 /* options:
     NETWORK_SUPERLU
@@ -220,4 +220,4 @@ void network_normalize(double *x, double *e, const struct network_data *nd, stru
 int network_integrate( double temp, double rho, const double *x, double *dx, double dt, double *dedt, double *drhodt, const struct network_data *nd, struct network_workspace *nw );
 
 
-#endif // master flag
+#endif // top-level flag
