@@ -89,7 +89,7 @@ There are some Config flags that CHIMES does not currently work with, or its beh
     instantly ionise the particle (just heat it). Also, if CHIMES_LOCAL_UV is enabled, we explicitly include 
     the UV radiation from local stars, both for photoionisation and for photoheating, so this should explicitly 
     model HII regions, and then GALSF_FB_FIRE_RT_HIIHEATING is not required. 
-  - GALSF_FB_LOCAL_UV_HEATING - currently, switching this on would have no effect on CHIMES. We need to add a 
+  - GALSF_FB_FIRE_RT_UVHEATING - currently, switching this on would have no effect on CHIMES. We need to add a 
     UV field in CHIMES and use the SphP[i].Rad_Flux_UV of each gas particle. Also, note that, in accel.c, the 
     Rad_Flux_UV of each SPH particle is attenuated by local self-shielding by calling selfshield_local_incident_uv_flux(). 
     We do NOT want to do this when using it with CHIMES, because the chemistry solver will apply local self-shielding 

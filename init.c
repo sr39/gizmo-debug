@@ -170,9 +170,6 @@ void init(void)
     init_self_interactions();
 #endif
 
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
-    CR_initialize_multibin_quantities(); // initialize the global variables and look-up tables //
-#endif
 
     for(i = 0; i < NumPart; i++)	/*  start-up initialization */
     {

@@ -56,7 +56,8 @@ void CR_spectrum_define_bins(void)
     {
         //int species_list={-2, -1, +1, 2, 3, 4, 5}; // {positrons, electrons, protons, B, C, Be7+9, Be10}
         int primary_spec = species_list[k]; /* primary species */
-        int secondary_spec[N_CR_PARTICLE_SPECIES]={-200}; /* secondary species for this primary -- default to none (-200 key here) */
+        int secondary_spec[N_CR_PARTICLE_SPECIES]; /* secondary species for this primary -- default to none (-200 key here) */
+        for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {secondary_spec[j]=-200;}
         //if(primary_spec == -2) {secondary_spec[0]=-200;} // positrons -> gamma rays [un-tracked]
         //if(primary_spec == -1) {secondary_spec[0]=-200;} // electrons -> ? [un-tracked]
         if(primary_spec == 1) {secondary_spec[0]=-2; secondary_spec[1]=-1;} // protons -> secondary e- and e+
@@ -75,7 +76,7 @@ void CR_spectrum_define_bins(void)
         for(j=0;j<N_CR_PARTICLE_SPECIES;j++)
         {
             int secondary_listref = CR_secondary_species_listref[primary_listref][j];
-            if(secondary_listref <= -100) {CR_secondary_target_bin[k][j]=-2;}
+            if(secondary_listref <= -1) {CR_secondary_target_bin[k][j]=-2;}
             else {
                 int secondary_id = species_list[secondary_listref];
                 int m, target_bin=-1; double diff_min=MAX_REAL_NUMBER;
@@ -83,10 +84,10 @@ void CR_spectrum_define_bins(void)
                 {
                     if(CR_species_ID_in_bin[m] != secondary_id) {continue;}
                     double E_target = E_GeV[k] * DMAX(1.,A_wt[m]) / DMAX(1.,A_wt[k]); // fixed energy per nucleon/particle (treating e-/e+ as 1)
-                    double diff = log(E_GeV[j]/E_target); diff*=diff; // square of log-diff between energies
-                    if(diff < diff_min) {diff_min=diff; target_bin=j;} // set to this as the 'closest' option
+                    double diff = log(E_GeV[m]/E_target); diff*=diff; // square of log-diff between energies
+                    if(diff < diff_min) {diff_min=diff; target_bin=m;} // set to this as the 'closest' option
                 }
-                if(target_bin >= 0) {CR_secondary_target_bin[k][secondary_listref]=target_bin;} else {CR_secondary_target_bin[k][secondary_listref]=-1;}
+                if(target_bin >= 0) {CR_secondary_target_bin[k][j]=target_bin;} else {CR_secondary_target_bin[k][j]=-1;}
             }
         }
     }
@@ -157,7 +158,7 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
     double f_bin_v[2]={0.95 , 0.05}; f_bin=f_bin_v[k_CRegy]; // 5% of injection into e-, roughly motivated by observed spectra and nearby SNRs
 #endif
 #if (N_CR_PARTICLE_BINS > 2) /* multi-bin spectrum for p and e-: inset assumptions about injection spectrum here! */
-    double f_elec = 0.02; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
+    double f_elec = 0.05; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
     double inj_slope = 4.5; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope)
     double R_break_e = 0.4; // location of spectral break for injection e- spectrum, in GV
     double inj_slope_lowE_e = 4.1; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope), for electrons below R_break_e

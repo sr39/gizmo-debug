@@ -408,7 +408,11 @@ USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
 #define COSMIC_RAYS_M1 (COSMIC_RAYS_ALFVEN)
 #endif
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK)
+#define COSMIC_RAYS_MULTIBIN 62     /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
+#else
 #define COSMIC_RAYS_MULTIBIN 19     /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
+#endif
 #endif
 #ifndef N_CR_PARTICLE_BINS
 #if defined(COSMIC_RAYS_MULTIBIN)
@@ -875,6 +879,24 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 
+
+#if defined(COOL_MOLECFRAC)
+#if (COOL_MOLECFRAC == 6) && !defined(COOL_MOLECFRAC_NONEQM)
+#define COOL_MOLECFRAC_NONEQM // estimate molecular fractions for thermochemistry+cooling with explicitly-evolved non-equilibirum H2 formation+destruction with clumping and self-shielding (Hopkins+2021, in prep)
+#elif (COOL_MOLECFRAC == 5) && !defined(COOL_MOLECFRAC_LOCALEQM)
+#define COOL_MOLECFRAC_LOCALEQM  // estimate molecular fractions for thermochemistry+cooling from local equilibrium H2 formation+destruction with clumping and self-shielding (Hopkins+2021, in prep)
+#elif (COOL_MOLECFRAC == 4) && !defined(COOL_MOLECFRAC_KMT)
+#define COOL_MOLECFRAC_KMT  // estimate f_H2 from approximate large-scale expressions from Krumholz, McKee, & Tumlinson (2009ApJ...693..216K). use the simpler Kumholz, McKee, & Tumlinson 2009 sub-grid model for molecular fractions in equilibrium, which is a function modeling spherical clouds of internally uniform properties exposed to incident radiation. Depends on column density, metallicity, and incident FUV field
+#elif (COOL_MOLECFRAC == 3) && !defined(COOL_MOLECFRAC_GD)
+#define COOL_MOLECFRAC_GD  // estimate f_H2 from approximate large-scale expressions from Gnedin & Draine (2014ApJ...795...37G). use the sub-grid final expression calibrated to ~60pc resolution simulations with equilibrium molecular chemistry and post-processing radiative transfer from Gnedin & Draine 2014 (Eqs. 5-7)
+#elif (COOL_MOLECFRAC == 2) && !defined(COOL_MOLECFRAC_KG)
+#define COOL_MOLECFRAC_KG  // estimate f_H2 with Krumholz & Gnedin 2010 fitting function, assuming simple scalings of radiation field, clumping, and other factors with basic gas properties so function only of surface density and metallicity, truncated at low values (or else it gives non-sensical answers)
+#elif (COOL_MOLECFRAC == 1) && !defined(COOL_MOLECFRAC_GC)
+#define COOL_MOLECFRAC_GC  // if none of the above is set, default to a wildly-oversimplified scaling set by fits to the temperature below which gas at a given density becomes molecular from cloud simulations in Glover+Clark 2012
+#else
+#define COOL_MOLECFRAC_GC // default if no value above set
+#endif
+#endif
 
 
 #ifdef BOX_SHEARING
@@ -1829,8 +1851,8 @@ double CR_global_slope_lut[N_CR_PARTICLE_BINS][N_CR_SPECTRUM_LUT]; /*!< holder f
 int CR_secondary_species_listref[N_CR_PARTICLE_SPECIES][N_CR_PARTICLE_SPECIES]; /*!< list for each type of the different secondaries to which it can decay */
 int CR_secondary_target_bin[N_CR_PARTICLE_BINS][N_CR_PARTICLE_SPECIES]; /*!< destination bin for the secondaries produced by different primaries */
 double CR_frag_secondary_coeff[N_CR_PARTICLE_BINS][N_CR_PARTICLE_SPECIES]; /*!< coefficients for fragmentation to the given secondaries (also pre-computed for simplicity) */
-double CR_frag_coeff[N_CR_PARTICLE_SPECIES]; /*!< total coefficients for fragmentation processes (pre-compute b/c cross-sections are complicated) */
-double CR_rad_decay_coeff[N_CR_PARTICLE_SPECIES]; /*!< radioactive decay coefficients (pre-computed for ease, also because of dilation dependence) */
+double CR_frag_coeff[N_CR_PARTICLE_BINS]; /*!< total coefficients for fragmentation processes (pre-compute b/c cross-sections are complicated) */
+double CR_rad_decay_coeff[N_CR_PARTICLE_BINS]; /*!< radioactive decay coefficients (pre-computed for ease, also because of dilation dependence) */
 #else
 #define N_CR_PARTICLE_SPECIES 2 /* total number of CR species to be evolved. must be set here because of references below*/
 #endif
