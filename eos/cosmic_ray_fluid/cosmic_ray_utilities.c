@@ -79,15 +79,24 @@ void CR_spectrum_define_bins(void)
             if(secondary_listref <= -1) {CR_secondary_target_bin[k][j]=-2;}
             else {
                 int secondary_id = species_list[secondary_listref];
-                int m, target_bin=-1; double diff_min=MAX_REAL_NUMBER;
+                int m, target_bin=-1; double diff_min=MAX_REAL_NUMBER, E_target_0=E_GeV[k];
                 for(m=0;m<N_CR_PARTICLE_BINS;m++)
                 {
                     if(CR_species_ID_in_bin[m] != secondary_id) {continue;}
                     double E_target = E_GeV[k] * DMAX(1.,A_wt[m]) / DMAX(1.,A_wt[k]); // fixed energy per nucleon/particle (treating e-/e+ as 1)
+                    if(primary_id == 1 && secondary_id < 0) {E_target *= 0.5;} // secondary e+/e- from protons (pion decay) get 1/2 original p energy
                     double diff = log(E_GeV[m]/E_target); diff*=diff; // square of log-diff between energies
-                    if(diff < diff_min) {diff_min=diff; target_bin=m;} // set to this as the 'closest' option
+                    if(diff < diff_min) {diff_min=diff; target_bin=m; E_target_0=E_target} // set to this as the 'closest' option
                 }
-                if(target_bin >= 0) {CR_secondary_target_bin[k][j]=target_bin;} else {CR_secondary_target_bin[k][j]=-1;}
+                CR_secondary_target_bin[k][j]=-1; // default to no secondary bin (secondary is 'lost')
+                if(target_bin >= 0) // check if the bin is valid
+                {
+                    double E_target=E_target_0, E_bin=E_GeV[target_bin], E_bin_m=E_bin, E_bin_p=E_bin; // if decay to lower energy than we track bins, the products are gone from the spectrum we follow
+                    if(target_bin>0) {if(CR_species_ID_in_bin[target_bin-1] == secondary_id) {E_bin_m=E_GeV[target_bin-1];}} // define the bin ranges that we will consider for whether the target energy fits
+                    if(target_bin<N_CR_PARTICLE_BINS-1) {if(CR_species_ID_in_bin[target_bin+1] == secondary_id) {E_bin_p=E_GeV[target_bin+1];}}
+                    E_bin_m=sqrt(E_bin_m*E_bin); E_bin_p=sqrt(E_bin_p*E_bin); if(E_bin_m==E_bin) {E_bin_m=E_bin*(E_bin/E_bin_p)*(E_bin/E_bin_p);} else if(E_bin_p==E_bin) {E_bin_p=E_bin*(E_bin/E_bin_m)*(E_bin/E_bin_m);}
+                    if(E_target > E_bin_m && E_target < E_bin_p) {CR_secondary_target_bin[k][j] = target_bin;} // assign a destination bin
+                }
             }
         }
     }
@@ -160,8 +169,8 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
 #if (N_CR_PARTICLE_BINS > 2) /* multi-bin spectrum for p and e-: inset assumptions about injection spectrum here! */
     double f_elec = 0.05; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
     double inj_slope = 4.5; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope)
-    double R_break_e = 0.4; // location of spectral break for injection e- spectrum, in GV
-    double inj_slope_lowE_e = 4.1; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope), for electrons below R_break_e
+    double R_break_e = 1.0; // location of spectral break for injection e- spectrum, in GV
+    double inj_slope_lowE_e = 4.3; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope), for electrons below R_break_e
     double R=return_CRbin_CR_rigidity_in_GV(-1,k_CRegy); int species=return_CRbin_CR_species_ID(k_CRegy); // get bin-centered R and species type
     if(species < 0 && R < R_break_e) {inj_slope = inj_slope_lowE_e;} // follow model injection spectra favored in Strong et al. 2011 (A+A, 534, A54), who argue the low-energy e- injection spectrum must break to a lower slope by ~1 independent of propagation and re-acceleration model
     if(return_index_in_bin) {return 2.-inj_slope;} // this is the index corresponding to our dN/dp ~ p^gamma

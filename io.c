@@ -224,8 +224,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                         while(fp_pos[k] >= box_length_xyz) {fp_pos[k] -= box_length_xyz;}
 #endif
                     }
-                    n++;
                     fp_pos += 3;
+                    n++;
                 }
             break;
 
@@ -234,7 +234,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 if(P[pindex].Type == type)
                 {
 #if 1
-                    for(k=0;k<3;k++) {fp[k] = P[pindex].Vel[k] * sqrt(All.cf_a3inv);} // JUST write the conserved velocity here, not the drifted one in this manner //
+                    for(k=0;k<3;k++) {fp[k] = (MyOutputFloat) (P[pindex].Vel[k] * sqrt(All.cf_a3inv));} // JUST write the conserved velocity here, not the drifted one in this manner //
 #else
                     double dt_gravkick, dt_hydrokick;
                     integertime dt_integerstep = GET_PARTICLE_INTEGERTIME(pindex);
@@ -253,8 +253,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
                     for(k = 0; k < 3; k++) {fp[k] *= sqrt(All.cf_a3inv);}
 #endif
-                    n++;
                     fp += 3;
+                    n++;
                 }
             break;
 
@@ -749,7 +749,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 3; k++) {*fp++ = (Get_Gas_BField(pindex,k) * All.cf_a2inv * gizmo2gauss);}
+                    for(k=0;k<3;k++) {fp[k] = (MyOutputFloat) (Get_Gas_BField(pindex,k) * All.cf_a2inv * gizmo2gauss);}
+                    fp += 3;
                     n++;
                 }
 #endif
@@ -759,7 +760,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 3; k++) {*fp++ = P[pindex].Particle_DivVel;}
+                    *fp++ = P[pindex].Particle_DivVel;
                     n++;
                 }
             break;
@@ -769,9 +770,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = SphP[pindex].Vorticity[0];
-                    *fp++ = SphP[pindex].Vorticity[1];
-                    *fp++ = SphP[pindex].Vorticity[2];
+                    for(k=0;k<3;k++) {fp[k] = SphP[pindex].Vorticity[k];}
+                    fp += 3;
                     n++;
                 }
 #endif
@@ -782,8 +782,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < N_IMF_FORMPROPS; k++)
-                        fp[k] = P[pindex].IMF_FormProps[k];
+                    for(k = 0; k < N_IMF_FORMPROPS; k++) {fp[k] = P[pindex].IMF_FormProps[k];}
                     fp += N_IMF_FORMPROPS;
                     n++;
                 }
@@ -891,8 +890,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 3; k++)
-                        *fp++ = (SphP[pindex].Gradients.Phi[k] * All.cf_a2inv*All.cf_a2inv * gizmo2gauss);
+                    for(k=0;k<3;k++) {fp[k] = (SphP[pindex].Gradients.Phi[k] * All.cf_a2inv*All.cf_a2inv * gizmo2gauss);}
+                    fp += 3;
                     n++;
                 }
 #endif
@@ -909,9 +908,9 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     tcool = GetCoolingTime(u, SphP[pindex].Density * All.cf_a3inv, ne, pindex);
                     /* convert cooling time with current thermal energy to du/dt */
                     if(tcool != 0)
-                        *fp++ = u / tcool;
+                        {*fp++ = u / tcool;}
                     else
-                        *fp++ = 0;
+                        {*fp++ = 0;}
                     n++;
                 }
 #endif // OUTPUT_COOLRATE
@@ -955,8 +954,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 3; k++)
-                        *fp++ = BPP(pindex).BH_Specific_AngMom[k];
+                    for(k = 0; k < 3; k++) {fp[k] = BPP(pindex).BH_Specific_AngMom[k];}
+                    fp += 3;
                     n++;
                 }
 #endif
@@ -1233,9 +1232,9 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 if(P[pindex].Type == type)
                 {
                     if(All.ComovingIntegrationOn)
-                        *fp++ = GDE_INITDENSITY(pindex) / (GDE_TIMEBEGIN(pindex) * GDE_TIMEBEGIN(pindex) * GDE_TIMEBEGIN(pindex));
+                        {*fp++ = GDE_INITDENSITY(pindex) / (GDE_TIMEBEGIN(pindex) * GDE_TIMEBEGIN(pindex) * GDE_TIMEBEGIN(pindex));}
                     else
-                        *fp++ = GDE_INITDENSITY(pindex);
+                        {*fp++ = GDE_INITDENSITY(pindex);}
                     n++;
                 }
 #endif
@@ -1255,7 +1254,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
         case IO_TURB_DYNAMIC_COEFF:
 #ifdef TURB_DIFF_DYNAMIC
             for (n = 0; n < pc; pindex++) {
-                if (P[pindex].Type == type) {
+                if (P[pindex].Type == type)
+                {
                     *fp++ = SphP[pindex].TD_DynDiffCoeff;
                     n++;
                 }
@@ -1299,11 +1299,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             case IO_EOSCS:
 #if defined(EOS_GENERAL)
             for(n = 0; n < pc; pindex++)
-            if(P[pindex].Type == type)
-        {
-            *fp++ = SphP[pindex].SoundSpeed;
-            n++;
-        }
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].SoundSpeed;
+                    n++;
+                }
 #endif
             break;
 
@@ -1321,8 +1321,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                             fp[CBE_INTEGRATOR_NMOMENTS*k + kf] = P[pindex].CBE_basis_moments[k][kf];
                         }
                     }
-                    n++;
                     fp += (CBE_INTEGRATOR_NMOMENTS*CBE_INTEGRATOR_NBASIS);
+                    n++;
                 }
             }
 #endif
@@ -1339,8 +1339,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                         for(kf = 0; kf < 3; kf++)
                             fp[3*k + kf] = SphP[pindex].Elastic_Stress_Tensor[kf][k];
                     }
-                    n++;
                     fp += 9;
+                    n++;
                 }
 #endif
             break;
@@ -1348,11 +1348,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             case IO_EOSCOMP:
 #ifdef EOS_TILLOTSON
             for(n = 0; n < pc; pindex++)
-            if(P[pindex].Type == type)
-        {
-            *ip_int++ = SphP[pindex].CompositionType;
-            n++;
-        }
+                if(P[pindex].Type == type)
+                {
+                    *ip_int++ = SphP[pindex].CompositionType;
+                    n++;
+                }
 #endif
             break;
 
@@ -1361,11 +1361,9 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 3; k++)
-                            fp[k] = SphP[pindex].ParticleVel[k];
-
-                    n++;
+                    for(k = 0; k < 3; k++) {fp[k] = SphP[pindex].ParticleVel[k];}
                     fp += 3;
+                    n++;
                 }
 #endif
             break;
@@ -1376,8 +1374,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 if(P[pindex].Type == type)
                 {
                     for(k=0;k<N_RT_FREQ_BINS;k++) {fp[k] = SphP[pindex].Rad_E_gamma[k];}
-                    n++;
                     fp += N_RT_FREQ_BINS;
+                    n++;
                 }
 #endif
             break;
@@ -1388,8 +1386,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 if(P[pindex].Type == type)
                 {
                     for(k=0;k<3;k++) {fp[k] = SphP[pindex].Rad_Accel[k];}
-                    n++;
                     fp += 3;
+                    n++;
                 }
 #endif
             break;
@@ -1399,11 +1397,9 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k=0;k<6;k++)
-                        {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {
-                            fp[N_RT_FREQ_BINS*k + kf] = SphP[pindex].ET[kf][k];}}
-                    n++;
+                    for(k=0;k<6;k++) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {fp[N_RT_FREQ_BINS*k + kf] = SphP[pindex].ET[kf][k];}}
                     fp += 6*N_RT_FREQ_BINS;
+                    n++;
                 }
 #endif
             break;
@@ -1696,6 +1692,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_STAGE_PROTOSTAR:
             bytes_per_blockelement = sizeof(int);
             break;
+            
         case IO_AGE_PROTOSTAR:
         case IO_MASS:
         case IO_BH_DIST:

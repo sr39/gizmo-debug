@@ -988,8 +988,7 @@ void init(void)
     {
         All.Time = All.TimeBegin = header.time;
         sprintf(All.SnapshotFileBase, "%s_converted", All.SnapshotFileBase);
-        if(ThisTask == 0)
-            printf("Start writing file %s\n", All.SnapshotFileBase);
+        if(ThisTask == 0) {printf("Start writing file %s\n", All.SnapshotFileBase);}
         printf("RestartSnapNum %d\n", RestartSnapNum);
 
         All.TopNodeAllocFactor = 0.008;

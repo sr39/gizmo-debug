@@ -101,13 +101,8 @@ void read_ic(char *fname)
 
     if(header.flag_ic_info != FLAG_SECOND_ORDER_ICS)
     {
-        /* this makes sure that masses are initialized in the case that the mass-block
-         is empty for this particle type */
-        for(i = 0; i < NumPart; i++)
-        {
-            if(All.MassTable[P[i].Type] != 0)
-                P[i].Mass = All.MassTable[P[i].Type];
-        }
+        /* this makes sure that masses are initialized in the case that the mass-block is empty for this particle type */
+        for(i = 0; i < NumPart; i++) {if(All.MassTable[P[i].Type] != 0) {P[i].Mass = All.MassTable[P[i].Type];}}
     }
 
     /* zero this out, since various operations in the code will want to change particle
@@ -180,20 +175,14 @@ void read_ic(char *fname)
  */
 void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 {
-    long n, k;
-    MyInputFloat *fp;
-    MyInputPosFloat *fp_pos;
-    MyIDType *ip;
-    int *ip_int;
-    float *fp_single;
-
+    long n, k; MyInputFloat *fp; MyInputPosFloat *fp_pos; MyIDType *ip; int *ip_int; float *fp_single;
     fp = (MyInputFloat *) CommBuffer;
     fp_pos = (MyInputPosFloat *) CommBuffer;
     fp_single = (float *) CommBuffer;
     ip = (MyIDType *) CommBuffer;
     ip_int = (int *) CommBuffer;
 
-    switch (blocknr)
+    switch(blocknr)
     {
         case IO_POS:		/* positions */
             for(n = 0; n < pc; n++)
@@ -212,7 +201,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 for(k = 0; k < 3; k++)
                 {
 #ifdef RESCALEVINI
-                /* scaling v to use same IC's for different cosmologies */
+                    /* scaling v to use same IC's for different cosmologies */
                     if(RestartFlag == 0) {P[offset + n].Vel[k] = (*fp++) * All.VelIniScale;} else {P[offset + n].Vel[k] = *fp++;}
 #else
                     P[offset + n].Vel[k] = *fp++;
@@ -222,16 +211,14 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
 
         case IO_ID:		/* particle ID */
-            for(n = 0; n < pc; n++)
-	      P[offset + n].ID = *ip++;
+            for(n = 0; n < pc; n++) {P[offset + n].ID = *ip++;}
             break;
 
 
         case IO_CHILD_ID:		// particle child ID //
             if(RestartFlag == 2)
             {
-                for(n = 0; n < pc; n++)
-		  P[offset + n].ID_child_number = *ip++;
+                for(n = 0; n < pc; n++) {P[offset + n].ID_child_number = *ip++;}
             }
             break;
 
@@ -655,8 +642,7 @@ void read_file(char *fname, int readTask, int lastTask)
                 SKIP;
                 my_fread(&label, sizeof(char), 4, fd);
                 my_fread(&nextblock, sizeof(int), 1, fd);
-                printf("Reading header => '%c%c%c%c' (%d byte)\n", label[0], label[1], label[2], label[3],
-                       nextblock);
+                printf("Reading header => '%c%c%c%c' (%d byte)\n", label[0], label[1], label[2], label[3], nextblock);
                 SKIP2;
             }
 
