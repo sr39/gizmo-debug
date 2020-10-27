@@ -1380,7 +1380,6 @@ typedef double MyOutputFloat;
 #else
 typedef float MyOutputFloat;
 #endif
-
 #ifdef INPUT_IN_DOUBLEPRECISION
 typedef double MyInputFloat;
 #else

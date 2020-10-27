@@ -1007,11 +1007,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #if (COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART==1)
                                         if(RestartFlag == 2 && blocknr == IO_COSMICRAY_ENERGY) {dims[1] = 1;}
 #endif
-                                        if(dims[1] == 1)
-                                            rank = 1;
-                                        else
-                                            rank = 2;
-
+                                        if(dims[1] == 1) {rank = 1;} else {rank = 2;}
                                         hdf5_dataspace_in_file = H5Screate_simple(rank, dims, NULL);
 
                                         dims[0] = pc;
@@ -1030,11 +1026,12 @@ void read_file(char *fname, int readTask, int lastTask)
                                         H5Sselect_hyperslab(hdf5_dataspace_in_file, H5S_SELECT_SET,
                                                             start, NULL, count, NULL);
 
-                                        switch (get_datatype_in_block(blocknr))
+                                        switch(get_datatype_in_block(blocknr))
                                         {
                                             case 0:
                                                 hdf5_datatype = H5Tcopy(H5T_NATIVE_UINT);
                                                 break;
+                                                
                                             case 1:
 #ifdef INPUT_IN_DOUBLEPRECISION
                                                 hdf5_datatype = H5Tcopy(H5T_NATIVE_DOUBLE);
@@ -1042,6 +1039,7 @@ void read_file(char *fname, int readTask, int lastTask)
                                                 hdf5_datatype = H5Tcopy(H5T_NATIVE_FLOAT);
 #endif
                                                 break;
+                                                
                                             case 2:
                                                 hdf5_datatype = H5Tcopy(H5T_NATIVE_UINT64);
                                                 break;

@@ -1339,11 +1339,7 @@ void subfind_save_local_catalogue(int num)
 	    {
 	      dims[0] = nwrite;
 	      dims[1] = ndim;
-
-	      if(dims[1] == 1)
-		rank = 1;
-	      else
-		rank = 2;
+	      if(dims[1] == 1) {rank = 1;} else {rank = 2;}
 
 	      switch (get_datatype_in_sub(blocknr))
 		{

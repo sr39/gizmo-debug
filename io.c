@@ -1908,7 +1908,7 @@ int get_datatype_in_block(enum iofields blocknr)
     int typekey;
     switch (blocknr)
     {
-#if defined(OUTPUT_POSITIONS_IN_DOUBLE) || defined(INPUT_POSITIONS_IN_DOUBLE)
+#if (defined(OUTPUT_POSITIONS_IN_DOUBLE) && !defined(OUTPUT_IN_DOUBLEPRECISION)) || (defined(INPUT_POSITIONS_IN_DOUBLE) && !defined(INPUT_IN_DOUBLEPRECISION))
         case IO_POS:
             typekey = 3; /* pos outputs in HDF5 are double automatically, to prevent overlaps */
             break;
@@ -1937,6 +1937,7 @@ int get_datatype_in_block(enum iofields blocknr)
         case IO_STAGE_PROTOSTAR:
             typekey = 0;		/* native int */
             break;
+            
         default:
             typekey = 1;		/* native MyOutputFloat */
             break;
@@ -3894,11 +3895,12 @@ void write_file(char *fname, int writeTask, int lastTask)
 #ifdef HAVE_HDF5
                         if(ThisTask == writeTask && All.SnapFormat == 3 && header.npart[type] > 0)
                         {
-                            switch (get_datatype_in_block(blocknr))
+                            switch(get_datatype_in_block(blocknr))
                             {
                                 case 0:
                                     hdf5_datatype = H5Tcopy(H5T_NATIVE_UINT);
                                     break;
+                                    
                                 case 1:
 #ifdef OUTPUT_IN_DOUBLEPRECISION
                                     hdf5_datatype = H5Tcopy(H5T_NATIVE_DOUBLE);
@@ -3906,9 +3908,11 @@ void write_file(char *fname, int writeTask, int lastTask)
                                     hdf5_datatype = H5Tcopy(H5T_NATIVE_FLOAT);
 #endif
                                     break;
+                                    
                                 case 2:
                                     hdf5_datatype = H5Tcopy(H5T_NATIVE_UINT64);
                                     break;
+                                    
                                 case 3:
 #ifdef OUTPUT_POSITIONS_IN_DOUBLE
                                     hdf5_datatype = H5Tcopy(H5T_NATIVE_DOUBLE);
@@ -3920,10 +3924,7 @@ void write_file(char *fname, int writeTask, int lastTask)
 
                             dims[0] = header.npart[type];
                             dims[1] = get_values_per_blockelement(blocknr);
-                            if(dims[1] == 1)
-                                rank = 1;
-                            else
-                                rank = 2;
+                            if(dims[1] == 1) {rank = 1;} else {rank = 2;}
 
                             get_dataset_name(blocknr, buf);
 
@@ -3932,15 +3933,15 @@ void write_file(char *fname, int writeTask, int lastTask)
                             hdf5_dataset = H5Dcreate(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file, H5P_DEFAULT);
 #else
                             if(dims[0] > 10)
-			    {
+                            {
                             	hid_t plist_id = H5Pcreate(H5P_DATASET_CREATE);
                             	hsize_t cdims[2]; cdims[0] = (hsize_t) (dims[0] / 10); cdims[1] = dims[1];
                             	hdf5_status = H5Pset_chunk (plist_id, rank, cdims);
                             	hdf5_status = H5Pset_deflate (plist_id, 4);
                             	hdf5_dataset = H5Dcreate2(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file, H5P_DEFAULT, plist_id, H5P_DEFAULT);
-			    } else {
+                            } else {
                             	hdf5_dataset = H5Dcreate(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file, H5P_DEFAULT);
-			    }
+                            }
 #endif
                             pcsum = 0;
                         }
@@ -3954,21 +3955,18 @@ void write_file(char *fname, int writeTask, int lastTask)
 
                                 for(p = writeTask; p <= lastTask; p++)
                                     if(p != ThisTask)
-                                        MPI_Send(&n_for_this_task, 1, MPI_INT, p, TAG_NFORTHISTASK, MPI_COMM_WORLD);
+                                        {MPI_Send(&n_for_this_task, 1, MPI_INT, p, TAG_NFORTHISTASK, MPI_COMM_WORLD);}
                             }
                             else
-                                MPI_Recv(&n_for_this_task, 1, MPI_INT, task, TAG_NFORTHISTASK, MPI_COMM_WORLD,
-                                         &status);
+                                MPI_Recv(&n_for_this_task, 1, MPI_INT, task, TAG_NFORTHISTASK, MPI_COMM_WORLD, &status);
 
                             while(n_for_this_task > 0)
                             {
                                 pc = n_for_this_task;
 
-                                if(pc > (int)blockmaxlen)
-                                    pc = blockmaxlen;
+                                if(pc > (int)blockmaxlen) {pc = blockmaxlen;}
 
-                                if(ThisTask == task)
-                                    fill_write_buffer(blocknr, &offset, pc, type);
+                                if(ThisTask == task) {fill_write_buffer(blocknr, &offset, pc, type);}
 
                                 if(ThisTask == writeTask && task != writeTask)
                                     MPI_Recv(CommBuffer, bytes_per_blockelement * pc, MPI_BYTE, task,
@@ -3995,11 +3993,10 @@ void write_file(char *fname, int writeTask, int lastTask)
 
                                         dims[0] = pc;
                                         dims[1] = get_values_per_blockelement(blocknr);
+                                        if(dims[1] == 1) {rank = 1;} else {rank = 2;}
                                         hdf5_dataspace_memory = H5Screate_simple(rank, dims, NULL);
 
-                                        hdf5_status =
-                                        H5Dwrite(hdf5_dataset, hdf5_datatype,
-                                                 hdf5_dataspace_memory,
+                                        hdf5_status = H5Dwrite(hdf5_dataset, hdf5_datatype, hdf5_dataspace_memory,
                                                  hdf5_dataspace_in_file, H5P_DEFAULT, CommBuffer);
 
                                         H5Sclose(hdf5_dataspace_memory);
