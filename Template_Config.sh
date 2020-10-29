@@ -329,9 +329,6 @@
 ## ----------------------------------------------------------------------------------------------------
 #BH_OUTPUT_MOREINFO             # output additional info to "blackhole_details" on timestep-level, following Angles-Alcazar et al. 2017, MNRAS 472, 109 (use caution: files can get very large if many BHs exist)
 #BH_CALC_DISTANCES              # calculate distances for all particles to closest BH for, e.g., refinement, external potentials, etc. cite Garrison-Kimmel et al., MNRAS, 2017, 471, 1709
-## ----------------------------------------------------------------------------------------------------
-# ----------- deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
-##---------------------BH_SEED_GROWTH_TESTS             #- Currently testing options for BH seeding
 ####################################################################################################
 
 
@@ -343,27 +340,27 @@
 # ------  low-density inter-galactic medium through proto-planetary/stellar disks, but not planetary or stellar interiors (for those, other modules are more appropriate).
 # ------  Proper citations are below and in User Guide; all users should cite Hopkins et al. 2017 (arXiv:1702.06148), where Appendix B details the cooling physics
 ####################################################################################################
-##-----------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------
 #COOLING                        # top-level switch to enable radiative cooling and heating. if nothing else enabled, uses Hopkins et al. arXiv:1702.06148 cooling physics. if GALSF, also external UV background read from file "TREECOOL" (included in the cooling folder; be sure to cite its source as well, given in the TREECOOL file)
 #METALS                         # top-level switch to enable tracking metallicities / different heavy elements (with multiple species optional) for gas and stars [must be included in ICs or injected via dynamical feedback; needed for some routines]
-##-----------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------
 # ---- additional cooling physics options within the default COOLING (Hopkins et al. 2017) module
-##-----------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------
 #COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables ( http://www.tapir.caltech.edu/~phopkins/public/spcool_tables.tgz, or the Bitbucket site); requires METALS on; cite Wiersma et al. 2009 (MNRAS, 393, 99) in addition to Hopkins et al. 2017 (arXiv:1702.06148)
 #COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K; account for optical thickness and line-trapping effects with proper opacities [requires METALS]. attempts to interpolate between optically-thin and optically-thick cooling limits even if explicit rad-hydro not enabled. Cite Hopkins et al. arXiv:1702.06148
 #COOL_MOLECFRAC=4               # track molecular H2 fractions for use in COOL_LOW_TEMPERATURES and thermochemistry using different estimators: (1) simplest, fit to density+temperature from Glover+Clark 2012; (2) Krumholz+Gnedin 2010 fit vs. column+metallicity; (3) Gnedin+Draine 2014 fit vs column+metallicity+MW radiation field; (4) Krumholz, McKee, & Tumlinson 2009 local equilibrium cloud model vs column, metallicity, incident FUV; (5) explicit local equilibrium H2 fraction explicitly tracking rates, metals, clumping, shielding, UV [cite Hopkins et al. 2021]; (6) explicit non-equilibrium integration of rates in level 5 [cite Hopkins et al. 2021]
 #COOL_UVB_SELFSHIELD_RAHMATI    # use an updated (Hopkins et al. 2021, in prep) version [fixes problematic behavior at densities >> 100 cm^-3] version of the Rahmati et al. 2013MNRAS.431.2261R UV background self-shielding, as compared to the older Hopkins et al. 2018MNRAS.480..800H treatment of self-shielding from the UVB
-##-----------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------
 # ---- GRACKLE: alternative chemical network using external libraries for solving thermochemistry+cooling. These treat molecular hydrogen, in particular, in more detail than our default networks, and are more accurate for 'primordial' (e.g. 1st-star) gas. But they have less-accurate treatment of
 # ----            effects such as dust-gas coupling and radiative feedback (Compton and photo-electric and local ionization heating) and high-optical-depth effects, so are usually less accurate for low-redshift, metal-rich star formation or planet formation simulations.
-##-----------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------
 #COOL_GRACKLE                   # enable Grackle: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest ); see Grackle code for their required citations
 #COOL_GRACKLE_CHEMISTRY=1       # choose Grackle cooling chemistry: (0)=tabular, (1)=Atomic, (2)=(1)+H2+H2I+H2II, (3)=(2)+DI+DII+HD. Modules with dust and/or metal-line cooling require METALS also
 #COOL_GRACKLE_APIVERSION=1      # set the version of the grackle api: =1 (default) is compatible with versions of grackle below 2.2. After 2.2 significant changes to the grackle api were made which require different input formats, which require setting this to =2 or larger. note newest grackle apis may not yet be compatible with the hooks here!
 ##-----------------------------------------------------------------------------------------------------
-# ---- CHIMES: alternative non-equilibrium chemical (ion+atomic+molecular) network, developed by Alex Richings. The core methods are laid out in 2014MNRAS.440.3349R, 2014MNRAS.442.2780R
-# ----   Per the CHIMES documentation and license, this module requires permission from the authors to use: please contact Alex Richings, Joop Schaye, or Ben Oppenheimer to obtain the relevant permissions
-# ----   This has additional hooks to use the various gizmo radiation fields if desired. The modules solve a large molecular and ion network, so can trace predictive chemistry for species in dense ISM gas in much greater detail than the other modules above (at additional CPU cost)
+#----- CHIMES: alternative non-equilibrium chemical (ion+atomic+molecular) network, developed by Alex Richings. The core methods are laid out in 2014MNRAS.440.3349R, 2014MNRAS.442.2780R
+#-----   Per the CHIMES documentation and license, this module requires permission from the authors to use: please contact Alex Richings, Joop Schaye, or Ben Oppenheimer to obtain the relevant permissions
+#-----   This implementation of CHIMES has additional hooks to use the various gizmo radiation fields if desired. The modules solve a large molecular and ion network, so can trace predictive chemistry for species in dense ISM gas in much greater detail than the other modules above (at additional CPU cost)
 ##-----------------------------------------------------------------------------------------------------
 #CHIMES                         # top-level switch to enable CHIMES. Requires COOLING above. Also, requires COOL_METAL_LINES_BY_SPECIES to include metals.
 #CHIMES_SOBOLEV_SHIELDING       # enables local self-shielding for different species, using a Sobolev-like length scale
@@ -576,6 +573,7 @@
 ####################################################################################################-
 ##- some code options that will be made public as soon as the appropriate methods papers are published so it can be cited
 ##----------------------------------------------------------------------------------------------------
+#BH_DYNFRICTION_FROMTREE        #- compute dynamical friction forces on BH following the discrete DF estimator in L. Ma et al. 2021 (in prep - to be made public once methods paper is published)
 #SINGLE_STAR_FB                 #- top-level flag indicating feedback is on, following STARFORGE methods (Grudic+ 2020)
 #SINGLE_STAR_FB_RAD             #- following STARFORGE methods (Grudic+ 2020)
 #SINGLE_STAR_FB_WINDS           #- enable continuous main-sequence mechanical feedback from single stellar sources accounting for OB/AGB/WR winds following STARFORGE methods (Grudic+ arXiv:2010.11254), non public for now
@@ -588,7 +586,16 @@
 #COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK #-
 #COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART=1 #-
 #PIC_MHD                        #- hybrid MHD-PIC simulations for cosmic rays (particle type=3). need to set 'subtype'. in early testing.
-#PIC_SPEEDOFLIGHT_REDUCTION=1   #- factor to reduce the speed-of-light for mhd-pic simulations.
+#PIC_SPEEDOFLIGHT_REDUCTION=1   #- factor to reduce the speed-of-light for mhd-pic simulations
+#RT_OPACITY_FROM_EXPLICIT_GRAINS #- calculate opacities back-and-forth from explicitly-resolved dust populations
+#GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE #-
+#RT_ENHANCED_NUMERICAL_DIFFUSION #-
+#RT_COMPGRAD_EDDINGTON_TENSOR #-
+#GRAIN_RDI_TESTPROBLEM_SET_ABSFRAC=(0.5) #-
+#GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX=(0.2) #-
+#GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION #-
+#GRAV_DIRECTION_RDI #-
+#PARTICLE_MERGE_SPLIT_EVERY_TIMESTEP #-
 ####################################################################################################-
 
 

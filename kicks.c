@@ -286,6 +286,10 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             }
 #endif // closes ENERGY_ENTROPY_SWITCH_IS_ACTIVE
             
+#ifdef HYDRO_EXPLICITLY_INTEGRATE_VOLUME
+            SphP[i].Density_ExplicitInt *= exp(-DMIN(1.5,DMAX(-1.5,P[i].Particle_DivVel * dt_hydrokick))); /*!< explicitly integrated volume/density variable to be used if integrating the SPH-like form of the continuity directly */
+#endif
+
 #ifdef RADTRANSFER /* block here to deal with tricky cases where radiation energy density is -much- larger than thermal */
             int kfreq; double erad_tot=0,emin=0,enew=0,demin=0,dErad=0; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad_tot+=SphP[i].Rad_E_gamma[kfreq];}
             if(erad_tot > 0)
@@ -360,6 +364,9 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 P[i].Mass = SphP[i].MassTrue; //mass_old + SphP[i].DtMass * dt_hydrokick;
 #endif
                 SphP[i].InternalEnergyPred = SphP[i].InternalEnergy; //ent_old + SphP[i].DtInternalEnergy * dt_entr;
+#ifdef HYDRO_EXPLICITLY_INTEGRATE_VOLUME
+                SphP[i].Density = SphP[i].Density_ExplicitInt; /*!< explicitly integrated volume/density variable to be used if integrating the SPH-like form of the continuity directly */
+#endif
             }
         }
         

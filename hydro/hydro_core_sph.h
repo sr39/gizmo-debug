@@ -33,6 +33,11 @@
 
 #if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
     /* need to include an effective stress for large negative pressures when elements are too close, to prevent tensile instability */
+    if(local.Pressure < 0) {wt_corr_i = 1. - tensile_correction_factor;}
+    if(SphP[j].Pressure < 0) {wt_corr_j = 1. - tensile_correction_factor;}
+
+
+    dummy_pressure *= 1. - tensile_correction_factor; /* we still need to include an effective stress for large negative pressures when elements are too close, to prevent tensile instability */
     if((local.Pressure<0)||(SphP[j].Pressure<0))
     {
         double h_eff = 0.5*(Particle_Size_i + Particle_Size_j); // effective inter-particle spacing around these elements
@@ -200,7 +205,10 @@
         double mu_ij = fac_mu * kernel.vdotr2 / kernel.r;
         double visc = -BulkVisc_ij * mu_ij * (c_ij - mu_ij) * kernel.rho_ij_inv; /* this method should use beta/alpha=1 */
 #else
-        double BulkVisc_ij = 0.5 * All.ArtBulkViscConst * (local.alpha + SphP[j].alpha_limiter);
+        double BulkVisc_ij = 0.5 * All.ArtBulkViscConst;
+#if !defined(EOS_ELASTIC)
+        BulkVisc_ij *= (local.alpha + SphP[j].alpha_limiter);
+#endif
         double h_ij = KERNEL_CORE_SIZE * 0.5 * (kernel.h_i + kernel.h_j);
         double mu_ij = fac_mu * h_ij * kernel.vdotr2 / (r2 + 0.0001 * h_ij * h_ij); /* note: this is negative! */
         double visc = -BulkVisc_ij * mu_ij * (c_ij - 2*mu_ij) * kernel.rho_ij_inv; /* this method should use beta/alpha=2 */

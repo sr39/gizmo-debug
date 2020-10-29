@@ -19,6 +19,10 @@
         double cT_i=sqrt(All.Tillotson_EOS_params[local.CompositionType][10]/rho_i), cT_j=sqrt(All.Tillotson_EOS_params[SphP[j].CompositionType][10]/rho_j); // physical
         double wt_t = rho_i*cT_i * rho_j*cT_j / (rho_i*cT_i + rho_j*cT_j) * Face_Area_Norm; // physical
         double wt_rt = (wt_r - wt_t) * kernel.vdotr2 * rinv*rinv*All.cf_atime*All.cf_atime;
+#if defined(HYDRO_SPH)
+        wt_t = 0;
+        wt_rt = 0;
+#endif
         // evaluate force from deviatoric stress tensor //
         for(j_v=0;j_v<3;j_v++)
         {
@@ -26,6 +30,8 @@
             {
                 // direct flux
                 cmag[j_v] += (wt_i*local.Elastic_Stress_Tensor[j_v][k_v] + wt_j*SphP[j].Elastic_Stress_Tensor[j_v][k_v]) * Face_Area_Vec[k_v]*All.cf_a2inv;
+                if(local.Elastic_Stress_Tensor[j_v][k_v]   > 0) {cmag[j_v] -= tensile_correction_factor *   local.Elastic_Stress_Tensor[j_v][k_v] * wt_i * Face_Area_Vec[k_v]*All.cf_a2inv;}
+                if(SphP[j].Elastic_Stress_Tensor[j_v][k_v] > 0) {cmag[j_v] -= tensile_correction_factor * SphP[j].Elastic_Stress_Tensor[j_v][k_v] * wt_i * Face_Area_Vec[k_v]*All.cf_a2inv;}
             }
             cmag[j_v] -= wt_rt * kernel.dp[j_v]*All.cf_atime + wt_t * kernel.dv[j_v]/All.cf_atime; // HLL-type fluxes
         }
