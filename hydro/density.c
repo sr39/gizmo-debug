@@ -1000,7 +1000,8 @@ void density(void)
                 SphP[i].FaceClosureError = Volume_0;
 #endif
 #ifdef HYDRO_EXPLICITLY_INTEGRATE_VOLUME
-                SphP[i].Density = SphP[i].Density_ExplicitInt; // set to explicitly-evolved density field
+                if(All.Time == All.TimeBegin) {SphP[i].Density_ExplicitInt = SphP[i].Density;} // set initial value to density calculated above
+                    else {SphP[i].Density = SphP[i].Density_ExplicitInt;} // set to explicitly-evolved density field
                 SphP[i].FaceClosureError = Volume_0;
 #endif
 #ifdef HYDRO_VOLUME_CORRECTIONS
