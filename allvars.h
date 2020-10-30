@@ -186,6 +186,17 @@
 #endif
 
 
+#if defined(EOS_ELASTIC)
+#if !defined(DISABLE_SURFACE_VOLCORR) && !defined(HYDRO_KERNEL_SURFACE_VOLCORR)
+#define HYDRO_KERNEL_SURFACE_VOLCORR
+#endif
+#if !defined(DISABLE_EXPLICIT_VOLUME_INTEGRATION) && !defined(HYDRO_EXPLICITLY_INTEGRATE_VOLUME)
+#define HYDRO_EXPLICITLY_INTEGRATE_VOLUME
+#endif
+#endif
+
+
+
 #include "eos/eos.h"
 
 
