@@ -11,27 +11,26 @@
     if( ((local.Mass>0)&&(P[j].Mass>0)) )
     {
         int k_v, j_v;
+        double FNormT=local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density) * All.cf_atime*All.cf_atime;
+        double FVec[3]={0}; for(k=0;k<3;k++) {FVec[k] = FNormT * kernel.dp[k]/kernel.r;} // use this particular face formulation for fluxes here to avoid tensile instability //
+
         double cmag[3]={0}, v_interface[3], wt_i=-0.5, wt_j=-0.5; // we need a minus sign at some point; its handy to just include it now in the weights //
         for(k=0;k<3;k++) {v_interface[k] = (wt_i*local.Vel[k] + wt_j*VelPred_j[k]) / All.cf_atime;} // physical units //
         double rho_i = local.Density * All.cf_a3inv, rho_j = SphP[j].Density * All.cf_a3inv;
+
         // terms for HLL fluxes
-        double wt_r = rho_i*local.SoundSpeed * rho_j*SphP[j].SoundSpeed / (rho_i*local.SoundSpeed + rho_j*SphP[j].SoundSpeed) * Face_Area_Norm; // physical
+        double wt_r = rho_i*local.SoundSpeed * rho_j*SphP[j].SoundSpeed / (rho_i*local.SoundSpeed + rho_j*SphP[j].SoundSpeed) * FNormT; // physical
         double cT_i=sqrt(All.Tillotson_EOS_params[local.CompositionType][10]/rho_i), cT_j=sqrt(All.Tillotson_EOS_params[SphP[j].CompositionType][10]/rho_j); // physical
-        double wt_t = rho_i*cT_i * rho_j*cT_j / (rho_i*cT_i + rho_j*cT_j) * Face_Area_Norm; // physical
+        double wt_t = rho_i*cT_i * rho_j*cT_j / (rho_i*cT_i + rho_j*cT_j) * FNormT; // physical
         double wt_rt = (wt_r - wt_t) * kernel.vdotr2 * rinv*rinv*All.cf_atime*All.cf_atime;
-#if defined(HYDRO_SPH)
-        wt_t = 0;
-        wt_rt = 0;
-#endif
         // evaluate force from deviatoric stress tensor //
         for(j_v=0;j_v<3;j_v++)
         {
             for(k_v=0;k_v<3;k_v++)
             {
-                // direct flux
-                cmag[j_v] += (wt_i*local.Elastic_Stress_Tensor[j_v][k_v] + wt_j*SphP[j].Elastic_Stress_Tensor[j_v][k_v]) * Face_Area_Vec[k_v]*All.cf_a2inv;
-                if(local.Elastic_Stress_Tensor[j_v][k_v]   > 0) {cmag[j_v] -= tensile_correction_factor *   local.Elastic_Stress_Tensor[j_v][k_v] * wt_i * Face_Area_Vec[k_v]*All.cf_a2inv;}
-                if(SphP[j].Elastic_Stress_Tensor[j_v][k_v] > 0) {cmag[j_v] -= tensile_correction_factor * SphP[j].Elastic_Stress_Tensor[j_v][k_v] * wt_i * Face_Area_Vec[k_v]*All.cf_a2inv;}
+                cmag[j_v] += (wt_i*local.Elastic_Stress_Tensor[j_v][k_v] + wt_j*SphP[j].Elastic_Stress_Tensor[j_v][k_v]) * FVec[k_v]*All.cf_a2inv; // direct flux
+                if(local.Pressure < 0) {cmag[j_v] -= tensile_correction_factor *   local.Elastic_Stress_Tensor[j_v][k_v] * wt_i * FVec[k_v]*All.cf_a2inv;} // tensile correction
+                if(SphP[j].Pressure < 0) {cmag[j_v] -= tensile_correction_factor * SphP[j].Elastic_Stress_Tensor[j_v][k_v] * wt_i * FVec[k_v]*All.cf_a2inv;} // tensile correction
             }
             cmag[j_v] -= wt_rt * kernel.dp[j_v]*All.cf_atime + wt_t * kernel.dv[j_v]/All.cf_atime; // HLL-type fluxes
         }
@@ -44,7 +43,7 @@
                 double cmag_dir[3]={0}, a_dot_r_alt=0; // check if the face area orientation is the difference
                 for(j_v=0;j_v<3;j_v++)
                 {
-                    for(k_v=0;k_v<3;k_v++) {cmag_dir[j_v] += (wt_i*local.Elastic_Stress_Tensor[j_v][k_v] + wt_j*SphP[j].Elastic_Stress_Tensor[j_v][k_v]) * Face_Area_Norm*kernel.dp[k_v]/kernel.r;}
+                    for(k_v=0;k_v<3;k_v++) {cmag_dir[j_v] += (wt_i*local.Elastic_Stress_Tensor[j_v][k_v] + wt_j*SphP[j].Elastic_Stress_Tensor[j_v][k_v]) * FNormT*kernel.dp[k_v]/kernel.r;}
                     a_dot_r_alt += kernel.dp[j_v]*cmag[j_v];
                 }
                 if((a_dot_r_alt >= 0)||(a_dot_r_alt+astress_dot_r>=0)) {for(k_v=0;k_v<3;k_v++) {cmag[k_v]=cmag_dir[k_v];}} else // if this solves it, use this, done!

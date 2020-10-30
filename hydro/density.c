@@ -563,7 +563,7 @@ void density(void)
 #ifdef HYDRO_KERNEL_SURFACE_VOLCORR
                     double closure_asymm=0; for(k1=0;k1<3;k1++) {closure_asymm += Face_Area_OneSided_Estimator_in[k1]*Face_Area_OneSided_Estimator_in[k1];}
                     double particle_inverse_volume = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
-                    closure_asymm = sqrt(closure_asymm) / (PPP[i].Hsml * particle_inverse_volume)); // dimensionnless measure of asymmetry in kernel
+                    closure_asymm = sqrt(closure_asymm) / (PPP[i].Hsml * particle_inverse_volume); // dimensionnless measure of asymmetry in kernel
                     SphP[i].FaceClosureError = DMIN(DMAX(1.0259-2.52444*closure_asymm,0.344301),1.); // correction factor for 'missing' volume assuming a wendland C2 kernel and a sharp surface from Reinhardt & Stadel 2017 (arXiv:1701.08296)
 #else
                     SphP[i].FaceClosureError = dimless_face_leak / (2.*NUMDIMS*pow(dx_i,NUMDIMS-1));
@@ -1000,6 +1000,7 @@ void density(void)
                 SphP[i].FaceClosureError = Volume_0;
 #endif
 #ifdef HYDRO_EXPLICITLY_INTEGRATE_VOLUME
+                Volume_0 = P[i].Mass / SphP[i].Density;
                 if(All.Time == All.TimeBegin) {SphP[i].Density_ExplicitInt = SphP[i].Density;} // set initial value to density calculated above
                     else {SphP[i].Density = SphP[i].Density_ExplicitInt;} // set to explicitly-evolved density field
                 SphP[i].FaceClosureError = Volume_0;
