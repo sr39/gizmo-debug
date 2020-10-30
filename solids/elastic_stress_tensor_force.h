@@ -24,16 +24,31 @@
         double wt_t = rho_i*cT_i * rho_j*cT_j / (rho_i*cT_i + rho_j*cT_j) * FNormT; // physical
         double wt_rt = (wt_r - wt_t) * kernel.vdotr2 * rinv*rinv*All.cf_atime*All.cf_atime;
         // evaluate force from deviatoric stress tensor //
-        for(j_v=0;j_v<3;j_v++)
-        {
-            for(k_v=0;k_v<3;k_v++)
-            {
-                cmag[j_v] += (wt_i*local.Elastic_Stress_Tensor[j_v][k_v] + wt_j*SphP[j].Elastic_Stress_Tensor[j_v][k_v]) * FVec[k_v]*All.cf_a2inv; // direct flux
-                if(local.Pressure < 0) {cmag[j_v] -= tensile_correction_factor *   local.Elastic_Stress_Tensor[j_v][k_v] * wt_i * FVec[k_v]*All.cf_a2inv;} // tensile correction
-                if(SphP[j].Pressure < 0) {cmag[j_v] -= tensile_correction_factor * SphP[j].Elastic_Stress_Tensor[j_v][k_v] * wt_i * FVec[k_v]*All.cf_a2inv;} // tensile correction
-            }
-            cmag[j_v] -= wt_rt * kernel.dp[j_v]*All.cf_atime + wt_t * kernel.dv[j_v]/All.cf_atime; // HLL-type fluxes
+#if 0   // simple version for tensile correction based on which pressures are negative or not
+        for(j_v=0;j_v<3;j_v++) {for(k_v=0;k_v<3;k_v++) {
+            cmag[j_v] += (wt_i*local.Elastic_Stress_Tensor[j_v][k_v] + wt_j*SphP[j].Elastic_Stress_Tensor[j_v][k_v]) * FVec[k_v]*All.cf_a2inv; // direct flux
+            if(local.Pressure < 0) {cmag[j_v] -= tensile_correction_factor *   local.Elastic_Stress_Tensor[j_v][k_v] * wt_i * FVec[k_v]*All.cf_a2inv;} // tensile correction
+            if(SphP[j].Pressure < 0) {cmag[j_v] -= tensile_correction_factor * SphP[j].Elastic_Stress_Tensor[j_v][k_v] * wt_j * FVec[k_v]*All.cf_a2inv;} // tensile correction
+        }}
+#else   // fancier model where tensile correction is always applied to compressive principle component of the stress tensor [have to solve for eigenvalues of the stress tensor]
+        int ij_switch; for(ij_switch=0;ij_switch<2;ij_switch++) {
+            double nvt[NUMDIMS*NUMDIMS]={0}, norm_m=0, wtfac=0; if(ij_switch==0) {wtfac=wt_i;} else {wtfac=wt_j;}
+            for(k_v=0;k_v<NUMDIMS;k_v++) {for(j_v=0;j_v<NUMDIMS;j_v++) {
+            if(ij_switch==0) {nvt[NUMDIMS*k_v + j_v] = local.Elastic_Stress_Tensor[k_v][j_v];} else {nvt[NUMDIMS*k_v + j_v] = SphP[j].Elastic_Stress_Tensor_Pred[k_v][j_v];}
+            norm_m += nvt[NUMDIMS*k_v + j_v]*nvt[NUMDIMS*k_v + j_v];}} // initialize auxiliary array to store for feeding to GSL eigen routine
+            if(norm_m > MIN_REAL_NUMBER) {
+                gsl_matrix_view M = gsl_matrix_view_array(nvt,NUMDIMS,NUMDIMS); gsl_vector *eigvals = gsl_vector_alloc(NUMDIMS); gsl_matrix *eigvecs = gsl_matrix_alloc(NUMDIMS,NUMDIMS);
+                gsl_eigen_symmv_workspace *v = gsl_eigen_symmv_alloc(NUMDIMS); gsl_eigen_symmv(&M.matrix, eigvals, eigvecs, v);
+                double eigenval_k=0, eigenvec_k[NUMDIMS]={0}, A_dot_v=0, prefac=0;
+                for(k_v=0;k_v<NUMDIMS;k_v++) {eigenval_k = gsl_vector_get(eigvals, k_v); A_dot_v = 0;
+                    for(j_v=0;j_v<NUMDIMS;j_v++) {eigenvec_k[j_v] = gsl_matrix_get(eigvecs, j_v, k_v); A_dot_v += FVec[j_v]*eigenvec_k[j_v];}
+                    prefac = wtfac * eigenval_k * (A_dot_v*All.cf_a2inv); if(eigenval_k > 0) {prefac *= 1. - tensile_correction_factor;}
+                    if(!isnan(eigenval_k)) {for(j_v=0;j_v<NUMDIMS;j_v++) {cmag[j_v] += prefac * eigenvec_k[j_v];}} // evaluate S.Face = S.[sum of eigenvalues times projection on Face onto each eigenvector]
+                }
+                gsl_eigen_symmv_free(v); gsl_vector_free(eigvals); gsl_matrix_free(eigvecs);} // free memory
         }
+#endif
+        for(j_v=0;j_v<3;j_v++) {cmag[j_v] -= wt_rt * kernel.dp[j_v]*All.cf_atime + wt_t * kernel.dv[j_v]/All.cf_atime;} // HLL-type fluxes
         /* // below limiter doesn't actually appear necessary in our tests, thus far; worth more detailed testing the future //
         if(kernel.vdotr2 < 0) // check if particles are approaching
         {

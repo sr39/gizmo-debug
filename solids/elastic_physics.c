@@ -4,6 +4,7 @@
 #include <string.h>
 #include <math.h>
 #include <gsl/gsl_math.h>
+#include <gsl/gsl_eigen.h>
 
 #include "../allvars.h"
 #include "../proto.h"
@@ -86,7 +87,7 @@ double calculate_eos_tillotson(int i)
 /* routine to update the deviatoric stress tensor */
 void elastic_body_update_driftkick(int i, double dt_entr, int mode)
 {
-    int j,k,l;
+    int j,k,l,NDim=NUMDIMS;
     double dv0[3][3], R[3][3], S[3][3], S_new[3][3], dS=0, mu, Y0, J2=0, I1=0;
 #ifdef EOS_TILLOTSON
     mu = All.Tillotson_EOS_params[SphP[i].CompositionType][10]; Y0 = All.Tillotson_EOS_params[SphP[i].CompositionType][11]; // set for composition
@@ -96,8 +97,8 @@ void elastic_body_update_driftkick(int i, double dt_entr, int mode)
 
     if(mode < 2) // drift or kick operation
     {
-        for(j=0;j<3;j++) {
-            for(k=0;k<3;k++) {
+        for(j=0;j<NDim;j++) {
+            for(k=0;k<NDim;k++) {
                 // determine which variable we are updating (mode=0/1 is kick/drift)
                 if(mode==0) {S_new[j][k]=SphP[i].Elastic_Stress_Tensor[j][k];} else {S_new[j][k]=SphP[i].Elastic_Stress_Tensor_Pred[j][k];}
                 S_new[j][k] += dt_entr * SphP[i].Dt_Elastic_Stress_Tensor[j][k]; // apply time evolution
@@ -107,32 +108,33 @@ void elastic_body_update_driftkick(int i, double dt_entr, int mode)
         // now apply the von Mises yield criterion //
         if(J2 > 0)
         {
-            double f_Y = Y0*Y0/(3.*J2);
-            if(f_Y < 1) {for(j=0;j<3;j++) {for(k=0;k<3;k++) {S_new[j][k] *= f_Y;}}}
+            double f_Y = Y0*Y0/(NDim*J2);
+            if(f_Y < 1) {for(j=0;j<NDim;j++) {for(k=0;k<NDim;k++) {S_new[j][k] *= f_Y;}}}
         }
         // write out to variable //
-        for(j=0;j<3;j++) {
-            for(k=0;k<3;k++) {
+        for(j=0;j<NDim;j++) {
+            for(k=0;k<NDim;k++) {
                 if(mode==0) {SphP[i].Elastic_Stress_Tensor[j][k]=S_new[j][k];} else {SphP[i].Elastic_Stress_Tensor_Pred[j][k]=S_new[j][k];}
             }}
-        
+
     } else {
 
         // ok all below is for mode = 2, which is the actual calculation of the time derivative of the stress tensor
-        for(j=0;j<3;j++) {for(k=0;k<3;k++) {dv0[j][k] = SphP[i].Gradients.Velocity[j][k];}}
-        for(j=0;j<3;j++) {for(k=0;k<3;k++) {S[j][k] = SphP[i].Elastic_Stress_Tensor_Pred[j][k];}}
-        for(j=0;j<3;j++) {for(k=0;k<3;k++) {R[j][k] = 0.5*(dv0[j][k] - dv0[k][j]);}}
-        double trace_vel = dv0[0][0] + dv0[1][1] + dv0[2][2];
-        for(j=0;j<3;j++) // velocity index
+        for(j=0;j<NDim;j++) {for(k=0;k<NDim;k++) {dv0[j][k] = SphP[i].Gradients.Velocity[j][k];}}
+        for(j=0;j<NDim;j++) {for(k=0;k<NDim;k++) {S[j][k] = SphP[i].Elastic_Stress_Tensor_Pred[j][k];}}
+        for(j=0;j<NDim;j++) {for(k=0;k<NDim;k++) {R[j][k] = 0.5*(dv0[j][k] - dv0[k][j]);}}
+        double trace_vel=0; for(j=0;j<NDim;j++) {trace_vel += dv0[j][j];}
+        for(j=0;j<NDim;j++) // velocity index
         {
-            for(k=0;k<3;k++) // gradient index
+            for(k=0;k<NDim;k++) // gradient index
             {
                 dS = mu * (dv0[j][k] + dv0[k][j]); // symmetric strain component
-                if(k==j) {dS -= 2.*mu*trace_vel/3.;} // trace component
-                for(l=0;l<3;l++) {dS += S[j][l]*R[l][k] - R[j][l]*S[l][k];} // rotation components
+                if(k==j) {dS -= 2.*mu*trace_vel/NDim;} // trace component
+                for(l=0;l<NDim;l++) {dS += S[j][l]*R[l][k] - R[j][l]*S[l][k];} // rotation components
                 SphP[i].Dt_Elastic_Stress_Tensor[j][k] = dS; // save it to variable
             }
         }
+
     }
     
     return; // all done here

@@ -290,7 +290,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             SphP[i].Density_ExplicitInt *= exp(-DMIN(1.5,DMAX(-1.5,P[i].Particle_DivVel*All.cf_a2inv * dt_hydrokick))); /*!< explicitly integrated volume/density variable to be used if integrating the SPH-like form of the continuity directly */
             if(SphP[i].FaceClosureError > 0) {double drho2=0; int k; for(k=0;k<3;k++) {drho2+=SphP[i].Gradients.Density[k]*SphP[i].Gradients.Density[k];} /* the evolved density evolves back to the explicit density on a relaxation time of order the sound-crossing or tension wave-crossing time across the density gradient length */
                 if(drho2>0 && SphP[i].Density_ExplicitInt>0 && SphP[i].Density>0) {
-                    double Lgrad = SphP[i].Density / sqrt(drho2); Lgrad=DMAX(Lgrad,PPP[i].Hsml), cs_eff_forrestoringforce=Get_Gas_effective_soundspeed_i(i); /* gradient scale length and sound speed */
+                    double Lgrad = SphP[i].Density / sqrt(drho2); Lgrad=DMAX(Lgrad,PPP[i].Hsml); double cs_eff_forrestoringforce=Get_Gas_effective_soundspeed_i(i); /* gradient scale length and sound speed */
 #if defined(EOS_TILLOTSON)
                     cs_eff_forrestoringforce=DMIN(cs_eff_forrestoringforce , sqrt(All.Tillotson_EOS_params[SphP[i].CompositionType][10] / SphP[i].Density)); /* speed of deviatoric waves, which is most relevant, if defined */
 #endif
