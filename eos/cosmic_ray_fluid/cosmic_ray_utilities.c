@@ -86,7 +86,7 @@ void CR_spectrum_define_bins(void)
                     double E_target = E_GeV[k] * DMAX(1.,A_wt[m]) / DMAX(1.,A_wt[k]); // fixed energy per nucleon/particle (treating e-/e+ as 1)
                     if(primary_id == 1 && secondary_id < 0) {E_target *= 0.5;} // secondary e+/e- from protons (pion decay) get 1/2 original p energy
                     double diff = log(E_GeV[m]/E_target); diff*=diff; // square of log-diff between energies
-                    if(diff < diff_min) {diff_min=diff; target_bin=m; E_target_0=E_target} // set to this as the 'closest' option
+                    if(diff < diff_min) {diff_min=diff; target_bin=m; E_target_0=E_target;} // set to this as the 'closest' option
                 }
                 CR_secondary_target_bin[k][j]=-1; // default to no secondary bin (secondary is 'lost')
                 if(target_bin >= 0) // check if the bin is valid

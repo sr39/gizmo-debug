@@ -375,7 +375,7 @@ void gravity_tree(void)
                     for(k=0;k<3;k++) {P[place].comp_dx[k]=GravDataOut[j].comp_dx[k]; P[place].comp_dv[k]=GravDataOut[j].comp_dv[k];}
                 }
 #endif
-#ifdef SINGLE_STAR_FB
+#ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
                 if(GravDataOut[j].min_bh_fb_time < P[place].min_bh_fb_time) {P[place].min_bh_fb_time = GravDataOut[j].min_bh_fb_time;}
 #endif                
 #endif

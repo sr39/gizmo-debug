@@ -890,8 +890,8 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
 #endif
 #endif//end of SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2
     
-#if (defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_LOCAL_RP)) && defined(SINGLE_STAR_TIMESTEPPING) && defined(BH_CALC_DISTANCES)
-    BPP(n).MaxFeedbackVel = single_star_fb_velocity(n);
+#if defined(SINGLE_STAR_FB_TIMESTEPLIMIT)
+    BPP(n).MaxFeedbackVel = single_star_feedback_velocity_fortimestep(n);
 #endif
     
 #ifdef PS_EVOL_OUTPUT_MOREINFO // print out the basic star info
@@ -972,11 +972,9 @@ double single_star_wind_velocity(int n){
 }
 #endif // SINGLE_STAR_FB_WINDS
 
-#if (defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_LOCAL_RP))
-/*
-Computes the maximum signal velocity of _any_ feedback mechanism emanating from a star (jets, winds, radiation, SNe), as a worst-case for e.g. timestepping stability purposes
- */
-double single_star_fb_velocity(int n){   
+#ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
+/* Computes the maximum signal velocity of _any_ feedback mechanism emanating from a star (jets, winds, radiation, SNe), as a worst-case for e.g. timestepping stability purposes */
+double single_star_feedback_velocity_fortimestep(int n){   
     if(P[n].Type != 5) {return 0;}
     double v_fb, force, h, rho, v_shell; v_fb=0; force=0; h=Get_Particle_Size(n); rho=P[n].DensAroundStar; v_shell=0;
 #ifdef SINGLE_STAR_FB_WINDS
@@ -990,10 +988,10 @@ double single_star_fb_velocity(int n){
     } else {v_shell = MAX_REAL_NUMBER;}
     v_fb = DMAX(v_fb, DMIN(v_shell, v_wind));
 #endif
-#if defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_LOCAL_RP)
+#if defined(RADTRANSFER) || defined(SINGLE_STAR_FB_LOCAL_RP)
     v_shell = 0;
     if(P[n].DensAroundStar) {
-      force += bh_lum_bol(BPP(n).BH_Mdot, BPP(n).BH_Mass, n)/C_LIGHT_CODE;
+      force += bh_lum_bol(BPP(n).BH_Mdot, BPP(n).BH_Mass, n) / C_LIGHT_CODE;
       v_shell = sqrt(0.053 * force / rho) / h; // terminal velocity assuming momentum-conserving solution R ~ (F / rho)^(1/4) t^1/2 = h
     } else {v_shell = 0;}
     v_fb = DMAX(v_fb, v_shell);
@@ -1001,7 +999,7 @@ double single_star_fb_velocity(int n){
 #ifdef SINGLE_STAR_FB_SNE
     if(P[n].ProtoStellarStage == 6){v_fb = DMAX(v_fb, single_star_SN_velocity(n));}
 #endif    
-#ifdef SINGLE_STAR_FB_RAD
+#ifdef RADTRANSFER
     v_fb = DMAX(v_fb, C_LIGHT_CODE_REDUCED);  // produces a timestep criterion redundant with the RSOL CFL condition, but can be important if running fancy timestepping hacks that violate CFL under special circumstances
 #endif
     if(All.Ti_Current == 0 && RestartFlag == 0) v_fb = DMAX(1e3 / UNIT_VEL_IN_KMS, v_fb); // for idealized box problems

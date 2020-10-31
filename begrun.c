@@ -603,11 +603,11 @@ void open_outputfiles(void)
   sprintf(buf, "%sblackhole_details/blackhole_details_%d.txt", All.OutputDir, ThisTask);
   if(!(FdBlackHolesDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
-#ifdef BH_OUTPUT_GASSWALLOW
+#ifdef OUTPUT_SINK_ACCRETION_HIST
   sprintf(buf, "%sblackhole_details/bhswallow_%d.txt", All.OutputDir, ThisTask);
   if(!(FdBhSwallowDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
-#ifdef BH_OUTPUT_FORMATION_PROPERTIES
+#ifdef OUTPUT_SINK_FORMATION_PROPS
   sprintf(buf, "%sblackhole_details/bhformation_%d.txt", All.OutputDir, ThisTask);
   if(!(FdBhFormationDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif

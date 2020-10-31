@@ -506,9 +506,9 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 double yhelium(int target)
 {
 #ifdef COOL_METAL_LINES_BY_SPECIES
-    if(target >= 0) {double ytmp=DMIN(0.5,P[target].Metallicity[1]); return 0.25*ytmp/(1.-ytmp);} else {return ((1-HYDROGEN_MASSFRAC)/(4*HYDROGEN_MASSFRAC));}
+    if(target >= 0) {double ytmp=DMIN(0.5,P[target].Metallicity[1]); return 0.25*ytmp/(1.-ytmp);} else {return ((1.-HYDROGEN_MASSFRAC)/(4.*HYDROGEN_MASSFRAC));}
 #else
-    return ((1-HYDROGEN_MASSFRAC)/(4*HYDROGEN_MASSFRAC)); // assume uniform H-He gas
+    return ((1.-HYDROGEN_MASSFRAC)/(4.*HYDROGEN_MASSFRAC)); // assume uniform H-He gas
 #endif
 }
 

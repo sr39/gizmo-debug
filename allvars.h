@@ -502,9 +502,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32+64) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial)
 #define DEVELOPER_MODE
-#define IO_SUPPRESS_TIMEBIN_STDOUT 16 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
-#define BH_OUTPUT_GASSWALLOW //save accretion histories
-#define BH_OUTPUT_FORMATION_PROPERTIES //save at-formation properties of sink particles
+#define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
+#define OUTPUT_SINK_ACCRETION_HIST // save accretion histories
+#define OUTPUT_SINK_FORMATION_PROPS // save at-formation properties of sink particles
 #define BH_ALPHADISK_ACCRETION (1.0e6)
 #ifdef GRAIN_FLUID
 #define BH_GRAVCAPTURE_NONGAS
@@ -514,7 +514,6 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_LOCAL_RP))
 #define SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION 2 //we are using the protostellar evolution model from ORION
-#define SINGLE_STAR_FB // general flag indicating feedback is on
 #endif
 #ifdef SINGLE_STAR_FB_RAD
 #define RT_M1
@@ -577,26 +576,37 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 
+#if (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) || defined(RT_OTVET) || defined(RT_FLUXLIMITEDDIFFUSION) || defined(RT_M1) || defined(RT_LOCALRAYGRID) || defined(SINGLE_STAR_FB_LOCAL_RP)) && defined(SINGLE_STAR_TIMESTEPPING) && defined(SINGLE_STAR_DYNAMICS)
+#define SINGLE_STAR_FB_TIMESTEPLIMIT // general flag indicating feedback is on
+#endif
+
 #if defined(SINGLE_STAR_FB_RT_HEATING) && !(defined(RT_OTVET) || defined(RT_FLUXLIMITEDDIFFUSION) || defined(RT_M1) || defined(RT_LOCALRAYGRID))
 #define GALSF_FB_FIRE_RT_LONGRANGE  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
 #define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. 
 #define RT_DISABLE_RAD_PRESSURE
 #endif
 
-#if defined(SINGLE_STAR_FB_JETS) || ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION))
-#define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
-#define MAINTAIN_TREE_IN_REARRANGE // don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed
-#if defined(SINGLE_STAR_FB_WINDS)
-#define GALSF_FB_MECHANICAL //We will use the FIRE wind module for low mass loss rate stars (spawning leads to issues)
+#if defined(SINGLE_STAR_FB_WINDS) && !defined(GALSF_FB_MECHANICAL)
+#define GALSF_FB_MECHANICAL // we will use the FIRE wind module for low mass loss rate stars (spawning leads to issues)
 #endif
+
 #ifdef SINGLE_STAR_FB_SNE
 #if !(CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(SINGLE_STAR_FB_SNE)) /* no numerical value is set, so set one as our 'default' */
 #undef SINGLE_STAR_FB_SNE
 #define SINGLE_STAR_FB_SNE 1 // fraction of the SN energy in the kinetic energy of particles vs internal
 #endif
-#define SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT 2 //determines the maximum number of ejecta particles spawned per timestep, see below
-#define SINGLE_STAR_FB_SNE_N_EJECTA (4*(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)*((SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)+1)) //Maximum number of ejecta particles spawned per timestep
 #endif
+
+#if defined(SINGLE_STAR_FB_JETS) || ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION))
+#define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
+#define MAINTAIN_TREE_IN_REARRANGE // don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed
+#endif
+
+#if (defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_WINDS)) && !defined(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)
+#define SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT 2 // determines the maximum number of ejecta particles spawned per timestep, see below
+#endif
+#if defined(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)
+#define SINGLE_STAR_FB_SNE_N_EJECTA (4*(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)*((SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)+1)) // maximum number of ejecta cells spawned per timestep - follows from tiling rules for rays from RHD-direct-ray method
 #endif
 
 #if defined(SINGLE_STAR_FB_LOCAL_RP) // use standard angle-weighted local coupling to impart photon momentum from stars
@@ -608,7 +618,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 
-#if ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && !defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION))
+#if ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && !defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && !defined(GALSF_FB_MECHANICAL))
 #define GALSF_FB_MECHANICAL // enable mechanical feedback from single stellar sources
 #endif
 
@@ -1947,13 +1957,13 @@ extern FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 
 #ifdef BLACK_HOLES
 extern FILE *FdBlackHoles;	/*!< file handle for blackholes.txt log-file. */
-#ifdef BH_OUTPUT_GASSWALLOW
+#ifdef OUTPUT_SINK_ACCRETION_HIST
 extern FILE *FdBhSwallowDetails;
 #endif
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 extern FILE *FdBhSNDetails;
 #endif
-#ifdef BH_OUTPUT_FORMATION_PROPERTIES
+#ifdef OUTPUT_SINK_FORMATION_PROPS
 extern FILE *FdBhFormationDetails;
 #endif
 #if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
@@ -2285,6 +2295,12 @@ extern struct global_data_all_processes
 #ifdef GRAIN_FLUID
 #define GRAIN_PTYPES 8 /* default to allowed particle type for grains == 3, only, but can make this a more extended list as desired */
 #ifdef GRAIN_RDI_TESTPROBLEM
+#if !defined(GRAIN_RDI_TESTPROBLEM_SET_ABSFRAC)
+#define GRAIN_RDI_TESTPROBLEM_SET_ABSFRAC (0.5)
+#endif
+#if !defined(GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX)
+#define GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX (1.0)
+#endif
 #if(NUMDIMS==3)
 #define GRAV_DIRECTION_RDI 2
 #else
@@ -2298,7 +2314,7 @@ extern struct global_data_all_processes
 #ifdef BOX_SHEARING
     double Pressure_Gradient_Accel;
 #endif
-#endif
+#endif // GRAIN_RDI_TESTPROBLEM
     double Grain_Internal_Density;
     double Grain_Size_Min;
     double Grain_Size_Max;
@@ -2788,7 +2804,7 @@ extern ALIGN(32) struct particle_data
     MyDouble COM_dt_tidal; //timescale from tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
 #endif
-#ifdef SINGLE_STAR_FB
+#ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
     MyFloat MaxFeedbackVel; // maximum signal velocity of any feedback mechanism emanating from the star
     MyFloat min_bh_fb_time;  // minimum time for feedback to arrive from a star
 #endif    
@@ -3456,7 +3472,7 @@ extern struct gravdata_out
     int COM_calc_flag; //flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
     int SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
 #endif
-#ifdef SINGLE_STAR_FB
+#ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
     MyFloat min_bh_fb_time; // minimum time for feedback to arrive from a star
 #endif    
 #endif
@@ -3763,7 +3779,7 @@ extern ALIGN(32) struct NODE
 #if defined(SINGLE_STAR_TIMESTEPPING)
   MyFloat bh_vel[3];    /*!< holds the mass-weighted avg. velocity of black holes in the node */
   int N_BH;             /*!< holds the number of BH particles in the node. Used for refinement/search criteria */
-#ifdef SINGLE_STAR_FB
+#ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
   MyFloat MaxFeedbackVel;
 #endif
 #endif    

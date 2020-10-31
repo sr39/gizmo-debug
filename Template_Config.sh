@@ -264,7 +264,7 @@
 #------ star (+planet) formation-specific modules (feedback, jets, radiation, protostellar evolution, etc)
 ##-----------------------------------------------------------------------------------------------------
 #SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION=1 # sinks are assumed to be proto-stars and follow protostellar evolution tracks as they accrete to evolve radii+luminosities, determines proto-stellar feedback properties. 1=simple model [PFH], 2=fancy model [DG+MG]
-#SINGLE_STAR_FB_RT_HEATING      # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
+#SINGLE_STAR_FB_RT_HEATING      # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7), uses FIRE ???
 #SINGLE_STAR_FB_JETS            # kinematic jets from sinks: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow. for now cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840 (for algorithm, developed for black hole jets), though now using SPAWN algorithm developed by KY Su
 #EOS_SUBSTELLAR_ISM             # allows for the local equation of state polytropic index to vary between 7/5 and 5/3 and outside this range following the detailed fit from Vaidya et al. A&A 580, A110 (2015) for n_H ~ 10^7, which accounts for collisional dissociation at 2000K and ionization at 10^4K, and take the fmol-weighted average with 5./3 at the end to interpolate between atomic/not self-shielding and molecular/self-shielding. Gamma should technically really come from calculating the species number-weighted specific heats, but fmol is very approximate so this should be OK. See the code and uncomment the noted lines in EOS.c if you want to use the exact version from Vaidya+15, which rolls the heat of ionization into the EOS. cite Grudic+ arXiv:2010.11254
 #EOS_GMC_BAROTROPIC             # Barotropic EOS calibratied to Masunaga & Inutsuka 2000; useful for test problems in small-scale star formation such as cloud collapse, jet launching. See Federrath et al. 2014ApJ...790..128F. Can also set to a numerical value =1 to instead use EOS used in Bate Bonnell & Bromm 2003
@@ -357,11 +357,11 @@
 #COOL_GRACKLE                   # enable Grackle: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest ); see Grackle code for their required citations
 #COOL_GRACKLE_CHEMISTRY=1       # choose Grackle cooling chemistry: (0)=tabular, (1)=Atomic, (2)=(1)+H2+H2I+H2II, (3)=(2)+DI+DII+HD. Modules with dust and/or metal-line cooling require METALS also
 #COOL_GRACKLE_APIVERSION=1      # set the version of the grackle api: =1 (default) is compatible with versions of grackle below 2.2. After 2.2 significant changes to the grackle api were made which require different input formats, which require setting this to =2 or larger. note newest grackle apis may not yet be compatible with the hooks here!
-##-----------------------------------------------------------------------------------------------------
-#----- CHIMES: alternative non-equilibrium chemical (ion+atomic+molecular) network, developed by Alex Richings. The core methods are laid out in 2014MNRAS.440.3349R, 2014MNRAS.442.2780R
-#-----   Per the CHIMES documentation and license, this module requires permission from the authors to use: please contact Alex Richings, Joop Schaye, or Ben Oppenheimer to obtain the relevant permissions
-#-----   This implementation of CHIMES has additional hooks to use the various gizmo radiation fields if desired. The modules solve a large molecular and ion network, so can trace predictive chemistry for species in dense ISM gas in much greater detail than the other modules above (at additional CPU cost)
-##-----------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------
+# ---- CHIMES: alternative non-equilibrium chemical (ion+atomic+molecular) network, developed by Alex Richings. The core methods are laid out in 2014MNRAS.440.3349R, 2014MNRAS.442.2780R
+# ----   Per the CHIMES documentation and license, this module requires permission from the authors to use: please contact Alex Richings, Joop Schaye, or Ben Oppenheimer to obtain the relevant permissions
+# ----   This implementation of CHIMES has additional hooks to use the various gizmo radiation fields if desired. The modules solve a large molecular and ion network, so can trace predictive chemistry for species in dense ISM gas in much greater detail than the other modules above (at additional CPU cost)
+## ----------------------------------------------------------------------------------------------------
 #CHIMES                         # top-level switch to enable CHIMES. Requires COOLING above. Also, requires COOL_METAL_LINES_BY_SPECIES to include metals.
 #CHIMES_SOBOLEV_SHIELDING       # enables local self-shielding for different species, using a Sobolev-like length scale
 #CHIMES_HII_REGIONS             # disables shielding withing HII region (requires FIRE modules for radiation transport/coupling: uses GALSF_FB_FIRE_RT_HIIHEATING, and permissions follow those modules)
@@ -407,18 +407,10 @@
 #RT_RAD_PRESSURE_OUTPUT                 # print radiation pressure to file (requires some extra variables to save it)
 #RT_ENABLE_R15_GRADIENTFIX              # for moments [FLD/OTVET/M1]: enable the Rosdahl+ 2015 approximate 'fix' (off by default) for gradients under-estimating flux when under-resolved by replacing it with E_nu*c
 ## ----------------------------------------------------------------------------------------------------
-# ----------- alternative, test-problem, deprecated, or de-bugging functions
+# ----------- alternative, test-problem, or special behavior options
 ## ----------------------------------------------------------------------------------------------------
 #RT_SELFGRAVITY_OFF                     # turn off gravity: if using an RT method that needs the gravity tree (FIRE, OTVET), use this -instead- of SELFGRAVITY_OFF to safely turn off gravitational forces
 #RT_USE_TREECOL_FOR_NH=6                # uses the TreeCol method to estimate effective optical depth using non-local information from the gravity tree; cite Clark, Glover & Klessen 2012 MNRAS 420 754. Value specifies the number of angular bins on the sky for ray-tracing column density.
-#RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR # when RT_DIFFUSION_IMPLICIT is enabled, modifies the Eddington tensor to the fully anisotropic version (less stable CG iteration)
-#RT_SEPARATELY_TRACK_LUMPOS             # keep luminosity vs. mass positions separate in tree. not compatible with Tree-PM mode, but it can be slightly more accurate and useful for debugging in tree-only mode with LEBRON or OTVET algorithms.
-#RT_DISABLE_FLUXLIMITER                 # removes the flux-limiter from the diffusion operations (default is to include it when using the relevant approximations)
-#RT_HYDROGEN_GAS_ONLY                   # sets hydrogen fraction to 1.0 (used for certain idealized chemistry calculations)
-#RT_COOLING_PHOTOHEATING_OLDFORMAT      # includes photoheating and cooling (using RT information), doing just the photo-heating [for more general cooling physics, enable COOLING]
-#RT_FIRE_FIX_SPECTRAL_SHAPE             # enable with GALSF_FB_FIRE_RT_LONGRANGE to use a fixed SED shape set in parameterfile for all incident fluxes
-#RT_DISABLE_UV_BACKGROUND               # disable extenal UV background in cooling functions (to isolate pure effects of local RT, or if simulating the background directly)
-#RT_TIMESTEP_LIMIT_RECOMBINATION        # limit timesteps to the explicit recombination time when transporting ionizing photons. note our chemistry solvers are all implicit and can handle larger timesteps, but no gaurantee of transport accuracy for much larger steps since opacities depend on ionization states.
 #RT_INJECT_PHOTONS_DISCRETELY           # do photon injection in discrete packets, instead of sharing a continuous source function. works better with adaptive timestepping (default with GALSF)
 #RT_USE_GRAVTREE_SAVE_RAD_FLUX          # save radiative fluxes incident on each cell if using RHD methods that propagate fluxes through the gravity tree when these wouldn't be saved by default
 #RT_REPROCESS_INJECTED_PHOTONS          # re-process photon energy while doing the discrete injection operation conserving photon energy, put only the un-absorbed component of the current band into that band, putting the rest in its "donation" bin (ionizing->optical, all others->IR). This would happen anyway during the routine for resolved absorption, but this may more realistically handle situations where e.g. your dust destruction front is at totally unresolved scales and you don't want to spuriously ionize stuff on larger scales. Assume isotropic re-radiation, so inject only energy for the donated bin and not net flux/momentum. follows STARFORGE methods (Grudic+ arXiv:2010.11254) - cite this
@@ -461,6 +453,8 @@
 #OUTPUT_DENS_AROUND_STAR        # output gas density in neighborhood of stars [collisionless particle types], not just gas
 #OUTPUT_DELAY_TIME_HII          # output DelayTimeHII. Requires GALSF_FB_FIRE_RT_HIIHEATING (and corresponding flags/permissions set)
 #OUTPUT_MOLECULAR_FRACTION      # output the code-estimated molecular mass fraction [needs COOLING], for e.g. approximate molecular fraction estimators (as opposed to detailed chemistry modules, which already output this)
+#OUTPUT_SINK_ACCRETION_HIST     # save full accretion histories of sink (BH/star/etc) particles
+#OUTPUT_SINK_FORMATION_PROPS    # save at-formation properties of sink particles
 #INPUT_READ_HSML                # force reading hsml from IC file (instead of re-computing them; in general this is redundant but useful if special guesses needed)
 #OUTPUT_TWOPOINT_ENABLED        # allows user to calculate mass 2-point function by enabling and setting restartflag=5
 #IO_DISABLE_HDF5                # disable HDF5 I/O support (for both reading/writing; use only if HDF5 not install-able)
@@ -528,6 +522,19 @@
 #MERGESPLIT_HARDCODE_MAX_MASS=(1.0e-6)   # manually set maximum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
 #MERGESPLIT_HARDCODE_MIN_MASS=(1.0e-7)   # manually set minimum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
 #BH_DEBUG_FIX_MASS              # does not allow BH/sink [type=5] particles to change their mass during run, from accretion/merging/swallowing
+#PARTICLE_MERGE_SPLIT_EVERY_TIMESTEP # force merge/split operations to occur every timestep, instead of only on domain decomposition steps
+# --------------------
+# ----- Radiation-Hydrodynamics Special Options for Test Problems + Disabled or Other Special Features
+#RT_DISABLE_UV_BACKGROUND               # disable extenal UV background in cooling functions (to isolate pure effects of local RT, or if simulating the background directly)
+#RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR # when RT_DIFFUSION_IMPLICIT is enabled, modifies the Eddington tensor to the fully anisotropic version (less stable CG iteration)
+#RT_SEPARATELY_TRACK_LUMPOS             # keep luminosity vs. mass positions separate in tree. not compatible with Tree-PM mode, but it can be slightly more accurate and useful for debugging in tree-only mode with LEBRON or OTVET algorithms.
+#RT_DISABLE_FLUXLIMITER                 # removes the flux-limiter from the diffusion operations (default is to include it when using the relevant approximations)
+#RT_HYDROGEN_GAS_ONLY                   # sets hydrogen fraction to 1.0 (used for certain idealized chemistry calculations)
+#RT_COOLING_PHOTOHEATING_OLDFORMAT      # includes photoheating and cooling (using RT information), doing just the photo-heating [for more general cooling physics, enable COOLING]
+#RT_FIRE_FIX_SPECTRAL_SHAPE             # enable with GALSF_FB_FIRE_RT_LONGRANGE to use a fixed SED shape set in parameterfile for all incident fluxes
+#RT_TIMESTEP_LIMIT_RECOMBINATION        # limit timesteps to the explicit recombination time when transporting ionizing photons. note our chemistry solvers are all implicit and can handle larger timesteps, but no gaurantee of transport accuracy for much larger steps since opacities depend on ionization states.
+#RT_ENHANCED_NUMERICAL_DIFFUSION        # option which increases numerical diffusion, to get smoother solutions (akin to using HLL instead of HLLC+E fluxes), if desired; akin to slopelimiters~0 model
+#RT_COMPGRAD_EDDINGTON_TENSOR           # forces computation of eddington tensor even when not needed by the code
 # --------------------
 # ----- MPI & Parallel-FFTW De-Bugging
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
@@ -577,29 +584,43 @@
 ####################################################################################################-
 ##- some code options that will be made public as soon as the appropriate methods papers are published so it can be cited
 ##----------------------------------------------------------------------------------------------------
+#SINGLE_STAR_FB_WINDS           #- [actually pfh version is publishable] enable continuous main-sequence mechanical feedback from single stellar sources accounting for OB/AGB/WR winds following STARFORGE methods (Grudic+ arXiv:2010.11254), non public for now
+#SINGLE_STAR_FB_SNE             #- [pfh version may be publishable] enable SNe single stellar sources at end of main-sequence lifetime using particle spawning in shells following STARFORGE methods (Grudic+ arXiv:2010.11254), non public for now
+#SINGLE_STAR_FB_LOCAL_RP        #- pfh version (depends strictly on FIRE rhd implementation, not runnable without those modules)
+#SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT=2 #- determines the maximum number of ejecta particles spawned per timestep, see below [more an option for testing variations]
+#
 #BH_DYNFRICTION_FROMTREE        #- compute dynamical friction forces on BH following the discrete DF estimator in L. Ma et al. 2021 (in prep - to be made public once methods paper is published)
-#SINGLE_STAR_FB                 #- top-level flag indicating feedback is on, following STARFORGE methods (Grudic+ 2020)
-#SINGLE_STAR_FB_RAD             #- following STARFORGE methods (Grudic+ 2020)
-#SINGLE_STAR_FB_WINDS           #- enable continuous main-sequence mechanical feedback from single stellar sources accounting for OB/AGB/WR winds following STARFORGE methods (Grudic+ arXiv:2010.11254), non public for now
-#SINGLE_STAR_FB_SNE=1           #- enable SNe single stellar sources at end of main-sequence lifetime using particle spawning in shells following STARFORGE methods (Grudic+ arXiv:2010.11254), non public for now
-#SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT=2 #- determines the maximum number of ejecta particles spawned per timestep, see below
-#SINGLE_STAR_FB_SNE_N_EJECTA=(4*(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)*((SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)+1)) #- Maximum number of ejecta particles spawned per timestep
-#SINGLE_STAR_FB_LOCAL_RP        #-
+#
+#RT_OPACITY_FROM_EXPLICIT_GRAINS #- calculate opacities back-and-forth from explicitly-resolved dust populations
+#GRAIN_RDI_TESTPROBLEM #-
+#GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE #-
+#GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION #-
+#GRAIN_RDI_TESTPROBLEM_SET_ABSFRAC=(0.5) #-
+#GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX=(0.2) #-
+####################################################################################################-
+
+
+
+####################################################################################################-
+##---------------------------------------------------------------------------------------------------
+#---------- Cosmic Rays & Relativistic Particles
+#---------------------------------------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
+#COSMIC_RAYS                    #- two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
+#COSMIC_RAYS_ALFVEN=(500.)      #- solve CR transport based on Alfven-limited scattering from Thomas+Pfrommer 18, evolves CRs+resonant Alfven population; value here is maximum free-streaming speed in code units. requires MAGNETIC and COOLING for detailed MHD and ionization+thermal states.
+#COSMIC_RAYS_M1=(500.)          #- solve the CR transport in the M1 limit [second-order expansion of the collisionless boltzmann eqn]; value here is the streaming speed in code units
+##------
+#COSMIC_RAYS_DIFFUSION_MODEL=0  #- determine how coefficients for CR transport scale. 0=constant diffusivity, -1=no diffusion(still stream), values >=1 correspond to different literature scalings for the coefficients (see user guide)
+#COSMIC_RAYS_ION_ALFVEN_SPEED   #- assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance)
 #COSMIC_RAYS_EVOLVE_SPECTRUM    #-
 #COSMIC_RAYS_DIFFUSIVE_REACCELERATION #-
 #COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK #-
-#COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART=1 #-
+##------
 #PIC_MHD                        #- hybrid MHD-PIC simulations for cosmic rays (particle type=3). need to set 'subtype'. in early testing.
 #PIC_SPEEDOFLIGHT_REDUCTION=1   #- factor to reduce the speed-of-light for mhd-pic simulations
-#RT_OPACITY_FROM_EXPLICIT_GRAINS #- calculate opacities back-and-forth from explicitly-resolved dust populations
-#GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE #-
-#RT_ENHANCED_NUMERICAL_DIFFUSION #-
-#RT_COMPGRAD_EDDINGTON_TENSOR #-
-#GRAIN_RDI_TESTPROBLEM_SET_ABSFRAC=(0.5) #-
-#GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX=(0.2) #-
-#GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION #-
-#GRAV_DIRECTION_RDI #-
-#PARTICLE_MERGE_SPLIT_EVERY_TIMESTEP #-
+##------
+#COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART=1 #-
+#COSMIC_RAYS_DISABLE_STREAMING  #- turn off CR streaming (propagation is purely advective+diffusion; warning: this can severely under-estimate CR losses to Alfven waves)
+#COSMIC_RAYS_DISABLE_COOLING    #- turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic PdV work terms remain)
 ####################################################################################################-
 
 

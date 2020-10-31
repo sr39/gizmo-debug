@@ -565,7 +565,7 @@ void star_formation_parent_routine(void)
                     else {P[i].ProtoStellarRadius_inSolar = 10. * (P[i].Mass*UNIT_MASS_IN_SOLAR);} // M propto R above this mass
 #endif
 
-#ifdef BH_OUTPUT_FORMATION_PROPERTIES //save the at-formation properties of sink particles
+#ifdef OUTPUT_SINK_FORMATION_PROPS //save the at-formation properties of sink particles
                         MyDouble tempB[3]={0,0,0}; double NH = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); double dv2_abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
 #ifdef MAGNETIC
                         tempB[0]=SphP[i].B[0];tempB[1]=SphP[i].B[1];tempB[2]=SphP[i].B[2]; //use particle magnetic field
