@@ -4086,7 +4086,7 @@ void write_header_attributes_in_hdf5(hid_t handle)
         H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.OmegaRadiation); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
     }
 
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Hubble_Param", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "HubbleParam", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &header.HubbleParam); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 
     {double tmp=UNIT_MASS_IN_CGS; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "UnitMass_In_CGS", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
