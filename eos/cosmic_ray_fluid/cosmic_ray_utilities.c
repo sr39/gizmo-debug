@@ -1077,6 +1077,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                                     double frac_secondary = DMAX(0.,DMIN(1., secondary_coeff / total_catastrophic_coeff)); /* restrict to sensible bounds */
                                     
                                     double U_donor = frac_secondary*(1.-fac)*Ucr[j] * DMAX(1.,A_wt[j_s])/DMAX(1.,A_wt[j]); // need to account for the different total energy assuming fixed energy per nucleon here
+                                    if(species_ID == 1 && CR_species_ID_in_bin[j_s] < 0) {U_donor *= 0.5;} // secondary e+/e- from protons (pion decay) get 1/2 original p energy -- needs to match assumption above
                                     double N_donor = frac_secondary*(1.-fac)*ntot_evolved[j]; // absolute number being transferred between bins
                                     Ucr[j_s] += U_donor; // update energy in secondary bin
                                     ntot_evolved[j_s] += N_donor; // update number in secondary bin
