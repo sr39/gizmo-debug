@@ -18,7 +18,7 @@
 * see notes in blackhole.c for details on code history.
 */
 
-#ifdef BLACK_HOLES // master flag [needs to be here to prevent compiler breaking when this is not active] //
+#ifdef BLACK_HOLES // top-level flag [needs to be here to prevent compiler breaking when this is not active] //
 
 /* function for allocating temp BH data struc needed for feedback routines*/
 void blackhole_start(void)
@@ -103,10 +103,10 @@ void blackhole_end(void)
             fprintf(FdBlackHoles, "%g %d %g %g %g %g %g\n", All.Time, All.TotBHs, total_mass_holes, total_mdot, mdot_in_msun_per_year, total_mass_real, total_mdoteddington);
         }
         fflush(FdBlackHoles);
-#ifdef BH_OUTPUT_GASSWALLOW
+#ifdef OUTPUT_SINK_ACCRETION_HIST
         fflush(FdBhSwallowDetails);
 #endif
-#ifdef BH_OUTPUT_FORMATION_PROPERTIES
+#ifdef OUTPUT_SINK_FORMATION_PROPS
         fflush(FdBhFormationDetails);
 #endif
 #if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
@@ -164,4 +164,4 @@ void blackhole_properties_loop(void) /* Note, normalize_temp_info_struct is now 
 
 
 
-#endif // master flag
+#endif // top-level flag

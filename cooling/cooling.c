@@ -49,7 +49,7 @@ struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 
 
-/* this is the 'master' loop to do the cell cooling+chemistry. this is now openmp-parallelized, since the semi-implicit iteration can be a non-negligible cost */
+/* this is the 'parent' loop to do the cell cooling+chemistry. this is now openmp-parallelized, since the semi-implicit iteration can be a non-negligible cost */
 void cooling_parent_routine(void)
 {
     PRINT_STATUS("Cooling and Chemistry update");
@@ -1014,7 +1014,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         {
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
             double photoelec = SphP[target].Rad_Flux_UV;
-#ifdef COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
+#ifdef COOL_UVB_SELFSHIELD_RAHMATI
             if(gJH0>0 && shieldfac>0) {photoelec += sqrt(shieldfac) * (gJH0 / 2.29e-10);} // uvb contribution //
 #endif
 #endif
@@ -1933,7 +1933,7 @@ double return_uvb_shieldfac(int target, double gamma_12, double nHcgs, double lo
     double NH_SS_z, NH_SS = 0.0123; /* CAFG: H number density above which we assume no ionizing bkg (proper cm^-3) */
     if(gamma_12>0) {NH_SS_z = NH_SS*pow(gamma_12,0.66)*pow(10.,0.173*(logT-4.));} else {NH_SS_z = NH_SS*pow(10.,0.173*(logT-4.));}
     double q_SS = nHcgs/NH_SS_z;
-#ifdef COOLING_SELFSHIELD_TESTUPDATE_RAHMATI
+#ifdef COOL_UVB_SELFSHIELD_RAHMATI
     return 0.98 / pow(1 + pow(q_SS,1.64), 2.28) + 0.02 / pow(1 + q_SS*(1.+1.e-4*nHcgs*nHcgs*nHcgs*nHcgs), 0.84); // from Rahmati et al. 2012: gives gentler cutoff at high densities. but we need to modify it with the extra 1+(nHcgs/10)^4 denominator term since at very high nH, this cuts off much too-slowly (as nH^-0.84), which means UVB heating can be stronger than molecular cooling even at densities >> 1e4
 #else
     return 1./(1.+q_SS*(1.+q_SS/2.*(1.+q_SS/3.*(1.+q_SS/4.*(1.+q_SS/5.*(1.+q_SS/6.*q_SS)))))); // this is exp(-q) down to ~1e-5, then a bit shallower, but more than sufficient approximation here //

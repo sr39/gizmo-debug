@@ -125,19 +125,19 @@ void Subfind_DensityOtherProps_Loop(void)
     double omegaz = All.OmegaMatter * pow(zplusone,3) / (All.OmegaRadiation * pow(zplusone,4) + All.OmegaMatter * pow(zplusone,3) + (1 - All.OmegaMatter - All.OmegaLambda - All.OmegaRadiation) * pow(zplusone,2) + All.OmegaLambda);
     double x = omegaz - 1, DeltaTopHat = (18 * M_PI * M_PI + 82 * x - 39 * x * x) / omegaz;
 
-    double Delta_MasterList[10];
-    Delta_MasterList[0] = 200;             /* standard fixed overdensity with respect to background mean density */
-    Delta_MasterList[1] = DeltaTopHat;     /* spherical tophat collapse-model overdensity with respect to background */
-    Delta_MasterList[2] = 200/omegaz;      /* overdensity of 200 relative to critical, expressed relative to background density */
-    Delta_MasterList[3] = 500/omegaz;      /* in this case use crit-500 with respect to background */
-    Delta_MasterList[4] = 1000/omegaz;     /* in this case use crit-1000 with respect to background */
-    Delta_MasterList[5] = 2500/omegaz;     /* in this case use crit-2500 with respect to background */
-    Delta_MasterList[6] = 500;             /* in this case use mean-500 with respect to background */
-    Delta_MasterList[7] = 1000;            /* in this case use mean-1000 with respect to background */
-    Delta_MasterList[8] = 2500;            /* in this case use mean-2500 with respect to background */
-    Delta_MasterList[9] = 5000;            /* in this case use mean-5000 with respect to background */
+    double Delta_ToEvalList[10];
+    Delta_ToEvalList[0] = 200;             /* standard fixed overdensity with respect to background mean density */
+    Delta_ToEvalList[1] = DeltaTopHat;     /* spherical tophat collapse-model overdensity with respect to background */
+    Delta_ToEvalList[2] = 200/omegaz;      /* overdensity of 200 relative to critical, expressed relative to background density */
+    Delta_ToEvalList[3] = 500/omegaz;      /* in this case use crit-500 with respect to background */
+    Delta_ToEvalList[4] = 1000/omegaz;     /* in this case use crit-1000 with respect to background */
+    Delta_ToEvalList[5] = 2500/omegaz;     /* in this case use crit-2500 with respect to background */
+    Delta_ToEvalList[6] = 500;             /* in this case use mean-500 with respect to background */
+    Delta_ToEvalList[7] = 1000;            /* in this case use mean-1000 with respect to background */
+    Delta_ToEvalList[8] = 2500;            /* in this case use mean-2500 with respect to background */
+    Delta_ToEvalList[9] = 5000;            /* in this case use mean-5000 with respect to background */
 
-  for(j=0;j<SUBFIND_ADDIO_NUMOVERDEN;j++) {Deltas[j]=Delta_MasterList[j];} /* list we will use */
+  for(j=0;j<SUBFIND_ADDIO_NUMOVERDEN;j++) {Deltas[j]=Delta_ToEvalList[j];} /* list we will use */
 
   for(rep = 0; rep < SUBFIND_ADDIO_NUMOVERDEN; rep++)	/* repeat for all three overdensity values */
     {

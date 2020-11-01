@@ -22,7 +22,7 @@
  */
 
 
-#ifdef GALSF // master switch for compiling the routines below //
+#ifdef GALSF // top-level switch for compiling the routines below //
 
 
 #if defined(GALSF_SFR_IMF_VARIATION) || defined(GALSF_SFR_IMF_SAMPLING)
@@ -370,7 +370,7 @@ void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double t
 
 
 
-/* master routine for star formation. for 'effective equation of state' models for star-forming gas, this also updates their effective EOS parameters */
+/* parent routine for star formation. for 'effective equation of state' models for star-forming gas, this also updates their effective EOS parameters */
 void star_formation_parent_routine(void)
 {
     int i, bin, flag, stars_spawned, tot_spawned, stars_converted, tot_converted, number_of_stars_generated;
@@ -565,7 +565,7 @@ void star_formation_parent_routine(void)
                     else {P[i].ProtoStellarRadius_inSolar = 10. * (P[i].Mass*UNIT_MASS_IN_SOLAR);} // M propto R above this mass
 #endif
 
-#ifdef BH_OUTPUT_FORMATION_PROPERTIES //save the at-formation properties of sink particles
+#ifdef OUTPUT_SINK_FORMATION_PROPS //save the at-formation properties of sink particles
                         MyDouble tempB[3]={0,0,0}; double NH = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); double dv2_abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
 #ifdef MAGNETIC
                         tempB[0]=SphP[i].B[0];tempB[1]=SphP[i].B[1];tempB[2]=SphP[i].B[2]; //use particle magnetic field
@@ -689,7 +689,7 @@ void star_formation_parent_routine(void)
             /* convert to solar masses per yr */
             rate_in_msunperyear = rate * UNIT_MASS_IN_SOLAR / UNIT_TIME_IN_YR;
             fprintf(FdSfr, "%g %g %g %g %g\n", All.Time, total_sm, totsfrrate, rate_in_msunperyear, total_sum_mass_stars);
-            fflush(FdSfr); // can flush it, because only occuring on master steps anyways
+            fflush(FdSfr); // can flush it, because only occuring on domain-level steps anyways
         } // thistask==0
     }
     CPU_Step[CPU_COOLINGSFR] += measure_time();

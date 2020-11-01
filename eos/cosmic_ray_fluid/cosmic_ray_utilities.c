@@ -56,14 +56,15 @@ void CR_spectrum_define_bins(void)
     {
         //int species_list={-2, -1, +1, 2, 3, 4, 5}; // {positrons, electrons, protons, B, C, Be7+9, Be10}
         int primary_spec = species_list[k]; /* primary species */
-        int secondary_spec[N_CR_PARTICLE_SPECIES]={-200}; /* secondary species for this primary -- default to none (-200 key here) */
+        int secondary_spec[N_CR_PARTICLE_SPECIES]; /* secondary species for this primary -- default to none (-200 key here) */
+        for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {secondary_spec[j]=-200;}
         //if(primary_spec == -2) {secondary_spec[0]=-200;} // positrons -> gamma rays [un-tracked]
         //if(primary_spec == -1) {secondary_spec[0]=-200;} // electrons -> ? [un-tracked]
         if(primary_spec == 1) {secondary_spec[0]=-2; secondary_spec[1]=-1;} // protons -> secondary e- and e+
-        //if(primary_spec ==  2) {secondary_spec[0]=-200;} // B -> secondary p and e, Be [un-tracked for now, b/c small contributions]
+        if(primary_spec == 2) {secondary_spec[0]=4; secondary_spec[1]=5;} // B -> secondary p and e, Be [un-tracked for now, b/c small contributions]
         if(primary_spec == 3 || primary_spec == 6) {secondary_spec[0]=2; secondary_spec[1]=4; secondary_spec[2]=5;} // C or CNO -> secondary B, Be-7+9, and Be-10 [also e, p, but untracked for now b/c small contributions]
-        //if(primary_spec ==  4) {secondary_spec[0]=-200;} // Be7+9 -> secondary p and e, [un-tracked for now, b/c small contributions]
-        if(primary_spec ==  5) {secondary_spec[0]=4;} // Be10 -> B10 (radioactive decay, not from fragmentation: separate vector?)
+        //if(primary_spec == 4) {secondary_spec[0]=-200;} // Be7+9 -> secondary p and e, [un-tracked for now, b/c small contributions]
+        if(primary_spec == 5) {secondary_spec[0]=4;} // Be10 -> B10 (radioactive decay, not from fragmentation: separate vector?)
         for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {if(secondary_spec[j] > -100) {CR_secondary_species_listref[k][j] = temp_species_map[secondary_spec[j]+id_map_offset];} else {CR_secondary_species_listref[k][j]=-200;}}
     }
     /* also need to figure out the 'destination bin' for each type of secondary -- we will assume nucleon-nucleon conserves energy per nucleon, while cascades to positrons and secondary electrons are treated slightly differently */
@@ -75,18 +76,27 @@ void CR_spectrum_define_bins(void)
         for(j=0;j<N_CR_PARTICLE_SPECIES;j++)
         {
             int secondary_listref = CR_secondary_species_listref[primary_listref][j];
-            if(secondary_listref <= -100) {CR_secondary_target_bin[k][j]=-2;}
+            if(secondary_listref <= -1) {CR_secondary_target_bin[k][j]=-2;}
             else {
                 int secondary_id = species_list[secondary_listref];
-                int m, target_bin=-1; double diff_min=MAX_REAL_NUMBER;
+                int m, target_bin=-1; double diff_min=MAX_REAL_NUMBER, E_target_0=E_GeV[k];
                 for(m=0;m<N_CR_PARTICLE_BINS;m++)
                 {
                     if(CR_species_ID_in_bin[m] != secondary_id) {continue;}
                     double E_target = E_GeV[k] * DMAX(1.,A_wt[m]) / DMAX(1.,A_wt[k]); // fixed energy per nucleon/particle (treating e-/e+ as 1)
-                    double diff = log(E_GeV[j]/E_target); diff*=diff; // square of log-diff between energies
-                    if(diff < diff_min) {diff_min=diff; target_bin=j;} // set to this as the 'closest' option
+                    if(primary_id == 1 && secondary_id < 0) {E_target *= 0.1;} // secondary e+/e- from protons (pion decay) get ~0.1 original p energy
+                    double diff = log(E_GeV[m]/E_target); diff*=diff; // square of log-diff between energies
+                    if(diff < diff_min) {diff_min=diff; target_bin=m; E_target_0=E_target;} // set to this as the 'closest' option
                 }
-                if(target_bin >= 0) {CR_secondary_target_bin[k][secondary_listref]=target_bin;} else {CR_secondary_target_bin[k][secondary_listref]=-1;}
+                CR_secondary_target_bin[k][j]=-1; // default to no secondary bin (secondary is 'lost')
+                if(target_bin >= 0) // check if the bin is valid
+                {
+                    double E_target=E_target_0, E_bin=E_GeV[target_bin], E_bin_m=E_bin, E_bin_p=E_bin; // if decay to lower energy than we track bins, the products are gone from the spectrum we follow
+                    if(target_bin>0) {if(CR_species_ID_in_bin[target_bin-1] == secondary_id) {E_bin_m=E_GeV[target_bin-1];}} // define the bin ranges that we will consider for whether the target energy fits
+                    if(target_bin<N_CR_PARTICLE_BINS-1) {if(CR_species_ID_in_bin[target_bin+1] == secondary_id) {E_bin_p=E_GeV[target_bin+1];}}
+                    E_bin_m=sqrt(E_bin_m*E_bin); E_bin_p=sqrt(E_bin_p*E_bin); if(E_bin_m==E_bin) {E_bin_m=E_bin*(E_bin/E_bin_p)*(E_bin/E_bin_p);} else if(E_bin_p==E_bin) {E_bin_p=E_bin*(E_bin/E_bin_m)*(E_bin/E_bin_m);}
+                    if(E_target >= 0.9*E_bin_m && E_target <= 1.1*E_bin_p) {CR_secondary_target_bin[k][j] = target_bin;} // assign a destination bin
+                }
             }
         }
     }
@@ -111,31 +121,31 @@ void CR_spectrum_define_bins(void)
         if(CR_frag_coeff[k] > 0) {for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {if(CR_secondary_target_bin[k][j] >= 0) // desired secondary products exist
             {
                 double x=DMAX(-2.,DMIN(2.,log10(E_GeV[k]))); // used in some of the fitting functions below
-                int primary_id = CR_species_ID_in_bin[k], secondary_id = species_list[j];
+                int primary_id = CR_species_ID_in_bin[k], secondary_id = CR_species_ID_in_bin[CR_secondary_target_bin[k][j]];
                 //if((primary_id == 5) && (secondary_id == 4)) {} // Be10->B10 (radioactive - frag probability is null) //
                 if(primary_id==1) { // p; assume some simple branching ratios for pion production in the relevant regime above
                     if(secondary_id==-2) {CR_frag_secondary_coeff[k][j] = (1./3.) * CR_frag_coeff[k];} // p->e+
                     if(secondary_id==-1) {CR_frag_secondary_coeff[k][j] = (1./3.) * CR_frag_coeff[k];} // p->e-
                 }
                 if(primary_id==2) { // B; fitting function to the results compiled and re-fit in Moskalenko & Mashnik 2003 (used for GALPROP), doing a solar-abundance-ratio weighted average over CNO, and summing over the relevant isotopes
-                    if(secondary_id==4) {CR_frag_secondary_coeff[k][j] = 12.0 * pow(E_GeV[k],-0.022);} // B->Be9 (declines weakly from ~14 to ~10 over MeV-TeV, approx here)
-                    if(secondary_id==5) {CR_frag_secondary_coeff[k][j] = 12.5 * pow(E_GeV[k], 0.018);} // B->Be10 (increases weakly from 11 to 14 over MeV-TeV, approx here)
+                    if(secondary_id==4) {CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * 12.0 * pow(E_GeV[k],-0.022);} // B->Be9 (declines weakly from ~14 to ~10 over MeV-TeV, approx here)
+                    if(secondary_id==5) {CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * 12.5 * pow(E_GeV[k], 0.018);} // B->Be10 (increases weakly from 11 to 14 over MeV-TeV, approx here)
                 }
                 if(primary_id==3) { // C; fitting function to the results compiled and re-fit in Moskalenko & Mashnik 2003 (used for GALPROP), doing a solar-abundance-ratio weighted average over CNO, and summing over the relevant isotopes
                     if(secondary_id==2) { // C->B
-                        CR_frag_secondary_coeff[k][j] = pow(10.,1.88490356 -0.05648715*x -0.13108485*x*x +0.11340508*x*x*x +0.08119785*x*x*x*x -0.06574148*x*x*x*x*x -0.01159932*x*x*x*x*x*x +0.00962035*x*x*x*x*x*x*x +0.23395042856711876*exp(-10.8066678706701*(x+1.24740008)*(x+1.24740008)));}
+                        CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * pow(10.,1.88490356 -0.05648715*x -0.13108485*x*x +0.11340508*x*x*x +0.08119785*x*x*x*x -0.06574148*x*x*x*x*x -0.01159932*x*x*x*x*x*x +0.00962035*x*x*x*x*x*x*x +0.23395042856711876*exp(-10.8066678706701*(x+1.24740008)*(x+1.24740008)));}
                     if(secondary_id==4) { // C->Be7+9
-                        CR_frag_secondary_coeff[k][j] = pow(10.,1.18321683 +0.11629153*x +0.01653084*x*x -0.11321897*x*x*x -0.03375688*x*x*x*x +0.05771537*x*x*x*x*x +0.00684962*x*x*x*x*x*x -0.00876353*x*x*x*x*x*x*x +0.40590023164209293*exp(-17.1253106513537*(x+1.28525319)*(x+1.28525319)));}
+                        CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * pow(10.,1.18321683 +0.11629153*x +0.01653084*x*x -0.11321897*x*x*x -0.03375688*x*x*x*x +0.05771537*x*x*x*x*x +0.00684962*x*x*x*x*x*x -0.00876353*x*x*x*x*x*x*x +0.40590023164209293*exp(-17.1253106513537*(x+1.28525319)*(x+1.28525319)));}
                     if(secondary_id==5) { // C->Be10
-                        CR_frag_secondary_coeff[k][j] = 0.10757855 + pow(10., 0.53413363 +0.38478345*x -0.51584177*x*x -0.22611016*x*x*x +0.51009595*x*x*x*x +0.04492848*x*x*x*x*x -0.23828966*x*x*x*x*x*x +0.06889871*x*x*x*x*x*x*x);}
+                        CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * (0.10757855 + pow(10., 0.53413363 +0.38478345*x -0.51584177*x*x -0.22611016*x*x*x +0.51009595*x*x*x*x +0.04492848*x*x*x*x*x -0.23828966*x*x*x*x*x*x +0.06889871*x*x*x*x*x*x*x));}
                 }
                 if(primary_id==6) { // CNO effective bin; fitting function to the results compiled and re-fit in Moskalenko & Mashnik 2003 (used for GALPROP), doing a solar-abundance-ratio weighted average over CNO, and summing over the relevant isotopes
                     if(secondary_id==2) { // CNO->B
-                        CR_frag_secondary_coeff[k][j] = pow(10., 1.71801936 - 0.03475011*x -0.09856187*x*x +0.12369455*x*x*x +0.02958446*x*x*x*x -0.05273341*x*x*x*x*x -0.00223893*x*x*x*x*x*x +0.00639451*x*x*x*x*x*x*x + 0.464605776*exp(-17.769530*(x+1.23499649)*(x+1.23499649)) );}
+                        CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * pow(10., 1.71801936 - 0.03475011*x -0.09856187*x*x +0.12369455*x*x*x +0.02958446*x*x*x*x -0.05273341*x*x*x*x*x -0.00223893*x*x*x*x*x*x +0.00639451*x*x*x*x*x*x*x + 0.464605776*exp(-17.769530*(x+1.23499649)*(x+1.23499649)) );}
                     if(secondary_id==4) { // CNO->Be7+9
-                        CR_frag_secondary_coeff[k][j] = pow(10., 1.16648147  +0.09557578*x -0.17970136*x*x +0.06823829*x*x*x +0.04448299*x*x*x*x -0.02883429*x*x*x*x*x -0.00274047*x*x*x*x*x*x +0.00286316*x*x*x*x*x*x*x + 0.476812578*exp(-14.203615*(x+1.21352966)*(x+1.21352966)) );}
+                        CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * pow(10., 1.16648147  +0.09557578*x -0.17970136*x*x +0.06823829*x*x*x +0.04448299*x*x*x*x -0.02883429*x*x*x*x*x -0.00274047*x*x*x*x*x*x +0.00286316*x*x*x*x*x*x*x + 0.476812578*exp(-14.203615*(x+1.21352966)*(x+1.21352966)) );}
                     if(secondary_id==5) { // CNO->Be10
-                        CR_frag_secondary_coeff[k][j] = 0.073388 + pow(10., 0.454778746 + 0.349074384*x -0.684152925*x*x -0.153016497*x*x*x +0.657169204*x*x*x*x +8.06147155e-04*x*x*x*x*x -0.296932460*x*x*x*x*x*x +0.0918014184*x*x*x*x*x*x*x );}
+                        CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * (0.073388 + pow(10., 0.454778746 + 0.349074384*x -0.684152925*x*x -0.153016497*x*x*x +0.657169204*x*x*x*x +8.06147155e-04*x*x*x*x*x -0.296932460*x*x*x*x*x*x +0.0918014184*x*x*x*x*x*x*x ));}
                 }
             }}}
         
@@ -157,10 +167,10 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
     double f_bin_v[2]={0.95 , 0.05}; f_bin=f_bin_v[k_CRegy]; // 5% of injection into e-, roughly motivated by observed spectra and nearby SNRs
 #endif
 #if (N_CR_PARTICLE_BINS > 2) /* multi-bin spectrum for p and e-: inset assumptions about injection spectrum here! */
-    double f_elec = 0.02; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
+    double f_elec = 0.04; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
     double inj_slope = 4.5; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope)
-    double R_break_e = 0.4; // location of spectral break for injection e- spectrum, in GV
-    double inj_slope_lowE_e = 4.1; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope), for electrons below R_break_e
+    double R_break_e = 1.0; // location of spectral break for injection e- spectrum, in GV
+    double inj_slope_lowE_e = 4.2; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope), for electrons below R_break_e
     double R=return_CRbin_CR_rigidity_in_GV(-1,k_CRegy); int species=return_CRbin_CR_species_ID(k_CRegy); // get bin-centered R and species type
     if(species < 0 && R < R_break_e) {inj_slope = inj_slope_lowE_e;} // follow model injection spectra favored in Strong et al. 2011 (A+A, 534, A54), who argue the low-energy e- injection spectrum must break to a lower slope by ~1 independent of propagation and re-acceleration model
     if(return_index_in_bin) {return 2.-inj_slope;} // this is the index corresponding to our dN/dp ~ p^gamma
@@ -173,11 +183,12 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
     if(species > 1)
     {
         double Zfac = P[target].Metallicity[0]/All.SolarAbundances[0]; // scale heavier elements to the metallicity of the gas into which CRs are being accelerated
-        if(species == 2) {f_norm = 3.7e-9 * Zfac;} // B (for standard elements initialize to solar ratios assuming similar energy/nucleon)
-        if(species == 3) {f_norm = 2.4e-3 * Zfac;} // C
-        if(species == 4) {f_norm = 1.4e-10 * Zfac;} // Be7+9 (stable)
-        if(species == 5) {f_norm = 1.4e-20 * Zfac;} // Be10 (radioactive)
-        if(species == 6) {f_norm = 0.0094 * Zfac;} // CNO (combined bin)
+        double mass_amu = return_CRbin_CRmass_in_mp(-1,k_CRegy); // get mass in amu since the fractions below correspond to mass and need to be corrected to number
+        if(species == 2) {f_norm = 3.7e-9 * Zfac / mass_amu;} // B (for standard elements initialize to solar ratios assuming similar energy/nucleon)
+        if(species == 3) {f_norm = 2.4e-3 * Zfac / mass_amu;} // C
+        if(species == 4) {f_norm = 1.4e-10 * Zfac / mass_amu;} // Be7+9 (stable)
+        if(species == 5) {f_norm = 1.4e-20 * Zfac / mass_amu;} // Be10 (radioactive)
+        if(species == 6) {f_norm = 0.0094 * Zfac / mass_amu;} // CNO (combined bin)
     }
     f_bin *= f_norm; // normalize injection depending on the species (e- or p+, etc)
 #endif
@@ -193,7 +204,7 @@ double diffusion_coefficient_constant(int target, int k_CRegy)
 {
     double dimensionless_kappa_relative_to_GV_protons = 1;
 #if (N_CR_PARTICLE_BINS > 1)    /* insert physics here */
-    dimensionless_kappa_relative_to_GV_protons = pow( return_CRbin_CR_rigidity_in_GV(-1,k_CRegy) , 0.5 ); // assume a quasi-empirical scaling here //
+    dimensionless_kappa_relative_to_GV_protons = pow( return_CRbin_CR_rigidity_in_GV(-1,k_CRegy) , 1.0 ); // assume a quasi-empirical scaling here //
 #endif
     return All.CosmicRayDiffusionCoeff * dimensionless_kappa_relative_to_GV_protons;
 }
@@ -423,7 +434,7 @@ double CR_gas_heating(int target, double n_elec, double nHcgs)
 
 
 
-/* master routine to assign diffusion coefficients. for the most relevant physical models, we do a lot of utility here but do the more interesting
+/* parent routine to assign diffusion coefficients. for the most relevant physical models, we do a lot of utility here but do the more interesting
     (and uncertain) physical calculation in the relevant sub-routines above, so you don't need to modify all of this in most cases */
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 {
@@ -1067,6 +1078,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                                     double frac_secondary = DMAX(0.,DMIN(1., secondary_coeff / total_catastrophic_coeff)); /* restrict to sensible bounds */
                                     
                                     double U_donor = frac_secondary*(1.-fac)*Ucr[j] * DMAX(1.,A_wt[j_s])/DMAX(1.,A_wt[j]); // need to account for the different total energy assuming fixed energy per nucleon here
+                                    if(species_ID == 1 && CR_species_ID_in_bin[j_s] < 0) {U_donor *= 0.1;} // secondary e+/e- from protons (pion decay) get ~0.1 original p energy -- needs to match assumption above
                                     double N_donor = frac_secondary*(1.-fac)*ntot_evolved[j]; // absolute number being transferred between bins
                                     Ucr[j_s] += U_donor; // update energy in secondary bin
                                     ntot_evolved[j_s] += N_donor; // update number in secondary bin
@@ -1495,7 +1507,7 @@ double return_CRbin_kinetic_energy_in_GeV_binvalsNRR(int k_CRegy)
         double m_cr_mp = return_CRbin_CRmass_in_mp(-1,k_CRegy); // mass in proton masses
         return fac * R_GV*R_GV * (Zabs*Zabs / m_cr_mp); // E in GeV in non-relativistic limit
     }
-    return R_GV / Zabs; // E in GeV in relativistic limit
+    return R_GV * Zabs; // E in GeV in relativistic limit
 }
 
 

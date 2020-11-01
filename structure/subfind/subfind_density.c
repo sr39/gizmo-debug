@@ -558,7 +558,7 @@ int subfind_compare_hsml_data(const void *a, const void *b)
 
 void subfind_save_densities(int num)
 {
-  int i, nprocgroup, masterTask, groupTask;
+  int i, nprocgroup, primaryTask, groupTask;
   char buf[1000];
   double t0, t1;
 
@@ -625,10 +625,10 @@ void subfind_save_densities(int num)
   nprocgroup = NTask / All.NumFilesWrittenInParallel;
   if((NTask % All.NumFilesWrittenInParallel))
     nprocgroup++;
-  masterTask = (ThisTask / nprocgroup) * nprocgroup;
+  primaryTask = (ThisTask / nprocgroup) * nprocgroup;
   for(groupTask = 0; groupTask < nprocgroup; groupTask++)
     {
-      if(ThisTask == (masterTask + groupTask))	/* ok, it's this processor's turn */
+      if(ThisTask == (primaryTask + groupTask))	/* ok, it's this processor's turn */
 	subfind_save_local_densities(num);
       MPI_Barrier(MPI_COMM_WORLD);	/* wait inside the group */
     }

@@ -170,9 +170,6 @@ void init(void)
     init_self_interactions();
 #endif
 
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
-    CR_initialize_multibin_quantities(); // initialize the global variables and look-up tables //
-#endif
 
     for(i = 0; i < NumPart; i++)	/*  start-up initialization */
     {
@@ -641,22 +638,22 @@ void init(void)
                 double f_elec = 0.02; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
                 if(species == -1) {f_norm = f_elec;} // e-
                 if(species == +1) {f_norm = 1.-f_elec;} // p
-                if(species == -2) {f_norm = 0.05 * f_elec;} // e+ (few percent of e- in e+, plausible, but can vary)
+                if(species == -2) {f_norm = 1.e-10 * f_elec;} // e+ (few percent of e- in e+, plausible, but can vary)
                 if(species > 1)
                 {
                     double Zfac = P[i].Metallicity[0]/All.SolarAbundances[0]; // scale heavier elements to the metallicity of the gas into which CRs are being accelerated
-                    if(species == 2) {f_norm = 3.7e-9 * Zfac;} // B (for standard elements initialize to solar ratios assuming similar energy/nucleon)
-                    if(species == 3) {f_norm = 2.4e-3 * Zfac;} // C
-                    if(species == 4) {f_norm = 1.4e-10 * Zfac;} // Be9 (stable)
-                    if(species == 5) {f_norm = 1.4e-20 * Zfac;} // Be10 (radioactive)
-                    if(species == 6) {f_norm = 0.0094 * Zfac;} // CNO
+                    double mass_amu = return_CRbin_CRmass_in_mp(-1,j); // get mass in amu since the fractions below correspond to mass and need to be corrected to number
+                    if(species == 2) {f_norm = 3.7e-9 * Zfac / mass_amu;} // B (for standard elements initialize to solar ratios assuming similar energy/nucleon)
+                    if(species == 3) {f_norm = 2.4e-3 * Zfac / mass_amu;} // C
+                    if(species == 4) {f_norm = 1.4e-10 * Zfac / mass_amu;} // Be7+9 (stable)
+                    if(species == 5) {f_norm = 1.4e-20 * Zfac / mass_amu;} // Be10 (radioactive)
+                    if(species == 6) {f_norm = 0.0094 * Zfac / mass_amu;} // CNO (combined bin)
                 }
                 double e_tmp = f_norm * e0, x_RGV = CR_global_rigidity_at_bin_center[j];
                 double fac = 2.3 / (pow(x_RGV,-0.6) + pow(x_RGV,0.8)), slope = (3. - 4.*pow(x_RGV,1.4)) / (5. + 5.*pow(x_RGV,1.4)) - 2.; // adopt an extremely simple two-power law spectrum, identical in E space for everything, except normalization, to initialize
                 if(CR_check_if_bin_is_nonrelativistic(j)) {slope -= 1.;} // correct for NR terms
                 SphP[i].CosmicRayEnergy[j] = e_tmp * fac; SphP[i].CosmicRay_Number_in_Bin[j] = slope; // actually assign the energy and power-law slope
             }
-
 #endif
             /* now initialize the number in each bin from the slopes that we have either read in or assumed */
             for(j=0;j<N_CR_PARTICLE_BINS;j++) {
@@ -991,8 +988,7 @@ void init(void)
     {
         All.Time = All.TimeBegin = header.time;
         sprintf(All.SnapshotFileBase, "%s_converted", All.SnapshotFileBase);
-        if(ThisTask == 0)
-            printf("Start writing file %s\n", All.SnapshotFileBase);
+        if(ThisTask == 0) {printf("Start writing file %s\n", All.SnapshotFileBase);}
         printf("RestartSnapNum %d\n", RestartSnapNum);
 
         All.TopNodeAllocFactor = 0.008;

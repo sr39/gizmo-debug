@@ -4,13 +4,14 @@
 #include <string.h>
 #include <math.h>
 #include <gsl/gsl_math.h>
+#include <gsl/gsl_eigen.h>
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
 #define NDEBUG
 
-/*! \file hydra_master.c
- *  \brief This contains the "second hydro loop", where the hydro fluxes are computed.
+/*! \file hydro_toplevel.c
+ *  \brief This contains the "primary" hydro loop, where the hydro fluxes are computed.
  */
 /*
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
@@ -159,7 +160,7 @@ struct kernel_hydra
 /* ok here we define some important variables for our generic communication
     and flux-exchange structures. these can be changed, and vary across the code, but need to be set! */
 
-#define MASTER_FUNCTION_NAME hydro_force_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
+#define CORE_FUNCTION_NAME hydro_force_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME particle2in_hydra    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
 #define OUTPUTFUNCTION_NAME out2particle_hydra  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
 #define CONDITIONFUNCTION_FOR_EVALUATION if((P[i].Type==0)&&(P[i].Mass>0)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
@@ -643,9 +644,9 @@ static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int
 
 
 /* --------------------------------------------------------------------------------- */
-/* need to link to the file "hydra_evaluate" which actually contains the computation part of the loop! */
+/* need to link to the file "hydro_evaluate" which actually contains the computation part of the loop! */
 /* --------------------------------------------------------------------------------- */
-#include "hydra_evaluate.h"
+#include "hydro_evaluate.h"
 
 /* --------------------------------------------------------------------------------- */
 /* --------------------------------------------------------------------------------- */

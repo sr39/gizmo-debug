@@ -3492,7 +3492,7 @@ void foldonitself(int *typelist)
 void dump_potential(void)
 {
   char buf[1000];
-  int nprocgroup, masterTask, groupTask, n, i, j, k;
+  int nprocgroup, primaryTask, groupTask, n, i, j, k;
   double asmth, fac, box, tstart, tend;
   float *potential;
   FILE *fd;
@@ -3507,11 +3507,11 @@ void dump_potential(void)
   if((NTask % All.NumFilesWrittenInParallel))
     nprocgroup++;
 
-  masterTask = (ThisTask / nprocgroup) * nprocgroup;
+  primaryTask = (ThisTask / nprocgroup) * nprocgroup;
 
   for(groupTask = 0; groupTask < nprocgroup; groupTask++)
     {
-      if(ThisTask == (masterTask + groupTask))	/* ok, it's this processor's turn */
+      if(ThisTask == (primaryTask + groupTask))	/* ok, it's this processor's turn */
 	{
 	  if(!(fd = fopen(buf, "w")))
 	    {

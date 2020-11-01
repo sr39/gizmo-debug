@@ -267,7 +267,7 @@ endif
 HDF5INCL = -I$(TACC_HDF5_INC) -DH5_USE_16_API
 HDF5LIB  = -L$(TACC_HDF5_LIB) -lhdf5 -lz
 MPICHLIB =
-OPT     += -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN
+OPT     += -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK
 ##
 # UPDATE (9/19): Intel/19.0.5 is now working, and Intel/18 is actually sometimes running slower now because of some of the changes made to the impi installation.
 #          Depending on when your code was compiled and exactly which flags you used, you may notice a performance drop with intel/18, and should switch to 19.
@@ -1119,7 +1119,7 @@ GRAVITY_OBJS  = gravity/forcetree.o \
                 gravity/ags_hsml.o \
                 gravity/binary.o
 
-HYDRO_OBJS = 	hydro/hydra_master.o \
+HYDRO_OBJS = 	hydro/hydro_toplevel.o \
 				hydro/density.o \
 				hydro/gradients.o \
 				turb/dynamic_diffusion.o \

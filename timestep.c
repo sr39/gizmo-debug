@@ -367,10 +367,8 @@ integertime get_timestep(int p,		/*!< particle index */
         if(eligible_for_hermite(p)) dt *= 1.4; // gives 10^-6 energy error per orbit for a 0.9 eccentricity binary
 #endif
     }
-#if defined(SINGLE_STAR_FB) && !defined(NOGRAVITY)    
-    if(P[p].Type == 0){
-        dt = DMIN(dt, All.CourantFac * DMIN(P[p].min_bh_fb_time, P[p].min_bh_approach_time));
-    }
+#if defined(SINGLE_STAR_FB_TIMESTEPLIMIT) && !defined(NOGRAVITY)    
+    if(P[p].Type == 0) {dt = DMIN(dt, All.CourantFac * DMIN(P[p].min_bh_fb_time, P[p].min_bh_approach_time));}
 #endif    
 #endif // SINGLE_STAR_TIMESTEPPING
 
@@ -929,7 +927,7 @@ integertime get_timestep(int p,		/*!< particle index */
 
             double L_particle = Get_Particle_Size(p);
             double vsig = P[p].BH_SurroundingGasVel;
-#if defined(SINGLE_STAR_FB) && !defined(NOGRAVITY)
+#if defined(SINGLE_STAR_FB_TIMESTEPLIMIT) && !defined(NOGRAVITY)
             vsig += P[p].MaxFeedbackVel;
 #endif                        
             double dt_cour_sink = All.CourantFac * (L_particle*All.cf_atime) / vsig;
@@ -942,7 +940,7 @@ integertime get_timestep(int p,		/*!< particle index */
             double dt_min =  GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(bin);
             if(dt > dt_min && dt_min > 0) dt = 1.01 * dt_min;
         }
-#endif
+#endif // SINGLE_STAR_TIMESTEPPING
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
 #ifdef SINGLE_STAR_FB_WINDS
         if(P[p].ProtoStellarStage == 5) {double dt_spawn = All.BAL_wind_particle_mass / single_star_wind_mdot(p,1); if(dt > dt_spawn) dt = 1.01 * dt_spawn;}

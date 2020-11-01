@@ -228,7 +228,6 @@ int compare_densities_for_sort(const void *a, const void *b);
 int io_compare_P_ID(const void *a, const void *b);
 int io_compare_P_GrNr_SubNr(const void *a, const void *b);
 void drift_particle(int i, integertime time1);
-int ShouldWeDoDynamicUpdate(void);
 void put_symbol(double t0, double t1, char c);
 void write_cpu_log(void);
 int get_timestep_bin(integertime ti_step);
@@ -328,6 +327,9 @@ double return_CRbin_kinetic_energy_in_GeV_binvalsNRR(int k_CRegy);
 #ifdef EOS_ELASTIC
 void elastic_body_update_driftkick(int i, double dt_entr, int mode);
 #endif
+#if defined(EOS_ELASTIC) || defined(EOS_TILLOTSON)
+double get_negative_pressure_tensilecorrfac(double r, double h_i, double h_j);
+#endif
 double INLINE_FUNC convert_internalenergy_soundspeed2(int i, double u);
 double INLINE_FUNC Get_Gas_effective_soundspeed_i(int i);
 double INLINE_FUNC Get_Gas_thermal_soundspeed_i(int i);
@@ -406,8 +408,7 @@ int io_compare_P_GrNr_ID(const void *a, const void *b);
 
 void write_file(char *fname, int readTask, int lastTask);
 
-void distribute_file(int nfiles, int firstfile, int firsttask, int lasttask, int *filenr, int *master,
-		     int *last);
+void distribute_file(int nfiles, int firstfile, int firsttask, int lasttask, int *filenr, int *primary_taskID, int *last);
 
 int get_values_per_blockelement(enum iofields blocknr);
 
@@ -565,8 +566,8 @@ double get_age_tracer_bin_start_time(int k);
 #ifdef SINGLE_STAR_FB_JETS
 double single_star_jet_velocity(int n);
 #endif
-#if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_LOCAL_RP)
-double single_star_fb_velocity(int n);
+#ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
+double single_star_feedback_velocity_fortimestep(int n);
 #endif
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
 void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt);

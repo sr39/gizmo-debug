@@ -98,7 +98,7 @@ int density_isactive(int n)
 
 
 
-#define MASTER_FUNCTION_NAME density_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
+#define CORE_FUNCTION_NAME density_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME hydrokerneldensity_particle2in    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
 #define OUTPUTFUNCTION_NAME hydrokerneldensity_out2particle  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
 #define CONDITIONFUNCTION_FOR_EVALUATION if(density_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
@@ -251,7 +251,7 @@ void hydrokerneldensity_out2particle(struct OUTPUT_STRUCT_NAME *out, int i, int 
 #endif
 
 #if defined(RT_SOURCE_INJECTION)
-#if defined(BH_ANGLEWEIGHT_PHOTON_INJECTION)
+#if defined(RT_BH_ANGLEWEIGHT_PHOTON_INJECTION)
     if(All.TimeStep == 0) // we only do this on the 0'th timestep, since we haven't done a BH loop yet to get the angle weights we'll use normally
 #endif    
     if((1 << P[i].Type) & (RT_SOURCES)) {ASSIGN_ADD(P[i].KernelSum_Around_RT_Source, out->KernelSum_Around_RT_Source, mode);}
@@ -317,7 +317,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if(local.Type == 0 && kernel.r==0) {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * SphP[j].VelPred[kv];}} // just the self-contribution //
 #endif
 #if defined(RT_SOURCE_INJECTION)
-#if defined(BH_ANGLEWEIGHT_PHOTON_INJECTION)
+#if defined(RT_BH_ANGLEWEIGHT_PHOTON_INJECTION)
                     if(All.TimeStep == 0) // we only do this on the 0'th timestep, since we haven't done a BH loop yet to get the angle weights we'll use normally
 #endif                        
                     if((1 << local.Type) & (RT_SOURCES)) {out.KernelSum_Around_RT_Source += 1.-u*u;}
@@ -560,7 +560,14 @@ void density(void)
                     /* now NV_T holds the inverted matrix elements, for use in hydro */
                     for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Face_Area_OneSided_Estimator_out[k1] += 2.*V_i*SphP[i].NV_T[k1][k2]*Face_Area_OneSided_Estimator_in[k2];}} /* calculate mfm/mfv areas that we would have by default, if both sides of reconstruction were symmetric */
                     for(k1=0;k1<3;k1++) {dimless_face_leak += fabs(Face_Area_OneSided_Estimator_out[k1]) / NUMDIMS;} // average of absolute values
+#ifdef HYDRO_KERNEL_SURFACE_VOLCORR
+                    double closure_asymm=0; for(k1=0;k1<3;k1++) {closure_asymm += Face_Area_OneSided_Estimator_in[k1]*Face_Area_OneSided_Estimator_in[k1];}
+                    double particle_inverse_volume = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
+                    closure_asymm = sqrt(closure_asymm) / (PPP[i].Hsml * particle_inverse_volume); // dimensionnless measure of asymmetry in kernel
+                    SphP[i].FaceClosureError = DMIN(DMAX(1.0259-2.52444*closure_asymm,0.344301),1.); // correction factor for 'missing' volume assuming a wendland C2 kernel and a sharp surface from Reinhardt & Stadel 2017 (arXiv:1701.08296)
+#else
                     SphP[i].FaceClosureError = dimless_face_leak / (2.*NUMDIMS*pow(dx_i,NUMDIMS-1));
+#endif
                 } // P[i].Type == 0 //
 
                 /* now check whether we had enough neighbours */
@@ -582,12 +589,16 @@ void density(void)
                         if(dn_ngb < 10.0) SphP[i].ConditionNumber = ConditionNumber;
                     }
                     ncorr_ngb=1; cn=SphP[i].ConditionNumber; if(cn>c0) {ncorr_ngb=sqrt(1.0+(cn-c0)/((double)CONDITION_NUMBER_DANGER));} if(ncorr_ngb>2) ncorr_ngb=2;
+#if !defined(HYDRO_KERNEL_SURFACE_VOLCORR)
                     double d00=0.35; if(SphP[i].FaceClosureError > d00) {ncorr_ngb = DMAX(ncorr_ngb , DMIN(SphP[i].FaceClosureError/d00 , 2.));}
+#endif
                 }
                 desnumngb = All.DesNumNgb * ncorr_ngb;
                 desnumngbdev = desnumngbdev_0 * ncorr_ngb;
                 /* allow the neighbor tolerance to gradually grow as we iterate, so that we don't spend forever trapped in a narrow iteration */
+#if !defined(EOS_ELASTIC)
                 if(iter > 1) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*(double)iter) );}
+#endif
 
 #ifdef BLACK_HOLES
                 if(P[i].Type == 5)
@@ -983,9 +994,19 @@ void density(void)
                     }
                 }
 #endif
+                double Volume_0; Volume_0 = P[i].Mass / SphP[i].Density; // save for potential later use
+#if defined(HYDRO_KERNEL_SURFACE_VOLCORR)
+                SphP[i].Density /= SphP[i].FaceClosureError; // correct volume of the cell based on the free surface correction above
+                SphP[i].FaceClosureError = Volume_0;
+#endif
+#ifdef HYDRO_EXPLICITLY_INTEGRATE_VOLUME
+                Volume_0 = P[i].Mass / SphP[i].Density;
+                if(All.Time == All.TimeBegin) {SphP[i].Density_ExplicitInt = SphP[i].Density;} // set initial value to density calculated above
+                    else {SphP[i].Density = SphP[i].Density_ExplicitInt;} // set to explicitly-evolved density field
+                SphP[i].FaceClosureError = Volume_0;
+#endif
 #ifdef HYDRO_VOLUME_CORRECTIONS
-                SphP[i].Volume_0 = P[i].Mass / SphP[i].Density; // initialize this value for use in the correction loop
-                SphP[i].Volume_1 = SphP[i].Volume_0; // in case this is not set in the subsequent loop because of inactivity, set this first to the zeroth-order estimator
+                SphP[i].Volume_1 = SphP[i].Volume_0 = Volume_0; // initialize this value for use in the correction loop, and in case this is not set in the subsequent loop because of inactivity, set this first to the zeroth-order estimator
 #endif
                 SphP[i].Pressure = get_pressure(i);		// should account for density independent pressure
 
@@ -1057,7 +1078,7 @@ void density(void)
     This was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO. */
 #ifdef HYDRO_VOLUME_CORRECTIONS
 
-#define MASTER_FUNCTION_NAME cellcorrections_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
+#define CORE_FUNCTION_NAME cellcorrections_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME particle2in_cellcorrections    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
 #define OUTPUTFUNCTION_NAME out2particle_cellcorrections  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
 #define CONDITIONFUNCTION_FOR_EVALUATION if(GasGrad_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. for current implementation, only cells eligible for gradients and hydro should be called */

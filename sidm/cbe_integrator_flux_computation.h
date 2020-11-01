@@ -142,5 +142,5 @@
         }}
 #endif
     } // v_wt_sum > 0
-} // master bracket (for variable protection
+} // total bracket (for variable protection)
 #endif

@@ -423,10 +423,6 @@ void subfind(int num)
   if(ThisTask == 0)
     printf("subfind_exchange() (for return to original CPU)  took %g sec\n", timediff(t0, t1));
 
-
-
-  All.DoDynamicUpdate = 0;
-
   domain_Decomposition(1, 0, 0);
 
   force_treebuild(NumPart, NULL);
@@ -475,7 +471,7 @@ void subfind(int num)
 
 void subfind_save_final(int num)
 {
-  int i, j, totsubs, masterTask, groupTask, nprocgroup;
+  int i, j, totsubs, primaryTask, groupTask, nprocgroup;
   char buf[1000];
   double t0, t1;
 
@@ -579,10 +575,10 @@ void subfind_save_final(int num)
   nprocgroup = NTask / All.NumFilesWrittenInParallel;
   if((NTask % All.NumFilesWrittenInParallel))
     nprocgroup++;
-  masterTask = (ThisTask / nprocgroup) * nprocgroup;
+  primaryTask = (ThisTask / nprocgroup) * nprocgroup;
   for(groupTask = 0; groupTask < nprocgroup; groupTask++)
     {
-      if(ThisTask == (masterTask + groupTask))	/* ok, it's this processor's turn */
+      if(ThisTask == (primaryTask + groupTask))	/* ok, it's this processor's turn */
 	subfind_save_local_catalogue(num);
       MPI_Barrier(MPI_COMM_WORLD);	/* wait inside the group */
     }
@@ -1203,7 +1199,6 @@ void subfind_save_local_catalogue(int num)
     {
       write_header_attributes_in_hdf5(hdf5_headergrp);
     }
-
   else
     {
 #endif
@@ -1339,11 +1334,7 @@ void subfind_save_local_catalogue(int num)
 	    {
 	      dims[0] = nwrite;
 	      dims[1] = ndim;
-
-	      if(dims[1] == 1)
-		rank = 1;
-	      else
-		rank = 2;
+	      if(dims[1] == 1) {rank = 1;} else {rank = 2;}
 
 	      switch (get_datatype_in_sub(blocknr))
 		{
