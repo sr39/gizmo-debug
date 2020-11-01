@@ -604,12 +604,13 @@
 ####################################################################################################-
 ##---------------------------------------------------------------------------------------------------
 #---------- Cosmic Rays & Relativistic Particles
-#---------------------------------------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
-#COSMIC_RAYS                    #- two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
-#COSMIC_RAYS_ALFVEN=(500.)      #- solve CR transport based on Alfven-limited scattering from Thomas+Pfrommer 18, evolves CRs+resonant Alfven population; value here is maximum free-streaming speed in code units. requires MAGNETIC and COOLING for detailed MHD and ionization+thermal states.
-#COSMIC_RAYS_M1=(500.)          #- solve the CR transport in the M1 limit [second-order expansion of the collisionless boltzmann eqn]; value here is the streaming speed in code units
+#---------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
+##---------------------------------------------------------------------------------------------------
+#COSMIC_RAYS                    #- two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe.
+#COSMIC_RAYS_M1=(500.)          #- solve the CR transport in the two moment (M1) limit [second-order expansion of the collisionless boltzmann eqn]; value here is the reduced speed of light (maximum free-streaming speed) in code units. requires MAGNETIC for proper behavior for fully-anisotropic equations.
+#COSMIC_RAYS_ALFVEN=(500.)      #- solve CR transport based on Alfven-limited scattering from Thomas+Pfrommer 18, explicitly evolving the gyro-resonant Alfven-wave population with self-confinement motivated CR scattering rates; value here is the reduced speed of light (maximum free-streaming speed) in code units. requires MAGNETIC and COOLING for detailed MHD and ionization+thermal states.
 ##------
-#COSMIC_RAYS_DIFFUSION_MODEL=0  #- determine how coefficients for CR transport scale. 0=constant diffusivity, -1=no diffusion(still stream), values >=1 correspond to different literature scalings for the coefficients (see user guide)
+#COSMIC_RAYS_DIFFUSION_MODEL=0  #- determine how coefficients for CR transport scale. 0=spatial/temporal constant diffusivity (power law in rigidity), -1=no diffusion (but stream at vAlfven), values >=1 correspond to different literature scalings for the coefficients (see user guide)
 #COSMIC_RAYS_ION_ALFVEN_SPEED   #- assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance)
 #COSMIC_RAYS_EVOLVE_SPECTRUM    #-
 #COSMIC_RAYS_DIFFUSIVE_REACCELERATION #-
