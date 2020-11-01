@@ -84,7 +84,7 @@ void CR_spectrum_define_bins(void)
                 {
                     if(CR_species_ID_in_bin[m] != secondary_id) {continue;}
                     double E_target = E_GeV[k] * DMAX(1.,A_wt[m]) / DMAX(1.,A_wt[k]); // fixed energy per nucleon/particle (treating e-/e+ as 1)
-                    if(primary_id == 1 && secondary_id < 0) {E_target *= 0.5;} // secondary e+/e- from protons (pion decay) get 1/2 original p energy
+                    if(primary_id == 1 && secondary_id < 0) {E_target *= 0.1;} // secondary e+/e- from protons (pion decay) get ~0.1 original p energy
                     double diff = log(E_GeV[m]/E_target); diff*=diff; // square of log-diff between energies
                     if(diff < diff_min) {diff_min=diff; target_bin=m; E_target_0=E_target;} // set to this as the 'closest' option
                 }
@@ -167,7 +167,7 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
     double f_bin_v[2]={0.95 , 0.05}; f_bin=f_bin_v[k_CRegy]; // 5% of injection into e-, roughly motivated by observed spectra and nearby SNRs
 #endif
 #if (N_CR_PARTICLE_BINS > 2) /* multi-bin spectrum for p and e-: inset assumptions about injection spectrum here! */
-    double f_elec = 0.05; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
+    double f_elec = 0.04; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
     double inj_slope = 4.5; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope)
     double R_break_e = 1.0; // location of spectral break for injection e- spectrum, in GV
     double inj_slope_lowE_e = 4.3; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope), for electrons below R_break_e
@@ -183,11 +183,12 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
     if(species > 1)
     {
         double Zfac = P[target].Metallicity[0]/All.SolarAbundances[0]; // scale heavier elements to the metallicity of the gas into which CRs are being accelerated
-        if(species == 2) {f_norm = 3.7e-9 * Zfac;} // B (for standard elements initialize to solar ratios assuming similar energy/nucleon)
-        if(species == 3) {f_norm = 2.4e-3 * Zfac;} // C
-        if(species == 4) {f_norm = 1.4e-10 * Zfac;} // Be7+9 (stable)
-        if(species == 5) {f_norm = 1.4e-20 * Zfac;} // Be10 (radioactive)
-        if(species == 6) {f_norm = 0.0094 * Zfac;} // CNO (combined bin)
+        double mass_amu = return_CRbin_CRmass_in_mp(-1,k_CRegy); // get mass in amu since the fractions below correspond to mass and need to be corrected to number
+        if(species == 2) {f_norm = 3.7e-9 * Zfac / mass_amu;} // B (for standard elements initialize to solar ratios assuming similar energy/nucleon)
+        if(species == 3) {f_norm = 2.4e-3 * Zfac / mass_amu;} // C
+        if(species == 4) {f_norm = 1.4e-10 * Zfac / mass_amu;} // Be7+9 (stable)
+        if(species == 5) {f_norm = 1.4e-20 * Zfac / mass_amu;} // Be10 (radioactive)
+        if(species == 6) {f_norm = 0.0094 * Zfac / mass_amu;} // CNO (combined bin)
     }
     f_bin *= f_norm; // normalize injection depending on the species (e- or p+, etc)
 #endif
@@ -203,7 +204,7 @@ double diffusion_coefficient_constant(int target, int k_CRegy)
 {
     double dimensionless_kappa_relative_to_GV_protons = 1;
 #if (N_CR_PARTICLE_BINS > 1)    /* insert physics here */
-    dimensionless_kappa_relative_to_GV_protons = pow( return_CRbin_CR_rigidity_in_GV(-1,k_CRegy) , 0.5 ); // assume a quasi-empirical scaling here //
+    dimensionless_kappa_relative_to_GV_protons = pow( return_CRbin_CR_rigidity_in_GV(-1,k_CRegy) , 1.0 ); // assume a quasi-empirical scaling here //
 #endif
     return All.CosmicRayDiffusionCoeff * dimensionless_kappa_relative_to_GV_protons;
 }
@@ -1077,7 +1078,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                                     double frac_secondary = DMAX(0.,DMIN(1., secondary_coeff / total_catastrophic_coeff)); /* restrict to sensible bounds */
                                     
                                     double U_donor = frac_secondary*(1.-fac)*Ucr[j] * DMAX(1.,A_wt[j_s])/DMAX(1.,A_wt[j]); // need to account for the different total energy assuming fixed energy per nucleon here
-                                    if(species_ID == 1 && CR_species_ID_in_bin[j_s] < 0) {U_donor *= 0.5;} // secondary e+/e- from protons (pion decay) get 1/2 original p energy -- needs to match assumption above
+                                    if(species_ID == 1 && CR_species_ID_in_bin[j_s] < 0) {U_donor *= 0.1;} // secondary e+/e- from protons (pion decay) get ~0.1 original p energy -- needs to match assumption above
                                     double N_donor = frac_secondary*(1.-fac)*ntot_evolved[j]; // absolute number being transferred between bins
                                     Ucr[j_s] += U_donor; // update energy in secondary bin
                                     ntot_evolved[j_s] += N_donor; // update number in secondary bin
