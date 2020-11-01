@@ -1505,7 +1505,7 @@ double return_CRbin_kinetic_energy_in_GeV_binvalsNRR(int k_CRegy)
         double m_cr_mp = return_CRbin_CRmass_in_mp(-1,k_CRegy); // mass in proton masses
         return fac * R_GV*R_GV * (Zabs*Zabs / m_cr_mp); // E in GeV in non-relativistic limit
     }
-    return R_GV / Zabs; // E in GeV in relativistic limit
+    return R_GV * Zabs; // E in GeV in relativistic limit
 }
 
 
