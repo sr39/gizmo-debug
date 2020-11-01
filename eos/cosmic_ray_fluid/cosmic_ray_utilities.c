@@ -61,10 +61,10 @@ void CR_spectrum_define_bins(void)
         //if(primary_spec == -2) {secondary_spec[0]=-200;} // positrons -> gamma rays [un-tracked]
         //if(primary_spec == -1) {secondary_spec[0]=-200;} // electrons -> ? [un-tracked]
         if(primary_spec == 1) {secondary_spec[0]=-2; secondary_spec[1]=-1;} // protons -> secondary e- and e+
-        //if(primary_spec ==  2) {secondary_spec[0]=-200;} // B -> secondary p and e, Be [un-tracked for now, b/c small contributions]
+        if(primary_spec == 2) {secondary_spec[0]=4; secondary_spec[1]=5;} // B -> secondary p and e, Be [un-tracked for now, b/c small contributions]
         if(primary_spec == 3 || primary_spec == 6) {secondary_spec[0]=2; secondary_spec[1]=4; secondary_spec[2]=5;} // C or CNO -> secondary B, Be-7+9, and Be-10 [also e, p, but untracked for now b/c small contributions]
-        //if(primary_spec ==  4) {secondary_spec[0]=-200;} // Be7+9 -> secondary p and e, [un-tracked for now, b/c small contributions]
-        if(primary_spec ==  5) {secondary_spec[0]=4;} // Be10 -> B10 (radioactive decay, not from fragmentation: separate vector?)
+        //if(primary_spec == 4) {secondary_spec[0]=-200;} // Be7+9 -> secondary p and e, [un-tracked for now, b/c small contributions]
+        if(primary_spec == 5) {secondary_spec[0]=4;} // Be10 -> B10 (radioactive decay, not from fragmentation: separate vector?)
         for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {if(secondary_spec[j] > -100) {CR_secondary_species_listref[k][j] = temp_species_map[secondary_spec[j]+id_map_offset];} else {CR_secondary_species_listref[k][j]=-200;}}
     }
     /* also need to figure out the 'destination bin' for each type of secondary -- we will assume nucleon-nucleon conserves energy per nucleon, while cascades to positrons and secondary electrons are treated slightly differently */
@@ -95,7 +95,7 @@ void CR_spectrum_define_bins(void)
                     if(target_bin>0) {if(CR_species_ID_in_bin[target_bin-1] == secondary_id) {E_bin_m=E_GeV[target_bin-1];}} // define the bin ranges that we will consider for whether the target energy fits
                     if(target_bin<N_CR_PARTICLE_BINS-1) {if(CR_species_ID_in_bin[target_bin+1] == secondary_id) {E_bin_p=E_GeV[target_bin+1];}}
                     E_bin_m=sqrt(E_bin_m*E_bin); E_bin_p=sqrt(E_bin_p*E_bin); if(E_bin_m==E_bin) {E_bin_m=E_bin*(E_bin/E_bin_p)*(E_bin/E_bin_p);} else if(E_bin_p==E_bin) {E_bin_p=E_bin*(E_bin/E_bin_m)*(E_bin/E_bin_m);}
-                    if(E_target > E_bin_m && E_target < E_bin_p) {CR_secondary_target_bin[k][j] = target_bin;} // assign a destination bin
+                    if(E_target >= 0.9*E_bin_m && E_target <= 1.1*E_bin_p) {CR_secondary_target_bin[k][j] = target_bin;} // assign a destination bin
                 }
             }
         }
@@ -121,31 +121,31 @@ void CR_spectrum_define_bins(void)
         if(CR_frag_coeff[k] > 0) {for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {if(CR_secondary_target_bin[k][j] >= 0) // desired secondary products exist
             {
                 double x=DMAX(-2.,DMIN(2.,log10(E_GeV[k]))); // used in some of the fitting functions below
-                int primary_id = CR_species_ID_in_bin[k], secondary_id = species_list[j];
+                int primary_id = CR_species_ID_in_bin[k], secondary_id = CR_species_ID_in_bin[CR_secondary_target_bin[k][j]];
                 //if((primary_id == 5) && (secondary_id == 4)) {} // Be10->B10 (radioactive - frag probability is null) //
                 if(primary_id==1) { // p; assume some simple branching ratios for pion production in the relevant regime above
                     if(secondary_id==-2) {CR_frag_secondary_coeff[k][j] = (1./3.) * CR_frag_coeff[k];} // p->e+
                     if(secondary_id==-1) {CR_frag_secondary_coeff[k][j] = (1./3.) * CR_frag_coeff[k];} // p->e-
                 }
                 if(primary_id==2) { // B; fitting function to the results compiled and re-fit in Moskalenko & Mashnik 2003 (used for GALPROP), doing a solar-abundance-ratio weighted average over CNO, and summing over the relevant isotopes
-                    if(secondary_id==4) {CR_frag_secondary_coeff[k][j] = 12.0 * pow(E_GeV[k],-0.022);} // B->Be9 (declines weakly from ~14 to ~10 over MeV-TeV, approx here)
-                    if(secondary_id==5) {CR_frag_secondary_coeff[k][j] = 12.5 * pow(E_GeV[k], 0.018);} // B->Be10 (increases weakly from 11 to 14 over MeV-TeV, approx here)
+                    if(secondary_id==4) {CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * 12.0 * pow(E_GeV[k],-0.022);} // B->Be9 (declines weakly from ~14 to ~10 over MeV-TeV, approx here)
+                    if(secondary_id==5) {CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * 12.5 * pow(E_GeV[k], 0.018);} // B->Be10 (increases weakly from 11 to 14 over MeV-TeV, approx here)
                 }
                 if(primary_id==3) { // C; fitting function to the results compiled and re-fit in Moskalenko & Mashnik 2003 (used for GALPROP), doing a solar-abundance-ratio weighted average over CNO, and summing over the relevant isotopes
                     if(secondary_id==2) { // C->B
-                        CR_frag_secondary_coeff[k][j] = pow(10.,1.88490356 -0.05648715*x -0.13108485*x*x +0.11340508*x*x*x +0.08119785*x*x*x*x -0.06574148*x*x*x*x*x -0.01159932*x*x*x*x*x*x +0.00962035*x*x*x*x*x*x*x +0.23395042856711876*exp(-10.8066678706701*(x+1.24740008)*(x+1.24740008)));}
+                        CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * pow(10.,1.88490356 -0.05648715*x -0.13108485*x*x +0.11340508*x*x*x +0.08119785*x*x*x*x -0.06574148*x*x*x*x*x -0.01159932*x*x*x*x*x*x +0.00962035*x*x*x*x*x*x*x +0.23395042856711876*exp(-10.8066678706701*(x+1.24740008)*(x+1.24740008)));}
                     if(secondary_id==4) { // C->Be7+9
-                        CR_frag_secondary_coeff[k][j] = pow(10.,1.18321683 +0.11629153*x +0.01653084*x*x -0.11321897*x*x*x -0.03375688*x*x*x*x +0.05771537*x*x*x*x*x +0.00684962*x*x*x*x*x*x -0.00876353*x*x*x*x*x*x*x +0.40590023164209293*exp(-17.1253106513537*(x+1.28525319)*(x+1.28525319)));}
+                        CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * pow(10.,1.18321683 +0.11629153*x +0.01653084*x*x -0.11321897*x*x*x -0.03375688*x*x*x*x +0.05771537*x*x*x*x*x +0.00684962*x*x*x*x*x*x -0.00876353*x*x*x*x*x*x*x +0.40590023164209293*exp(-17.1253106513537*(x+1.28525319)*(x+1.28525319)));}
                     if(secondary_id==5) { // C->Be10
-                        CR_frag_secondary_coeff[k][j] = 0.10757855 + pow(10., 0.53413363 +0.38478345*x -0.51584177*x*x -0.22611016*x*x*x +0.51009595*x*x*x*x +0.04492848*x*x*x*x*x -0.23828966*x*x*x*x*x*x +0.06889871*x*x*x*x*x*x*x);}
+                        CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * (0.10757855 + pow(10., 0.53413363 +0.38478345*x -0.51584177*x*x -0.22611016*x*x*x +0.51009595*x*x*x*x +0.04492848*x*x*x*x*x -0.23828966*x*x*x*x*x*x +0.06889871*x*x*x*x*x*x*x));}
                 }
                 if(primary_id==6) { // CNO effective bin; fitting function to the results compiled and re-fit in Moskalenko & Mashnik 2003 (used for GALPROP), doing a solar-abundance-ratio weighted average over CNO, and summing over the relevant isotopes
                     if(secondary_id==2) { // CNO->B
-                        CR_frag_secondary_coeff[k][j] = pow(10., 1.71801936 - 0.03475011*x -0.09856187*x*x +0.12369455*x*x*x +0.02958446*x*x*x*x -0.05273341*x*x*x*x*x -0.00223893*x*x*x*x*x*x +0.00639451*x*x*x*x*x*x*x + 0.464605776*exp(-17.769530*(x+1.23499649)*(x+1.23499649)) );}
+                        CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * pow(10., 1.71801936 - 0.03475011*x -0.09856187*x*x +0.12369455*x*x*x +0.02958446*x*x*x*x -0.05273341*x*x*x*x*x -0.00223893*x*x*x*x*x*x +0.00639451*x*x*x*x*x*x*x + 0.464605776*exp(-17.769530*(x+1.23499649)*(x+1.23499649)) );}
                     if(secondary_id==4) { // CNO->Be7+9
-                        CR_frag_secondary_coeff[k][j] = pow(10., 1.16648147  +0.09557578*x -0.17970136*x*x +0.06823829*x*x*x +0.04448299*x*x*x*x -0.02883429*x*x*x*x*x -0.00274047*x*x*x*x*x*x +0.00286316*x*x*x*x*x*x*x + 0.476812578*exp(-14.203615*(x+1.21352966)*(x+1.21352966)) );}
+                        CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * pow(10., 1.16648147  +0.09557578*x -0.17970136*x*x +0.06823829*x*x*x +0.04448299*x*x*x*x -0.02883429*x*x*x*x*x -0.00274047*x*x*x*x*x*x +0.00286316*x*x*x*x*x*x*x + 0.476812578*exp(-14.203615*(x+1.21352966)*(x+1.21352966)) );}
                     if(secondary_id==5) { // CNO->Be10
-                        CR_frag_secondary_coeff[k][j] = 0.073388 + pow(10., 0.454778746 + 0.349074384*x -0.684152925*x*x -0.153016497*x*x*x +0.657169204*x*x*x*x +8.06147155e-04*x*x*x*x*x -0.296932460*x*x*x*x*x*x +0.0918014184*x*x*x*x*x*x*x );}
+                        CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * (0.073388 + pow(10., 0.454778746 + 0.349074384*x -0.684152925*x*x -0.153016497*x*x*x +0.657169204*x*x*x*x +8.06147155e-04*x*x*x*x*x -0.296932460*x*x*x*x*x*x +0.0918014184*x*x*x*x*x*x*x ));}
                 }
             }}}
         

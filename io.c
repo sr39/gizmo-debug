@@ -4295,12 +4295,10 @@ void write_header_attributes_in_hdf5(hid_t handle)
 #endif
 
 #ifdef GALSF
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Over_Density_Threshold_For_SF", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.OverDensThresh); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Physical_Density_Threshold_For_SF", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.PhysDensThresh); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    {double holder=DMAX(All.PhysDensThresh,All.OverDensThresh); hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Density_Threshold_For_SF_CodeUnits", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &holder); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
 #if !defined(SINGLE_STAR_SINK_DYNAMICS)
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SF_Timescale_CodeUnits_At_Physical_Threshold", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SF_Timescale_At_Density_Threshold_CodeUnits", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.MaxSfrTimescale); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
 #endif
@@ -4383,8 +4381,8 @@ void write_header_attributes_in_hdf5(hid_t handle)
 
 #ifdef METALS
     {hdf5_dataspace = H5Screate(H5S_SIMPLE); hsize_t tmp_dim[1]={NUM_METAL_SPECIES}; H5Sset_extent_simple(hdf5_dataspace, 1, tmp_dim, NULL);
-    hdf5_attribute = H5Acreate(handle, "Solar_Abundances_Adopted", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_INT, All.SolarAbundances); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
+    hdf5_attribute = H5Acreate(handle, "Solar_Abundances_Adopted", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, All.SolarAbundances); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
 #endif
 
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
