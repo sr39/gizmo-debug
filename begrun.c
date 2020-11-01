@@ -230,6 +230,10 @@ void begrun(void)
     init_geofactor_table();
 #endif
 
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+    CR_initialize_multibin_quantities(); // initialize the global variables and look-up tables //
+#endif
+    
   All.TimeLastRestartFile = CPUThisRun;
 
   if(RestartFlag == 0 || RestartFlag == 2 || RestartFlag == 3 || RestartFlag == 4 || RestartFlag == 5 || RestartFlag == 6)
@@ -483,9 +487,6 @@ void begrun(void)
     rt_get_sigma();
 #endif
     rt_set_simple_inits(RestartFlag);
-#endif
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
-    CR_initialize_multibin_quantities(); // initialize the global variables and look-up tables //
 #endif
 
 

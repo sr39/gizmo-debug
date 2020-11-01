@@ -606,21 +606,21 @@
 #---------- Cosmic Rays & Relativistic Particles
 #---------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
 ##---------------------------------------------------------------------------------------------------
-#COSMIC_RAYS                    #- two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe.
-#COSMIC_RAYS_M1=(500.)          #- solve the CR transport in the two moment (M1) limit [second-order expansion of the collisionless boltzmann eqn]; value here is the reduced speed of light (maximum free-streaming speed) in code units. requires MAGNETIC for proper behavior for fully-anisotropic equations.
+#COSMIC_RAYS                    #- top-level switch to evolve a two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe. cite Chan et al. 2019MNRAS.488.3716C, Hopkins et al. 2019MNRAS.tmp.2993H and arXiv:2002.06211. if no other modules are enabled will treat CRs in the single-moment (FLD-like) limit.
+#COSMIC_RAYS_M1=(500.)          #- solve the CR transport in the two moment (M1) limit [second-order expansion of the collisionless boltzmann eqn] as in Hopkins et al. arXiv:2002.06211 (cite that paper for newest version, but also Chan et al. 2019MNRAS.488.3716C); value here is the reduced speed of light (maximum free-streaming speed) in code units. requires MAGNETIC for proper behavior for fully-anisotropic equations.
 #COSMIC_RAYS_ALFVEN=(500.)      #- solve CR transport based on Alfven-limited scattering from Thomas+Pfrommer 18, explicitly evolving the gyro-resonant Alfven-wave population with self-confinement motivated CR scattering rates; value here is the reduced speed of light (maximum free-streaming speed) in code units. requires MAGNETIC and COOLING for detailed MHD and ionization+thermal states.
 ##------
 #COSMIC_RAYS_DIFFUSION_MODEL=0  #- determine how coefficients for CR transport scale. 0=spatial/temporal constant diffusivity (power law in rigidity), -1=no diffusion (but stream at vAlfven), values >=1 correspond to different literature scalings for the coefficients (see user guide)
-#COSMIC_RAYS_ION_ALFVEN_SPEED   #- assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance)
+#COSMIC_RAYS_ION_ALFVEN_SPEED   #- assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance). See discussion in and cite Hopkins et al. arXiv:2002.06211
 #COSMIC_RAYS_EVOLVE_SPECTRUM    #-
 #COSMIC_RAYS_DIFFUSIVE_REACCELERATION #-
 #COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK #-
 ##------
-#PIC_MHD                        #- hybrid MHD-PIC simulations for cosmic rays (particle type=3). need to set 'subtype'. in early testing.
+#PIC_MHD                        #- hybrid MHD-PIC simulations for relativistic particles / cosmic rays (particle type=3). need to set 'subtype'. cite Ji, Hopkins, & Squire et al. (in prep) once module is public. in testing.
 #PIC_SPEEDOFLIGHT_REDUCTION=1   #- factor to reduce the speed-of-light for mhd-pic simulations
 ##------
-#COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART=1 #-
-#COSMIC_RAYS_DISABLE_STREAMING  #- turn off CR streaming (propagation is purely advective+diffusion; warning: this can severely under-estimate CR losses to Alfven waves)
+#COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART=1 #- allows restart from a snapshot (flag=2) where single-bin CR model was used, for runs with CR spectra: the spectra are populated with the energy of the single-bin snapshot and fixed initial spectral shapes/ratios
+#COSMIC_RAYS_DISABLE_STREAMING  #- turn off CR streaming (propagation is purely advective+diffusion; this also disables losses from gyro-resonant instabilities)
 #COSMIC_RAYS_DISABLE_COOLING    #- turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic PdV work terms remain)
 ####################################################################################################-
 
