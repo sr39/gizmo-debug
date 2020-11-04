@@ -791,7 +791,7 @@ void hydro_final_operations_and_cleanup(void)
 #endif
                 }  else {flux_corr = 0;}
 
-		double radacc_thisband[3], rmag;
+		double radacc_thisband[3], rmag=0;
 		for(k=0;k<3;k++){
 		    radacc_thisband[k] = (SphP[i].Rad_Kappa[kfreq]/C_LIGHT_CODE_REDUCED) * (flux_corr*flux_i[k] - vdot_h[k]);
 		    rmag += radacc_thisband[k]*radacc_thisband[k];
