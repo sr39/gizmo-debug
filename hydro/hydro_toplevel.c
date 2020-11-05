@@ -799,8 +799,8 @@ void hydro_final_operations_and_cleanup(void)
 		double rmag_max;
 		if((kfreq != RT_FREQ_BIN_INFRARED) && (kfreq != RT_FREQ_BIN_FREEFREE)){ // bands that destroy photons upon absorption (e.g. ionization, dust absorption) should limit the imparted momentum to the total photon momentum available - the flux in the solver normally prevents this but this addresses some edge cases with e.g. pathological ICs, rapidly-varying kappa, etc.
 		    double a0 = -rt_absorption_rate(i,kfreq);
-		    double dE_abs = -erad_i * (1. - exp(a0*dt)); // change in energy from absorption                                                                                           
-		    rmag_max = dE_abs / (P[i].Mass * C_LIGHT_CODE_REDUCED * (MIN_REAL_NUMBER + f_kappa_abs)); // limit magnitude of accel to absorbed photon momentum
+		    double dE_abs = erad_i * (1. - exp(a0*dt)); // change in energy from absorption                                                                                           
+		    rmag_max = fabs(dE_abs / (P[i].Mass * C_LIGHT_CODE_REDUCED * (MIN_REAL_NUMBER + f_kappa_abs))); // limit magnitude of accel to absorbed photon momentum
 		}
 		if(rmag > 0){rmag = sqrt(rmag); if(rmag > rmag_max){for(k=0;k<3;k++) {radacc_thisband[k] *= rmag_max/rmag;}}} // limiter
 
