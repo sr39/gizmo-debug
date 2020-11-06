@@ -420,7 +420,7 @@ USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
 #endif
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK)
-#define COSMIC_RAYS_MULTIBIN 62     /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
+#define COSMIC_RAYS_MULTIBIN 70     /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
 #else
 #define COSMIC_RAYS_MULTIBIN 19     /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
 #endif
@@ -1836,7 +1836,7 @@ int CR_species_ID_in_bin[N_CR_PARTICLE_BINS];
 #define N_CR_SPECTRUM_LUT 101 /*!< number of elements per bin in the look-up-tables we will pre-compute to use for inverting the energy-number relation to determine the spectral slope */
 double CR_global_slope_lut[N_CR_PARTICLE_BINS][N_CR_SPECTRUM_LUT]; /*!< holder for the actual look-up-tables */
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK)
-#define N_CR_PARTICLE_SPECIES 7
+#define N_CR_PARTICLE_SPECIES 8
 int CR_secondary_species_listref[N_CR_PARTICLE_SPECIES][N_CR_PARTICLE_SPECIES]; /*!< list for each type of the different secondaries to which it can decay */
 int CR_secondary_target_bin[N_CR_PARTICLE_BINS][N_CR_PARTICLE_SPECIES]; /*!< destination bin for the secondaries produced by different primaries */
 double CR_frag_secondary_coeff[N_CR_PARTICLE_BINS][N_CR_PARTICLE_SPECIES]; /*!< coefficients for fragmentation to the given secondaries (also pre-computed for simplicity) */
