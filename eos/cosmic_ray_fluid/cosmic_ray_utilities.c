@@ -130,7 +130,6 @@ void CR_spectrum_define_bins(void)
                     if(secondary_id==-2) {CR_frag_secondary_coeff[k][j] = (1./3.) * CR_frag_coeff[k];} // p->e+
                     if(secondary_id==-1) {CR_frag_secondary_coeff[k][j] = (1./3.) * CR_frag_coeff[k];} // p->e-
                     if(secondary_id== 7) {if(E_GeV[k]>=2.) {double sqrt_s=1.87654*sqrt(1.+E_GeV[k]/1.87654); CR_frag_secondary_coeff[k][j]=1.4*pow(sqrt_s,0.6)*exp(-pow(17./sqrt_s,1.4));}} // p->pbar [anti-proton production; multiplied by 2x here to include anti-neutrons that decay rapidly to anti-p]. fit to integrated-over-pT results from Reinert & Winkler 2017, arXiv:1712.00002
-                    }
                 }
                 if(primary_id==2) { // B; fitting function to the results compiled and re-fit in Moskalenko & Mashnik 2003 (used for GALPROP), doing a solar-abundance-ratio weighted average over CNO, and summing over the relevant isotopes
                     if(secondary_id==4) {CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * 12.0 * pow(E_GeV[k],-0.022);} // B->Be9 (declines weakly from ~14 to ~10 over MeV-TeV, approx here)
@@ -334,7 +333,7 @@ void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime
     double a_hadronic = 6.37e-16, b_coulomb_per_GeV = 3.09e-16*(n_elec + 0.57*(1.-f_ion))*HYDROGEN_MASSFRAC; /* some coefficients; a_hadronic is the default coefficient, b_coulomb_per_GeV the default Coulomb+ionization (the two scale nearly-identically) normalization divided by GeV, b/c we need to divide the energy per CR  */
     for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
-        double CR_coolrate=0, Z=fabs(return_CRbin_CR_charge_in_e(target,k_CRegy)), species_ID=return_CRbin_CR_species_ID(k_CRegy)
+        double CR_coolrate=0, Z=fabs(return_CRbin_CR_charge_in_e(target,k_CRegy)), species_ID=return_CRbin_CR_species_ID(k_CRegy);
         if(species_ID > 0) /* protons and nuclei here */
         {
 #if (N_CR_PARTICLE_BINS > 2) /* note these are currently energy-loss expressions; for truly multi-bin, probably better to work with dp/dt, instead of dE/dt */
@@ -956,7 +955,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
         double kappa = SphP[target].CosmicRayDiffusionCoeff[k]; /* diffusion coefficient [physical units] */
         double fluxmag=0, Bmag=0, gradmag=0, Lgrad=0, veff=0, P0=Get_Gas_CosmicRayPressure(target,k); int m;
         for(m=0;m<3;m++) {
-            double f_0=SphP[target].CosmicRayFluxPred[k][m], g_0=SphP[target].Gradients.CosmicRayPressure[k][m], B0=f_0;
+            double f_0=SphP[target].CosmicRayFluxPred[k][m], g_0=SphP[target].Gradients.CosmicRayPressure[k][m], B_0=f_0;
 #ifdef MAGNETIC
             B_0 = Get_Gas_BField(target,m);
 #endif
