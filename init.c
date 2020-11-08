@@ -642,12 +642,12 @@ void init(void)
                 if(species > 1)
                 {
                     double Zfac = P[i].Metallicity[0]/All.SolarAbundances[0]; // scale heavier elements to the metallicity of the gas into which CRs are being accelerated
-                    double mass_amu = return_CRbin_CRmass_in_mp(-1,j); // get mass in amu since the fractions below correspond to mass and need to be corrected to number
-                    if(species == 2) {f_norm = 3.7e-9 * Zfac / mass_amu;} // B (for standard elements initialize to solar ratios assuming similar energy/nucleon)
-                    if(species == 3) {f_norm = 2.4e-3 * Zfac / mass_amu;} // C
-                    if(species == 4) {f_norm = 1.4e-10 * Zfac / mass_amu;} // Be7+9 (stable)
-                    if(species == 5) {f_norm = 1.4e-20 * Zfac / mass_amu;} // Be10 (radioactive)
-                    if(species == 6) {f_norm = 0.0094 * Zfac / mass_amu;} // CNO (combined bin)
+                    Zfac *= pow(return_CRbin_CRmass_in_mp(-1,j) / fabs(return_CRbin_CR_charge_in_e(-1,j)) , 1.5); // approximate injection factor for a constant-beta distribution at a given R_GV needed below
+                    if(species == 2) {f_norm = 3.7e-9 * Zfac;} // B (for standard elements initialize to solar ratios assuming similar energy/nucleon)
+                    if(species == 3) {f_norm = 2.4e-3 * Zfac;} // C
+                    if(species == 4) {f_norm = 1.4e-10 * Zfac;} // Be7+9 (stable)
+                    if(species == 5) {f_norm = 1.4e-20 * Zfac;} // Be10 (radioactive)
+                    if(species == 6) {f_norm = 0.0094 * Zfac;} // CNO (combined bin)
                 }
                 double e_tmp = f_norm * e0, x_RGV = CR_global_rigidity_at_bin_center[j];
                 double fac = 2.3 / (pow(x_RGV,-0.6) + pow(x_RGV,0.8)), slope = (3. - 4.*pow(x_RGV,1.4)) / (5. + 5.*pow(x_RGV,1.4)) - 2.; // adopt an extremely simple two-power law spectrum, identical in E space for everything, except normalization, to initialize

@@ -817,7 +817,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_COSMICRAY_KAPPA:    /* local CR diffusion constant */
-#if defined(COSMIC_RAYS) && defined(COSMIC_RAYS_DIFFUSION_MODEL) && (COSMIC_RAYS_DIFFUSION_MODEL > 0)
+#if defined(COSMIC_RAYS) && defined(COSMIC_RAYS_DIFFUSION_MODEL)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -2584,7 +2584,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_COSMICRAY_KAPPA:
-#if defined(COSMIC_RAYS) && defined(COSMIC_RAYS_DIFFUSION_MODEL) && (COSMIC_RAYS_DIFFUSION_MODEL > 0)
+#if defined(COSMIC_RAYS) && defined(COSMIC_RAYS_DIFFUSION_MODEL)
             return 1;
 #endif
             break;

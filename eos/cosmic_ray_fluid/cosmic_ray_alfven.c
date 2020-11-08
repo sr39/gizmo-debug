@@ -51,7 +51,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         if(q_whichupdate>0) {if(mode==0) {SphP[i].CosmicRayAlfvenEnergy[k_CRegy][q_whichupdate-1] += dCR_div; SphP[i].InternalEnergy -= dCR_div/P[i].Mass;} else {SphP[i].CosmicRayAlfvenEnergyPred[k_CRegy][q_whichupdate-1] += dCR_div; SphP[i].InternalEnergyPred -= dCR_div/P[i].Mass;}}
     }
 
-    double E_CRs_Gev=return_CRbin_CR_rigidity_in_GV(i,k_CRegy), Z_charge_CR=return_CRbin_CR_charge_in_e(i,k_CRegy); // charge and energy and resonant Alfven wavenumber (in gyro units) of the CR population we're evolving
+    double E_CRs_Gev=return_CRbin_CR_rigidity_in_GV(i,k_CRegy), Z_charge_CR=fabs(return_CRbin_CR_charge_in_e(i,k_CRegy)), M_cr_mp=return_CRbin_CRmass_in_mp(i,k_CRegy); // charge and energy and resonant Alfven wavenumber (in gyro units) of the CR population we're evolving
         
     // ok, the updates from [0] advection w gas, [1] fluxes, [2] adiabatic, [-] catastrophic (in cooling.c) are all set, just need exchange terms b/t CR and Alfven //
     double EPSILON_SMALL = 1.e-77; // want a very small number here 
@@ -90,9 +90,9 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     double k_turb = 1./r_turb_driving, k_L = Omega_gyro / clight_code;
     
     // before acting on the 'stiff' sub-system, account for the 'extra' advection term that accounts for 'twisting' of B:
-    fac=0; for(k=0;k<3;k++) {fac += bhat[k] * (bhat[0]*SphP[i].Gradients.Velocity[k][0] + bhat[1]*SphP[i].Gradients.Velocity[k][1] + bhat[2]*SphP[i].Gradients.Velocity[k][2]);}
+    fac=0; for(k=0;k<3;k++) {fac += All.cf_a2inv * bhat[k] * (bhat[0]*SphP[i].Gradients.Velocity[k][0] + bhat[1]*SphP[i].Gradients.Velocity[k][1] + bhat[2]*SphP[i].Gradients.Velocity[k][2]);}
     if(All.ComovingIntegrationOn) {fac += All.cf_hubble_a;} // adds cosmological/hubble flow term here [not included in peculiar velocity gradient]
-    fac *= -All.cf_a2inv*dt_entr; if(!isfinite(fac)) {fac=0;} else {if(fac>2.) {fac=2.;} else {if(fac<-2.) {fac=-2.;}}} // limit factor for change here, should be small given Courant factor
+    fac *= -dt_entr; if(!isfinite(fac)) {fac=0;} else {if(fac>2.) {fac=2.;} else {if(fac<-2.) {fac=-2.;}}} // limit factor for change here, should be small given Courant factor
     f_CR *= exp(fac); // update flux term accordingly, before next step //
 
     // because the equations below will very much try to take things to far-too-small values for numerical precision, we need to define a bunch of sensible bounds for values to allow, to prevent divergences, but also enforce conservation
@@ -137,8 +137,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 
     // calculate the wave-damping rates (again in appropriate dimensionless units)
     /* ion-neutral damping: need thermodynamic information (neutral fractions, etc) to compute self-consistently */
-    G_ion_neutral = (5.77e-11 * (rho_cgs/PROTONMASS) * nh0 * sqrt(temperature)) * UNIT_TIME_IN_CGS; // need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]. converted to -physical- code units
-    if(Z_charge_CR > 1) {G_ion_neutral /= sqrt(2.*Z_charge_CR);}
+    G_ion_neutral = (5.77e-11 * (rho_cgs/PROTONMASS) * nh0 * sqrt(temperature)) * UNIT_TIME_IN_CGS / sqrt(M_cr_mp); // need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]. converted to -physical- code units
 
     int i1,i2; double v2_t=0,dv2_t=0,b2_t=0,db2_t=0,x_LL,M_A,h0,fturb_multiplier=1; // factor which will represent which cascade model we are going to use
     for(i1=0;i1<3;i1++)
