@@ -791,10 +791,23 @@ void hydro_final_operations_and_cleanup(void)
 #endif
                 }  else {flux_corr = 0;}
 
+		double radacc_thisband[3], rmag=0;
+		for(k=0;k<3;k++){
+		    radacc_thisband[k] = (SphP[i].Rad_Kappa[kfreq]/C_LIGHT_CODE_REDUCED) * (flux_corr*flux_i[k] - vdot_h[k]);
+		    rmag += radacc_thisband[k]*radacc_thisband[k];
+		}
+		double rmag_max;
+		if((kfreq != RT_FREQ_BIN_INFRARED) && (kfreq != RT_FREQ_BIN_FREEFREE)){ // bands that destroy photons upon absorption (e.g. ionization, dust absorption) should limit the imparted momentum to the total photon momentum available - the flux in the solver normally prevents this but this addresses some edge cases with e.g. pathological ICs, rapidly-varying kappa, etc.
+		    double a0 = -rt_absorption_rate(i,kfreq);
+		    double dE_abs = erad_i * (1. - exp(a0*dt)); // change in energy from absorption                                                                                           
+		    rmag_max = fabs(dE_abs / (P[i].Mass * C_LIGHT_CODE_REDUCED * (MIN_REAL_NUMBER + f_kappa_abs))); // limit magnitude of accel to absorbed photon momentum
+                    if(rmag > 0){rmag = sqrt(rmag); if(rmag > rmag_max){for(k=0;k<3;k++) {radacc_thisband[k] *= rmag_max/rmag;}}} // limiter
+                }
+
                 for(k=0;k<3;k++)
                 {
-                    radacc[k] += (SphP[i].Rad_Kappa[kfreq]/C_LIGHT_CODE_REDUCED) * (flux_corr*flux_i[k] - vdot_h[k]); // note these 'vdoth' terms shouldn't be included in FLD, since its really assuming the entire right-hand-side of the flux equation reaches equilibrium with the pressure tensor, which gives the expression in rt_utilities
-                    work_band += radacc[k] * vel_i[k] * P[i].Mass; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit -- note that we have to be careful about the RSOL factors here! //
+                    radacc[k] += radacc_thisband[k]; // note these 'vdoth' terms shouldn't be included in FLD, since its really assuming the entire right-hand-side of the flux equation reaches equilibrium with the pressure tensor, which gives the expression in rt_utilities
+                    work_band += radacc_thisband[k] * vel_i[k] * P[i].Mass; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit -- note that we have to be careful about the RSOL factors here! //
                 }
                 SphP[i].Dt_Rad_E_gamma[kfreq] += (2.*f_kappa_abs-1.)*work_band;
                 SphP[i].DtInternalEnergy -= 2.*f_kappa_abs*work_band / P[i].Mass;
