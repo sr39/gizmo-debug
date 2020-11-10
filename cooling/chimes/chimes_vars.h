@@ -24,6 +24,10 @@
 
 #include "chimes_interpol.h" 
 
+
+#ifdef CHIMES
+
+
 /* Define CHIMES-specific maths operations, depending 
  * on whether we are using single or double precision. 
  * Also, the chimes_exp10() function may use the 
@@ -177,3 +181,8 @@ struct Species_Structure
   ChimesFloat creation_rate;     /*!< Sum of the rates of all reactions that create this species. */ 
   ChimesFloat destruction_rate;  /*!< Sum of the rates of all reactions that destroy this species. */ 
 };
+
+
+
+#endif
+

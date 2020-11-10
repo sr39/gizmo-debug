@@ -842,6 +842,9 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 {
                     f_mag=sqrt(f_mag); double fmag_max = C_LIGHT_CODE_REDUCED * ef; // maximum flux should be optically-thin limit: e_gamma*c: here allow some tolerance for numerical leapfrogging in timestepping. should be the RSOL here, although in principle equations can allow exceeding this if we have reached equilibrium, it really violates the M1 closure assumptions. see discussion in Skinner+Ostriker 2013 or Levermore et al. 1984
                     if(f_mag > fmag_max) {for(k_dir=0;k_dir<3;k_dir++) {if(mode==0) {SphP[i].Rad_Flux[kf][k_dir] *= fmag_max/f_mag;} else {SphP[i].Rad_Flux_Pred[kf][k_dir] *= fmag_max/f_mag;}}}
+#if defined(GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION)
+                    if(P[i].Pos[2]<=0.1) {if(mode==0) {SphP[i].Rad_Flux[kf][0]=SphP[i].Rad_Flux[kf][1]=0; SphP[i].Rad_Flux[kf][2]=fmag_max;} else {SphP[i].Rad_Flux_Pred[kf][0]=SphP[i].Rad_Flux_Pred[kf][1]=0; SphP[i].Rad_Flux_Pred[kf][2]=fmag_max;}}
+#endif
                 }
             }
 #endif

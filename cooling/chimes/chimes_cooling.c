@@ -29,6 +29,9 @@
 #include "chimes_proto.h"
 #include "chimes_vars.h"
 
+
+#ifdef CHIMES // top-level flag
+
 /** 
  * @brief Calculates the total number density. 
  * 
@@ -666,3 +669,8 @@ void do_equilibrium_cooling(struct UserData data)
 
   return;
 }
+
+
+
+#endif
+

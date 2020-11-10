@@ -35,6 +35,10 @@
 #include "chimes_proto.h"
 #include "chimes_vars.h"
 
+
+#ifdef CHIMES
+
+
 /** 
  * @brief Checks the constraint equations. 
  * 
@@ -559,3 +563,6 @@ int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
 
   return 0;
 }
+
+
+#endif

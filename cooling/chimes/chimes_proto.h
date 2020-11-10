@@ -22,6 +22,10 @@
 #include <sundials/sundials_dense.h>
 #include <hdf5.h>
 
+
+#ifdef CHIMES
+
+
 /*!< Maximum number of UV spectra. */ 
 #define CHIMES_MAX_UV_SPECTRA 20 
 
@@ -809,3 +813,6 @@ enum
     sp_O2p		/* 156 */
   };
 
+
+
+#endif

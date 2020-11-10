@@ -588,9 +588,9 @@
 #SINGLE_STAR_FB_SNE             #- [pfh version may be publishable] enable SNe single stellar sources at end of main-sequence lifetime using particle spawning in shells following STARFORGE methods (Grudic+ arXiv:2010.11254), non public for now
 #SINGLE_STAR_FB_LOCAL_RP        #- pfh version (depends strictly on FIRE rhd implementation, not runnable without those modules)
 #SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT=2 #- determines the maximum number of ejecta particles spawned per timestep, see below [more an option for testing variations]
-#
+##------
 #BH_DYNFRICTION_FROMTREE        #- compute dynamical friction forces on BH following the discrete DF estimator in L. Ma et al. 2021 (in prep - to be made public once methods paper is published)
-#
+##------
 #RT_OPACITY_FROM_EXPLICIT_GRAINS #- calculate opacities back-and-forth from explicitly-resolved dust populations
 #GRAIN_RDI_TESTPROBLEM #-
 #GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE #-

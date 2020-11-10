@@ -29,6 +29,10 @@
 #include "chimes_proto.h"
 #include "chimes_vars.h"
 
+
+#ifdef CHIMES
+
+
 /** 
  * @brief Sets the initial rate coefficients. 
  * 
@@ -1531,3 +1535,7 @@ void interpolate_redshift_dependent_UVB(struct globalVariables *myGlobalVars)
 	}
     }
 }
+
+
+#endif
+

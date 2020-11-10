@@ -36,6 +36,10 @@
 #include "chimes_proto.h"
 #include "chimes_vars.h"
 
+
+#ifdef CHIMES
+
+
 // CHIMES data tables. 
 struct chimes_table_bins_struct chimes_table_bins;                               /*!< Structure containing table bins for all of the rate tables. */ 
 struct chimes_T_dependent_struct chimes_table_T_dependent;                       /*!< Structure containing the rates for the T-dependent reaction group. */
@@ -4285,3 +4289,7 @@ const char chimes_species_names[CHIMES_TOTSIZE][CHIMES_NAME_STR_LENGTH] = {"elec
 									   "COp",
 									   "HOCp",
 									   "O2p"};
+
+
+
+#endif
