@@ -333,7 +333,7 @@ void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime
     double a_hadronic = 6.37e-16, b_coulomb_per_GeV = 3.09e-16*(n_elec + 0.57*(1.-f_ion))*HYDROGEN_MASSFRAC; /* some coefficients; a_hadronic is the default coefficient, b_coulomb_per_GeV the default Coulomb+ionization (the two scale nearly-identically) normalization divided by GeV, b/c we need to divide the energy per CR  */
     for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
-        double CR_coolrate=0, Z=fabs(return_CRbin_CR_charge_in_e(target,k_CRegy)), species_ID=return_CRbin_CR_species_ID(k_CRegy);
+        double CR_coolrate,Z,species_ID; CR_coolrate=0; Z=fabs(return_CRbin_CR_charge_in_e(target,k_CRegy)); species_ID=return_CRbin_CR_species_ID(k_CRegy);
         if(species_ID > 0) /* protons and nuclei here */
         {
 #if (N_CR_PARTICLE_BINS > 2) /* note these are currently energy-loss expressions; for truly multi-bin, probably better to work with dp/dt, instead of dE/dt */
@@ -519,7 +519,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
             
 #ifndef COSMIC_RAYS_M1 /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
         // [all of this only applies if we are using the pure-diffusion description: the M1-type description should -not- use a limiter here, or negative kappa]
-        double diffusion_velocity_limit=C_LIGHT_CODE, L_eff=DMAX(Get_Particle_Size(i)*All.cf_atime,CRPressureGradScaleLength); /* maximum diffusion velocity (set <c if desired) */
+        double diffusion_velocity_limit=C_LIGHT_CODE, L_eff=DMAX(Get_Particle_Size(i)*All.cf_atime,CRPressureGradScaleLength); /* ?? maximum diffusion velocity (set <c if desired) */
         double kappa_diff_vel = DiffusionCoeff * GAMMA_COSMICRAY_MINUS1 / L_eff; DiffusionCoeff *= 1 / (1 + kappa_diff_vel/diffusion_velocity_limit); /* caps maximum here */
 #ifdef GALSF /* for multi-physics problems, we suppress diffusion [in the FLD-like limit] where it is irrelevant for timestepping-sake */
         DiffusionCoeff *= 1 / (1 + kappa_diff_vel/(0.01*diffusion_velocity_limit)); /* caps maximum here */
@@ -563,7 +563,7 @@ void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, i
         SphP[target].CosmicRayEnergyPred[k_CRegy] += dEcr; // update injected CR energy. needs to be done thread-safely, but since the above routines dont depend on this, it should be safe to do here.
 #ifdef COSMIC_RAYS_M1
         double dir_mag=0, flux_mag=dEcr*DMIN(100.*COSMIC_RAYS_M1,C_LIGHT_CODE), dir_to_use[3]={0}; int k;
-#ifdef COSMIC_RAYS_OLD_M1SPEEDLIMITER
+#ifdef COSMIC_RAYS_OLD_M1SPEEDLIMITER // ??
         flux_mag = dEcr * COSMIC_RAYS_M1;
 #endif
 #ifdef MAGNETIC
@@ -797,7 +797,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
             for(k=0;k<3;k++) {flux[k]=0; for(k=0;k<3;k++) {CR_veff[k]=0;}} // zero if invalid
         } else {
             double CR_vmax = DMIN(1.e3*cr_speed, C_LIGHT_CODE);
-#ifdef COSMIC_RAYS_OLD_M1SPEEDLIMITER
+#ifdef COSMIC_RAYS_OLD_M1SPEEDLIMITER // ??
             CR_vmax = cr_speed;
 #endif
             CR_vmag = sqrt(CR_vmag); if(CR_vmag > CR_vmax) {for(k=0;k<3;k++) {flux[k]*=CR_vmax/CR_vmag; CR_veff[k]*=CR_vmax/CR_vmag;}} // limit flux to free-streaming speed [as with RT]
@@ -964,7 +964,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
         if(Bmag>0) {fluxmag=fabs(fluxmag)/sqrt(Bmag); gradmag=fabs(gradmag)/sqrt(Bmag);}
         if(gradmag>0) {Lgrad = All.cf_atime * P0 / gradmag;}
         if(fluxmag>0 && SphP[target].CosmicRayEnergyPred[k] > MIN_REAL_NUMBER) {veff = fluxmag / SphP[target].CosmicRayEnergyPred[k];}
-        double v_max = DMIN( C_LIGHT_CODE , kappa / (MIN_REAL_NUMBER + Lgrad) );
+        double v_max = DMIN( C_LIGHT_CODE , kappa / (MIN_REAL_NUMBER + Lgrad) ); // ??
         double RSOL_over_v_desired = veff / (MIN_REAL_NUMBER + v_max);
         if(isfinite(RSOL_over_v_desired) && (RSOL_over_v_desired > 0) && (RSOL_over_v_desired < MAX_REAL_NUMBER)) {if(RSOL_over_v_desired < 1) {M1SpeedCorrFac[k]=RSOL_over_v_desired;}}
 #endif
@@ -1121,7 +1121,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                                     if(CR_species_ID_in_bin[j_s] < 0 || CR_species_ID_in_bin[j_s] == 7) {U_donor *= 0.1;} // secondary e+/e- from protons (pion decay) get ~0.1 original p energy -- needs to match assumption above
                                     double N_donor = frac_secondary*(1.-fac)*ntot_evolved[j]; // absolute number being transferred between bins
                                     //U_donor = N_donor * E_GeV[j_s]; // simpler flat-mean, less accurate but less potential for overflow
-                                    //pbar,e+ extra bins after highest-E bin??? revise spectral input???
+                                    //pbar,e+ extra bins after highest-E bin -- revise spectral input ??
                                     Ucr[j_s] += U_donor; // update energy in secondary bin
                                     ntot_evolved[j_s] += N_donor; // update number in secondary bin
                                     bin_slopes[j_s] = CR_return_slope_from_number_and_energy_in_bin(Ucr[j_s],ntot_evolved[j_s],E_GeV[j_s],j_s); // get the updated slope for this bin

@@ -535,7 +535,7 @@ void gravity_tree(void)
                 if(!isnan(trace) && (trace>0)) {for(k=0;k<6;k++) {SphP[i].ET[k_freq][k]/=trace;}} else {SphP[i].ET[k_freq][0]=SphP[i].ET[k_freq][1]=SphP[i].ET[k_freq][2]=1./3.; SphP[i].ET[k_freq][3]=SphP[i].ET[k_freq][4]=SphP[i].ET[k_freq][5]=0;}}}
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) /* normalize to energy density with C, and multiply by volume to use standard 'finite volume-like' quantity as elsewhere in-code */
-        if(P[i].Type==0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[i].Rad_E_gamma[kf] *= P[i].Mass/(SphP[i].Density*All.cf_a3inv * C_LIGHT_CODE);}}
+        if(P[i].Type==0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[i].Rad_E_gamma[kf] *= P[i].Mass/(SphP[i].Density*All.cf_a3inv * C_LIGHT_CODE_REDUCED);}}
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX) /* multiply by volume to use standard 'finite volume-like' quantity as elsewhere in-code */
         if(P[i].Type==0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[i].Rad_Flux[kf][k2] *= P[i].Mass/(SphP[i].Density*All.cf_a3inv);}}} // convert to standard finite-volume-like units //
@@ -546,7 +546,7 @@ void gravity_tree(void)
             for(kfreq=0; kfreq<N_RT_FREQ_BINS; kfreq++)
             {
                 double f_slab=1, erad_i=0, vel_i[3]={0}, vdot_h[3]={0}, flux_i[3]={0}, flux_mag2=MIN_REAL_NUMBER, vdotflux=0, kappa_rad=rt_kappa(i,kfreq), tau_eff=kappa_rad*sigma_eff_i; if(tau_eff > 1.e-4) {f_slab = (1.-exp(-tau_eff)) / tau_eff;} // account for optically thick local 'slabs' self-shielding themselves
-                double acc_norm = kappa_rad * f_slab / C_LIGHT_CODE; // pre-factor for radiation pressure acceleration
+                double acc_norm = kappa_rad * f_slab / C_LIGHT_CODE_REDUCED; // pre-factor for radiation pressure acceleration
 #if defined(RT_LEBRON)
                 acc_norm *= All.PhotonMomentum_Coupled_Fraction; // allow user to arbitrarily increase/decrease strength of RP forces for testing
 #endif
