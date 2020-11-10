@@ -183,7 +183,7 @@
             if(hlle_wtfac_f < eps_wtfac_f) {hlle_wtfac_f=eps_wtfac_f;} else {if(hlle_wtfac_f > 1.-eps_wtfac_f) {hlle_wtfac_f=1.-eps_wtfac_f;}}
             hlle_wtfac_u = hlle_wtfac_f * (1.-hlle_wtfac_f) * (lam_p + lam_m); // weight for addition of diffusion term
 #else
-            hlle_wtfac_u = hlle_wtfac_f = 0.5; // this corresponds to the Global-Lax-Friedrichs (GLF) flux function
+            double hlle_wtfac_u=0.5, hlle_wtfac_f=0.5; // this corresponds to the Global-Lax-Friedrichs (GLF) flux function
 #endif
             /* the flux is already known (its explicitly evolved, rather than determined by the gradient of the energy density */
             for(k=0;k<3;k++) {cmag += Face_Area_Vec[k] * (hlle_wtfac_f*flux_i[k] + (1.-hlle_wtfac_f)*flux_j[k]);} /* remember, our 'flux' variable is a volume-integral [all physical units here] */
@@ -247,12 +247,14 @@
                 // enforce a flux limiter for stability (to prevent overshoot) //
                 cmag *= dt_hydrostep; // all in physical units //
                 double sVi = scalar_i*V_i_phys, sVj = scalar_j*V_j_phys; // physical units //
-                thold_hll = 0.25 * DMIN(fabs(sVi-sVj), DMAX(fabs(sVi), fabs(sVj)));
+                thold_hll = 0.25 * DMAX(fabs(sVi-sVj), DMAX(fabs(sVi), fabs(sVj)));
 #ifdef RT_ENHANCED_NUMERICAL_DIFFUSION
                 thold_hll *= 2.0;
 #endif
                 if(sign_c0 < 0) {thold_hll *= 1.e-2;} // if opposing signs, restrict this term //
+#ifndef RT_ENHANCED_NUMERICAL_DIFFUSION
                 if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
+#endif
                 cmag /= dt_hydrostep;
                 Fluxes_Rad_E_gamma[k_freq] += cmag; // returned in physical units //
 #ifdef RT_INFRARED // define advected radiation temperature based on direction of net radiation flow //
