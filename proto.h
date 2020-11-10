@@ -813,6 +813,7 @@ int rt_get_lum_band_singlestar(int i, int mode, double *lum);
 void eddington_tensor_dot_vector(double ET[6], double vec_in[3], double vec_out[3]);
 double return_flux_limiter(int target, int k_freq);
 double rt_kappa(int j, int k_freq);
+int check_if_absorbed_photons_can_be_reemitted_into_same_band(int kfreq);
 double rt_absorb_frac_albedo(int j, int k_freq);
 double rt_absorption_rate(int i, int k_freq);
 double rt_diffusion_coefficient(int i, int k_freq);

@@ -54,7 +54,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     double E_CRs_Gev=return_CRbin_CR_rigidity_in_GV(i,k_CRegy), Z_charge_CR=fabs(return_CRbin_CR_charge_in_e(i,k_CRegy)), M_cr_mp=return_CRbin_CRmass_in_mp(i,k_CRegy); // charge and energy and resonant Alfven wavenumber (in gyro units) of the CR population we're evolving
         
     // ok, the updates from [0] advection w gas, [1] fluxes, [2] adiabatic, [-] catastrophic (in cooling.c) are all set, just need exchange terms b/t CR and Alfven //
-    double EPSILON_SMALL = 1.e-77; // want a very small number here 
+    double EPSILON_SMALL = 1.e-77; // want a very small number here // ?? c_light_code below
     double bhat[3], Bmag=0, Bmag_Gauss, clight_code=C_LIGHT_CODE, Omega_gyro, eA[2], vA_code, vA2_c2, E_B, fac, flux_G, fac_Omega, flux[3], f_CR, f_CR_dot_B, cs_thermal, r_turb_driving, G_ion_neutral=0, G_turb_plus_linear_landau=0, G_nonlinear_landau_prefix=0;
     double ne=1, f_ion=1, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, rho_cgs=rho*UNIT_DENSITY_IN_CGS;
 #ifdef COOLING 
