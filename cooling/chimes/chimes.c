@@ -36,6 +36,10 @@
 #include "chimes_proto.h"
 #include "chimes_vars.h"
 
+
+#ifdef CHIMES
+
+
 /** 
  * @brief Sets equilibrium abundances. 
  * 
@@ -472,3 +476,6 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
       return;
   }
 }  
+
+
+#endif

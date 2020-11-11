@@ -17,6 +17,10 @@
  *
  ***************************************************************************/
 
+
+#ifdef CHIMES
+
+
 /* 
  * @brief Get table index. 
  * 
@@ -407,3 +411,6 @@ __attribute__((always_inline)) inline ChimesFloat chimes_interpol_5d_fix_xyz(con
   
   return output; 
 }
+
+
+#endif
