@@ -539,6 +539,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define COOL_MOLECFRAC_NONEQM
 #define OUTPUT_MOLECULAR_FRACTION
 #define EOS_SUBSTELLAR_ISM
+#define RT_FUV_BACKGROUND 1 // Draine 1978 ISRF for photoelectric heating (appropriate for solar circle, must be re-scaled for different environments)
 #endif
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 #define GALSF_FB_FIRE_STELLAREVOLUTION 2 // enable multi-loop feedback from such sources [this is specific to the DG-MG implementations here, not for public use right now!]. for now set to =2, which should force the code version to match previous iterations, as compared to the newer implementations.
