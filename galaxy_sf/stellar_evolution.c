@@ -736,7 +736,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
     double r = BPP(n).ProtoStellarRadius_inSolar / UNIT_LENGTH_IN_SOLAR; // star radius in code units
     int stage_increase = 0;
     double lum_Hayashi = ps_lum_Hayashi_BB(mass, r); //blackbody radiation assuming the star follows the Hayashi track
-    double lum_MS = ps_lum_MS(mass); //luminosity of main sequence star of m mass
+    double lum_MS = ps_lum_MS(P[n].ZAMS_Mass); //luminosity of main sequence star of m mass
     double lum_int = DMAX(lum_Hayashi, lum_MS+(f_acc*fk*All.G*mass*mdot/r )); //luminosity from the stellar interior
     double lum_I = ps_lum_I(mdot); //luminosity needed to ionize the accreted material
     if (stage < 5){ //not a main sequence star
@@ -753,7 +753,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                 double dm_rel = dm_curr/(mass-dm_curr);
                 //Get properties for stellar evolution
                 lum_Hayashi = ps_lum_Hayashi_BB(mass, r); //blackbody radiation assuming the star follows the Hayashi track
-                lum_MS = ps_lum_MS(mass); //luminosity of main sequence star of m mass
+                lum_MS = ps_lum_MS(P[n].ZAMS_Mass); //luminosity of main sequence star of m mass
                 lum_int = DMAX(lum_Hayashi, lum_MS+(f_acc*fk*All.G*mass*mdot/r )); //luminosity from the stellar interior
                 n_ad = ps_adiabatic_index(stage, mdot); //get adiabatic index. Note: ORION does not seem to update this, but I think it is worthwhile as mdot can vary over time
                 ag = 3.0/(5.0-n_ad); //shorthand

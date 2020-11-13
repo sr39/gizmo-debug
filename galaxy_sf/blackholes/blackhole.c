@@ -728,6 +728,9 @@ void blackhole_final_operations(void)
 #ifdef GRAIN_FLUID
             BPP(n).BH_Dust_Mass += BlackholeTempInfo[i].accreted_dust_Mass;
 #endif
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+	    P[n].ZAMS_Mass = DMAX(P[n].ZAMS_Mass, P[n].BH_Mass); // keep a running maximum of the stellar mass as the ZAMS mass
+#endif
         } // if(masses > 0) check
 #ifdef HERMITE_INTEGRATION
         else { P[n].AccretedThisTimestep = 0; }
