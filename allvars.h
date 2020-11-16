@@ -1335,6 +1335,12 @@ typedef unsigned long long peanokey;
 #endif // METALS //
 
 
+#if defined(COSMIC_RAYS_ALT_RSOL_FORM) && defined(COSMIC_RAYS_M1)
+#define COSMIC_RAYS_RSOL_CORRFAC (((COSMIC_RAYS_M1)/(C_LIGHT_CODE))) // this needs to be defined after the code SOL for obvious reasons
+#else
+#define COSMIC_RAYS_RSOL_CORRFAC (1)
+#endif
+
 
 #ifndef FOF_PRIMARY_LINK_TYPES
 #define FOF_PRIMARY_LINK_TYPES 2

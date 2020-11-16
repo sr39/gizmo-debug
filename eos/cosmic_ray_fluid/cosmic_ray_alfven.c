@@ -13,6 +13,8 @@
 
 #if defined(COSMIC_RAYS_ALFVEN)
 
+// ?? needs some RSOL factors more carefully placed, here
+
 /* routine to do the drift/kick operations for CRs: mode=0 is kick, mode=1 is drift */
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 {
@@ -54,7 +56,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     double E_CRs_Gev=return_CRbin_CR_rigidity_in_GV(i,k_CRegy), Z_charge_CR=fabs(return_CRbin_CR_charge_in_e(i,k_CRegy)), M_cr_mp=return_CRbin_CRmass_in_mp(i,k_CRegy); // charge and energy and resonant Alfven wavenumber (in gyro units) of the CR population we're evolving
         
     // ok, the updates from [0] advection w gas, [1] fluxes, [2] adiabatic, [-] catastrophic (in cooling.c) are all set, just need exchange terms b/t CR and Alfven //
-    double EPSILON_SMALL = 1.e-77; // want a very small number here // ?? c_light_code below
+    double EPSILON_SMALL = 1.e-77; // want a very small number here // c_light_code below
     double bhat[3], Bmag=0, Bmag_Gauss, clight_code=C_LIGHT_CODE, Omega_gyro, eA[2], vA_code, vA2_c2, E_B, fac, flux_G, fac_Omega, flux[3], f_CR, f_CR_dot_B, cs_thermal, r_turb_driving, G_ion_neutral=0, G_turb_plus_linear_landau=0, G_nonlinear_landau_prefix=0;
     double ne=1, f_ion=1, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, rho_cgs=rho*UNIT_DENSITY_IN_CGS;
 #ifdef COOLING 
@@ -79,7 +81,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     Omega_gyro = (8987.34 * Bmag_Gauss * (Z_charge_CR/E_CRs_Gev)) * UNIT_TIME_IN_CGS; // gyro frequency of the CR population we're evolving, converted to physical code units //
     vA_code = sqrt( Bmag*Bmag / (SphP[i].Density*All.cf_a3inv) ); double vA_noion=vA_code; // Alfven speed^2 in code units [recall B units such that there is no 4pi here]
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-    vA_code /= sqrt(f_ion); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
+    vA_code /= sqrt(1.e-16 + f_ion); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
     cs_thermal = sqrt(convert_internalenergy_soundspeed2(i,u0)); // thermal sound speed at appropriate drift-time [in code units, physical]
     vA2_c2 = vA_code*vA_code / (clight_code*clight_code); // Alfven speed vs c_light
