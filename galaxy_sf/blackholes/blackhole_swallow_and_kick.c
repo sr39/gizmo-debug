@@ -876,6 +876,8 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
         }
 #endif
+	P[j].StellarAge = All.Time; // use this attibute to save the gas cell's formation time for possible subsequent checks for special behavior on its first timestep
+
         /* note, if you want to use this routine to inject magnetic flux or cosmic rays, do this below */
 #ifdef MAGNETIC
         SphP[j].divB = 0; double Bmag=0, Bmag_0=0;
