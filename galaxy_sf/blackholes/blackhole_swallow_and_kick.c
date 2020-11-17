@@ -872,7 +872,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
             SphP[j].Rad_E_gamma_Pred[k] = 0; SphP[j].Dt_Rad_E_gamma[k] = 0;
 #endif
 #if defined(RT_EVOLVE_FLUX)
-	    int kdir; for(kdir=0;kdir<3;k++){SphP[j].Rad_Flux[k][kdir] = 0;}
+	    int kdir; for(kdir=0;kdir<3;kdir++){SphP[j].Rad_Flux[k][kdir] = 0;}
 #endif
         }
 #endif
