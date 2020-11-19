@@ -884,6 +884,10 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 
 
+#if defined(OUTPUT_POTENTIAL) && !defined(EVALPOTENTIAL)
+#define EVALPOTENTIAL
+#endif
+
 #if defined(BLACK_HOLES) && (defined(BH_REPOSITION_ON_POTMIN) || defined(BH_SEED_FROM_FOF))
 #ifndef EVALPOTENTIAL
 #define EVALPOTENTIAL

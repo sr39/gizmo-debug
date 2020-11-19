@@ -622,6 +622,7 @@
 #COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART=1 #- allows restart from a snapshot (flag=2) where single-bin CR model was used, for runs with CR spectra: the spectra are populated with the energy of the single-bin snapshot and fixed initial spectral shapes/ratios
 #COSMIC_RAYS_DISABLE_STREAMING  #- turn off CR streaming (propagation is purely advective+diffusion; this also disables losses from gyro-resonant instabilities)
 #COSMIC_RAYS_DISABLE_COOLING    #- turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic PdV work terms remain)
+#COSMIC_RAYS_ALT_RSOL_FORM      #- will get made default, we think, once de-bugged
 ####################################################################################################-
 
 

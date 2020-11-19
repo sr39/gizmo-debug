@@ -18,22 +18,21 @@
 int addFB_evaluate_active_check(int i, int fb_loop_iteration);
 int addFB_evaluate_active_check(int i, int fb_loop_iteration)
 {
-    if(P[i].Type <= 1) return 0;
-    if(P[i].Mass <= 0) return 0;
-    if(PPP[i].Hsml <= 0) return 0;
-    if(PPP[i].NumNgb <= 0) return 0;
-    if(P[i].SNe_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==0) return 1;}
+    if(P[i].Type <= 1) {return 0;} // note quantities used here must -not- change in the loop [hence not using mass here], b/c can change offsets for return from different processors, giving a negative mass and undefined behaviors
+    if(PPP[i].Hsml <= 0) {return 0;}
+    if(PPP[i].NumNgb <= 0) {return 0;}
+    if(P[i].SNe_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==0) {return 1;}}
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-    if(P[i].MassReturn_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==1) return 1;}
+    if(P[i].MassReturn_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==1) {return 1;}}
 #ifdef GALSF_FB_FIRE_RPROCESS
-    if(P[i].RProcessEvent_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==2) return 1;}
+    if(P[i].RProcessEvent_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==2) {return 1;}}
 #endif
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-    if(P[i].AgeDeposition_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==3) return 1;}
+    if(P[i].AgeDeposition_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==3) {return 1;}}
 #endif
 #endif
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-    if(P[i].wind_mode != 2 || P[i].ProtoStellarStage != 5) return 0;
+    if(P[i].wind_mode != 2 || P[i].ProtoStellarStage != 5) {return 0;}
 #endif
     return 0;
 }
@@ -135,7 +134,7 @@ void particle2in_addFB(struct addFB_evaluate_data_in_ *in, int i, int loop_itera
 #endif
     for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {in->Area_weighted_sum[k] = P[i].Area_weighted_sum[k];}
     in->Msne = 0; in->unit_mom_SNe = 0; in->SNe_v_ejecta = 0;
-    if((P[i].DensAroundStar <= 0)||(P[i].Mass == 0)) {return;} // events not possible [catch for mass->0]
+    if((P[i].DensAroundStar <= 0)||(P[i].Mass <= 0)) {return;} // events not possible [catch for mass->0]
     if(loop_iteration < 0) {in->Msne=P[i].Mass; in->unit_mom_SNe=1.e-4; in->SNe_v_ejecta=1.0e-4; return;} // weighting loop
     particle2in_addFB_fromstars(in,i,loop_iteration); // subroutine that actually deals with the assignment of feedback properties
     in->unit_mom_SNe = in->Msne * in->SNe_v_ejecta;
@@ -143,15 +142,18 @@ void particle2in_addFB(struct addFB_evaluate_data_in_ *in, int i, int loop_itera
 
 void out2particle_addFB(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
-    if(loop_iteration < 0)
+    if(P[i].Mass > 0)
     {
-        int k=0, kmin=0, kmax=7; if(loop_iteration == -1) {kmin=kmax; kmax=AREA_WEIGHTED_SUM_ELEMENTS;}
+        if(loop_iteration < 0)
+        {
+            int k=0, kmin=0, kmax=7; if(loop_iteration == -1) {kmin=kmax; kmax=AREA_WEIGHTED_SUM_ELEMENTS;}
 #ifdef GALSF_USE_SNE_ONELOOP_SCHEME
-        kmin=0; kmax=AREA_WEIGHTED_SUM_ELEMENTS;
+            kmin=0; kmax=AREA_WEIGHTED_SUM_ELEMENTS;
 #endif
-        for(k=kmin;k<kmax;k++) {ASSIGN_ADD(P[i].Area_weighted_sum[k], out->Area_weighted_sum[k], mode);}
-    } else {
-        P[i].Mass -= out->M_coupled; if((P[i].Mass<0)||(isnan(P[i].Mass))) {P[i].Mass=0;}
+            for(k=kmin;k<kmax;k++) {ASSIGN_ADD(P[i].Area_weighted_sum[k], out->Area_weighted_sum[k], mode);}
+        } else {
+            P[i].Mass -= out->M_coupled; if((P[i].Mass<0)||(isnan(P[i].Mass))) {P[i].Mass=0;}
+        }
     }
 }
 

@@ -15,6 +15,7 @@
 
 //#define COSMIC_RAYS_OLD_M1SPEEDLIMITER
 //#define COSMIC_RAYS_ALT_RSOL_FORM
+//#define COSMIC_RAYS_ALT_FLUX_FORM
 
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
 /* routine which defines the actual bin list for the multi-bin spectral CR models. note the number of entries MUST match the hard-coded N_CR_PARTICLE_BINS defined in allvars.h */
@@ -565,10 +566,7 @@ void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, i
         #pragma omp atomic
         SphP[target].CosmicRayEnergyPred[k_CRegy] += dEcr; // update injected CR energy. needs to be done thread-safely, but since the above routines dont depend on this, it should be safe to do here.
 #ifdef COSMIC_RAYS_M1
-        double dir_mag=0, flux_mag=dEcr*DMIN(100.*COSMIC_RAYS_M1,C_LIGHT_CODE), dir_to_use[3]={0}; int k;
-#if defined(COSMIC_RAYS_OLD_M1SPEEDLIMITER) || defined(COSMIC_RAYS_ALT_RSOL_FORM)
-        flux_mag = dEcr * COSMIC_RAYS_M1;
-#endif
+        double dir_mag=0, flux_mag=dEcr * COSMIC_RAYS_M1, dir_to_use[3]={0}; int k;
 #ifdef MAGNETIC
         double B_dot_dir=0, Bdir[3]={0}; for(k=0;k<3;k++) {Bdir[k]=SphP[target].BPred[k]; B_dot_dir+=dir[k]*Bdir[k];} // the 'default' direction is projected onto B
         for(k=0;k<3;k++) {dir_to_use[k]=B_dot_dir*Bdir[k];} // launch -along- B, projected [with sign determined] by the intially-desired direction
@@ -635,7 +633,7 @@ double Get_CosmicRayGradientLength(int i, int k_CRegy)
 /* return the effective CR 'streaming' velocity for sub-grid [unresolved] models with streaming velocity set by e.g. the Alfven speed along the gradient of the CR pressure */
 double Get_CosmicRayStreamingVelocity(int i)
 {
-#ifdef COSMIC_RAYS_ALT_RSOL_FORM
+#ifdef COSMIC_RAYS_ALT_FLUX_FORM
     return 0; // with this option, the streaming is included by default in the flux equation, different from what we do below where we include it as an 'effective diffusivity'
 #endif
     /* if we don't evolve magnetic fields, we'll assume the streaming velocity is approximately the sound speed, i.e. assume beta~1 */
@@ -649,7 +647,7 @@ double Get_CosmicRayStreamingVelocity(int i)
 #endif
     v_streaming = DMIN(1.0e6*cs_stream, sqrt(MIN_REAL_NUMBER*cs_stream*cs_stream + vA_2)); // limit to Alfven speed, but put some limiters for extreme cases //
 #endif
-#if defined(COSMIC_RAYS_M1) && (defined(COSMIC_RAYS_OLD_M1SPEEDLIMITER) || defined(COSMIC_RAYS_ALT_RSOL_FORM))
+#if defined(COSMIC_RAYS_M1)
     v_streaming = DMIN(v_streaming , COSMIC_RAYS_M1); // limit to maximum transport speed //
 #endif
     v_streaming *= All.cf_afac3; // converts to physical units and rescales according to chosen coefficient //
@@ -746,9 +744,9 @@ double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy)
     vA /= sqrt(1.e-16 + Get_Gas_Ionized_Fraction(target)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
     
-#ifdef COSMIC_RAYS_ALT_RSOL_FORM
-    double v_flux_eff=0; int k; for(k=0;k<3;k++) {v_flux_eff += SphP[i].CosmicRayFluxPred[k_CRegy][k] * SphP[i].CosmicRayFluxPred[k_CRegy][k];} // need magnitude of flux vector
-    if(v_flux_eff > 0) {v_flux_eff=sqrt(v_flux_eff) / (MIN_REAL_NUMBER + SphP[i].CosmicRayEnergyPred[k_CRegy]);} else {v_flux_eff=0;} // effective speed of CRs = |F|/E
+#ifdef COSMIC_RAYS_ALT_FLUX_FORM
+    double v_flux_eff=0; int k; for(k=0;k<3;k++) {v_flux_eff += SphP[target].CosmicRayFluxPred[k_CRegy][k] * SphP[target].CosmicRayFluxPred[k_CRegy][k];} // need magnitude of flux vector
+    if(v_flux_eff > 0) {v_flux_eff=sqrt(v_flux_eff) / (MIN_REAL_NUMBER + SphP[target].CosmicRayEnergyPred[k_CRegy]);} else {v_flux_eff=0;} // effective speed of CRs = |F|/E
     streamfac = (vA * GAMMA_COSMICRAY_MINUS1 / fabs(SphP[target].CosmicRayDiffusionCoeff[k_CRegy])) * DMAX(v_flux_eff/COSMIC_RAYS_RSOL_CORRFAC - GAMMA_COSMICRAY*vA, 0); // this is (vA/[3kappa])*(F - vA*(ecr+Pcr))/ecr, using the 'full F' [corrected back from rsol, b/c rsol correction moves outside this for loss terms]
     return streamfac; // ?? probably want to limit to make sure above doesn't take on too extreme a value... also above, have only positive term since this removes energy from CRs when streaming super-Alfvenically, but when streaming sub-Alfvenically, could this become a source term with energy going into CRs? seems problematic if vA very high, but then scattering would work inefficiently... so plausible, but really need to be careful again about magnitude...
 #endif
@@ -791,7 +789,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         }
         if(Bmag2 > 0) {for(k=0;k<3;k++) {DtCosmicRayFlux[k]=DtCRDotBhat*B0[k]/Bmag2; bhat[k]/=sqrt(Bmag2);}}
 #endif
-#ifdef COSMIC_RAYS_ALT_RSOL_FORM
+#ifdef COSMIC_RAYS_ALT_FLUX_FORM
         double v_Alfven = Get_Gas_Alfven_speed_i(i); /* define naive streaming and Alfven speeds */
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
         v_Alfven /= sqrt(1.e-16 + Get_Gas_Ionized_Fraction(i)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
@@ -1131,7 +1129,12 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                         double frag_coeff=CR_frag_coeff[j]*nHcgs, rad_coeff=CR_rad_decay_coeff[j], total_catastrophic_coeff=frag_coeff+rad_coeff;
                         if(total_catastrophic_coeff > 0) // have some losses here, account for those
                         {
-                            double fac=exp(-DMIN(total_catastrophic_coeff*dt*M1SpeedCorrFac[j], 60.)); // actual loss
+                            double fac_n=DMIN(total_catastrophic_coeff*dt*M1SpeedCorrFac[j], 60.); // loss rate for number
+                            double fac_e=DMIN(total_catastrophic_coeff*dt*M1SpeedCorrFac[j], 60.); // loss rate for energy
+                            double xm=x_m[j], xp=x_p[j], xm_g=pow(xm,slope_gamma), xp_g=pow(xp,slope_gamma), xm_g1=xm_g*xm, xp_g1=xp_g*xp, xm_g2=xm_g1*xm, xp_g2=xp_g1*xp, ecorrfac=1;
+                            ecorrfac = (slope_gamma*(2.+slope_gamma))/((1.+slope_gamma)*(1.+slope_gamma)) * ((xm_g1-xp_g1)*(xm_g1-xp_g1)) / ((xm_g-xp_g)*(xm_g2-xp_g2));
+                            if(ecorrfac>0 && isfinite(ecorrfac)) {fac_e *= ecorrfac;}
+
                             if(CR_secondary_target_bin[j][0] > -2) /* now check for whether or not there are any secondary products */
                             {
                                 int m; for(m=0;m<N_CR_PARTICLE_SPECIES;m++) {
@@ -1141,10 +1144,12 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                                     if(m==0) {secondary_coeff += rad_coeff;} /* 100% of radioactive products go into the first secondary bin */
                                     if(j_s < 0 || secondary_coeff <= 0) {continue;} /* no production in this particular bin/channel */
                                     double frac_secondary = DMAX(0.,DMIN(1., secondary_coeff / total_catastrophic_coeff)); /* restrict to sensible bounds */
+                                    double dfac_e, dfac_n; if(fac_e<0.07) {dfac_e=fac_e-0.5*fac_e*fac_e+fac_e*fac_e*fac_e/6.;} else {dfac_e=1.-exp(-fac_e);}
+                                    if(fac_n<0.07) {dfac_n=fac_n-0.5*fac_n*fac_n+fac_n*fac_n*fac_n/6.;} else {dfac_n=1.-exp(-fac_n);}
                                     
-                                    double U_donor = frac_secondary*(1.-fac)*Ucr[j] * DMAX(1.,A_wt[j_s])/DMAX(1.,A_wt[j]); // need to account for the different total energy assuming fixed energy per nucleon here
+                                    double U_donor = frac_secondary*dfac_e*Ucr[j] * DMAX(1.,A_wt[j_s])/DMAX(1.,A_wt[j]); // need to account for the different total energy assuming fixed energy per nucleon here
                                     if(CR_species_ID_in_bin[j_s] < 0 || CR_species_ID_in_bin[j_s] == 7) {U_donor *= 0.1;} // secondary e+/e- from protons (pion decay) get ~0.1 original p energy -- needs to match assumption above
-                                    double N_donor = frac_secondary*(1.-fac)*ntot_evolved[j]; // absolute number being transferred between bins
+                                    double N_donor = frac_secondary*dfac_n*ntot_evolved[j]; // absolute number being transferred between bins
                                     //U_donor = N_donor * E_GeV[j_s]; // simpler flat-mean, less accurate but less potential for overflow
                                     //pbar,e+ extra bins after highest-E bin -- revise spectral input ??
                                     Ucr[j_s] += U_donor; // update energy in secondary bin
@@ -1152,7 +1157,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                                     bin_slopes[j_s] = CR_return_slope_from_number_and_energy_in_bin(Ucr[j_s],ntot_evolved[j_s],E_GeV[j_s],j_s); // get the updated slope for this bin
                                 }
                             }
-                            Ucr[j] *= fac; ntot_evolved[j] *= fac;
+                            Ucr[j] *= exp(-fac_e); ntot_evolved[j] *= exp(-fac_n);
                         }
 #else
                         if(E_GeV[j] > 0.28) {double fac=exp(-DMIN(hadronic_coeff*dt*M1SpeedCorrFac[j], 60.)); Ucr[j]*=fac; ntot_evolved[j]*=fac;} // only >~GeV trigger threshold for collisions //
