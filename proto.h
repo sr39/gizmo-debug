@@ -543,6 +543,10 @@ struct addFB_evaluate_data_in_
 
 void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int fb_loop_iteration);
 double mechanical_fb_calculate_eventrates(int i, double dt);
+#ifdef METALS
+void get_wind_yields(double *yields, int i);
+void get_SNe_yields(double *yields,int i,double t_gyr,int SNeIaFlag, double *Msne);
+#endif
 #if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
 double mechanical_fb_calculate_eventrates_SNe(int i, double dt);
 void mechanical_fb_calculate_eventrates_Winds(int i, double dt);

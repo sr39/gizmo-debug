@@ -941,11 +941,25 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         v_magnitude = single_star_jet_velocity(i);
 #endif
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
+#ifdef METALS
+    double yields[NUM_METAL_SPECIES]={0.0};
+#endif
 #if defined(SINGLE_STAR_FB_WINDS)
         if ( (P[i].ProtoStellarStage == 5) && (P[i].wind_mode == 1) ){v_magnitude = single_star_wind_velocity(i);} //Only MS stars launch winds: get velocity from fancy model
+//Get abundances in wind
+#ifdef METALS
+    get_wind_yields(yields, i);
+    for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=yields[k];} 
+#endif
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
         if(P[i].ProtoStellarStage == 6) {v_magnitude = single_star_SN_velocity(i);} // This star is about to go SNe: get velocity from fancy model
+//Get abundances in SN
+#ifdef METALS
+    double Msne; //dummy variable
+    get_SNe_yields(yields,i,0,0,&Msne);
+    for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=yields[k];} 
+#endif
 #endif
 #endif
 
