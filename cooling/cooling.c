@@ -864,7 +864,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
             LambdaMol *= (1+Z_sol)*(0.001 + 0.1*nHcgs/(1.+nHcgs) + 0.09*nHcgs/(1.+0.1*nHcgs) + Z_sol*Z_sol/(1.0+nHcgs)); // gives very crude estimate of metal-dependent terms //
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-            double column = evaluate_NH_from_GradRho(P[target].GradRho,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs
+            double column = evaluate_NH_from_GradRho(P[target].GradRho,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs            
             double Z_C = DMAX(1.e-6, Z[2]/All.SolarAbundances[2]), sqrt_T=sqrt(T), ncrit_CO=1.9e4*sqrt_T, Sigma_crit_CO=3.0e-5*T/Z_C, T3=T/1.e3, EXPmax=90.; // carbon abundance (relative to solar), critical density and column
             double f_Cplus_CCO=1./(1.+nHcgs/3.e3), photoelec=1; // very crude estimate used to transition between C+ cooling curve and C/CO [nearly-identical] cooling curves above C+ critical density, where C+ rate rapidly declines
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
@@ -998,20 +998,26 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         
         if(LambdaCompton<0) {Heat -= LambdaCompton;} /* Compton heating rather than cooling */
 
-#if defined(GALSF_FB_FIRE_RT_UVHEATING) || defined(RT_PHOTOELECTRIC)
+#if defined(GALSF_FB_FIRE_RT_UVHEATING) || defined(RT_PHOTOELECTRIC) || defined(RT_FUV_BACKGROUND)
         /* Photoelectric heating following Bakes & Thielens 1994 (also Wolfire 1995); now with 'update' from Wolfire 2005 for PAH [fudge factor 0.5 below] */
         if((target >= 0) && (T < 1.0e6))
         {
+            double photoelec;
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
-            double photoelec = SphP[target].Rad_Flux_UV;
+            photoelec = SphP[target].Rad_Flux_UV;
 #ifdef COOL_UVB_SELFSHIELD_RAHMATI
             if(gJH0>0 && shieldfac>0) {photoelec += sqrt(shieldfac) * (gJH0 / 2.29e-10);} // uvb contribution //
 #endif
 #endif
 #ifdef RT_PHOTOELECTRIC
-            double photoelec = SphP[target].Rad_E_gamma[RT_FREQ_BIN_PHOTOELECTRIC] * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_CGS / 3.9e-14; // convert to Habing field //
+            photoelec = SphP[target].Rad_E_gamma[RT_FREQ_BIN_PHOTOELECTRIC] * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_CGS / 3.9e-14; // convert to Habing field //
             if(photoelec > 0) {if(photoelec > 1.e4) {photoelec = 1.e4;}}
 #endif
+#ifdef RT_FUV_BACKGROUND // add a constant assumed FUV background, for isolated ISM simulations that don't get FUV from local sources self-consistently
+            double column = evaluate_NH_from_GradRho(P[target].GradRho,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs            
+            photoelec += RT_FUV_BACKGROUND * 1.7 * exp(-DMAX(P[target].Metallicity[0]/All.SolarAbundances[0],1e-4) * column * 2000.); // RT_IRSF_BACKGROUND rescales the overal IRSF, factor of 1.7 gives Draine 1978 field in Habing units, extinction factor assumes the same FUV band-integrated dust opacity as RT module
+#endif
+
             if(photoelec > 0)
             {
                 double LambdaPElec = 1.3e-24 * photoelec / nHcgs * P[target].Metallicity[0]/All.SolarAbundances[0];
