@@ -138,6 +138,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         double renormerFAC = cos_theta_face_flux*cos_theta_face_flux;
 #else
         double kappa_ij = 0.5 * (kappa_i+kappa_j); // physical
+        kappa_ij *= COSMIC_RAYS_RSOL_CORRFAC; // account for RSOL in effective diffusion speed
         double L_eff_j = Particle_Size_j; // physical
         double CRopticaldepth = DMIN(Particle_Size_i,L_eff_j)*COSMIC_RAYS_M1/kappa_ij;
         double reductionfactor = sqrt((1.0-exp(0.0-CRopticaldepth*CRopticaldepth)))/CRopticaldepth;

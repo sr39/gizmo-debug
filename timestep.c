@@ -516,12 +516,14 @@ integertime get_timestep(int p,		/*!< particle index */
                     if(All.ComovingIntegrationOn) {cr_diffusion_opt = 1;}
                     double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p,k_CRegy);
                     double L_cr_weak; L_cr_weak = CRPressureGradScaleLength;
+                    double kappa_cr_eff = fabs(SphP[p].CosmicRayDiffusionCoeff[k_CRegy]);
+                    kappa_cr_eff *= COSMIC_RAYS_RSOL_CORRFAC; // account for RSOL factor as it actually appears in the flux eqn in code units with this RSOL form
 #if defined(COSMIC_RAYS_M1)
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
 #else
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + (1.-0.5*cr_diffusion_opt)/(L_particle*All.cf_atime)));
 #endif
-                    double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + fabs(SphP[p].CosmicRayDiffusionCoeff[k_CRegy]) * GAMMA_COSMICRAY_MINUS1);
+                    double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + kappa_cr_eff * GAMMA_COSMICRAY_MINUS1);
                     double dt_conduction =  L_cr_strong * coeff_inv; /* true diffusion requires the stronger timestep criterion be applied */
                     explicit_timestep_on = 1;
 #if (COSMIC_RAYS_DIFFUSION_MODEL < 0)
@@ -531,7 +533,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifndef COSMIC_RAYS_DISABLE_STREAMING
                     /* estimate whether diffusion is streaming-dominated: use stronger/weaker criterion accordingly */
                     double diffusion_from_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * Get_CosmicRayStreamingVelocity(p) * CRPressureGradScaleLength;
-                    if(diffusion_from_streaming > 0.75*fabs(SphP[p].CosmicRayDiffusionCoeff[k_CRegy])) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
+                    if(diffusion_from_streaming > 0.75*kappa_cr_eff) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
 #endif
 #ifdef GALSF
                     /* for multi-physics problems, we will use a more aggressive timestep criterion
@@ -572,9 +574,12 @@ integertime get_timestep(int p,		/*!< particle index */
                             if(crv > 0)
                             {
                                 crv = sqrt(crv) / SphP[p].CosmicRayEnergy[k_CRegy];
-                                cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , fabs(SphP[p].CosmicRayDiffusionCoeff[k_CRegy])/(Get_Particle_Size(p)*All.cf_atime)));
-#ifdef COSMIC_RAYS_ALFVEN
-                                cr_speed = COSMIC_RAYS_ALFVEN;
+#ifdef COSMIC_RAYS_ALT_RSOL_FORM
+                                cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , DMAX(crv , kappa_cr_eff/(Get_Particle_Size(p)*All.cf_atime)))); // ?? should this actually scale with flux magnitude in the frame [crv], to avoid problematic points where haven't reached local eqm
+#elif defined(COSMIC_RAYS_ALFVEN)
+                                cr_speed = COSMIC_RAYS_ALFVEN; // simple approach needed if above not enabled and this set of options is
+#else
+                                cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , kappa_cr_eff/(Get_Particle_Size(p)*All.cf_atime))); // default to min of free-streaming/diffusion speed
 #endif
                             }
                             double dt_courant_CR = 0.4 * (L_particle*All.cf_atime) / cr_speed;

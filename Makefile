@@ -320,6 +320,7 @@ FC       =  $(CC) #mpifort  ## change this to "mpifort" for packages requiring l
 OPTIMIZE = -O1 -funroll-loops
 OPTIMIZE += -g -Wall # compiler warnings
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
+CC       = mpic++
 CHIMESINCL = -I/usr/local/include/sundials
 CHIMESLIBS = -L/usr/local/lib -lsundials_cvode -lsundials_nvecserial
 endif

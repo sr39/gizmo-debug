@@ -839,8 +839,7 @@ void domain_exchange(void)
 	      partBuf[offset_sph[target] + count_sph[target]] = P[n];
 	      keyBuf[offset_sph[target] + count_sph[target]] = Key[n];
 #ifdef CHIMES 
-	      for (i = 0; i < ChimesGlobalVars.totalNumberOfSpecies; i++)
-		sphAbundancesBuf[((offset_sph[target] + count_sph[target]) * ChimesGlobalVars.totalNumberOfSpecies) + i] = ChimesGasVars[n].abundances[i];
+	      for(i = 0; i < ChimesGlobalVars.totalNumberOfSpecies; i++) {sphAbundancesBuf[((offset_sph[target] + count_sph[target]) * ChimesGlobalVars.totalNumberOfSpecies) + i] = ChimesGasVars[n].abundances[i];}
 	      free_gas_abundances_memory(&(ChimesGasVars[n]), &ChimesGlobalVars); 
 	      ChimesGasVars[n].abundances = NULL; 
 	      ChimesGasVars[n].isotropic_photon_density = NULL; 

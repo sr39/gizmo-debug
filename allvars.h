@@ -885,6 +885,10 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 
 
+#if defined(OUTPUT_POTENTIAL) && !defined(EVALPOTENTIAL)
+#define EVALPOTENTIAL
+#endif
+
 #if defined(BLACK_HOLES) && (defined(BH_REPOSITION_ON_POTMIN) || defined(BH_SEED_FROM_FOF))
 #ifndef EVALPOTENTIAL
 #define EVALPOTENTIAL
@@ -1335,6 +1339,12 @@ typedef unsigned long long peanokey;
 #define NUM_METAL_SPECIES (1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS)
 #endif // METALS //
 
+
+#if defined(COSMIC_RAYS_ALT_RSOL_FORM) && defined(COSMIC_RAYS_M1)
+#define COSMIC_RAYS_RSOL_CORRFAC (((COSMIC_RAYS_M1)/(C_LIGHT_CODE))) // this needs to be defined after the code SOL for obvious reasons
+#else
+#define COSMIC_RAYS_RSOL_CORRFAC (1)
+#endif
 
 
 #ifndef FOF_PRIMARY_LINK_TYPES

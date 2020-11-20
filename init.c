@@ -639,7 +639,7 @@ void init(void)
                 double f_elec = 0.02; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
                 if(species == -1) {f_norm = f_elec;} // e-
                 if(species == +1) {f_norm = 1.-f_elec;} // p
-                if(species == -2) {f_norm = 1.e-10 * f_elec;} // e+ (few percent of e- in e+, plausible, but can vary)
+                if(species == -2) {f_norm = 1.e-10 * f_elec;} // e+ (initialize to negligible since want to start with primary)
                 if(species > 1)
                 {
                     double Zfac = P[i].Metallicity[0]/All.SolarAbundances[0]; // scale heavier elements to the metallicity of the gas into which CRs are being accelerated

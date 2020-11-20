@@ -833,16 +833,30 @@ void hydro_final_operations_and_cleanup(void)
 #endif
             /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
                 (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
-            for(k=0;k<N_CR_PARTICLE_BINS;k++)
-            {
+            for(k=0;k<N_CR_PARTICLE_BINS;k++) {
                 double streamfac = fabs(CR_get_streaming_loss_rate_coefficient(i,k));
                 SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * streamfac;
 #if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
-                SphP[i].DtCosmicRayEnergy[k] -= SphP[i].CosmicRayEnergyPred[k] * streamfac; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
+                SphP[i].DtCosmicRayEnergy[k] -= COSMIC_RAYS_RSOL_CORRFAC * SphP[i].CosmicRayEnergyPred[k] * streamfac; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
 #endif
             }
+#if defined(COSMIC_RAYS_ALT_FLUX_FORM) && defined(COSMIC_RAYS_M1) && defined(MAGNETIC) // only makes sense to include parallel correction below if all these terms enabled //
+            /* 'residual' term from parallel scattering of CRs being not-necessarily-in-equilibrium with a two-moment form of the equations */
+            double vA_eff=Get_Gas_Alfven_speed_i(i), vol_i=SphP[i].Density*All.cf_a3inv/P[i].Mass, Bmag=0, bhat[3]={0}; // define some useful variables
+            for(k=0;k<3;k++) {bhat[k]=SphP[i].BPred[k]; Bmag+=bhat[k]*bhat[k];} // get direction vector for B-field needed below
+            if(Bmag>0) {Bmag=sqrt(Bmag); for(k=0;k<3;k++) {bhat[k] /= Bmag;}} // make dimmanetionless
+#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
+            v_Alfven /= sqrt(1.e-16 + Get_Gas_Ionized_Fraction(i)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
-
+            if(Bmag>0) {for(k=0;k<N_CR_PARTICLE_BINS;k++) {
+                int m; double grad_P_dot_B=0, F_dot_B=0, h_cr=GAMMA_COSMICRAY * SphP[i].CosmicRayEnergyPred[k] * vol_i, vA_k=vA_eff, fcorr[3]={0};
+                for(m=0;m<3;m++) {grad_P_dot_B += bhat[m] * SphP[i].Gradients.CosmicRayPressure[k][m] * (All.cf_a3inv/All.cf_atime); F_dot_B += bhat[m] * SphP[i].CosmicRayFluxPred[k][m] * vol_i;}
+                if(F_dot_B < 0) {vA_k *= -1;} // needs to have appropriately-matched signage below //
+                for(m=0;m<3;m++) {fcorr[m] = bhat[m] * (grad_P_dot_B + ((F_dot_B/COSMIC_RAYS_RSOL_CORRFAC) - vA_k*h_cr)/(3.*SphP[i].CosmicRayDiffusionCoeff[k])) / (SphP[i].Density*All.cf_a3inv);} // physical units
+                for(m=0;m<3;m++) {SphP[i].HydroAccel[m] += fcorr[m];} // add correction term back into hydro acceleration terms -- need to check that don't end up with nasty terms for badly-initialized/limited scattering rates above
+            }}
+#endif
+#endif // COSMIC_RAYS
 
 
 

@@ -141,7 +141,6 @@
     double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + c_light; // physical units
     double V_i_phys = V_i / All.cf_a3inv;
     double V_j_phys = V_j / All.cf_a3inv;
-    double sthreeinv = 1./sqrt(3.);
     for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
     {
         Fluxes_Rad_E_gamma[k_freq] = 0;
@@ -166,6 +165,7 @@
             double cos_theta_face_flux = face_dot_flux / (Face_Area_Norm * grad_norm); // angle between flux and face vector normal
             if(cos_theta_face_flux < -1) {cos_theta_face_flux=-1;} else {if(cos_theta_face_flux > 1) {cos_theta_face_flux=1;}}
 #if 0
+            double sthreeinv = 1./sqrt(3.);
             double reduced_flux = grad_norm / (C_LIGHT_CODE_REDUCED * 0.5*(scalar_i+scalar_j)); // |f|/(c*E): ratio of flux to optically thin limit
             if(reduced_flux > 1) {reduced_flux=1;} else {if(reduced_flux < 0) {reduced_flux=0;}}
             double lam_m, lam_p, wt, y_f=1.-reduced_flux, y_f_h=sqrt(y_f), y_f_h2=sqrt(y_f_h), cth=cos_theta_face_flux/2.;
