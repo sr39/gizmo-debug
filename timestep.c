@@ -574,7 +574,7 @@ integertime get_timestep(int p,		/*!< particle index */
                             if(crv > 0)
                             {
                                 crv = sqrt(crv) / SphP[p].CosmicRayEnergy[k_CRegy];
-#ifdef COSMIC_RAYS_ALT_RSOL_FORM
+#if 0 // def COSMIC_RAYS_ALT_RSOL_FORM // tests suggest this stricter criterion isn't actually necessary for this form of the rsol 
                                 cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , DMAX(crv , kappa_cr_eff/(Get_Particle_Size(p)*All.cf_atime)))); // ?? should this actually scale with flux magnitude in the frame [crv], to avoid problematic points where haven't reached local eqm
 #elif defined(COSMIC_RAYS_ALFVEN)
                                 cr_speed = COSMIC_RAYS_ALFVEN; // simple approach needed if above not enabled and this set of options is

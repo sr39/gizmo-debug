@@ -13,9 +13,6 @@
 
 #ifdef COSMIC_RAYS
 
-//#define COSMIC_RAYS_OLD_M1SPEEDLIMITER
-//#define COSMIC_RAYS_ALT_RSOL_FORM
-//#define COSMIC_RAYS_ALT_FLUX_FORM
 
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
 /* routine which defines the actual bin list for the multi-bin spectral CR models. note the number of entries MUST match the hard-coded N_CR_PARTICLE_BINS defined in allvars.h */
@@ -64,7 +61,7 @@ void CR_spectrum_define_bins(void)
         for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {secondary_spec[j]=-200;}
         //if(primary_spec == -2) {secondary_spec[0]=-200;} // positrons -> gamma rays [un-tracked]
         //if(primary_spec == -1) {secondary_spec[0]=-200;} // electrons -> ? [un-tracked]
-        if(primary_spec == 1) {secondary_spec[0]=-2; secondary_spec[1]=-1; secondary_spec[2]=7;} // protons -> secondary e- and e+ and anti-p
+        if(primary_spec == 1) {secondary_spec[0]=-1; secondary_spec[1]=-2; secondary_spec[2]=7;} // protons -> secondary e- and e+ and anti-p
         if(primary_spec == 2) {secondary_spec[0]=4; secondary_spec[1]=5;} // B -> secondary p and e, Be [un-tracked for now, b/c small contributions]
         if(primary_spec == 3 || primary_spec == 6) {secondary_spec[0]=2; secondary_spec[1]=4; secondary_spec[2]=5;} // C or CNO -> secondary B, Be-7+9, and Be-10 [also e, p, but untracked for now b/c small contributions]
         //if(primary_spec == 4) {secondary_spec[0]=-200;} // Be7+9 -> secondary p and e, [un-tracked for now, b/c small contributions]
@@ -129,8 +126,8 @@ void CR_spectrum_define_bins(void)
                 int primary_id = CR_species_ID_in_bin[k], secondary_id = CR_species_ID_in_bin[CR_secondary_target_bin[k][j]];
                 //if((primary_id == 5) && (secondary_id == 4)) {} // Be10->B10 (radioactive - frag probability is null) //
                 if(primary_id==1) { // p; assume some simple branching ratios for pion production in the relevant regime above
-                    if(secondary_id==-2) {CR_frag_secondary_coeff[k][j] = (1./3.) * CR_frag_coeff[k];} // p->e+
                     if(secondary_id==-1) {CR_frag_secondary_coeff[k][j] = (1./3.) * CR_frag_coeff[k];} // p->e-
+                    if(secondary_id==-2) {CR_frag_secondary_coeff[k][j] = (1./3.) * CR_frag_coeff[k];} // p->e+
                     if(secondary_id== 7) {if(E_GeV[k]>=2.) {double sqrt_s=1.87654*sqrt(1.+E_GeV[k]/1.87654); CR_frag_secondary_coeff[k][j]=1.4*pow(sqrt_s,0.6)*exp(-pow(17./sqrt_s,1.4));}} // p->pbar [anti-proton production; multiplied by 2x here to include anti-neutrons that decay rapidly to anti-p]. fit to integrated-over-pT results from Reinert & Winkler 2017, arXiv:1712.00002
                 }
                 if(primary_id==2) { // B; fitting function to the results compiled and re-fit in Moskalenko & Mashnik 2003 (used for GALPROP), doing a solar-abundance-ratio weighted average over CNO, and summing over the relevant isotopes
@@ -776,7 +773,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 #if defined(COSMIC_RAYS_M1) /* CR FLUX VECTOR UPDATE */
         // this is the exact solution for the CR flux-update equation over a finite timestep dt: it needs to be solved this way [implicitly] as opposed to explicitly for dt because in the limit of dt_cr_dimless being large, the problem exactly approaches the diffusive solution
         double DtCosmicRayFlux[3]={0}, flux[3]={0}, CR_veff[3]={0}, CR_vmag=0, q_cr = 0, cr_speed = COSMIC_RAYS_M1, rsol_correction_factor = COSMIC_RAYS_RSOL_CORRFAC;
-#ifdef COSMIC_RAYS_OLD_M1SPEEDLIMITER
+#ifndef COSMIC_RAYS_ALT_RSOL_FORM
         cr_speed = DMAX( All.cf_afac3*SphP[i].MaxSignalVel , DMIN(COSMIC_RAYS_M1 , 10.*fabs(SphP[i].CosmicRayDiffusionCoeff[k_CRegy])/(Get_Particle_Size(i)*All.cf_atime)));
 #endif
         for(k=0;k<3;k++) {DtCosmicRayFlux[k] = -fabs(rsol_correction_factor*SphP[i].CosmicRayDiffusionCoeff[k_CRegy]) * (P[i].Mass/SphP[i].Density) * (SphP[i].Gradients.CosmicRayPressure[k_CRegy][k]/GAMMA_COSMICRAY_MINUS1);}
@@ -817,7 +814,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
             for(k=0;k<3;k++) {flux[k]=0; for(k=0;k<3;k++) {CR_veff[k]=0;}} // zero if invalid
         } else {
             double CR_vmax = DMIN(1.e3*cr_speed, C_LIGHT_CODE);
-#ifdef COSMIC_RAYS_OLD_M1SPEEDLIMITER // enforce a hard upper limit here, though shouldn't be needed with modern formulation
+#ifndef COSMIC_RAYS_ALT_RSOL_FORM // enforce a hard upper limit here, though shouldn't be needed with modern formulation
             CR_vmax = cr_speed;
 #endif
             CR_vmag = sqrt(CR_vmag); if(CR_vmag > CR_vmax) {for(k=0;k<3;k++) {flux[k]*=CR_vmax/CR_vmag; CR_veff[k]*=CR_vmax/CR_vmag;}} // limit flux to free-streaming speed [as with RT]
@@ -1129,12 +1126,13 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                         double frag_coeff=CR_frag_coeff[j]*nHcgs, rad_coeff=CR_rad_decay_coeff[j], total_catastrophic_coeff=frag_coeff+rad_coeff;
                         if(total_catastrophic_coeff > 0) // have some losses here, account for those
                         {
-                            double fac_n=DMIN(total_catastrophic_coeff*dt*M1SpeedCorrFac[j], 60.); // loss rate for number
+                            double fac_n=DMIN(total_catastrophic_coeff*dt*M1SpeedCorrFac[j], 60.), fac_e=fac_n; // loss rate for number & energy [equal if loss rate is energy-independent. correction term is small: ~0.95 if loss rate ~1/E [e.g. radioactive], or ~1.05 if rate ~E
+                            /*
                             double fac_e=DMIN(total_catastrophic_coeff*dt*M1SpeedCorrFac[j], 60.); // loss rate for energy
                             double slope_gamma=bin_slopes[j], xm=x_m[j], xp=x_p[j], xm_g=pow(xm,slope_gamma), xp_g=pow(xp,slope_gamma), xm_g1=xm_g*xm, xp_g1=xp_g*xp, xm_g2=xm_g1*xm, xp_g2=xp_g1*xp, ecorrfac=1;
                             ecorrfac = (slope_gamma*(2.+slope_gamma))/((1.+slope_gamma)*(1.+slope_gamma)) * ((xm_g1-xp_g1)*(xm_g1-xp_g1)) / ((xm_g-xp_g)*(xm_g2-xp_g2));
                             if(ecorrfac>0 && isfinite(ecorrfac)) {fac_e *= ecorrfac;}
-
+                            */
                             if(CR_secondary_target_bin[j][0] > -2) /* now check for whether or not there are any secondary products */
                             {
                                 int m; for(m=0;m<N_CR_PARTICLE_SPECIES;m++) {

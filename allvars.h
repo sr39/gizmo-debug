@@ -419,6 +419,9 @@ USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
 #define COSMIC_RAYS_M1 (COSMIC_RAYS_ALFVEN)
 #endif
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if !defined(COSMIC_RAYS_ALT_FLUX_FORM)
+#define COSMIC_RAYS_ALT_FLUX_FORM /*<! set this as our default here */
+#endif
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK)
 #define COSMIC_RAYS_MULTIBIN 70     /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
 #else
