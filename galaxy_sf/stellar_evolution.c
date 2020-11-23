@@ -441,6 +441,8 @@ void get_SNe_yields(double *yields,int i,double t_gyr,int SNeIaFlag, double *Msn
     *Msne=8.72; SNeIaFlag=0; 
 #if !defined(SINGLE_STAR_FB_SNE)
     if(t_gyr > 0.044) {SNeIaFlag=1; *Msne=1.4;} // updated table of SNe rates and energetics, this is the updated mean mass per explosion to give the correct total SNe mass
+#else
+    t_gyr = stellar_lifetime_in_Gyr(i);
 #endif
     for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k];} // initialize to surface abundances //
     if(NUM_METAL_SPECIES>=10) {
@@ -1034,8 +1036,13 @@ double single_star_feedback_velocity_fortimestep(int n){
 
 double stellar_lifetime_in_Gyr(int n){ //Estimate lifetime of star, using simple MS approximation t/Gyr ~ 9.6 M/L in solar
     double m_solar = BPP(n).Mass * UNIT_MASS_IN_SOLAR; // mass in units of Msun
-    return 9.6 * (m_solar / P[n].StarLuminosity_Solar) + 0.003;     // gives ~10Gyr for solar-type stars, ~40Myr for 8msun ZAMS, and asymptotes to 3Myr at high mass
+    double lum = P[n].StarLuminosity_Solar;
+#if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
+    lum = ps_lum_MS(BPP(n).ZAMS_Mass); //just calculate the ZAMS luminosity
+#endif
+    return 9.6 * (m_solar / P[n].StarLuminosity_Solar) + 0.0037;     // gives ~10Gyr for solar-type stars, ~40Myr for 8msun ZAMS, and asymptotes to 3.7Myr at high mass
 }
+
 
 
 #if defined(SINGLE_STAR_FB_SNE)
