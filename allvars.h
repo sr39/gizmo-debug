@@ -515,6 +515,11 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_LOCAL_RP))
 #define SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION 2 //we are using the protostellar evolution model from ORION
 #endif
+#if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE) ) //enable diffusion for metals and enable tracers for different feedback channels
+#define STARFORGE_FEEDBACK_TRACERS 3 //0 for jets, 1 for winds, 2 for SNe
+#define TURB_DIFF_METALS
+#define TURB_DIFF_METALS_LOWORDER
+#endif
 #ifdef SINGLE_STAR_FB_RAD
 #define RT_M1
 #define RT_SOURCES 32
@@ -1330,13 +1335,19 @@ typedef unsigned long long peanokey;
 #define NUM_AGE_TRACERS 0
 #endif
 
+#ifdef STARFORGE_FEEDBACK_TRACERS
+#define NUM_STARFORGE_FEEDBACK_TRACERS (STARFORGE_FEEDBACK_TRACERS)
+#else
+#define NUM_STARFORGE_FEEDBACK_TRACERS 0
+#endif
+
 #ifdef COOL_METAL_LINES_BY_SPECIES
 #define NUM_LIVE_SPECIES_FOR_COOLTABLES 10
 #else
 #define NUM_LIVE_SPECIES_FOR_COOLTABLES 0
 #endif
 
-#define NUM_METAL_SPECIES (1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS)
+#define NUM_METAL_SPECIES (1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS+NUM_STARFORGE_FEEDBACK_TRACERS)
 #endif // METALS //
 
 

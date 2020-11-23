@@ -597,6 +597,19 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
 }
 
 #ifdef METALS
+void get_jet_yields(double *yields, int i)
+{
+    int k;
+    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k];} // return surface abundances, to leading order //
+#if defined(SINGLE_STAR_FB_WINDS)
+        
+        //More detailed jet abundances for individual stars can be put here. If empty, we will just return initial surface abundances
+        
+#endif
+}
+#endif
+
+#ifdef METALS
 void get_wind_yields(double *yields, int i)
 {
     int k;
