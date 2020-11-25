@@ -848,7 +848,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         }
 #endif
         
-#if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM) || defined(COOLING_OPERATOR_SPLIT)
+#if defined(COOLING_OPERATOR_SPLIT)
         /* now need to account for the adiabatic heating/cooling of the 'fluid', here, with gamma=GAMMA_COSMICRAY */
         double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt_entr, eCR_tmp, mode); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places
         double uf = DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
@@ -899,7 +899,9 @@ double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double 
             if(d_CR > f_limiter*(Ui-min_IEgy)) {d_CR = f_limiter*(Ui-min_IEgy);} // limit fractional loss to gas
         } else {f_limiter = 1000.; if(fabs(d_CR)>f_limiter*Ui) {d_CR=-f_limiter*Ui;}} // gas will be heated, limit fractional gain
     }
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) && !defined(COOLING_OPERATOR_SPLIT)
     SphP[i].Face_DivVel_ForAdOps = -d_CR / (All.cf_a2inv * GAMMA_COSMICRAY_MINUS1 * eCR_tmp * dt_entr + MIN_REAL_NUMBER); // this is the 'effective' divergence here (in code units) which matches exactly the change in CR energy when the above limiters etc are applied. we can save this for use in the other CR subroutines
+#endif
     return d_CR; // return final value
 }
 
