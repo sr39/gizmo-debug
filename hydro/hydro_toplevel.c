@@ -824,7 +824,7 @@ void hydro_final_operations_and_cleanup(void)
             
             
 #if defined(COSMIC_RAYS)
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) && !defined(COOLING_OPERATOR_SPLIT)
+#if !defined(COOLING_OPERATOR_SPLIT)
             /* with the spectrum model, we account here the adiabatic heating/cooling of the 'fluid', here, which was solved in the hydro solver but doesn't resolve which portion goes to CRs and which to internal energy, with gamma=GAMMA_COSMICRAY */
             double ECR_tot=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {ECR_tot+=SphP[i].CosmicRayEnergyPred[k];} // routine below only depends on the total CR energy, not bin-by-bin energies, when we do it this way here
             double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt, ECR_tot, 1); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places

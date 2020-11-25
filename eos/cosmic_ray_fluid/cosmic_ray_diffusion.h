@@ -12,10 +12,9 @@
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 /* --------------------------------------------------------------------------------- */
-int k_CRegy;
+int k_CRegy; double sqrtthreeinv = 1./sqrt(3.0), cosmo_unit = All.cf_a3inv, V_i_phys = V_i / All.cf_a3inv, V_j_phys = V_j / All.cf_a3inv;
 for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
 {
-    double cosmo_unit = All.cf_a3inv;
     double scalar_i = local.CosmicRayPressure[k_CRegy] * cosmo_unit; // physical units
     double scalar_j = CosmicRayPressure_j[k_CRegy] * cosmo_unit;
     double kappa_i = fabs(local.CosmicRayDiffusionCoeff[k_CRegy]); // physical units
@@ -120,7 +119,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
 #else // COSMIC_RAYS_M1 is active
         
         /* calculate the eigenvalues for the HLLE flux-weighting */
-        double cmag=0., flux_norm=0, flux_i[3]={0}, flux_j[3]={0}, thold_hll, V_i_phys = V_i / All.cf_a3inv, V_j_phys = V_j / All.cf_a3inv;
+        double cmag=0., flux_norm=0, flux_i[3]={0}, flux_j[3]={0}, thold_hll;
         for(k=0;k<3;k++)
         {
             /* the flux is already known (its explicitly evolved, rather than determined by the gradient of the energy density */
@@ -137,19 +136,14 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + COSMIC_RAYS_M1; // physical
         double renormerFAC = cos_theta_face_flux*cos_theta_face_flux;
 #else
-        double kappa_ij = 0.5 * (kappa_i+kappa_j); // physical
-        kappa_ij *= COSMIC_RAYS_RSOL_CORRFAC; // account for RSOL in effective diffusion speed
-        double L_eff_j = Particle_Size_j; // physical
-        double CRopticaldepth = DMIN(Particle_Size_i,L_eff_j)*COSMIC_RAYS_M1/kappa_ij;
-        double reductionfactor = sqrt((1.0-exp(0.0-CRopticaldepth*CRopticaldepth)))/CRopticaldepth;
-        double reducedcM1 = reductionfactor*COSMIC_RAYS_M1;
-        //TK test: correct HLL according Jiang & Oh 2018
-        //c_light = 2.*All.cf_afac3*kernel.vsig;
-        reducedcM1 = DMIN(COSMIC_RAYS_M1, reducedcM1/sqrt(3.0));
-        double c_light = DMAX(2.*All.cf_afac3*kernel.vsig, reducedcM1);    
-        double v_eff_light = DMIN(c_light , kappa_ij / L_eff_j); // physical
+        double kappa_ij = COSMIC_RAYS_RSOL_CORRFAC * 0.5 * (kappa_i+kappa_j); // physical, account for RSOL in effective diffusion speed
+        double CRopticaldepth = DMIN(Particle_Size_i,Particle_Size_j)*COSMIC_RAYS_M1/kappa_ij;
+        double reductionfactor = (4.+CRopticaldepth*(4.+3.*CRopticaldepth)) / (4.+CRopticaldepth*(4.+CRopticaldepth*(4.+3.*CRopticaldepth))); // this is just an excellent but simpler/faster approximation to SQRT[1-EXP[-x^2]]/x, which also deals better with small-x limits //
+        double reducedcM1 = reductionfactor*COSMIC_RAYS_M1*sqrtthreeinv; //TK test: correct HLL according Jiang & Oh 2018
+        double c_light = DMAX(2.*All.cf_afac3*kernel.vsig, reducedcM1);
+        double v_eff_light = DMIN(c_light , kappa_ij / Particle_Size_j); // physical
         double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + v_eff_light; // physical
-        double hll_corr = 1. / (1. + 1.5 * c_light * DMAX(L_eff_j/kappa_j , Particle_Size_i/kappa_i)); // all physical units
+        double hll_corr = 1. / (1. + 1.5 * c_light * DMAX(Particle_Size_j/kappa_j , Particle_Size_i/kappa_i)); // all physical units
         /* q below is a limiter to try and make sure the diffusion speed given by the hll flux doesn't exceed the diffusion speed in the diffusion limit */
         double q = 0.5 * c_hll * (kernel.r * All.cf_atime) / fabs(MIN_REAL_NUMBER + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q); // physical
         double renormerFAC = DMIN(1.,fabs(cos_theta_face_flux*cos_theta_face_flux * q * hll_corr)); // physical
