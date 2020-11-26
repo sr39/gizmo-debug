@@ -249,12 +249,11 @@
                 double sVi = scalar_i*V_i_phys, sVj = scalar_j*V_j_phys; // physical units //
                 thold_hll = 0.25 * DMAX(fabs(sVi-sVj), DMAX(fabs(sVi), fabs(sVj)));
 #ifdef RT_ENHANCED_NUMERICAL_DIFFUSION
-                thold_hll *= 2.0;
-#endif
+                thold_hll *= 2.0; // allow this term to be more generous //
+#else
                 if(sign_c0 < 0) {thold_hll *= 1.e-2;} // if opposing signs, restrict this term //
-#ifndef RT_ENHANCED_NUMERICAL_DIFFUSION
-                if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
 #endif
+                if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
                 cmag /= dt_hydrostep;
                 Fluxes_Rad_E_gamma[k_freq] += cmag; // returned in physical units //
 #ifdef RT_INFRARED // define advected radiation temperature based on direction of net radiation flow //
