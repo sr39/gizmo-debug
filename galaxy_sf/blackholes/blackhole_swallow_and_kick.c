@@ -937,16 +937,52 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         BPP(i).unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
 
         double v_magnitude = All.BAL_v_outflow * All.cf_atime; // velocity of the jet: default mode is to set this manually to a specific value
+#ifdef METALS
+        double yields[NUM_METAL_SPECIES]={0.0};
+#endif
 #ifdef SINGLE_STAR_FB_JETS
         v_magnitude = single_star_jet_velocity(i);
+#ifdef METALS
+        get_jet_yields(yields,i);
+#ifdef STARFORGE_FEEDBACK_TRACERS
+        yields[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS + 0] = 1.0; //set jet tracer to 1 
 #endif
+#endif
+#endif
+
+
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 #if defined(SINGLE_STAR_FB_WINDS)
-        if ( (P[i].ProtoStellarStage == 5) && (P[i].wind_mode == 1) ){v_magnitude = single_star_wind_velocity(i);} //Only MS stars launch winds: get velocity from fancy model
+        if ( (P[i].ProtoStellarStage == 5) && (P[i].wind_mode == 1) ){ //we have strong winds (stronger than jets if those are present) that we will spawn
+            v_magnitude = single_star_wind_velocity(i); //Only MS stars launch winds: get velocity from fancy model
+            //Get abundances in wind
+#ifdef METALS
+            get_wind_yields(yields, i);
+#ifdef STARFORGE_FEEDBACK_TRACERS
+            yields[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS + 1] = 1.0; //set wind tracer to 1 
+            yields[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS + 0] = 0.0; //set jet tracer back to 0
+#endif
+#endif
+        }
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
-        if(P[i].ProtoStellarStage == 6) {v_magnitude = single_star_SN_velocity(i);} // This star is about to go SNe: get velocity from fancy model
+        if(P[i].ProtoStellarStage == 6) {
+            v_magnitude = single_star_SN_velocity(i); // This star is about to go SNe: get velocity from fancy model
+//Get abundances in SN
+#ifdef METALS
+            double Msne; //dummy variable
+            get_SNe_yields(yields,i,0,0,&Msne);
+#ifdef STARFORGE_FEEDBACK_TRACERS
+            yields[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS + 2] = 1.0; //set SNe tracer to 1 
+            yields[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS + 0] = 0.0; //set jet tracer back to 0
 #endif
+#endif
+        }
+#endif
+#endif
+        //Update metallicity of spawned particle in STARFORGE modules
+#if defined(METALS) && ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE))
+        for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=yields[k];} 
 #endif
 
         // actually lay down position and velocities using coordinate basis
