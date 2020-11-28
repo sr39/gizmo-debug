@@ -206,6 +206,10 @@ OPTIMIZE += -g -Wall # compiler warnings
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -parallel -qopenmp  # openmp required compiler flags
 endif
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
+CHIMESINCL = -I${MY_SUNDIALS_PARENT_DIR}/sundials/instdir/include
+CHIMESLIBS = -L${MY_SUNDIALS_PARENT_DIR}/sundials/instdir/lib64 -lsundials_cvode -lsundials_kinsol -lsundials_nvecserial
+endif
 GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = -I$(TACC_MKL_INC)
@@ -235,6 +239,18 @@ OPT     += -DUSE_MPI_IN_PLACE
 ##     - likewise be careful with domain decomposition, TreeDomainUpdateFrequency param [so don't spend very long running domain decompositions]
 ##  - memory is large per node: for 16 tasks/node, large MaxMemSize=5450 is reasonable, with BufferSize=450, and large PartAllocFactor=40 can be used
 ##  - run job with "tacc_affinity" on.
+##
+## for SUNDIALS above [CHIMES], you'll need to install your own version, but its easy to do: instructions from Alex Gurvitch which worked well for me:
+##  - create parent folder: mkdir MY_SUNDIALS_PARENT_DIR/sundials
+##  - copy sundials-5.1.0.tgz to folder MY_SUNDIALS_PARENT_DIR/sundials
+##  - cd MY_SUNDIALS_PARENT_DIR/sundials
+##  - tar -xvzf sundials-5.1.0.tgz
+##  - mkdir instdir
+##  - mkdir builddir
+##  - cmake -DCMAKE_INSTALL_PREFIX=MY_SUNDIALS_PARENT_DIR/sundials/instdir sundials-5.1.0
+##  - make
+##  - make install
+##  - finally make sure to define the directory MY_SUNDIALS_PARENT_DIR and export it in your .bashrc file, so its visible to the compilers and linkers
 ##
 endif
 
