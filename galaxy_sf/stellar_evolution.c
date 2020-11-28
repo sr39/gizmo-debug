@@ -206,143 +206,7 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
     return 0;
 }
 
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) || defined(SINGLE_STAR_FB_SNE))
-void get_SNe_yields(double *yields,int i,double t_gyr,int SNeIaFlag, double *Msne)
-{
-    int k;
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_FB_SNE)
-    *Msne=8.72; SNeIaFlag=0; 
-#if !defined(SINGLE_STAR_FB_SNE)
-    if(t_gyr > 0.044) {SNeIaFlag=1; *Msne=1.4;} // updated table of SNe rates and energetics, this is the updated mean mass per explosion to give the correct total SNe mass
-#else
-    t_gyr = stellar_lifetime_in_Gyr(i);
-#endif
-    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k];} // initialize to surface abundances //
-    if(NUM_METAL_SPECIES>=10) {
-        // All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe
-        if(SNeIaFlag) {/* SNIa :: from Iwamoto et al. 1999; 'W7' models: total ejecta mass = Msne = 1.4. yields below are -fractional- */
-            yields[0]=1; /* total metal mass (species below, + residuals primarily in Ar, Cr, Mn, Ni) */ yields[1]=0; /*He*/
-            
-            /* Iwamoto et al. 1999, 'W7' model */
-            //yields[2]=3.50e-2; yields[3]=8.57e-07; yields[4]=1.02e-1; yields[5]=3.21e-3; yields[6]=6.14e-3; yields[7]=1.11e-1; yields[8]=6.21e-2; yields[9]=8.57e-3; yields[10]=5.31e-1; // old, modestly disfavored albeit for species like Mn not here
-            /* updated W7 in Nomoto+Leung 18 review */
-            //yields[2]=3.71e-2; yields[3]=7.79e-10; yields[4]=1.32e-1; yields[5]=3.11e-3; yields[6]=3.07e-3; yields[7]=1.19e-1; yields[8]=5.76e-2; yields[9]=8.21e-3; yields[10]=5.73e-1; // not significantly different from updated W7 below, bit more of an outlier and review tables seem a bit unreliable (typos, etc)
-            /* mean of new yields for W7 + WDD2 in Leung+Nomoto+18 */
-            //yields[2]=1.54e-2; yields[3]=1.24e-08; yields[4]=8.93e-2; yields[5]=2.41e-3; yields[6]=3.86e-3; yields[7]=1.34e-1; yields[8]=7.39e-2; yields[9]=1.19e-2; yields[10]=5.54e-1; // not significantly different from updated W7 below, bit more of an outlier and review tables seem a bit unreliable (typos, etc)
-            // W7   [Mori+18] [3.42428571e-02, 4.16428571e-06, 9.68571429e-02, 2.67928571e-03, 7.32857143e-03, 1.25296429e-01, 5.65937143e-02, 8.09285714e-03, 5.68700000e-01] -- absolute yield in solar
-            // WDD2 [Mori+18] [9.70714286e-04, 2.36285714e-08, 5.04357143e-02, 1.35621429e-03, 5.10112857e-03, 1.65785714e-01, 9.57078571e-02, 1.76928571e-02, 5.47890000e-01] -- absolute yield in solar
-            /* updated W7 in Leung+Nomoto+18 */
-            //yields[2]=1.31e-2; yields[3]=7.59e-10; yields[4]=9.29e-2; yields[5]=1.79e-3; yields[6]=2.82e-3; yields[7]=1.06e-1; yields[8]=5.30e-2; yields[9]=6.27e-3; yields[10]=5.77e-1; // seems bit low in Ca/Fe, less plausible if those dominated by Ia's
-            /* Seitenzahl et al. 2013, model N100 [favored] */
-            //yields[2]=2.17e-3; yields[3]=2.29e-06; yields[4]=7.21e-2; yields[5]=2.55e-3; yields[6]=1.10e-2; yields[7]=2.05e-1; yields[8]=8.22e-2; yields[9]=1.05e-2; yields[10]=5.29e-1; // very high Si, seems bit less plausible vs other models here
-            /* new benchmark model in Leung+Nomoto+18 [closer to WDD2 in lighter elements, to W7 in heavier elements] */
-            //yields[2]=1.21e-3; yields[3]=1.40e-10; yields[4]=4.06e-2; yields[5]=1.29e-4; yields[6]=7.86e-4; yields[7]=1.68e-1; yields[8]=8.79e-2; yields[9]=1.28e-2; yields[10]=6.14e-1; // arguably better theory motivation vs Mori+ combination
-            /* mean of W7 and WDD2 in Mori+2018 */
-            yields[2]=1.76e-2; yields[3]=2.10e-06; yields[4]=7.36e-2; yields[5]=2.02e-3; yields[6]=6.21e-3; yields[7]=1.46e-1; yields[8]=7.62e-2; yields[9]=1.29e-2; yields[10]=5.58e-1; // arguably better obs calibration vs LN/NL papers
-            
-        } else { /* Core collapse :: temporary new time-dependent fits */
 
-            double t=t_gyr, tmin=0.0037, tbrk=0.0065, tmax=0.044, Mmax=35., Mbrk=10., Mmin=6.; // numbers for interpolation of ejecta masses [must be careful here that this integrates to the correct -total- ejecta mass]
-            /* note these break times: tmin=3.7 Myr corresponds to the first explosions (Eddington-limited lifetime of the most massive stars),
-                tbrk=6.5 Myr to the end of this early phase, stars with ZAMS mass ~30+ Msun here. curve flattens both from IMF but also b/c mass-loss less efficient.
-                tmax=44 Myr to the last explosion determined by lifetime of 8 Msun stars */
-            if(t<=tbrk) {*Msne=Mmax*pow(t/tmin, log(Mbrk/Mmax)/log(tbrk/tmin));} else {*Msne=Mbrk*pow(t/tbrk, log(Mmin/Mbrk)/log(tmax/tbrk));} // power-law interpolation of ejecta mass from initial to final value over duration of CC phase
-
-            int i_tvec = 5; // number of entries
-            double tvec[5]={3.7, 8., 18., 30., 44.}; // time in Myr
-            double fvec[10][5] = {
-                {4.61e-01, 3.30e-01, 3.58e-01, 3.65e-01, 3.59e-01}, // He [IMF-mean y=3.67e-01]  [note have to remove normal solar correction and take care with winds]
-                {2.37e-01, 8.57e-03, 1.69e-02, 9.33e-03, 4.47e-03}, // C  [IMF-mean y=3.08e-02]  [note care needed in fitting out winds: wind=6.5e-3, ejecta_only=1.0e-3]
-                {1.07e-02, 3.48e-03, 3.44e-03, 3.72e-03, 3.50e-03}, // N  [IMF-mean y=4.47e-03]  [some care needed with winds, but not as essential]
-                {9.53e-02, 1.02e-01, 9.85e-02, 1.73e-02, 8.20e-03}, // O  [IMF-mean y=7.26e-02]  [reasonable - generally IMF-integrated alpha-element total mass-yields lower vs fire-2 by factor ~0.7 or so]
-                //{1.03e-02, 1.34e-02, 1.93e-02, 2.70e-03, 2.75e-03}, // Ne [IMF-mean y=1.08e-02]  [default Sukhbold+our rebin+fit numbers give [Ne/O]~-0.17]
-                //{5.90e-04, 3.70e-03, 8.12e-03, 1.28e-03, 1.20e-03}, // Mg [IMF-mean y=3.24e-03]  [default Sukhbold+our rebin+fit numbers give [Mg/O]~-0.44]; needs to be more like 9.0e-3 to -actually- get solar abundance ratio for expected solar mix of Mg/Fe and conceivably produce super-solar [alpha/Fe] at the level observed
-                {2.60e-02, 2.20e-02, 1.93e-02, 2.70e-03, 2.75e-03}, // Ne [IMF-mean y=1.58e-02]  [roughly a hybrid of fit direct to ejecta and fit to all mass as above, truncating at highest masses]
-                {2.89e-02, 1.25e-02, 5.77e-03, 1.03e-03, 1.03e-03}, // Mg [IMF-mean y=9.48e-03]  [fit directly on ejecta and ignore mass-fraction rescaling since that's not reliable at early times: this gives a reasonable number. important to note that early SNe dominate Mg here, quite strongly]
-                {4.12e-04, 7.69e-03, 8.73e-03, 2.23e-03, 1.18e-03}, // Si [IMF-mean y=4.53e-03]  [lots comes from 1a's, so low here isn't an issue]
-                {3.63e-04, 5.61e-03, 5.49e-03, 1.26e-03, 5.75e-04}, // S  [IMF-mean y=3.01e-03]  [more from Ia's]
-                {4.28e-05, 3.21e-04, 6.00e-04, 1.84e-04, 9.64e-05}, // Ca [IMF-mean y=2.77e-04]  [Ia]
-                {5.46e-04, 2.18e-03, 1.08e-02, 4.57e-03, 1.83e-03}  // Fe [IMF-mean y=4.11e-03]  [Ia]
-            };
-            // compare nomoto '06: y = [He: 3.69e-1, C: 1.27e-2, N: 4.56e-3, O: 1.11e-1, Ne: 3.81e-2, Mg: 9.40e-3, Si: 8.89e-3, S: 3.78e-3, Ca: 4.36e-4, Fe: 7.06e-3]
-            
-            /* ok now use the fit parameters above for the piecewise power-law components to define the yields at each time */
-            double t_myr=t_gyr*1000.; int i_t=-1; for(k=0;k<i_tvec;k++) {if(t_myr>tvec[k]) {i_t=k;}}
-            for(k=0;k<10;k++)
-            {
-                int i_y = k + 1;
-                if(i_t<0) {yields[i_y] = fvec[k][0];}
-                else if(i_t>=i_tvec-1) {yields[i_y] = fvec[k][i_tvec-1];}
-                else {yields[i_y] = fvec[k][i_t] * pow(t_myr/tvec[i_t] , log(fvec[k][i_t+1]/fvec[k][i_t]) / log(tvec[i_t+1]/tvec[i_t])); }
-            }
-            
-#if 0
-            double t0y=0.008, t1y=0.012, t2y=0.018, z_sol=P[i].Metallicity[0]/All.SolarAbundances[0]; // some reference timescales for the piecewise-constant NuGrid yields
-            /* note these break times: t2y=18 Myr corresponds to the lifetime of a 12.x solar-mass star: later times use yields from the 'low mass' 9-12 Msun type models.
-                t1y=12 Myr to lifetime of ~15-17 Msun stars, from 12-18 we have 'low-ish' mass stars,
-                t0y= 8 Myr to lifetime of ~22-25 Msun, from 9 - 12 Myr we have intermediate mass stars with 16 - 20+ Msun
-                below t0y (<8 Myr) we have the more massive stars, with M>~25+ Msun. At some point the highest-mass stars cease to explode (implode instead) but lose
-                lots of mass in pre-SNe wind ejecta which we effectively include here, leading to negligible production factors for the heaviest elements */
-            if(t<=t0y)      {yields[1]=0.43; yields[2]=1.2e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=4.5e-2; yields[5]=1.0e-2;
-                             yields[6]=6.e-3*pow(DMAX(z_sol,1.e-4),0.25); yields[7]=4.e-3*pow(DMAX(z_sol,1.e-4),0.2); yields[8]=1.0e-3;
-                             yields[9]=P[i].Metallicity[9]; yields[10]=P[i].Metallicity[10];}
-            else if(t<=t1y) {yields[1]=0.39; yields[2]=1.2e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=1.0e-1; yields[5]=1.6e-2;
-                             yields[6]=9.0e-3; yields[7]=9.0e-3; yields[8]=4.0e-3; yields[9]=8.0e-5; yields[10]=1.0e-3;}
-            else if(t<=t2y) {yields[1]=0.37; yields[2]=1.2e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=7.0e-2; yields[5]=1.0e-2;
-                             yields[6]=5.5e-3; yields[7]=1.6e-2; yields[8]=1.3e-2; yields[9]=2.0e-4; yields[10]=5.0e-3;}
-            else            {yields[1]=0.40; yields[2]=1.0e-2; yields[3]=5.e-3*DMIN(3.,DMAX(1.e-3,z_sol)); yields[4]=2.0e-2; yields[5]=6.e-4+2.e-3*DMIN(z_sol,3.);
-                             yields[6]=1.5e-3; yields[7]=8.5e-3; yields[8]=6.0e-3; yields[9]=7.0e-4; yields[10]=1.8e-3;}
-            /* from limongi+ papers + SB99 only, above: strong Z-dependence for: N [3], little bit for Ne? [but only in late-time bin, where this is strongly interpolation-dependent b/c no actual tables?],
-                some Mg+Si [6+7] in earliest bin, probably related to winds? both weak (~0.2 slope). and earliest bin has progenitor abundances,
-                for Ca+Fe [9+10] in particular : same might re-appear for the late-bin heaviest elements?
-             */
-            // All.SolarAbundances[1]=0.27030; All.SolarAbundances[2]=2.53e-3; All.SolarAbundances[3]=7.41e-4; All.SolarAbundances[4]=6.13e-3; All.SolarAbundances[5]=1.34e-3;
-            // All.SolarAbundances[6]=7.57e-4; All.SolarAbundances[7]=7.12e-4; All.SolarAbundances[8]=3.31e-4; All.SolarAbundances[9]=6.87e-5; All.SolarAbundances[10]=1.38e-3;}
-#endif
-            
-            // sum heavy element yields to get the 'total Z' yield here, multiplying by a small correction term to account for trace species not explicitly followed above [mean for CC] //
-            yields[0]=0; for(k=2;k<=10;k++) {yields[0] += 1.0144 * yields[k];} // assume here that there is some trace species proportional to each species, not really correct but since it's such a tiny correction this is pretty negligible //
-        }
-    }
-#else
-    double M_ejecta_model=10.5; // normalization total mass
-    if(NUM_METAL_SPECIES>=10) {
-        // All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe
-        if(SNeIaFlag) {
-            /* SNIa */ /* from Iwamoto et al. 1999; 'W7' models */
-            M_ejecta_model = 1.4; // normalization total mass
-            yields[0]=1.4;/* total metal mass */
-            yields[1]=0.0;/*He*/ yields[2]=0.049;/*C*/ yields[3]=1.2e-6;/*N*/ yields[4]=0.143;/*O*/
-            yields[5]=0.0045;/*Ne*/ yields[6]=0.0086;/*Mg*/ yields[7]=0.156;/*Si*/
-            yields[8]=0.087;/*S*/ yields[9]=0.012;/*Ca*/ yields[10]=0.743;/*Fe*/
-        } else {
-            /* SNII (IMF-averaged... may not be the best approx on short timescales..., Nomoto 2006 (arXiv:0605725) */
-            yields[0]=2.0;/*Z [total metal mass]*/
-            yields[1]=3.87;/*He*/ yields[2]=0.133;/*C*/ yields[3]=0.0479;/*N*/ yields[4]=1.17;/*O*/
-            yields[5]=0.30;/*Ne*/ yields[6]=0.0987;/*Mg*/ yields[7]=0.0933;/*Si*/
-            yields[8]=0.0397;/*S*/ yields[9]=0.00458;/*Ca*/ yields[10]=0.0741;/*Fe*/
-
-            // metal-dependent yields:
-            if(P[i].Metallicity[0]<0.033) {yields[3]*=P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[3]*=1.65;} // N scaling is strongly dependent on initial metallicity of the star //
-            yields[0] += yields[3]-0.0479; // correct total metal mass for this correction //
-        }
-    }
-    if(NUM_METAL_SPECIES==3 || NUM_METAL_SPECIES==4)
-    {
-        if(SNeIaFlag) {
-            yields[0]=1.4; yields[1]=0.0086; yields[2]=0.743; // All Z, Mg, Fe in total mass (SnIa)
-        } else {
-            yields[0]=2.0; yields[1]=0.12; yields[2]=0.0741; // SnII (per-SNe IMF-weighted averages)
-        }
-    }
-    if(NUM_METAL_SPECIES==1) {if(SNeIaFlag) {yields[0]=1.4;} else {yields[0]=2.0;}}
-    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]/M_ejecta_model;} // normalize to mass fraction //
-    /* add a check to allow for larger abundances in the progenitor stars (usually irrelevant) */
-    for(k=0;k<=NUM_LIVE_SPECIES_FOR_COOLTABLES;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]);}
-    if(SNeIaFlag) {if(NUM_METAL_SPECIES>=10) {yields[1]=0.0;}} // no He yield for Ia SNe //
-#endif // fire-2 vs fire-2.x yields clause
-}
-#endif
 
 #if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
 /* functions below contain pre-calculation of event rates and energetics, masses, etc, for FIRE mechanical feedback modules */
@@ -418,6 +282,7 @@ int get_age_tracer_bin(double age)
     if(index<0) {PRINT_WARNING("Age tracer binary search not working index=%d age=%f",index,age); endrun(8888);} // exit if invalid result
     return index; // return valid bin
 }
+
 
 /* Returns the start time, in Myr, of the age bin with index "k" */
 double get_age_tracer_bin_start_time(int k)
@@ -562,9 +427,6 @@ void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
     return;
 }
 
-<<<<<<< HEAD
-void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
-=======
 
 
 void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
