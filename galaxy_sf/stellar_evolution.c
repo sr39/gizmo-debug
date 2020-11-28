@@ -283,6 +283,7 @@ int get_age_tracer_bin(double age)
     return index; // return valid bin
 }
 
+
 /* Returns the start time, in Myr, of the age bin with index "k" */
 double get_age_tracer_bin_start_time(int k)
 {
