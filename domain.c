@@ -875,7 +875,7 @@ void domain_exchange(void)
 #ifdef CHIMES 
 	      if (n < N_gas - 1)
 		{
-		  for (abunIndex = 0; abunIndex < ChimesGlobalVars.totalNumberOfSpecies; abunIndex++)
+		  for(abunIndex = 0; abunIndex < ChimesGlobalVars.totalNumberOfSpecies; abunIndex++)
 		    tempAbundanceArray[abunIndex] = ChimesGasVars[N_gas - 1].abundances[abunIndex];
 		  free_gas_abundances_memory(&(ChimesGasVars[N_gas - 1]), &ChimesGlobalVars); 
 		  ChimesGasVars[N_gas - 1].abundances = NULL; 

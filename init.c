@@ -636,7 +636,7 @@ void init(void)
             for(j=0;j<N_CR_PARTICLE_BINS;j++) {
                 int species = CR_species_ID_in_bin[j];
                 double f_norm = 1.e-20;
-                double f_elec = 0.06; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
+                double f_elec = 0.05; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
                 if(species == -1) {f_norm = f_elec;} // e-
                 if(species == +1) {f_norm = 1.-f_elec;} // p
                 if(species == -2) {f_norm = 1.e-10 * f_elec;} // e+ (initialize to negligible since want to start with primary)

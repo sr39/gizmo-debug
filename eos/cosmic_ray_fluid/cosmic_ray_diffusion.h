@@ -12,7 +12,7 @@
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 /* --------------------------------------------------------------------------------- */
-int k_CRegy; double sqrtthreeinv = 1./sqrt(3.0), cosmo_unit = All.cf_a3inv, V_i_phys = V_i / All.cf_a3inv, V_j_phys = V_j / All.cf_a3inv;
+int k_CRegy; double sqrtthreeinv,cosmo_unit,V_i_phys,V_j_phys; sqrtthreeinv=1./sqrt(3.0); cosmo_unit=All.cf_a3inv; V_i_phys=V_i/All.cf_a3inv; V_j_phys=V_j/All.cf_a3inv;
 for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
 {
     double scalar_i = local.CosmicRayPressure[k_CRegy] * cosmo_unit; // physical units

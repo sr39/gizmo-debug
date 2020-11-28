@@ -244,7 +244,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double wk_vec[AREA_WEIGHTED_SUM_ELEMENTS]={0}, wk_tmp=0;
                 wk_vec[0] = wk;
                 wk_tmp=wk*kernel.dp[0]/kernel.r; if(kernel.dp[0]>0) {wk_vec[1]=wk_tmp;} else {wk_vec[2]=wk_tmp;}
-                wk_tmp=wk*kernel.dp[1]/kernel.r; if(kernel.dp[1]>0) {wk_vec[3]=wt_tmp;} else {wk_vec[4]=wk_tmp;}
+                wk_tmp=wk*kernel.dp[1]/kernel.r; if(kernel.dp[1]>0) {wk_vec[3]=wk_tmp;} else {wk_vec[4]=wk_tmp;}
                 wk_tmp=wk*kernel.dp[2]/kernel.r; if(kernel.dp[2]>0) {wk_vec[5]=wk_tmp;} else {wk_vec[6]=wk_tmp;}
 
                 // if loop_iteration==-1, this is a pre-calc loop to get the relevant weights for coupling //
