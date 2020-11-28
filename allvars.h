@@ -519,7 +519,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION 2 //we are using the protostellar evolution model from ORION
 #endif
 #if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE) ) //enable diffusion for metals and enable tracers for different feedback channels
-#define STARFORGE_FEEDBACK_TRACERS 3 //0 for jets, 1 for winds, 2 for SNe
+#define STARFORGE_FEEDBACK_TRACERS 3 // 0 for jets, 1 for winds, 2 for SNe
 #define TURB_DIFF_METALS
 #define TURB_DIFF_METALS_LOWORDER
 #endif
@@ -595,8 +595,12 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_DISABLE_RAD_PRESSURE
 #endif
 
-#if defined(SINGLE_STAR_FB_WINDS) && !defined(GALSF_FB_MECHANICAL)
-#define GALSF_FB_MECHANICAL // we will use the FIRE wind module for low mass loss rate stars (spawning leads to issues)
+#if (defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && !defined(GALSF_FB_MECHANICAL)
+#define GALSF_FB_MECHANICAL // we will use the mechanical wind module for low mass loss rate stars (spawning leads to issues). enable regardless if either the winds or sne module is active
+#endif
+
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && !defined(GALSF_FB_FIRE_STELLAREVOLUTION)
+#define GALSF_FB_FIRE_STELLAREVOLUTION 2 /* this particular set of modules depends on the fire modules explicitly now, using them for yields and other infrastructure */
 #endif
 
 #ifdef SINGLE_STAR_FB_SNE
@@ -625,10 +629,6 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #if !defined(RT_DISABLE_RAD_PRESSURE)
 #define RT_DISABLE_RAD_PRESSURE // we only want the local short-ranged photon momentum, since SF sims can easily get into the badly non-photon-conserving limit where LEBRON fluxes are less accurate
 #endif
-#endif
-
-#if ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && !defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && !defined(GALSF_FB_MECHANICAL))
-#define GALSF_FB_MECHANICAL // enable mechanical feedback from single stellar sources
 #endif
 
 #if defined(COOLING) && !defined(COOL_GRACKLE) // if not using grackle modules, need to make sure appropriate cooling is enabled

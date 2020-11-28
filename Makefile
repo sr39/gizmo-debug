@@ -252,6 +252,10 @@ OPTIMIZE = -O2 -xCORE-AVX2
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -qopenmp
 endif
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
+CHIMESINCL = -I$(TACC_SUNDIALS_INC)
+CHIMESLIBS = -L$(TACC_SUNDIALS_LIB) -lsundials_cvode -lsundials_nvecserial
+endif
 GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = -I$(TACC_MKL_INC)
@@ -320,7 +324,7 @@ FC       =  $(CC) #mpifort  ## change this to "mpifort" for packages requiring l
 OPTIMIZE = -O1 -funroll-loops
 OPTIMIZE += -g -Wall # compiler warnings
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
-CC       = mpic++
+CXX     = mpic++
 CHIMESINCL = -I/usr/local/include/sundials
 CHIMESLIBS = -L/usr/local/lib -lsundials_cvode -lsundials_nvecserial
 endif

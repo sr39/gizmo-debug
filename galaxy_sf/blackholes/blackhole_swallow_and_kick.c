@@ -876,8 +876,10 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
         }
 #endif
-	P[j].StellarAge = All.Time; // use this attibute to save the gas cell's formation time for possible subsequent checks for special behavior on its first timestep
-
+#if defined(GALSF)
+        P[j].StellarAge = All.Time; // use this attibute to save the gas cell's formation time for possible subsequent checks for special behavior on its first timestep
+#endif
+        
         /* note, if you want to use this routine to inject magnetic flux or cosmic rays, do this below */
 #ifdef MAGNETIC
         SphP[j].divB = 0; double Bmag=0, Bmag_0=0;
@@ -937,61 +939,31 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         BPP(i).unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
 
         double v_magnitude = All.BAL_v_outflow * All.cf_atime; // velocity of the jet: default mode is to set this manually to a specific value
-#ifdef METALS
-        double yields[NUM_METAL_SPECIES]={0.0};
-#endif
 #ifdef SINGLE_STAR_FB_JETS
-        v_magnitude = single_star_jet_velocity(i);
-#ifdef METALS
-        get_jet_yields(yields,i);
-#ifdef STARFORGE_FEEDBACK_TRACERS
-        yields[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS + 0] = 1.0; //set jet tracer to 1 
+        v_magnitude = single_star_jet_velocity(i); // get velocity from our more detailed function
 #endif
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_WINDS)
+        if((P[i].ProtoStellarStage==5) && (P[i].wind_mode==1)) {v_magnitude = single_star_wind_velocity(i);} // only MS stars launch winds: get velocity from fancy model
 #endif
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_SNE)
+        if(P[i].ProtoStellarStage==6) {v_magnitude = single_star_SN_velocity(i);} // this star is about to go SNe: get velocity from fancy model
 #endif
+        
 
-
-#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-#if defined(SINGLE_STAR_FB_WINDS)
-        if ( (P[i].ProtoStellarStage == 5) && (P[i].wind_mode == 1) ){ //we have strong winds (stronger than jets if those are present) that we will spawn
-            v_magnitude = single_star_wind_velocity(i); //Only MS stars launch winds: get velocity from fancy model
-            //Get abundances in wind
-#ifdef METALS
-            get_wind_yields(yields, i);
-#ifdef STARFORGE_FEEDBACK_TRACERS
-            yields[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS + 1] = 1.0; //set wind tracer to 1 
-            yields[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS + 0] = 0.0; //set jet tracer back to 0
+#if defined(METALS) && (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE))
+        double yields[NUM_METAL_SPECIES]={0}; get_jet_yields(yields,i); // default to jet-type
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_WINDS)
+        if((P[i].ProtoStellarStage==5) && (P[i].wind_mode==1)) {get_wind_yields(yields,i);} // get abundances in wind
 #endif
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_SNE)
+        if(P[i].ProtoStellarStage==6) {double Msne; get_SNe_yields(yields,i,stellar_lifetime_in_Gyr(i),0,&Msne);} // get sne yields
 #endif
-        }
+        for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=yields[k];}  // update metallicity of spawned cell modules
 #endif
-#if defined(SINGLE_STAR_FB_SNE)
-        if(P[i].ProtoStellarStage == 6) {
-            v_magnitude = single_star_SN_velocity(i); // This star is about to go SNe: get velocity from fancy model
-//Get abundances in SN
-#ifdef METALS
-            double Msne; //dummy variable
-            get_SNe_yields(yields,i,0,0,&Msne);
-#ifdef STARFORGE_FEEDBACK_TRACERS
-            yields[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS + 2] = 1.0; //set SNe tracer to 1 
-            yields[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS + 0] = 0.0; //set jet tracer back to 0
-#endif
-#endif
-        }
-#endif
-#endif
-        //Update metallicity of spawned particle in STARFORGE modules
-#if defined(METALS) && ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE))
-        for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=yields[k];} 
-#endif
-
+        
         // actually lay down position and velocities using coordinate basis
         get_wind_spawn_direction(i, j - (NumPart + num_already_spawned), mode, jy, jz, veldir);
-        for(k=0;k<3;k++)
-        {
-            P[j].Pos[k]=P[i].Pos[k] + veldir[k]*d_r;
-            P[j].Vel[k]=P[i].Vel[k] + veldir[k]*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];
-        }
+        for(k=0;k<3;k++) {P[j].Pos[k]=P[i].Pos[k] + veldir[k]*d_r; P[j].Vel[k]=P[i].Vel[k] + veldir[k]*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];}
 
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
