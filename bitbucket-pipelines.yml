@@ -15,6 +15,9 @@ pipelines:
             script:
               # install deps
               - apt-get update && apt-get install -y libgsl-dev libhdf5-dev
-              - make
+	      - apt-get install -y --no-install-recommends gosu
+	      - id -u build &>/dev/null || useradd --user-group --create-home --shell /bin/false build
+	      # build
+              - gosu build make
               # Execute your C++ application after compilation to check success
-              - sh run_testprob.sh
+              - gosu build sh run_testprob.sh
