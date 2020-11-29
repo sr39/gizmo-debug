@@ -13,6 +13,8 @@ pipelines:
         - step:
             name: Build and Run
             script:
+	      # install deps
+	      - apt-get update && apt-get install -y libgsl-dev libhdf5-dev
               - make
               # Execute your C++ application after compilation to check success
               #- make distcheck
