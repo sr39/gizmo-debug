@@ -4,17 +4,12 @@
 # The workflow allows running tests and code linting on the default branch.
 
 
-image: gcc:10.2
+image: mcr.microsoft.com/azureml/base:openmpi3.1.2-ubuntu18.04
 
 
 pipelines:
   default:
     - parallel:
-        - step:
-            name: Lint
-            script:
-              # apt update && apt -y install cppcheck && cppcheck .
-              - make lint
         - step:
             name: Build and Run
             script:
