@@ -10,6 +10,9 @@ GALSF
 GALSF_SFR_MOLECULAR_CRITERION
 GALSF_SFR_VIRIAL_SF_CRITERION=0" > Config.sh
 
+## emit Makefile.systype
+echo "SYSTYPE=\"bitbucket\"" > Makefile.systype
+
 ## re-build
 make clean && make
 
@@ -20,4 +23,4 @@ sed '/^#/d' < cooling/TREECOOL > TREECOOL
 wget "http://www.tapir.caltech.edu/~phopkins/sims/isodisk_ics.hdf5"
 
 ## run test problem
-mpirun ./GIZMO scripts/test_problems/isodisk.params
+mpirun ./GIZMO scripts/pipelines/isodisk.params
