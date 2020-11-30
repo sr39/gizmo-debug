@@ -59,8 +59,8 @@ PartAllocFactor     2.0     % memory load allowed for better cpu balance
 BufferSize          50     % in MByte 
 
 %---- Characteristics of run 
-TimeBegin   0.0      % Beginning of the simulation 
-TimeMax     1.0      % End of the simulation 
+TimeBegin   0.0    % Beginning of the simulation 
+TimeMax     1.0    % End of the simulation 
 
 %---- Cosmological parameters 
 ComovingIntegrationOn   0       % is it cosmological? (yes=1, no=0)
