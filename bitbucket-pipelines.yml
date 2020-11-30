@@ -4,7 +4,7 @@
 # The workflow allows running tests and code linting on the default branch.
 
 
-image: mcr.microsoft.com/azureml/base:openmpi3.1.2-ubuntu18.04
+image: ubuntu:20.04
 
 
 pipelines:
@@ -14,7 +14,7 @@ pipelines:
             name: Build and Run
             script:
               # install deps
-              - apt-get update && apt-get install -y libgsl-dev libhdf5-dev
+              - apt-get update && apt-get install -y build-essential gcc-8 libopenmpi-dev libgsl-dev libhdf5-dev
               - apt-get install -y --no-install-recommends gosu
               - id -u build &>/dev/null || useradd --user-group --create-home --shell /bin/false build
               # build
