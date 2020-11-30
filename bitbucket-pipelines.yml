@@ -13,11 +13,9 @@ pipelines:
         - step:
             name: Build and Run
             script:
-              # install deps
+              # Install deps
               - apt-get update && apt-get install -y build-essential gcc-8 libopenmpi-dev libgsl-dev libhdf5-dev
               - apt-get install -y --no-install-recommends gosu
               - id -u build &>/dev/null || useradd --user-group --create-home --shell /bin/false build
-              # build
-              - gosu build make
-              # Execute your C++ application after compilation to check success
-              - gosu build sh run_testprob.sh
+              # Build and run
+              - gosu build sh scripts/pipelines/run_isodisk_testprob.sh
