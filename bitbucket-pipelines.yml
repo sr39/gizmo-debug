@@ -14,7 +14,7 @@ pipelines:
             name: Build and Run
             script:
               # Install deps
-              - apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="America/New_York" apt-get install -y --no-install-recommends gosu build-essential libopenmpi-dev libgsl-dev libhdf5-dev gosu
+              - apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="America/New_York" apt-get install -y --no-install-recommends gosu wget git build-essential libopenmpi-dev libgsl-dev libhdf5-dev
               - id -u build &>/dev/null || useradd --user-group --create-home --shell /bin/false build
               # Build and run
               - gosu build sh scripts/pipelines/run_isodisk_testprob.sh
