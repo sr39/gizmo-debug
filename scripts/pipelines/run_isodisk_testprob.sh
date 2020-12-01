@@ -23,4 +23,4 @@ sed '/^#/d' < cooling/TREECOOL > TREECOOL
 wget "http://www.tapir.caltech.edu/~phopkins/sims/isodisk_ics.hdf5"
 
 ## run test problem
-mpirun ./GIZMO scripts/pipelines/isodisk.params
+./GIZMO scripts/pipelines/isodisk.params
