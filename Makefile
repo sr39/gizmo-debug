@@ -407,27 +407,6 @@ OPT     += -DDISABLE_ALIGNED_ALLOC -DCHIMES_USE_DOUBLE_PRECISION #
 endif
 
 
-#----------------------------
-ifeq ($(SYSTYPE),"bitbucket")
-CC       =  mpicc
-CXX      =  mpicxx
-FC       =  $(CC)
-OPTIMIZE = -O1 -funroll-loops
-OPTIMIZE += -g -Wall -fcommon # compiler warnings
-GMP_INCL = #
-GMP_LIBS = #
-MKL_INCL = #
-MKL_LIBS = #
-GSL_INCL = -I/usr/include 
-GSL_LIBS = -L/usr/lib/x86_64-linux-gnu
-FFTW_INCL= -I/usr/include/fftw3
-FFTW_LIBS= -L/usr/lib/x86_64-linux-gnu
-HDF5INCL = -I/usr/include/hdf5/serial -DH5_USE_16_API 
-HDF5LIB  = -L/usr/lib/x86_64-linux-gnu -lhdf5_serial -lz 
-MPICHLIB = #
-OPT     += -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN
-endif
-
 
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Wheeler")
