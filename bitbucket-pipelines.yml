@@ -18,3 +18,5 @@ pipelines:
               - id -u build &>/dev/null || useradd --user-group --create-home --shell /bin/false build
               # Build and run
               - gosu build sh scripts/pipelines/run_isodisk_testprob.sh
+	      # Compare with reference solution
+	      - gosu build sh scripts/pipelines/compare_isodisk_output.sh
