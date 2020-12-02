@@ -132,14 +132,15 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         if(cos_theta_face_flux < -1) {cos_theta_face_flux=-1;} else {if(cos_theta_face_flux > 1) {cos_theta_face_flux=1;}}
         
         /* add asymptotic-preserving correction so that numerical flux doesn't unphysically dominate in optically thick limit */
+        double cr_m1_speed_touse = COSMIC_RAY_REDUCED_C_CODE(k_CRegy);
 #ifdef COSMIC_RAYS_ALFVEN
-        double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + COSMIC_RAYS_M1; // physical
+        double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + cr_m1_speed_touse; // physical
         double renormerFAC = cos_theta_face_flux*cos_theta_face_flux;
 #else
-        double kappa_ij = COSMIC_RAYS_RSOL_CORRFAC * 0.5 * (kappa_i+kappa_j); // physical, account for RSOL in effective diffusion speed
-        double CRopticaldepth = DMIN(Particle_Size_i,Particle_Size_j)*COSMIC_RAYS_M1/kappa_ij;
+        double kappa_ij = COSMIC_RAYS_RSOL_CORRFAC(k_CRegy) * 0.5 * (kappa_i+kappa_j); // physical, account for RSOL in effective diffusion speed
+        double CRopticaldepth = DMIN(Particle_Size_i,Particle_Size_j)*cr_m1_speed_touse/kappa_ij;
         double reductionfactor = (4.+CRopticaldepth*(4.+3.*CRopticaldepth)) / (4.+CRopticaldepth*(4.+CRopticaldepth*(4.+3.*CRopticaldepth))); // this is just an excellent but simpler/faster approximation to SQRT[1-EXP[-x^2]]/x, which also deals better with small-x limits //
-        double reducedcM1 = reductionfactor*COSMIC_RAYS_M1*sqrtthreeinv; //TK test: correct HLL according Jiang & Oh 2018
+        double reducedcM1 = reductionfactor*cr_m1_speed_touse*sqrtthreeinv; //TK test: correct HLL according Jiang & Oh 2018
         double c_light_eff = DMAX(2.*All.cf_afac3*kernel.vsig, reducedcM1);
         double v_eff_touse = DMIN(c_light_eff , kappa_ij / Particle_Size_j); // physical
         double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + v_eff_touse; // physical
