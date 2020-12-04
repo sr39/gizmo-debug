@@ -594,7 +594,7 @@ void init(void)
 		SphP[i].MolecularMassFraction_perNeutralH = 1.0;
 	    } else { // otherwise start atomic
 	        SphP[i].MolecularMassFraction = 0.0;
-		SphP[i].MolecularMassFraction = 0.0;
+		SphP[i].MolecularMassFraction_perNeutralH = 0.0;
 	    }
 #endif
 #endif
