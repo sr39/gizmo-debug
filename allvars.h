@@ -1358,7 +1358,7 @@ typedef unsigned long long peanokey;
 #if defined(COSMIC_RAYS_M1)
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
 //#define COSMIC_RAY_REDUCED_C_CODE(k) (COSMIC_RAYS_M1) // single-bin -- compiles to simply replace this macro with the M1 value, trivially
-#define COSMIC_RAY_REDUCED_C_CODE(k) ((COSMIC_RAYS_M1 * pow(CR_global_rigidity_at_bin_center[k],0.8)))
+#define COSMIC_RAY_REDUCED_C_CODE(k) (return_CRbin_M1speed(k)) // allow for bin-to-bin variations in RSOL
 #else
 #define COSMIC_RAY_REDUCED_C_CODE(k) (COSMIC_RAYS_M1) // single-bin -- compiles to simply replace this macro with the M1 value, trivially
 #endif

@@ -565,7 +565,8 @@ integertime get_timestep(int p,		/*!< particle index */
                     }
 #else
 #ifdef COSMIC_RAYS_M1
-                    double cr_m1_speed = COSMIC_RAY_REDUCED_C_CODE(k_CRegy);
+                    //double cr_m1_speed = COSMIC_RAY_REDUCED_C_CODE(k_CRegy); // pull for use below
+                    double cr_m1_speed = COSMIC_RAYS_M1; // ?? if used stricter flux-limiter, can use stricter version here
                     if(cr_diffusion_opt==1)
                     {
                         if(SphP[p].CosmicRayEnergy[k_CRegy] > 0)

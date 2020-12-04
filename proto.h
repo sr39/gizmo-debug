@@ -287,6 +287,8 @@ double CR_cooling_and_gas_heating(int target, double n_elec, double nH_cgs, doub
 double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double eCR_tmp, int mode);
 double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, double shock_vel, int return_index_in_bin, int target);
 void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir);
+double return_CRbin_M1speed(int k_CRegy);
+double evaluate_cr_transport_reductionfactor(int target, int k_CRegy, int mode);
 double Get_AlfvenMachNumber_Local(int i, double vA_idealMHD_codeunits, int use_shear_corrected_vturb_flag);
 double diffusion_coefficient_constant(int target, int k_CRegy);
 double diffusion_coefficient_extrinsic_turbulence(int mode, int target, int k_CRegy, double M_A, double L_scale, double b_muG, double vA_noion, double rho_cgs, double temperature, double cs_thermal, double nh0, double nHe0, double f_ion);
