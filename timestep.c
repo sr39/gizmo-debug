@@ -570,8 +570,8 @@ integertime get_timestep(int p,		/*!< particle index */
                     {
                         if(SphP[p].CosmicRayEnergy[k_CRegy] > 0)
                         {
-                            double cr_speed = cr_m1_speed; int k;
-                            //double crv=0; for(k=0;k<3;k++) {crv+=SphP[p].CosmicRayFlux[k_CRegy][k]*SphP[p].CosmicRayFlux[k_CRegy][k];} if(crv > 0) {crv = sqrt(crv) / SphP[p].CosmicRayEnergy[k_CRegy];}
+                            double cr_speed = cr_m1_speed;
+                            //double crv=0; int k; for(k=0;k<3;k++) {crv+=SphP[p].CosmicRayFlux[k_CRegy][k]*SphP[p].CosmicRayFlux[k_CRegy][k];} if(crv > 0) {crv = sqrt(crv) / SphP[p].CosmicRayEnergy[k_CRegy];}
                             cr_speed = DMAX( DMIN(cr_m1_speed , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(cr_m1_speed , kappa_cr_eff/(Get_Particle_Size(p)*All.cf_atime))); // default to min of free-streaming/diffusion speed
                             double dt_courant_CR = 0.4 * (L_particle*All.cf_atime) / cr_speed;
                             dt_conduction = dt_courant_CR; // per TK, strictly enforce this timestep //
