@@ -13,7 +13,7 @@
 
 #ifdef COSMIC_RAYS
 
-#define COSMIC_RAYS_VARIABLE_RSOL
+//#define COSMIC_RAYS_VARIABLE_RSOL
 
 
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
@@ -1149,7 +1149,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                                     
                                     if(split_two_bin==0 && CR_species_ID_in_bin[j]==1 && k==0 && (CR_species_ID_in_bin[j_s]<0 || CR_species_ID_in_bin[j_s]==7)) { /* now code extending the CR spectrum of secondary production to energies higher than our max limit, assuming continued power-law extrapolation of the CR spectrum */
                                         double Rx0=CR_global_rigidity_at_bin_center[j_s]; int spec_0=CR_species_ID_in_bin[j_s], slope_0=2.-bin_slopes[j_s]; slope_0=DMAX(-2.,DMIN(slope_0,0.)); j_s++;
-                                        while(j_s<N_CR_PARTICLE_BINS && CR_species_ID_in_bin[j_s]=spec_0) {double Rx1 = CR_global_rigidity_at_bin_center[j_s], f00 = pow(Rx1/Rx0,slope_0);
+                                        while(j_s<N_CR_PARTICLE_BINS && CR_species_ID_in_bin[j_s]==spec_0) {double Rx1 = CR_global_rigidity_at_bin_center[j_s], f00 = pow(Rx1/Rx0,slope_0);
                                                 Ucr[j_s] += U_donor * f00 * (Rx1/Rx0); ntot_evolved[j_s] += N_donor * f00; bin_slopes[j_s] = CR_return_slope_from_number_and_energy_in_bin(Ucr[j_s],ntot_evolved[j_s],E_GeV[j_s],j_s); j_s++;}}
                                 }
                             }
@@ -1598,9 +1598,8 @@ double evaluate_cr_transport_reductionfactor(int target, int k_CRegy, int mode)
     return COSMIC_RAYS_RSOL_CORRFAC(k_CRegy); // uniform reduction factor for all terms
 #else
     double kappa = SphP[target].CosmicRayDiffusionCoeff[k_CRegy]; /* diffusion coefficient [physical units] */
-    ??? fix mode=0 ???
     double fluxmag=0, Bmag=0, gradmag=0, Lgrad=0, veff=0, P0=Get_Gas_CosmicRayPressure(target,k_CRegy); int m;
-    int m; for(m=0;m<3;m++) {
+    for(m=0;m<3;m++) {
         double f_0=SphP[target].CosmicRayFluxPred[k_CRegy][m], g_0=SphP[target].Gradients.CosmicRayPressure[k_CRegy][m], B_0=f_0;
 #ifdef MAGNETIC
         B_0 = Get_Gas_BField(target,m);
