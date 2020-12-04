@@ -523,7 +523,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 
     if(logT <= Tmin)		/* everything neutral */
     {
-        nH0 = 1.0; nHe0 = yhelium(target); nHp = 0; nHep = 0; nHepp = 0; n_elec = 0;
+        nH0 = 1.0; nHe0 = yhelium(target); nHp = 0; nHep = 0; nHepp = 0; n_elec = 1.e-16;
         *nH0_guess=nH0; *nHe0_guess=nHe0; *nHp_guess=nHp; *nHep_guess=nHep; *nHepp_guess=nHepp; *ne_guess=n_elec;
         *mu_guess=Get_Gas_Mean_Molecular_Weight_mu(pow(10.,logT), rho, nH0_guess, ne_guess, 0, target);
         return 0;
@@ -695,6 +695,9 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 
         neold = n_elec;
         n_elec = nHp + nHep + 2 * nHepp;	/* eqn (38) */
+#ifdef COOL_LOW_TEMPERATURES
+        n_elec += return_electron_fraction_from_heavy_ions(target, pow(10.,logT), rho);
+#endif
         necgs = n_elec * nHcgs;
 
         if(J_UV == 0) break;
@@ -881,7 +884,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
             f_Cplus_CCO = (nHcgs/(340.*DMAX(0.1,photoelec))); f_Cplus_CCO=1./(1.+f_Cplus_CCO*f_Cplus_CCO/sqrt_T); // fco/(1-fco) ~ 0.0022 * ((n/50 cm^-3)/G0)^2 * (100K/T)^(1/2) from Tielens
             double Lambda_Cplus = Z_C * (4.7e-28 * (pow(T,0.15) + 1.04e4*n_elec/sqrt_T) * exp(-DMIN(91.211/T,EXPmax)) + 2.08e-29*exp(-DMIN(23.6/T,EXPmax))); // fit from Barinovs et al., ApJ, 620, 537, 2005, and Wilson & Bell MNRAS 337 1027 2002; assuming factor of 0.5 depletion factor in ISM; rate per C+ relative to solar; + plus [CI]-609 µm line cooling from Hocuk⋆ et al. 2016MNRAS.456.2586H
-            double Lambda_CCO = Z_C * T*sqrt_T * 2.73e-31 / (1. + (nHcgs/ncrit_CO)*(1.+0*DMAX(column,0.017)/Sigma_crit_CO)); // fit from Hollenbach & McKee 1979 for CO (+CH/OH/HCN/OH/HCl/H20/etc., but those don't matter), with slight re-calibration of normalization (factor ~1.4 or so) to better fit the results from the full Glover+Clark network. As Glover+Clark show, if you shift gas out of CO into C+ and O, you have almost no effect on the integrated cooling rate, so this is a surprisingly good approximation without knowing anything about the detailed chemical/molecular state of the gas. uncertainties in e.g. ambient radiation are -much- larger. also note this rate is really carbon-dominated as the limiting abundance, so should probably use that.
+            double Lambda_CCO = Z_C * T*sqrt_T * 2.73e-31 / (1. + (nHcgs/ncrit_CO)*(1.+1.*DMAX(column,0.017)/Sigma_crit_CO)); // fit from Hollenbach & McKee 1979 for CO (+CH/OH/HCN/OH/HCl/H20/etc., but those don't matter), with slight re-calibration of normalization (factor ~1.4 or so) to better fit the results from the full Glover+Clark network. As Glover+Clark show, if you shift gas out of CO into C+ and O, you have almost no effect on the integrated cooling rate, so this is a surprisingly good approximation without knowing anything about the detailed chemical/molecular state of the gas. uncertainties in e.g. ambient radiation are -much- larger. also note this rate is really carbon-dominated as the limiting abundance, so should probably use that.
             double Lambda_Metals = f_Cplus_CCO * Lambda_Cplus + (1.-f_Cplus_CCO) * Lambda_CCO; // interpolate between both regimes //
             /* in the above Lambda_Metals expression, the column density expression attempts to account for the optically-thick correction in a slab. this is largely redundant (not exactly, b/c this is specific for CO-type molecules) with our optically-thick cooling module already included below, so we will not double-count it here [coefficient set to zero]. But it's included so you can easily turn it back on, if desired, instead of using the module below. */
             double Lambda_H2_thick = (6.7e-19*exp(-DMIN(5.86/T3,EXPmax)) + 1.6e-18*exp(-DMIN(11.7/T3,EXPmax)) + 3.e-24*exp(-DMIN(0.51/T3,EXPmax)) + 9.5e-22*pow(T3,3.76)*exp(-DMIN(0.0022/(T3*T3*T3),EXPmax))/(1.+0.12*pow(T3,2.1))) / nHcgs; // super-critical H2-H cooling rate [per H2 molecule]
@@ -1026,7 +1029,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 
             if(photoelec > 0)
             {
-                double LambdaPElec = 1.3e-24 * photoelec / nHcgs * P[target].Metallicity[0]/All.SolarAbundances[0];
+                double LambdaPElec = 1.3e-24 * photoelec / nHcgs * (P[target].Metallicity[0]/All.SolarAbundances[0]);
                 double x_photoelec = photoelec * sqrt(T) / (0.5 * (1.0e-12+n_elec) * nHcgs);
                 LambdaPElec *= 0.049/(1+pow(x_photoelec/1925.,0.73)) + 0.037*pow(T/1.0e4,0.7)/(1+x_photoelec/5000.);
                 Heat += LambdaPElec;
@@ -1781,6 +1784,37 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
         double T0=2.92, q=pow(T0*e_IR,0.25), y=(T_cmb*e_CMB + T_hiegy*e_HiEgy)/(T0*e_IR*q); if(y<=1) {Tdust_eqm=T0*q*(0.8+sqrt(0.04+0.1*y));} else {double y5=pow(y,0.2), y5_3=y5*y5*y5, y5_4=y5_3*y5; Tdust_eqm=T0*q*(1.+15.*y5_4+sqrt(1.+30.*y5_4+25.*y5_4*y5_4))/(20.*y5_3);} // this gives an extremely accurate and exactly-joined solution to the full quintic equation assuming T_rad_IR=T_dust
     }
     return DMAX(DMIN(Tdust_eqm , 2000.) , 1.); // limit at sublimation temperature or some very low temp //
+}
+
+
+
+/* this function estimates the free electron fraction from heavy ions, assuming a simple mix of cold molecular gas, Mg, and dust, with the ions from singly-ionized Mg, to prevent artificially low free electron fractions */
+double return_electron_fraction_from_heavy_ions(int target, double temperature, double density_cgs)
+{
+    double zeta_cr=1.0e-17, f_dustgas=0.01, n_ion_max=3.115e-5; // cosmic ray ionization rate (fixed as constant for non-CR runs) and dust-to-gas ratio
+#ifdef COSMIC_RAYS
+    if(target>=0) {double u_cr=0; int k; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_cr += SphP[target].CosmicRayEnergyPred[k];}
+        zeta_cr = u_cr * 2.2e-6 * ((SphP[target].Density*All.cf_a3inv / P[target].Mass) * (UNIT_PRESSURE_IN_CGS));} // convert to ionization rate
+#endif
+    double a_grain_micron = 0.1; // effective size of grains that matter at these densities
+    double m_ion = 24.3; // Mg dominates ions in dense gas [where this is relevant]; this is ion mass in units of proton mass
+#ifdef METALS
+    if(target>=0) {f_dustgas=0.5*P[target].Metallicity[0];} // constant dust-to-metals ratio
+#ifdef COOL_METAL_LINES_BY_SPECIES
+    if(target>=0) {n_ion_max = All.SolarAbundances[6]/24.3;} // limit, to avoid over-ionization at low metallicities
+#endif
+#endif
+    if(All.ComovingIntegrationOn) {double rhofac=density_cgs/(1000.*COSMIC_BARYON_DENSITY_CGS); if(rhofac<0.2 || f_dustgas<1.e-8) {return 0;}}
+    double m_neutral=2.38*PROTONMASS, m_grain=8.378e-12*a_grain_micron*a_grain_micron*a_grain_micron, k0=1.95e-4*sqrt(temperature); // mean molecular weight for molecular gas, grain mass [internal density =2 g/cm^3], and prefactor for rate coefficient for electron-grain collisions
+    double ngr_ngas = (m_neutral/m_grain) * f_dustgas; // number of grains per neutral
+    double alpha = zeta_cr * 16.71 / (a_grain_micron * temperature) / (ngr_ngas*ngr_ngas * k0 * (density_cgs/m_neutral)); // coefficient for equation that determines Z_grain
+    
+    double psi=0.; if(alpha > 10.) {psi = -0.5188024552836319 + 0.4021932106900916*log(m_ion*PROTONMASS/ELECTRONMASS);} // solution for large alpha [>~10]
+    else if(alpha > 0.01) {double q = -0.5188024552836319 + 0.4021932106900916*log(m_ion*PROTONMASS/ELECTRONMASS);
+        psi = q + 0.0506874458592827 * (6.555958004203513 - q) * (-0.22387211385683392 + pow(alpha,-0.65)); // interpolates between low/high limits
+    } else {double q=-log(alpha); psi = q*(1+log(q)/(q-1));} // solution for small alpha [<~0.01], independent of m_ion
+    double n_elec_ion = zeta_cr * exp(-DMAX(psi,0.)) / (ngr_ngas * k0);
+    return DMIN(n_elec_ion, n_ion_max);
 }
 
 

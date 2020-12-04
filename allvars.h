@@ -1354,11 +1354,20 @@ typedef unsigned long long peanokey;
 #endif // METALS //
 
 
-#if defined(COSMIC_RAYS_ALT_RSOL_FORM) && defined(COSMIC_RAYS_M1)
-#define COSMIC_RAYS_RSOL_CORRFAC (((COSMIC_RAYS_M1)/(C_LIGHT_CODE))) // this needs to be defined after the code SOL for obvious reasons
+
+#if defined(COSMIC_RAYS_M1)
+#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+//#define COSMIC_RAY_REDUCED_C_CODE(k) (COSMIC_RAYS_M1) // single-bin -- compiles to simply replace this macro with the M1 value, trivially
+#define COSMIC_RAY_REDUCED_C_CODE(k) (return_CRbin_M1speed(k)) // allow for bin-to-bin variations in RSOL
 #else
-#define COSMIC_RAYS_RSOL_CORRFAC (1)
+#define COSMIC_RAY_REDUCED_C_CODE(k) (COSMIC_RAYS_M1) // single-bin -- compiles to simply replace this macro with the M1 value, trivially
 #endif
+#if defined(COSMIC_RAYS_ALT_RSOL_FORM)
+#define COSMIC_RAYS_RSOL_CORRFAC(k) (((COSMIC_RAY_REDUCED_C_CODE(k))/(C_LIGHT_CODE))) // this needs to be defined after the code SOL for obvious reasons
+#else
+#define COSMIC_RAYS_RSOL_CORRFAC(k) (1) // this is always unity, macro is trivial
+#endif
+#endif // M1 cosmic rays
 
 
 #ifndef FOF_PRIMARY_LINK_TYPES

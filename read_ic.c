@@ -929,7 +929,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #if (COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART==1)
             if(RestartFlag == 2 && blocknr == IO_COSMICRAY_ENERGY) {bytes_per_blockelement = (1) * sizeof(MyInputFloat);}
 #endif
-#ifdef METALS /* some trickery here to enable snapshot-restarts from runs with different numbers of metal species ?? */
+#ifdef METALS /* some trickery here to enable snapshot-restarts from runs with different numbers of metal species */
             if(blocknr==IO_Z && RestartFlag==2 && All.ICFormat==3 && header.flag_metals<NUM_METAL_SPECIES && header.flag_metals>0) {bytes_per_blockelement = (header.flag_metals) * sizeof(MyInputFloat);}
 #endif
 
@@ -1008,7 +1008,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #if (COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART==1)
                                         if(RestartFlag == 2 && blocknr == IO_COSMICRAY_ENERGY) {dims[1] = 1;}
 #endif
-#ifdef METALS /* some trickery here to enable snapshot-restarts from runs with different numbers of metal species ?? */
+#ifdef METALS /* some trickery here to enable snapshot-restarts from runs with different numbers of metal species */
                                         if(blocknr==IO_Z && RestartFlag==2 && All.ICFormat==3 && header.flag_metals<NUM_METAL_SPECIES && header.flag_metals>0) {dims[1] = header.flag_metals;}
 #endif
                                         if(dims[1] == 1) {rank = 1;} else {rank = 2;}
@@ -1025,7 +1025,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #if (COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART==1)
                                         if(RestartFlag == 2 && blocknr == IO_COSMICRAY_ENERGY) {count[1] = 1;}
 #endif
-#ifdef METALS /* some trickery here to enable snapshot-restarts from runs with different numbers of metal species ?? */
+#ifdef METALS /* some trickery here to enable snapshot-restarts from runs with different numbers of metal species */
                                         if(blocknr==IO_Z && RestartFlag==2 && All.ICFormat==3 && header.flag_metals<NUM_METAL_SPECIES && header.flag_metals>0) {count[1] = header.flag_metals;}
 #endif
                                         pcsum += pc;

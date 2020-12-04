@@ -517,7 +517,7 @@ integertime get_timestep(int p,		/*!< particle index */
                     double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p,k_CRegy);
                     double L_cr_weak; L_cr_weak = CRPressureGradScaleLength;
                     double kappa_cr_eff = fabs(SphP[p].CosmicRayDiffusionCoeff[k_CRegy]);
-                    kappa_cr_eff *= COSMIC_RAYS_RSOL_CORRFAC; // account for RSOL factor as it actually appears in the flux eqn in code units with this RSOL form
+                    kappa_cr_eff *= COSMIC_RAYS_RSOL_CORRFAC(k_CRegy); // account for RSOL factor as it actually appears in the flux eqn in code units with this RSOL form
 #if defined(COSMIC_RAYS_M1)
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
 #else
@@ -532,7 +532,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 #ifndef COSMIC_RAYS_DISABLE_STREAMING
                     /* estimate whether diffusion is streaming-dominated: use stronger/weaker criterion accordingly */
-                    double diffusion_from_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * Get_CosmicRayStreamingVelocity(p) * CRPressureGradScaleLength;
+                    double diffusion_from_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * Get_CosmicRayStreamingVelocity(p,k_CRegy) * CRPressureGradScaleLength;
                     if(diffusion_from_streaming > 0.75*kappa_cr_eff) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
 #endif
 #ifdef GALSF
@@ -565,28 +565,20 @@ integertime get_timestep(int p,		/*!< particle index */
                     }
 #else
 #ifdef COSMIC_RAYS_M1
+                    //double cr_m1_speed = COSMIC_RAY_REDUCED_C_CODE(k_CRegy); // pull for use below
+                    double cr_m1_speed = COSMIC_RAYS_M1; // ?? if used stricter flux-limiter, can use stricter version here
                     if(cr_diffusion_opt==1)
                     {
                         if(SphP[p].CosmicRayEnergy[k_CRegy] > 0)
                         {
-                            double cr_speed = COSMIC_RAYS_M1;
-                            int k; double crv=0; for(k=0;k<3;k++) {crv+=SphP[p].CosmicRayFlux[k_CRegy][k]*SphP[p].CosmicRayFlux[k_CRegy][k];}
-                            if(crv > 0)
-                            {
-                                crv = sqrt(crv) / SphP[p].CosmicRayEnergy[k_CRegy];
-#if 0 // def COSMIC_RAYS_ALT_RSOL_FORM // tests suggest this stricter criterion isn't actually necessary for this form of the rsol 
-                                cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , DMAX(crv , kappa_cr_eff/(Get_Particle_Size(p)*All.cf_atime)))); // ?? should this actually scale with flux magnitude in the frame [crv], to avoid problematic points where haven't reached local eqm
-#elif defined(COSMIC_RAYS_ALFVEN)
-                                cr_speed = COSMIC_RAYS_ALFVEN; // simple approach needed if above not enabled and this set of options is
-#else
-                                cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , kappa_cr_eff/(Get_Particle_Size(p)*All.cf_atime))); // default to min of free-streaming/diffusion speed
-#endif
-                            }
+                            double cr_speed = cr_m1_speed;
+                            //double crv=0; int k; for(k=0;k<3;k++) {crv+=SphP[p].CosmicRayFlux[k_CRegy][k]*SphP[p].CosmicRayFlux[k_CRegy][k];} if(crv > 0) {crv = sqrt(crv) / SphP[p].CosmicRayEnergy[k_CRegy];}
+                            cr_speed = DMAX( DMIN(cr_m1_speed , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(cr_m1_speed , kappa_cr_eff/(Get_Particle_Size(p)*All.cf_atime))); // default to min of free-streaming/diffusion speed
                             double dt_courant_CR = 0.4 * (L_particle*All.cf_atime) / cr_speed;
                             dt_conduction = dt_courant_CR; // per TK, strictly enforce this timestep //
                         } else {dt_conduction=10.*dt;}
                     } else {
-                        double dt_courant_CR = 0.4 * (L_particle*All.cf_atime) / COSMIC_RAYS_M1;
+                        double dt_courant_CR = 0.4 * (L_particle*All.cf_atime) / cr_m1_speed;
                         dt_conduction = dt_courant_CR; // per TK, strictly enforce this timestep //
                     }
 #endif

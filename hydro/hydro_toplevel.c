@@ -837,7 +837,7 @@ void hydro_final_operations_and_cleanup(void)
                 double streamfac = fabs(CR_get_streaming_loss_rate_coefficient(i,k));
                 SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * streamfac;
 #if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
-                SphP[i].DtCosmicRayEnergy[k] -= COSMIC_RAYS_RSOL_CORRFAC * SphP[i].CosmicRayEnergyPred[k] * streamfac; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
+                SphP[i].DtCosmicRayEnergy[k] -= COSMIC_RAYS_RSOL_CORRFAC(k) * SphP[i].CosmicRayEnergyPred[k] * streamfac; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
 #endif
             }
 #if defined(COSMIC_RAYS_ALT_FLUX_FORM) && defined(COSMIC_RAYS_M1) && defined(MAGNETIC) // only makes sense to include parallel correction below if all these terms enabled //
@@ -852,7 +852,7 @@ void hydro_final_operations_and_cleanup(void)
                 int m; double grad_P_dot_B=0, F_dot_B=0, h_cr=GAMMA_COSMICRAY * SphP[i].CosmicRayEnergyPred[k] * vol_i, vA_k=vA_eff, fcorr[3]={0};
                 for(m=0;m<3;m++) {grad_P_dot_B += bhat[m] * SphP[i].Gradients.CosmicRayPressure[k][m] * (All.cf_a3inv/All.cf_atime); F_dot_B += bhat[m] * SphP[i].CosmicRayFluxPred[k][m] * vol_i;}
                 if(F_dot_B < 0) {vA_k *= -1;} // needs to have appropriately-matched signage below //
-                for(m=0;m<3;m++) {fcorr[m] = bhat[m] * (grad_P_dot_B + ((F_dot_B/COSMIC_RAYS_RSOL_CORRFAC) - vA_k*h_cr)/(3.*SphP[i].CosmicRayDiffusionCoeff[k])) / (SphP[i].Density*All.cf_a3inv);} // physical units
+                for(m=0;m<3;m++) {fcorr[m] = bhat[m] * (grad_P_dot_B + ((F_dot_B/COSMIC_RAYS_RSOL_CORRFAC(k)) - vA_k*h_cr)/(3.*SphP[i].CosmicRayDiffusionCoeff[k])) / (SphP[i].Density*All.cf_a3inv);} // physical units
                 for(m=0;m<3;m++) {SphP[i].HydroAccel[m] += fcorr[m];} // add correction term back into hydro acceleration terms -- need to check that don't end up with nasty terms for badly-initialized/limited scattering rates above
             }}
 #endif
