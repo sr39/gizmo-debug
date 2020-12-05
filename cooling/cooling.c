@@ -696,7 +696,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         neold = n_elec;
         n_elec = nHp + nHep + 2 * nHepp;	/* eqn (38) */
 #ifdef COOL_LOW_TEMPERATURES
-        n_elec += return_electron_fraction_from_heavy_ions(target, pow(10.,logT), rho);
+        n_elec += return_electron_fraction_from_heavy_ions(target, pow(10.,logT), rho, n_elec);
 #endif
         necgs = n_elec * nHcgs;
 
@@ -1789,32 +1789,38 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
 
 
 /* this function estimates the free electron fraction from heavy ions, assuming a simple mix of cold molecular gas, Mg, and dust, with the ions from singly-ionized Mg, to prevent artificially low free electron fractions */
-double return_electron_fraction_from_heavy_ions(int target, double temperature, double density_cgs)
+double return_electron_fraction_from_heavy_ions(int target, double temperature, double density_cgs, double n_elec_HHe)
 {
-    double zeta_cr=1.0e-17, f_dustgas=0.01, n_ion_max=3.115e-5; // cosmic ray ionization rate (fixed as constant for non-CR runs) and dust-to-gas ratio
+    if(All.ComovingIntegrationOn) {double rhofac=density_cgs/(1000.*COSMIC_BARYON_DENSITY_CGS); if(rhofac<0.2) {return 0;}} // ignore these reactions in the IGM
+    double zeta_cr=1.0e-17, f_dustgas=0.01, n_ion_max=4.1533e-5, XH=HYDROGEN_MASSFRAC; // cosmic ray ionization rate (fixed as constant for non-CR runs) and dust-to-gas ratio
 #ifdef COSMIC_RAYS
     if(target>=0) {double u_cr=0; int k; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_cr += SphP[target].CosmicRayEnergyPred[k];}
         zeta_cr = u_cr * 2.2e-6 * ((SphP[target].Density*All.cf_a3inv / P[target].Mass) * (UNIT_PRESSURE_IN_CGS));} // convert to ionization rate
 #endif
-    double a_grain_micron = 0.1; // effective size of grains that matter at these densities
-    double m_ion = 24.3; // Mg dominates ions in dense gas [where this is relevant]; this is ion mass in units of proton mass
 #ifdef METALS
     if(target>=0) {f_dustgas=0.5*P[target].Metallicity[0];} // constant dust-to-metals ratio
 #ifdef COOL_METAL_LINES_BY_SPECIES
-    if(target>=0) {n_ion_max = All.SolarAbundances[6]/24.3;} // limit, to avoid over-ionization at low metallicities
+    if(target>=0) {n_ion_max = (All.SolarAbundances[6]/24.3)/XH;} // limit, to avoid over-ionization at low metallicities
 #endif
 #endif
-    if(All.ComovingIntegrationOn) {double rhofac=density_cgs/(1000.*COSMIC_BARYON_DENSITY_CGS); if(rhofac<0.2 || f_dustgas<1.e-8) {return 0;}}
-    double m_neutral=2.38*PROTONMASS, m_grain=8.378e-12*a_grain_micron*a_grain_micron*a_grain_micron, k0=1.95e-4*sqrt(temperature); // mean molecular weight for molecular gas, grain mass [internal density =2 g/cm^3], and prefactor for rate coefficient for electron-grain collisions
-    double ngr_ngas = (m_neutral/m_grain) * f_dustgas; // number of grains per neutral
-    double alpha = zeta_cr * 16.71 / (a_grain_micron * temperature) / (ngr_ngas*ngr_ngas * k0 * (density_cgs/m_neutral)); // coefficient for equation that determines Z_grain
+    /* Regime I: highly/photo-ionized, any contributions here would be negligible -- no need to continue */
+    if(n_elec_HHe > 0.01) {return n_ion_max;} // contribute something negligible, doesn't matter here //
+    double a_grain_micron=0.1, m_ion=24.305*PROTONMASS, mu_eff=2.38, m_neutrals=mu_eff*PROTONMASS, m_grain=4.189e-12*(2.4)*a_grain_micron*a_grain_micron*a_grain_micron, ngrain_ngas=(m_neutrals/m_grain)*f_dustgas; // effective size of grains that matter at these densities, and ions [here Mg] that dominate
+    double k_ei=9.77e-8, y=sqrt(m_ion/ELECTRONMASS), ln_y=log(y), psi_0=-ln_y+(1.+ln_y)*log(1.+ln_y)/(2.+ln_y), k_eg_00=0.0195*a_grain_micron*a_grain_micron*sqrt(temperature), k_eg_0=k_eg_00*exp(psi_0), n_crit=k_ei*zeta_cr/(k_eg_0*ngrain_ngas*k_eg_0*ngrain_ngas), n_eff=density_cgs/m_neutrals;
+
+    /* Regime II: CR-ionized with high enough ionization fraction that gas-phase recombinations dominate */
+    if(n_eff < 0.01*n_crit) {return DMIN(n_ion_max , sqrt(zeta_cr / (k_ei * n_eff)) / (XH*mu_eff) );} // CR-dominated off gas with recombination -- put into appropriate units here
+    if(n_eff < 100.*n_crit) {return DMIN(n_ion_max , 0.5 * (sqrt(4.*n_crit/n_eff + 1.) - 1.) * (k_eg_0*ngrain_ngas)/(k_ei*XH*mu_eff));} // interpolates between gas-recombination and dust-dominated regimes
     
-    double psi=0.; if(alpha > 10.) {psi = -0.5188024552836319 + 0.4021932106900916*log(m_ion*PROTONMASS/ELECTRONMASS);} // solution for large alpha [>~10]
-    else if(alpha > 0.01) {double q = -0.5188024552836319 + 0.4021932106900916*log(m_ion*PROTONMASS/ELECTRONMASS);
-        psi = q + 0.0506874458592827 * (6.555958004203513 - q) * (-0.22387211385683392 + pow(alpha,-0.65)); // interpolates between low/high limits
-    } else {double q=-log(alpha); psi = q*(1+log(q)/(q-1));} // solution for small alpha [<~0.01], independent of m_ion
-    double n_elec_ion = zeta_cr * exp(-DMAX(psi,0.)) / (ngr_ngas * k0);
-    return DMIN(n_elec_ion, n_ion_max);
+    /* Regime III: recombination dominated by dust, but dust has a 'normal' efficiency of absorbing grains */
+    double psi_fac=16.71/(a_grain_micron*temperature), alpha=zeta_cr*psi_fac/(k_eg_00 * ngrain_ngas*ngrain_ngas * n_eff), alpha_min=0.02, alpha_max=10.; /* Z*psi_fac = Z*e^2/(a_grain*kB*T) to dimensionless [psi] units; alpha=prefactor in charge equation: psi = alpha*(exp[-psi] - y/(1-psi)) */
+    if(alpha > alpha_max) {return DMIN(n_ion_max , zeta_cr / (k_eg_0*ngrain_ngas*XH*mu_eff) );}
+    
+    /* Regime IV: recombination dominated by dust and grains dominate the charge, strongly suppressing the free charges */
+    if(alpha < 1.e-4) {return DMIN(n_ion_max , zeta_cr / (k_eg_00*ngrain_ngas*XH*mu_eff) );} // psi->small, negligible correction here
+    if(alpha < alpha_min) {double psi=0.5*(1.-sqrt(1.+4.*y*alpha)); return DMIN(n_ion_max , zeta_cr / (k_eg_00*exp(psi)*ngrain_ngas*XH*mu_eff) );} // small-psi-limit
+    double psi_xmin=0.5*(1.-sqrt(1.+4.*y*alpha_min)), psi=psi_0 + (psi_xmin-psi_0)*2./(1.+alpha_min/alpha); // this interpolates between the asymptotic limmits at low and high alpha, where we can obtain high-accuracy solutions here
+    return DMIN(n_ion_max , zeta_cr / (k_eg_00*exp(psi)*ngrain_ngas*XH*mu_eff));
 }
 
 

@@ -1317,7 +1317,7 @@ void hydro_gradient_calc(void)
 
                 // calculate ionization fraction in dense gas //
                 // use rate coefficients k to estimate grain charge
-                double k0 = 1.95e-4 * sqrt(temperature); // prefactor for rate coefficient for electron-grain collisions
+                double k0 = 1.95e-4 * ag01*ag01 * sqrt(temperature); // prefactor for rate coefficient for electron-grain collisions
                 double ngr_ngas = (m_neutral/m_grain) * f_dustgas; // number of grains per neutral
                 double psi_prefac = 167.1 / (ag01 * temperature); // e*e/(a_grain*k_boltzmann*T): Z_grain = psi/psi_prefac where psi is constant determines charge
                 double alpha = zeta_cr * psi_prefac / (ngr_ngas*ngr_ngas * k0 * (n_eff/m_neutral)); // coefficient for equation that determines Z_grain
@@ -1333,20 +1333,18 @@ void hydro_gradient_calc(void)
                   double q=-log(alpha); psi = q*(1+log(q)/(q-1)); // solution for small alpha [<~0.01], independent of m_ion
                 }
                 if(psi <= 0) {psi=0;}
+                psi = -psi; // solutions above are flipped-sign
                 double k_e = k0 * exp(psi); // e-grain collision rate coefficient
-                double k_i = k0 * sqrt(ELECTRONMASS / (m_ion*PROTONMASS)) * (1 + psi); // i-grain collision rate coefficient
+                double k_i = k0 * sqrt(ELECTRONMASS / (m_ion*PROTONMASS)) * (1 - psi); // i-grain collision rate coefficient
                 double n_elec = zeta_cr / (ngr_ngas * k_e); // electron number density
                 double n_ion = zeta_cr / (ngr_ngas * k_i); // ion number density
-                double Z_grain = psi / psi_prefac; // mean grain charge
+                double Z_grain = psi / psi_prefac; // mean grain charge (note this is signed, will be negative)
 #ifdef COOLING
-                /* at high temperatures, the calculation above breaks down and we should use the fractions from the cooling routines. however this is usually the limit
-                    where non-ideal effects are irrelevant */
+                /* at high temperatures, the calculation above breaks down and we should use the fractions from the cooling routines. however this is usually the limit where non-ideal effects are irrelevant */
                 double ne_cool = SphP[i].Ne * HYDROGEN_MASSFRAC * n_eff; // ne is free electrons per H //
                 if((temperature > 8000.)||(ne_cool > n_elec))
                 {
-                    n_elec = ne_cool;
-                    n_ion = n_elec;
-                    Z_grain = 0.0; // we can basically neglect the grain charge in this limit //
+                    n_elec = ne_cool; n_ion = n_elec; Z_grain = 0.0; // we can basically neglect the grain charge in this limit //
                 }
 #endif
                 // now define more variables we will need below //
@@ -1365,11 +1363,11 @@ void hydro_gradient_calc(void)
                 double beta_prefac = ELECTRONCHARGE * B_Gauss / (PROTONMASS * C_LIGHT * n_eff);
                 double beta_i = beta_prefac / (m_ion * nu_i); // standard beta factors (Hall parameters)
                 double beta_e = beta_prefac / (ELECTRONMASS/PROTONMASS * nu_e);
-                double beta_g = beta_prefac / (m_grain * nu_g) * Z_grain;
+                double beta_g = beta_prefac / (m_grain * nu_g) * fabs(Z_grain);
                 double be_inv = 1/(1 + beta_e*beta_e), bi_inv = 1/(1 + beta_i*beta_i), bg_inv = 1/(1 + beta_g*beta_g);
-                double sigma_O = xe*beta_e + xi*beta_i + xg*Z_grain*beta_g; // ohmic conductivity
+                double sigma_O = xe*beta_e + xi*beta_i + xg*fabs(Z_grain)*beta_g; // ohmic conductivity
                 double sigma_H = -xe*be_inv + xi*bi_inv - xg*Z_grain*bg_inv; // hall conductivity
-                double sigma_P = xe*beta_e*be_inv + xi*beta_i*bi_inv + xg*Z_grain*beta_g*bg_inv; // pedersen conductivity
+                double sigma_P = xe*beta_e*be_inv + xi*beta_i*bi_inv + xg*fabs(Z_grain)*beta_g*bg_inv; // pedersen conductivity
                 // now we can finally calculate the diffusivities //
                 double eta_prefac = B_Gauss * C_LIGHT / (4 * M_PI * ELECTRONCHARGE * n_eff );
                 double eta_O = eta_prefac / sigma_O;
