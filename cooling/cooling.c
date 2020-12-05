@@ -523,7 +523,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 
     if(logT <= Tmin)		/* everything neutral */
     {
-        nH0 = 1.0; nHe0 = yhelium(target); nHp = 0; nHep = 0; nHepp = 0; n_elec = 1.e-16;
+        nH0 = 1.0; nHe0 = yhelium(target); nHp = 0; nHep = 0; nHepp = 0; n_elec = 1.e-22;
         *nH0_guess=nH0; *nHe0_guess=nHe0; *nHp_guess=nHp; *nHep_guess=nHep; *nHepp_guess=nHepp; *ne_guess=n_elec;
         *mu_guess=Get_Gas_Mean_Molecular_Weight_mu(pow(10.,logT), rho, nH0_guess, ne_guess, 0, target);
         return 0;
@@ -1808,13 +1808,13 @@ double return_electron_fraction_from_heavy_ions(int target, double temperature, 
     
     /* Regime III: recombination dominated by dust, but dust has a 'normal' efficiency of absorbing grains */
     double psi_fac=16.71/(a_grain_micron*temperature), alpha=zeta_cr*psi_fac/(k_eg_00 * ngrain_ngas*ngrain_ngas * n_eff), alpha_min=0.02, alpha_max=10.; /* Z*psi_fac = Z*e^2/(a_grain*kB*T) to dimensionless [psi] units; alpha=prefactor in charge equation: psi = alpha*(exp[-psi] - y/(1-psi)) */
-    if(alpha > alpha_max) {return DMIN(n_ion_max , zeta_cr / (k_eg_0*ngrain_ngas*XH*mu_eff) );}
+    if(alpha > alpha_max) {return DMIN(n_ion_max , zeta_cr / (k_eg_0*ngrain_ngas * XH*mu_eff*n_eff ) );}
     
     /* Regime IV: recombination dominated by dust and grains dominate the charge, strongly suppressing the free charges */
-    if(alpha < 1.e-4) {return DMIN(n_ion_max , zeta_cr / (k_eg_00*ngrain_ngas*XH*mu_eff) );} // psi->small, negligible correction here
-    if(alpha < alpha_min) {double psi=0.5*(1.-sqrt(1.+4.*y*alpha)); return DMIN(n_ion_max , zeta_cr / (k_eg_00*exp(psi)*ngrain_ngas*XH*mu_eff) );} // small-psi-limit
+    if(alpha < 1.e-4) {return DMIN(n_ion_max , zeta_cr / (k_eg_00*ngrain_ngas * XH*mu_eff*n_eff) );} // psi->small, negligible correction here
+    if(alpha < alpha_min) {double psi=0.5*(1.-sqrt(1.+4.*y*alpha)); return DMIN(n_ion_max , zeta_cr / (k_eg_00*exp(psi)*ngrain_ngas * XH*mu_eff*n_eff) );} // small-psi-limit
     double psi_xmin=0.5*(1.-sqrt(1.+4.*y*alpha_min)), psi=psi_0 + (psi_xmin-psi_0)*2./(1.+alpha_min/alpha); // this interpolates between the asymptotic limmits at low and high alpha, where we can obtain high-accuracy solutions here
-    return DMIN(n_ion_max , zeta_cr / (k_eg_00*exp(psi)*ngrain_ngas*XH*mu_eff));
+    return DMIN(n_ion_max , zeta_cr / (k_eg_00*exp(psi)*ngrain_ngas * XH*mu_eff*n_eff));
 }
 
 
