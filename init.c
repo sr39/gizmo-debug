@@ -656,7 +656,7 @@ void init(void)
                     if(species == 5) {f_norm = 1.4e-20 * Zfac;} // Be10 (radioactive)
                     if(species == 6) {f_norm = 0.0094 * Zfac;} // CNO (combined bin)
                 }
-                double e_tmp = f_norm * e0, x_RGV = CR_global_rigidity_at_bin_center[j], a_0=0.715197, x_0=1.7, gamma_0=-2.3, gamma_1=0.8, fac, slope; // hadrons
+                double e_tmp = 1.e-4 * f_norm * e0, x_RGV = CR_global_rigidity_at_bin_center[j], a_0=0.715197, x_0=1.7, gamma_0=-2.3, gamma_1=0.8, fac, slope; // hadrons
                 if(species < 0) {a_0=0.506309; x_0=1.0; gamma_0=-0.6; gamma_1=1.3;} // leptons
                 double dlnR = log(CR_global_max_rigidity_in_bin[j]/CR_global_min_rigidity_in_bin[j]); // bin-width needed below for assignment
                 double qx0=pow(x_RGV/x_0,gamma_0), qx1=pow(x_RGV/x_0,gamma_1); fac=a_0*dlnR/(qx0+qx1); slope=-(gamma_0*qx0 + gamma_1*qx1)/(qx0+qx1)-2.; // adopt an extremely simple two-power law spectrum, identical in E space for everything, except normalization, to initialize

@@ -668,7 +668,7 @@ void Riemann_solver_exact(struct Input_vec_Riemann Riemann_vec, struct Riemann_o
                        double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R)
 {
     /* first, we need to check for all the special/exceptional cases that will cause things to go haywire */
-    if((Riemann_vec.L.p == 0 && Riemann_vec.L.p == 0) || (Riemann_vec.L.rho==0 && Riemann_vec.R.rho==0))
+    if((Riemann_vec.L.p == 0 && Riemann_vec.R.p == 0) || (Riemann_vec.L.rho==0 && Riemann_vec.R.rho==0))
     {
         /* we're in a Vaccuum! */
         Riemann_out->P_M = Riemann_out->S_M = 0;
