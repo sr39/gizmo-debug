@@ -47,7 +47,7 @@ int old_MaxPart = 0, new_MaxPart;
 
 void restart(int modus)
 {
-    char buf[200], buf_bak[200], buf_mv[500];
+    char buf[200], buf_bak2[200], buf_bak[200], buf_mv[500];
     double save_PartAllocFactor;
     int nprocgroup, primaryTask, groupTask;
     struct global_data_all_processes all_task0;
@@ -68,6 +68,13 @@ void restart(int modus)
         {
             sprintf(buf, "%s/restartfiles/%s.%d", All.OutputDir, All.RestartFile, i_Task_iter);
             sprintf(buf_bak, "%s/restartfiles/%s.%d.bak", All.OutputDir, All.RestartFile, i_Task_iter);
+#ifdef BACKUP_RESTARTFILE_FREQUENCY
+            if( (int)(CPUThisRun/All.CpuTimeBetRestartFile) % BACKUP_RESTARTFILE_FREQUENCY == 0)
+            {
+                sprintf(buf_bak2, "%s/restartfiles/%s.%d.bak2", All.OutputDir, All.RestartFile, i_Task_iter, BACKUP_RESTARTFILE_FREQUENCY);
+                rename(buf_bak,buf_bak2); // move old backup restart files to .bak2 files //
+            }
+#endif
             rename(buf,buf_bak); // move old restart files to .bak files //
         }
 #endif

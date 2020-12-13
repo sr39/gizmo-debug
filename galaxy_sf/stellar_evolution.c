@@ -964,7 +964,7 @@ double single_star_feedback_velocity_fortimestep(int n){
 double stellar_lifetime_in_Gyr(int n) { //Estimate lifetime of star, using simple MS approximation t/Gyr ~ 9.6 M/L in solar
     double m_solar = BPP(n).Mass * UNIT_MASS_IN_SOLAR, lum = P[n].StarLuminosity_Solar; // mass in units of Msun
 #if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
-    lum = ps_lum_MS(BPP(n).ZAMS_Mass); // just calculate the ZAMS luminosity
+    lum = ps_lum_MS(BPP(n).ZAMS_Mass) * UNIT_LUM_IN_SOLAR; // just calculate the ZAMS luminosity
 #endif
     return 9.6*(m_solar/lum) + 0.0034; // gives ~10Gyr for solar-type stars, ~40Myr for 8msun ZAMS, and asymptotes to 3.7 Myr at high mass [assuming those stars are near-Eddington-limited, where the 9.6*(M/L) term becomes -> 0.3 Myr
 }

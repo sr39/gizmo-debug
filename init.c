@@ -588,8 +588,14 @@ void init(void)
             SphP[i].Ne = 1.0;
 #endif
 #if defined(COOL_MOLECFRAC_NONEQM)
-            SphP[i].MolecularMassFraction = 0.0;
-            SphP[i].MolecularMassFraction_perNeutralH = 0.0;
+	    double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS;
+	    if(nHcgs > 10){ // dense ISM starts molecular - very approximate cutoff
+	        SphP[i].MolecularMassFraction = 1.0;
+		SphP[i].MolecularMassFraction_perNeutralH = 1.0;
+	    } else { // otherwise start atomic
+	        SphP[i].MolecularMassFraction = 0.0;
+		SphP[i].MolecularMassFraction_perNeutralH = 0.0;
+	    }
 #endif
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
