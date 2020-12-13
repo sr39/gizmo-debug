@@ -178,7 +178,7 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
     double f_elec = 0.02; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
     double inj_slope = 4.2; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope)
     double R_break_e = 1.0; // location of spectral break for injection e- spectrum, in GV
-    double inj_slope_lowE_e = 3.8; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope), for electrons below R_break_e
+    double inj_slope_lowE_e = 4.0; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope), for electrons below R_break_e
     double R=return_CRbin_CR_rigidity_in_GV(-1,k_CRegy); int species=return_CRbin_CR_species_ID(k_CRegy); // get bin-centered R and species type
     //if(species < 0 && R < R_break_e) {inj_slope = inj_slope_lowE_e;} // follow model injection spectra favored in Strong et al. 2011 (A+A, 534, A54), who argue the low-energy e- injection spectrum must break to a lower slope by ~1 independent of propagation and re-acceleration model
     if(species > -200 && R < R_break_e) {inj_slope = inj_slope_lowE_e;} // follow model injection spectra favored in Strong et al. 2011 (A+A, 534, A54), who argue the low-energy e- injection spectrum must break to a lower slope by ~1 independent of propagation and re-acceleration model
@@ -747,8 +747,8 @@ double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy)
 #ifdef COSMIC_RAYS_ALT_FLUX_FORM
     double v_flux_eff=0; int k; for(k=0;k<3;k++) {v_flux_eff += SphP[target].CosmicRayFluxPred[k_CRegy][k] * SphP[target].CosmicRayFluxPred[k_CRegy][k];} // need magnitude of flux vector
     if(v_flux_eff > 0) {v_flux_eff=sqrt(v_flux_eff) / (MIN_REAL_NUMBER + SphP[target].CosmicRayEnergyPred[k_CRegy]);} else {v_flux_eff=0;} // effective speed of CRs = |F|/E
-    streamfac = (vA * GAMMA_COSMICRAY_MINUS1 / fabs(SphP[target].CosmicRayDiffusionCoeff[k_CRegy])) * DMAX(v_flux_eff/COSMIC_RAYS_RSOL_CORRFAC(k_CRegy) - GAMMA_COSMICRAY*vA, 0); // this is (vA/[3kappa])*(F - vA*(ecr+Pcr))/ecr, using the 'full F' [corrected back from rsol, b/c rsol correction moves outside this for loss terms]
-    return streamfac; // probably want to limit to make sure above doesn't take on too extreme a value... also above, have only positive term since this removes energy from CRs when streaming super-Alfvenically, but when streaming sub-Alfvenically, could this become a source term with energy going into CRs? seems problematic if vA very high, but then scattering would work inefficiently... so plausible, but really need to be careful again about magnitude...
+    streamfac = (vA * GAMMA_COSMICRAY_MINUS1 / fabs(SphP[target].CosmicRayDiffusionCoeff[k_CRegy])) * (v_flux_eff/COSMIC_RAYS_RSOL_CORRFAC(k_CRegy) - GAMMA_COSMICRAY*vA); // this is (vA/[3kappa])*(F - vA*(ecr+Pcr))/ecr, using the 'full F' [corrected back from rsol, b/c rsol correction moves outside this for loss terms]
+    return streamfac; // probably want to limit to make sure above doesn't take on too extreme a value... also above, initially only had positive term since this removes energy from CRs when streaming super-Alfvenically, but when streaming sub-Alfvenically, could this become a source term with energy going into CRs? seems problematic if vA very high, but then scattering would work inefficiently... so plausible, but really need to be careful again about magnitude...
 #endif
     
     if(vA>0) {vstream_0 = DMIN(vA, vstream_0);} /* account for the fact that the loss term is always [or below] the Alfven speed, regardless of the bulk streaming speed */
@@ -801,14 +801,14 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         double fluxmag=0, fluxdot=0; for(k=0;k<3;k++) {fluxmag+=flux[k]*flux[k]; fluxdot+=flux[k]*B0[k];}
         if(fluxmag>0) {fluxmag=sqrt(fluxmag);} else {fluxmag=0;}
         if(fluxdot<0) {fluxmag*=-1;} // points down-field
-        // before acting on the 'stiff' sub-system, account for the 'extra' advection term that accounts for 'twisting' of B:
-        double fac_bv=0; for(k=0;k<3;k++) {fac_bv += All.cf_a2inv * bhat[k] * (bhat[0]*SphP[i].Gradients.Velocity[k][0] + bhat[1]*SphP[i].Gradients.Velocity[k][1] + bhat[2]*SphP[i].Gradients.Velocity[k][2]);}
-        if(All.ComovingIntegrationOn) {fac_bv += All.cf_hubble_a;} // adds cosmological/hubble flow term here [not included in peculiar velocity gradient]
-        fluxmag *= exp(-DMAX(-2.,DMIN(2.,fac_bv*dt_entr))); // limit factor for change here, should be small given Courant factor, then update flux term accordingly, before next step -- acts like a mod of the divv term //
+        // before acting on the 'stiff' sub-system, account for the 'extra' advection term that accounts for 'twisting' of B: note more careful derivation shows this is sub-leading order in v/c, should not be included here
+        //double fac_bv=0; for(k=0;k<3;k++) {fac_bv += All.cf_a2inv * bhat[k] * (bhat[0]*SphP[i].Gradients.Velocity[k][0] + bhat[1]*SphP[i].Gradients.Velocity[k][1] + bhat[2]*SphP[i].Gradients.Velocity[k][2]);}
+        //if(All.ComovingIntegrationOn) {fac_bv += All.cf_hubble_a;} // adds cosmological/hubble flow term here [not included in peculiar velocity gradient]
+        //fluxmag *= exp(-DMAX(-2.,DMIN(2.,rsol_correction_factor*fac_bv*dt_entr))); // limit factor for change here, should be small given Courant factor, then update flux term accordingly, before next step -- acts like a mod of the divv term //
         if(Bmag2>0) {for(k=0;k<3;k++) {flux[k] = fluxmag * B0[k] / sqrt(Bmag2);}} // re-assign to be along field
 #endif
         double dt_cr_dimless = dt_entr * cr_speed*cr_speed * GAMMA_COSMICRAY_MINUS1 / (MIN_REAL_NUMBER + fabs(SphP[i].CosmicRayDiffusionCoeff[k_CRegy] * rsol_correction_factor));
-        dt_cr_dimless = DMIN(dt_cr_dimless , 0.1); // arbitrary limiter here for some additional numerical stability ??
+        dt_cr_dimless = DMIN(dt_cr_dimless , 0.1); // arbitrary limiter here for some additional numerical stability
         if((dt_cr_dimless > 0)&&(dt_cr_dimless < 20.)) {q_cr = exp(-dt_cr_dimless);} // factor for CR interpolation
         for(k=0;k<3;k++) {flux[k] = q_cr*flux[k] + (1.-q_cr)*DtCosmicRayFlux[k];} // updated flux
         for(k=0;k<3;k++) {CR_veff[k]=flux[k]/(eCR+MIN_REAL_NUMBER); CR_vmag+=CR_veff[k]*CR_veff[k];} // effective streaming speed
@@ -817,7 +817,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
             for(k=0;k<3;k++) {flux[k]=0; for(k=0;k<3;k++) {CR_veff[k]=0;}} // zero if invalid
         } else {
             //double CR_vmax = COSMIC_RAY_REDUCED_C_CODE(k_CRegy); // enforce a hard upper limit here, though shouldn't be needed with modern formulation
-            double CR_vmax = COSMIC_RAYS_M1; // ?? [use stricter limit here, for timestep concordance] enforce a hard upper limit here, though shouldn't be needed with modern formulation
+            double CR_vmax = COSMIC_RAYS_M1; // [use stricter limit here, for timestep concordance] enforce a hard upper limit here, though shouldn't be needed with modern formulation
             CR_vmag = sqrt(CR_vmag); if(CR_vmag > CR_vmax) {for(k=0;k<3;k++) {flux[k]*=CR_vmax/CR_vmag; CR_veff[k]*=CR_vmax/CR_vmag;}} // limit flux to free-streaming speed [as with RT]
         }
         if(mode==0) {for(k=0;k<3;k++) {SphP[i].CosmicRayFlux[k_CRegy][k]=flux[k];}} else {for(k=0;k<3;k++) {SphP[i].CosmicRayFluxPred[k_CRegy][k]=flux[k];}}
@@ -1135,7 +1135,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                                     double N_donor = frac_secondary*dfac_n*ntot_evolved[j]; // absolute number being transferred between bins
                                     
                                     if(CR_species_ID_in_bin[j]==6 && CR_species_ID_in_bin[j_s]==5) {U_donor *= 0.9;} // 10Be assumption needs tiny correction b/c of mean molecular weight of CNO bin putting it slightly in the wrong place (giving problematic slopes)
-                                    int split_two_bin=0, j2=-1, js2=-1; /* ?? for some species where we have a big energy jump in the parent and not secondary (e.g. hadrons -> leptons) we get 'jumps' in the spectrum, which produce artificial features; attempt to smooth these out by distributing over a pair of bins */
+                                    int split_two_bin=0, j2=-1, js2=-1; /* for some species where we have a big energy jump in the parent and not secondary (e.g. hadrons -> leptons) we get 'jumps' in the spectrum, which produce artificial features; attempt to smooth these out by distributing over a pair of bins */
                                     if((CR_species_ID_in_bin[j_s]<0 || CR_species_ID_in_bin[j_s]==7) && (k<n_active-1) && k>0) {
                                         j2=bins_sorted[n_active-1-(k+1)]; if(CR_species_ID_in_bin[j2]==CR_species_ID_in_bin[j]) {
                                             js2=CR_secondary_target_bin[j2][m]; if(CR_species_ID_in_bin[j_s]==CR_species_ID_in_bin[js2]) {
@@ -1167,7 +1167,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                                     
                                     if(split_two_bin==0 && CR_species_ID_in_bin[j]==1 && k==0 && (CR_species_ID_in_bin[j_s]<0 || CR_species_ID_in_bin[j_s]==7)) { /* now code extending the CR spectrum of secondary production to energies higher than our max limit, assuming continued power-law extrapolation of the CR spectrum */
                                         double Rx0=CR_global_rigidity_at_bin_center[j_s], U00=U_donor, xm_0=CR_global_min_rigidity_in_bin[j_s]/CR_global_rigidity_at_bin_center[j_s], xp_0=CR_global_max_rigidity_in_bin[j_s]/CR_global_rigidity_at_bin_center[j_s];
-                                        int spec_0=CR_species_ID_in_bin[j_s], slope_0=2.+slope_inj; slope_0=DMAX(-4.,DMIN(slope_0,0.5));
+                                        int spec_0=CR_species_ID_in_bin[j_s], slope_0=2.+slope_inj; slope_0=DMAX(-4.,DMIN(slope_0,0.));
                                         j_s++;
                                         while(j_s<N_CR_PARTICLE_BINS && CR_species_ID_in_bin[j_s]==spec_0) {
                                             double Rx1=CR_global_rigidity_at_bin_center[j_s];
@@ -1610,7 +1610,7 @@ double return_CRbin_kinetic_energy_in_GeV_binvalsNRR(int k_CRegy)
 /* optional code to allow the RSOL to depend on bin energy, still testing this */
 double return_CRbin_M1speed(int k_CRegy)
 {
-#if defined(COSMIC_RAYS_VARIABLE_RSOL) // experimental block here ?? //
+#if defined(COSMIC_RAYS_VARIABLE_RSOL) // experimental block here //
     double R = CR_global_rigidity_at_bin_center[k_CRegy];
     double f = All.CosmicRayDiffusionCoeff * UNIT_LENGTH_IN_KPC * pow(R , 0.8);
     if(f > COSMIC_RAYS_M1) {return f;}
@@ -1638,7 +1638,8 @@ double evaluate_cr_transport_reductionfactor(int target, int k_CRegy, int mode)
     if(Bmag>0) {fluxmag=fabs(fluxmag)/sqrt(Bmag); gradmag=fabs(gradmag)/sqrt(Bmag);}
     if(gradmag>0) {Lgrad = All.cf_atime * P0 / gradmag;}
     if(fluxmag>0 && SphP[target].CosmicRayEnergyPred[k_CRegy] > MIN_REAL_NUMBER) {veff = fluxmag / SphP[target].CosmicRayEnergyPred[k_CRegy];}
-    if(mode==0) {veff = COSMIC_RAYS_M1;} // we're injecting, so the relevant speed here is just the injection speed
+    //if(mode==0) {veff = COSMIC_RAY_REDUCED_C_CODE(k);} // we're injecting, so the relevant speed here is just the injection speed
+    if(mode==0) {veff = COSMIC_RAYS_M1;} // we're injecting, so the relevant speed here is just the injection speed (note we speed-limit flux to this for timestepping reasons)
     if(mode==0) {Lgrad = 1./UNIT_LENGTH_IN_KPC;} // ?? set initial gradient length to a constant to reduce noise?
     double v_max = DMIN( C_LIGHT_CODE , kappa / (MIN_REAL_NUMBER + Lgrad) ); // attempt at a limiter function here to determine if being flux-limited in the equations below //
     double RSOL_over_v_desired = veff / (MIN_REAL_NUMBER + v_max);
