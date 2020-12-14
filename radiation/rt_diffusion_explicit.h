@@ -10,7 +10,9 @@
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 /* --------------------------------------------------------------------------------- */
+#ifndef SINGLE_STAR_FB_RAD
 #define RT_ENHANCED_NUMERICAL_DIFFUSION /* option which increases numerical diffusion, to get smoother solutions, if desired; akin to slopelimiters~0 model */
+#endif
 {
     // first define some variables needed regardless //
     double c_light_eff = C_LIGHT_CODE_REDUCED, rsol_corr = c_light_eff / C_LIGHT_CODE;
