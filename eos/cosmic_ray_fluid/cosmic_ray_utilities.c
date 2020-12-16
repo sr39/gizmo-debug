@@ -178,7 +178,10 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
     double f_elec = 0.02; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
     double inj_slope = 4.2; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope)
     double R_break_e = 1.0; // location of spectral break for injection e- spectrum, in GV
-    double inj_slope_lowE_e = 4.0; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope), for electrons below R_break_e
+    double inj_slope_lowE_e = 3.95; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope), for electrons below R_break_e
+#if !defined(COSMIC_RAYS_ALT_RSOL_FORM)
+    inj_slope = inj_slope_lowE_e = 4.03; // slightly better fit with this scheme?
+#endif
     double R=return_CRbin_CR_rigidity_in_GV(-1,k_CRegy); int species=return_CRbin_CR_species_ID(k_CRegy); // get bin-centered R and species type
     //if(species < 0 && R < R_break_e) {inj_slope = inj_slope_lowE_e;} // follow model injection spectra favored in Strong et al. 2011 (A+A, 534, A54), who argue the low-energy e- injection spectrum must break to a lower slope by ~1 independent of propagation and re-acceleration model
     if(species > -200 && R < R_break_e) {inj_slope = inj_slope_lowE_e;} // follow model injection spectra favored in Strong et al. 2011 (A+A, 534, A54), who argue the low-energy e- injection spectrum must break to a lower slope by ~1 independent of propagation and re-acceleration model
@@ -1640,7 +1643,7 @@ double evaluate_cr_transport_reductionfactor(int target, int k_CRegy, int mode)
     if(fluxmag>0 && SphP[target].CosmicRayEnergyPred[k_CRegy] > MIN_REAL_NUMBER) {veff = fluxmag / SphP[target].CosmicRayEnergyPred[k_CRegy];}
     //if(mode==0) {veff = COSMIC_RAY_REDUCED_C_CODE(k);} // we're injecting, so the relevant speed here is just the injection speed
     if(mode==0) {veff = COSMIC_RAYS_M1;} // we're injecting, so the relevant speed here is just the injection speed (note we speed-limit flux to this for timestepping reasons)
-    if(mode==0) {Lgrad = 1./UNIT_LENGTH_IN_KPC;} // ?? set initial gradient length to a constant to reduce noise?
+    if(mode==0) {Lgrad = 1./UNIT_LENGTH_IN_KPC;} // ?? set initial gradient length to a constant to reduce noise? [looking at newer tests, don't -really- need this, but doesn't hurt either]
     double v_max = DMIN( C_LIGHT_CODE , kappa / (MIN_REAL_NUMBER + Lgrad) ); // attempt at a limiter function here to determine if being flux-limited in the equations below //
     double RSOL_over_v_desired = veff / (MIN_REAL_NUMBER + v_max);
     if(isfinite(RSOL_over_v_desired) && (RSOL_over_v_desired > 0) && (RSOL_over_v_desired < MAX_REAL_NUMBER)) {if(RSOL_over_v_desired < 1) {return RSOL_over_v_desired;}}
