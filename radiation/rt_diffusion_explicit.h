@@ -10,9 +10,7 @@
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 /* --------------------------------------------------------------------------------- */
-#ifndef SINGLE_STAR_FB_RAD
 #define RT_ENHANCED_NUMERICAL_DIFFUSION /* option which increases numerical diffusion, to get smoother solutions, if desired; akin to slopelimiters~0 model */
-#endif
 {
     // first define some variables needed regardless //
     double c_light_eff = C_LIGHT_CODE_REDUCED, rsol_corr = c_light_eff / C_LIGHT_CODE;
@@ -245,7 +243,11 @@
                 thold_hll = 0.25 * DMAX(fabs(sVi-sVj), DMAX(fabs(sVi), fabs(sVj)));
 #ifdef RT_ENHANCED_NUMERICAL_DIFFUSION
                 thold_hll *= 2.0; // allow this term to be more generous //
+#ifdef BH_WIND_SPAWN // 
+		if(local.ConditionNumber < 0 || P[j].ID == All.AGNWindID) {thold_hll *= 0.25;}  // be extra conservative if dealing with fluxes involving jet cells - won't be particularly accurate anyway
 #endif
+#endif
+
 //#ifndef RT_ENHANCED_NUMERICAL_DIFFUSION
                 if(sign_c0 < 0) {thold_hll *= 1.e-2;} // if opposing signs, restrict this term //
 //#endif
