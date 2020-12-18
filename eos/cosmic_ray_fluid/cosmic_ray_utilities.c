@@ -87,7 +87,7 @@ void CR_spectrum_define_bins(void)
                 {
                     if(CR_species_ID_in_bin[m] != secondary_id) {continue;}
                     double E_target = E_GeV[k] * DMAX(1.,A_wt[m]) / DMAX(1.,A_wt[k]); // fixed energy per nucleon/particle (treating e-/e+ as 1)
-                    if(secondary_id < 0 || secondary_id == 7) {E_target *= 0.1;} // secondary e+/e- from protons (pion decay) get ~0.1 original p energy, likewise for anti-protons
+                    if(secondary_id < 0 || secondary_id == 7) {E_target *= 0.14;} // secondary e+/e- from protons (pion decay) get ~1/8 original p energy, likewise for anti-protons
                     double diff = log(E_GeV[m]/E_target); diff*=diff; // square of log-diff between energies
                     if(diff < diff_min) {diff_min=diff; target_bin=m; E_target_0=E_target;} // set to this as the 'closest' option
                 }
@@ -119,7 +119,7 @@ void CR_spectrum_define_bins(void)
             double sigma_frag_tot = 45. * pow(A_wt[k],0.7) * (1.+0.016*sin(1.3-2.63*log(A_wt[k])));
             if(E_GeV[k] < 2.0) {sigma_frag_tot *= (1.-0.62*exp(-E_GeV[k]/0.2)*sin(1.57553/pow(E_GeV[k],0.28)));}
             CR_frag_coeff[k] = cx_mb_to_coeff * sigma_frag_tot; // rate depends on 'v', need to include beta here
-            if(CR_species_ID_in_bin[k] == 7) {double RGV=CR_global_rigidity_at_bin_center[k], lnR=log(RGV); CR_frag_coeff[k] = 1.5 * (-107.9 + 29.43*lnR - 1.655*lnR*lnR + 189.9/pow(RGV,1./3.));} // larger CX b/c this is anti-proton annihilation; factor ~1.5 accounts for sum of species heavier than H; from summation of cross-sections in Evoli et al. 2017 [arXiv:1711.09616]
+            if(CR_species_ID_in_bin[k] == 7) {double RGV=CR_global_rigidity_at_bin_center[k], lnR=log(RGV); CR_frag_coeff[k] = cx_mb_to_coeff * 1.5 * (-107.9 + 29.43*lnR - 1.655*lnR*lnR + 189.9/pow(RGV,1./3.));} // larger CX b/c this is anti-proton annihilation; factor ~1.5 accounts for sum of species heavier than H; from summation of cross-sections in Evoli et al. 2017 [arXiv:1711.09616]
         }
         for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {CR_frag_secondary_coeff[k][j]=0;} // initialize this to null
         if(CR_frag_coeff[k] > 0) {for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {if(CR_secondary_target_bin[k][j] >= 0) // desired secondary products exist
@@ -130,7 +130,7 @@ void CR_spectrum_define_bins(void)
                 if(primary_id==1) { // p; assume some simple branching ratios for pion production in the relevant regime above
                     if(secondary_id==-1) {CR_frag_secondary_coeff[k][j] = (1./3.) * CR_frag_coeff[k];} // p->e-
                     if(secondary_id==-2) {CR_frag_secondary_coeff[k][j] = (1./3.) * CR_frag_coeff[k];} // p->e+
-                    if(secondary_id== 7) {if(E_GeV[k]>=2.) {double sqrt_s=1.87654*sqrt(1.+E_GeV[k]/1.87654); CR_frag_secondary_coeff[k][j]=1.4*pow(sqrt_s,0.6)*exp(-pow(17./sqrt_s,1.4));}} // p->pbar [anti-proton production; multiplied by 2x here to include anti-neutrons that decay rapidly to anti-p]. fit to integrated-over-pT results from Reinert & Winkler 2017, arXiv:1712.00002
+                    if(secondary_id== 7) {if(E_GeV[k]>=2.) {double sqrt_s=1.87654*sqrt(1.+E_GeV[k]/1.87654); CR_frag_secondary_coeff[k][j]=cx_mb_to_coeff * 1.4*pow(sqrt_s,0.6)*exp(-pow(17./sqrt_s,1.4));}} // p->pbar [anti-proton production; multiplied by 2x here to include anti-neutrons that decay rapidly to anti-p]. fit to integrated-over-pT results from Reinert & Winkler 2017, arXiv:1712.00002
                 }
                 if(primary_id==2) { // B; fitting function to the results compiled and re-fit in Moskalenko & Mashnik 2003 (used for GALPROP), doing a solar-abundance-ratio weighted average over CNO, and summing over the relevant isotopes
                     if(secondary_id==4) {CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * 12.0 * pow(E_GeV[k],-0.022);} // B->Be9 (declines weakly from ~14 to ~10 over MeV-TeV, approx here)
@@ -176,11 +176,11 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
 #endif
 #if (N_CR_PARTICLE_BINS > 2) /* multi-bin spectrum for p and e-: inset assumptions about injection spectrum here! */
     double f_elec = 0.02; // fraction of the energy to put into e- as opposed to p+ at injection [early experiments with 'observed'  fraction ~ 1% give lower e-/p+ actually observed in the end, so tentative favoring closer to equal at injection? but not run to z=0, so U_rad high from CMB; still experimenting here]
-    double inj_slope = 4.2; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope)
+    double inj_slope = 4.25; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope)
     double R_break_e = 1.0; // location of spectral break for injection e- spectrum, in GV
-    double inj_slope_lowE_e = 3.95; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope), for electrons below R_break_e
+    double inj_slope_lowE_e = 4.2; // injection slope with j(p) ~ p^(-inj_slope), so dN/dp ~ p^(2-inj_slope), for electrons below R_break_e
 #if !defined(COSMIC_RAYS_ALT_RSOL_FORM)
-    inj_slope = inj_slope_lowE_e = 4.03; // slightly better fit with this scheme?
+    f_elec=0.02; inj_slope = inj_slope_lowE_e = 4.03; // slightly better fit with this scheme?
 #endif
     double R=return_CRbin_CR_rigidity_in_GV(-1,k_CRegy); int species=return_CRbin_CR_species_ID(k_CRegy); // get bin-centered R and species type
     //if(species < 0 && R < R_break_e) {inj_slope = inj_slope_lowE_e;} // follow model injection spectra favored in Strong et al. 2011 (A+A, 534, A54), who argue the low-energy e- injection spectrum must break to a lower slope by ~1 independent of propagation and re-acceleration model
@@ -559,6 +559,12 @@ void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, i
         double E_GeV = return_CRbin_kinetic_energy_in_GeV_binvalsNRR(k_CRegy), egy_slopemode = 1, xm = CR_global_min_rigidity_in_bin[k_CRegy] / CR_global_rigidity_at_bin_center[k_CRegy], xp = CR_global_max_rigidity_in_bin[k_CRegy] / CR_global_rigidity_at_bin_center[k_CRegy], xm_e=xm, xp_e=xp; // values needed for bin injection parameters
         if(CR_check_if_bin_is_nonrelativistic(k_CRegy)) {egy_slopemode=2; xm_e=xm*xm; xp_e=xp*xp;} // values needed to scale from slope injected to number and back
         double slope_inj = CR_energy_spectrum_injection_fraction(k_CRegy,source_PType,injection_velocity,1,target); // spectral slope of injected CRs
+        if(k_CRegy>0) { // want to correct injection slope if we're modulating injection with a variable Psi-type rsol function
+            int spec_0=return_CRbin_CR_species_ID[k_CRegy], spec_m=return_CRbin_CR_species_ID[k_CRegy-1], spec_p=-200; if(spec_m==spec_0) {
+                double rfac_0=evaluate_cr_transport_reductionfactor(target,k_CRegy,0), rfac_m=evaluate_cr_transport_reductionfactor(target,k_CRegy-1,0) rfac_p=rfac_0, R_0=CR_global_rigidity_at_bin_center[k_CRegy], R_m=CR_global_rigidity_at_bin_center[k_CRegy-1], R_p=R_0;
+                if(k_CRegy<N_CR_PARTICLE_BINS) {spec_p=return_CRbin_CR_species_ID[k_CRegy+1];}
+                if(spec_p==spec_0) {rfac_p=evaluate_cr_transport_reductionfactor(target,k_CRegy+1,0); R_p=CR_global_rigidity_at_bin_center[k_CRegy+1];
+                    double xm=log(R_m/R_0),xp=log(R_p/R_0),qm=log(rfac_m/rfac_0),qp=log(rfac_p/rfac_0); slope_inj += (qm*xm + qp*xp) / (xm*xm + xp*xp);} else {slope_inj += log(rfac_0/rfac_m) / log(R_0/R_m);}}}
         double gamma_one = slope_inj + 1., xm_gamma_one = pow(xm, gamma_one), xp_gamma_one = pow(xp, gamma_one); // variables below
         double ntot_inj = (dEcr / E_GeV) * ((gamma_one + egy_slopemode) / (gamma_one)) * (xp_gamma_one - xm_gamma_one) / (xp_gamma_one*xp_e - xm_gamma_one*xm_e); // injected number in bin
         #pragma omp atomic
