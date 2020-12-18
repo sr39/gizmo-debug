@@ -560,9 +560,9 @@ void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, i
         if(CR_check_if_bin_is_nonrelativistic(k_CRegy)) {egy_slopemode=2; xm_e=xm*xm; xp_e=xp*xp;} // values needed to scale from slope injected to number and back
         double slope_inj = CR_energy_spectrum_injection_fraction(k_CRegy,source_PType,injection_velocity,1,target); // spectral slope of injected CRs
         if(k_CRegy>0) { // want to correct injection slope if we're modulating injection with a variable Psi-type rsol function
-            int spec_0=return_CRbin_CR_species_ID[k_CRegy], spec_m=return_CRbin_CR_species_ID[k_CRegy-1], spec_p=-200; if(spec_m==spec_0) {
-                double rfac_0=evaluate_cr_transport_reductionfactor(target,k_CRegy,0), rfac_m=evaluate_cr_transport_reductionfactor(target,k_CRegy-1,0) rfac_p=rfac_0, R_0=CR_global_rigidity_at_bin_center[k_CRegy], R_m=CR_global_rigidity_at_bin_center[k_CRegy-1], R_p=R_0;
-                if(k_CRegy<N_CR_PARTICLE_BINS) {spec_p=return_CRbin_CR_species_ID[k_CRegy+1];}
+            int spec_0=return_CRbin_CR_species_ID(k_CRegy), spec_m=return_CRbin_CR_species_ID(k_CRegy-1), spec_p=-200; if(spec_m==spec_0) {
+                double rfac_0=evaluate_cr_transport_reductionfactor(target,k_CRegy,0), rfac_m=evaluate_cr_transport_reductionfactor(target,k_CRegy-1,0), rfac_p=rfac_0, R_0=CR_global_rigidity_at_bin_center[k_CRegy], R_m=CR_global_rigidity_at_bin_center[k_CRegy-1], R_p=R_0;
+                if(k_CRegy<N_CR_PARTICLE_BINS) {spec_p=return_CRbin_CR_species_ID(k_CRegy+1);}
                 if(spec_p==spec_0) {rfac_p=evaluate_cr_transport_reductionfactor(target,k_CRegy+1,0); R_p=CR_global_rigidity_at_bin_center[k_CRegy+1];
                     double xm=log(R_m/R_0),xp=log(R_p/R_0),qm=log(rfac_m/rfac_0),qp=log(rfac_p/rfac_0); slope_inj += (qm*xm + qp*xp) / (xm*xm + xp*xp);} else {slope_inj += log(rfac_0/rfac_m) / log(R_0/R_m);}}}
         double gamma_one = slope_inj + 1., xm_gamma_one = pow(xm, gamma_one), xp_gamma_one = pow(xp, gamma_one); // variables below
