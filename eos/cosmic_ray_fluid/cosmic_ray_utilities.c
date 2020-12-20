@@ -217,7 +217,7 @@ double diffusion_coefficient_constant(int target, int k_CRegy)
 {
     double dimensionless_kappa_relative_to_GV_protons = 1;
 #if (N_CR_PARTICLE_BINS > 1)    /* insert physics here */
-    dimensionless_kappa_relative_to_GV_protons = pow( return_CRbin_CR_rigidity_in_GV(-1,k_CRegy) , 1.0 ); // assume a quasi-empirical scaling here //
+    dimensionless_kappa_relative_to_GV_protons = return_CRbin_beta_factor(target,k_CRegy) * pow( return_CRbin_CR_rigidity_in_GV(-1,k_CRegy) , 1.0 ); // assume a quasi-empirical scaling here //
 #endif
     return All.CosmicRayDiffusionCoeff * dimensionless_kappa_relative_to_GV_protons;
 }
@@ -275,7 +275,7 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
     if(isfinite(phi_0) && (phi_0>0.01)) {Gamma_effective *= phi_0/(2.*(sqrt(1.+phi_0)-1.));} // this accounts exactly for the steady-state solution for the Thomas+Pfrommer formulation, including both the linear [Landau,turbulent,ion-neutral] + non-linear terms. can estimate (G_nonlinear_landau_effective = Gamma_effective - G0)
     /* with damping rates above, equilibrium transport is equivalent to pure streaming, with v_stream = vA + (diffusive equilibrium part) give by the solution below, proportional to Gamma_effective and valid to O(v^2/c^2) */
     double v_st_eff = vA_code * (1. + f_QLT * 4. * kappa_0 * Gamma_effective * x_EB_ECR * (1. + 2.*vA_code*vA_code/(C_LIGHT_CODE*C_LIGHT_CODE)) / (M_PI*vA_code*vA_code + EPSILON_SMALL)); // effective equilibrium streaming speed for all terms accounted
-    return (GAMMA_COSMICRAY * v_st_eff * CRPressureGradScaleLength) * (UNIT_VEL_IN_CGS*UNIT_LENGTH_IN_CGS); // convert to effective diffusivity from 'streaming speed' [this introduces the gamma and gradient length], and convert to CGS from code units
+    return (GAMMA_COSMICRAY(k_CRegy) * v_st_eff * CRPressureGradScaleLength) * (UNIT_VEL_IN_CGS*UNIT_LENGTH_IN_CGS); // convert to effective diffusivity from 'streaming speed' [this introduces the gamma and gradient length], and convert to CGS from code units
 }
 
 
@@ -477,7 +477,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
         v_streaming=Get_CosmicRayStreamingVelocity(i,k_CRegy);
         DiffusionCoeff=0; CR_kappa_streaming=0; CRPressureGradScaleLength=Get_CosmicRayGradientLength(i,k_CRegy); /* set these for the bin as we get started */
 #ifndef COSMIC_RAYS_DISABLE_STREAMING /* self-consistently calculate the diffusion coefficients for cosmic ray fluids; first the streaming part of this (kappa~v_stream*L_CR_grad) following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
-        CR_kappa_streaming = GAMMA_COSMICRAY * v_streaming * CRPressureGradScaleLength; /* the diffusivity is now just the product of these two coefficients (all physical units) */
+        CR_kappa_streaming = GAMMA_COSMICRAY(k_CRegy) * v_streaming * CRPressureGradScaleLength; /* the diffusivity is now just the product of these two coefficients (all physical units) */
 #endif
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 0) /* set diffusivity to a universal power-law scaling (constant per-bin)  */
         DiffusionCoeff = diffusion_coefficient_constant(i,k_CRegy); //  this is the input value of the diffusivity, for constant-kappa models
@@ -491,10 +491,10 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 4) /* Wiener et al. 2017 style pure-streaming but with larger streaming speeds and limited losses, using their scaling for assumption that turbulent+non-linear Landau only dominate damping */
         double ni_m3=f_ion*(rho_cgs/PROTONMASS)/1.e-3, T6=temperature/1.e6, Lturbkpc=L_scale*UNIT_LENGTH_IN_KPC, Lgradkpc=CRPressureGradScaleLength*UNIT_LENGTH_IN_KPC, h0_fac=0.1*Get_Particle_Size(i)*All.cf_atime*All.cf_a2inv*UNIT_VEL_IN_KMS, dv2_10=0; for(k=0;k<3;k++) {int j; for(j=0;j<3;j++) {dv2_10 += SphP[i].Gradients.Velocity[j][k]*SphP[i].Gradients.Velocity[j][k]*h0_fac*h0_fac;}}
         double ecr_14 = SphP[i].CosmicRayEnergyPred[k_CRegy] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_CGS / 1.0e-14; // CR energy density in CGS units //
-        CR_kappa_streaming = GAMMA_COSMICRAY * CRPressureGradScaleLength * (v_streaming + (1./UNIT_VEL_IN_KMS)*(4.1*pow(MIN_REAL_NUMBER+ni_m3*T6,0.25)/pow(MIN_REAL_NUMBER+ecr_14*Lgradkpc,0.5) + 1.2*pow(MIN_REAL_NUMBER+dv2_10*ni_m3,0.75)/(MIN_REAL_NUMBER+ecr_14*sqrt(Lturbkpc)))); // convert to effective diffusivity
+        CR_kappa_streaming = GAMMA_COSMICRAY(k_CRegy) * CRPressureGradScaleLength * (v_streaming + (1./UNIT_VEL_IN_KMS)*(4.1*pow(MIN_REAL_NUMBER+ni_m3*T6,0.25)/pow(MIN_REAL_NUMBER+ecr_14*Lgradkpc,0.5) + 1.2*pow(MIN_REAL_NUMBER+dv2_10*ni_m3,0.75)/(MIN_REAL_NUMBER+ecr_14*sqrt(Lturbkpc)))); // convert to effective diffusivity
 #endif
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 5) /* streaming at fast MHD wavespeed [just to see what it does] */
-        CR_kappa_streaming = GAMMA_COSMICRAY * sqrt(v_streaming*v_streaming + cs_thermal*cs_thermal) * CRPressureGradScaleLength;
+        CR_kappa_streaming = GAMMA_COSMICRAY(k_CRegy) * sqrt(v_streaming*v_streaming + cs_thermal*cs_thermal) * CRPressureGradScaleLength;
 #endif
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 1) || (COSMIC_RAYS_DIFFUSION_MODEL == 2) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* textbook extrinsic turbulence model: kappa~v_CR*r_gyro * B_bulk^2/(B_random[scale~r_gyro]^2) v_CR~c, r_gyro~p*c/(Z*e*B)~1e12 cm * RGV *(3 muG/B)  (RGV~1 is the magnetic rigidity). assuming a Kolmogorov spectrum */
         int scatter_modes = 0; /* default to using both Alfven+damped-fast modes */
@@ -513,27 +513,27 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
         double Omega_gyro=(0.00898734*b_muG/return_CRbin_CR_rigidity_in_GV(i,k_CRegy)) * UNIT_TIME_IN_CGS, r_L=C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*C_LIGHT_CODE; // some handy numbers for limiting extreme-kappa below. all in -physical- code units //
         CR_kappa_streaming = diffusion_coefficient_self_confinement(COSMIC_RAYS_SET_SC_MODEL,i,k_CRegy,M_A,L_scale,b_muG,vA_noion,rho_cgs,temperature,cs_thermal,nh0,nHe0,f_ion) / unit_kappa_code;
         if(!isfinite(CR_kappa_streaming)) {CR_kappa_streaming = 1.e30/unit_kappa_code;} /* apply some limiters since its very easy for the routine above to give wildly-large-or-small diffusivity, which wont make a difference compared to just 'small' or 'large', but will mess things up numerically */
-        CR_kappa_streaming = DMIN( DMAX( DMIN(DMAX(CR_kappa_streaming,kappa_0) , 1.0e10*GAMMA_COSMICRAY*CRPressureGradScaleLength*COSMIC_RAY_REDUCED_C_CODE(k_CRegy)) , 1.e25/unit_kappa_code ) , 1.e34/unit_kappa_code );
+        CR_kappa_streaming = DMIN( DMAX( DMIN(DMAX(CR_kappa_streaming,kappa_0) , 1.0e10*GAMMA_COSMICRAY(k_CRegy) * CRPressureGradScaleLength*COSMIC_RAY_REDUCED_C_CODE(k_CRegy)) , 1.e25/unit_kappa_code ) , 1.e34/unit_kappa_code );
 #endif
 
         /* -- ok, we've done what we came to do -- everything below here is pure-numerical, not physics, and should generally not be modified -- */
 
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* 'combined' extrinsic turbulence + self-confinement model: add scattering rates linearly (plus lots of checks to prevent unphysical bounds) */
         CR_kappa_streaming = 1. / (EPSILON_SMALL +  1./(CR_kappa_streaming+EPSILON_SMALL) + 1./(DiffusionCoeff+EPSILON_SMALL) ); DiffusionCoeff=0; if(!isfinite(CR_kappa_streaming)) {CR_kappa_streaming = 1.e30/unit_kappa_code;} // if scattering rates add linearly, this is a rough approximation to the total transport (essentially, smaller of the two dominates)
-        CR_kappa_streaming = DMIN( DMAX( CR_kappa_streaming , kappa_0 ) , 1.0e10*GAMMA_COSMICRAY*CRPressureGradScaleLength*COSMIC_RAY_REDUCED_C_CODE(k_CRegy) ); CR_kappa_streaming = DMIN( DMAX( CR_kappa_streaming , 1.e25/unit_kappa_code ) , 1.e34/unit_kappa_code );
+        CR_kappa_streaming = DMIN( DMAX( CR_kappa_streaming , kappa_0 ) , 1.0e10*GAMMA_COSMICRAY(k_CRegy) * CRPressureGradScaleLength*COSMIC_RAY_REDUCED_C_CODE(k_CRegy) ); CR_kappa_streaming = DMIN( DMAX( CR_kappa_streaming , 1.e25/unit_kappa_code ) , 1.e34/unit_kappa_code );
 #endif
         DiffusionCoeff = DiffusionCoeff + CR_kappa_streaming; //  add 'diffusion' and 'streaming' terms since enter numerically the same way
             
 #ifndef COSMIC_RAYS_M1 /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
         // [all of this only applies if we are using the pure-diffusion description: the M1-type description should -not- use a limiter here, or negative kappa]
         double diffusion_velocity_limit=C_LIGHT_CODE, L_eff=DMAX(Get_Particle_Size(i)*All.cf_atime,CRPressureGradScaleLength); /* maximum diffusion velocity (set <c if desired) */
-        double kappa_diff_vel = DiffusionCoeff * GAMMA_COSMICRAY_MINUS1 / L_eff; DiffusionCoeff *= 1 / (1 + kappa_diff_vel/diffusion_velocity_limit); /* caps maximum here */
+        double kappa_diff_vel = DiffusionCoeff * (GAMMA_COSMICRAY(k_CRegy)-1.) / L_eff; DiffusionCoeff *= 1 / (1 + kappa_diff_vel/diffusion_velocity_limit); /* caps maximum here */
 #ifdef GALSF /* for multi-physics problems, we suppress diffusion [in the FLD-like limit] where it is irrelevant for timestepping-sake */
         DiffusionCoeff *= 1 / (1 + kappa_diff_vel/(0.01*diffusion_velocity_limit)); /* caps maximum here */
         double P_cr_Ratio = Get_Gas_CosmicRayPressure(i,k_CRegy) / (MIN_REAL_NUMBER + SphP[i].Pressure), P_min=1.0e-4; if(P_cr_Ratio < P_min) {DiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
         P_min = 1.0e-6; if(P_cr_Ratio < P_min) {DiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
 #endif
-        DiffusionCoeff /= GAMMA_COSMICRAY_MINUS1; // ensure correct units for subsequent operations //
+        DiffusionCoeff /= (GAMMA_COSMICRAY(k_CRegy)-1.); // ensure correct units for subsequent operations //
 #endif
         if((DiffusionCoeff<=0)||(isnan(DiffusionCoeff))) {DiffusionCoeff=0;} /* nan check */
         SphP[i].CosmicRayDiffusionCoeff[k_CRegy] = DiffusionCoeff; /* final assignment! */
@@ -603,7 +603,7 @@ double INLINE_FUNC Get_Gas_CosmicRayPressure(int i, int k_CRegy)
 {
     if((P[i].Mass > 0) && (SphP[i].Density>0) && (SphP[i].CosmicRayEnergyPred[k_CRegy] > 0))
     {
-        return GAMMA_COSMICRAY_MINUS1 * (SphP[i].CosmicRayEnergyPred[k_CRegy] * SphP[i].Density) / P[i].Mass; // cosmic ray pressure = (4/3-1) * e_cr = 1/3 * (E_cr/Vol) //
+        return (GAMMA_COSMICRAY(k_CRegy)-1.) * (SphP[i].CosmicRayEnergyPred[k_CRegy] * SphP[i].Density) / P[i].Mass; // cosmic ray pressure = (4/3-1) * e_cr = 1/3 * (E_cr/Vol) //
     } else {return 0;}
 }
 
@@ -703,6 +703,12 @@ double return_CRbin_gamma_factor(int target, int k_CRegy)
 }
 
 
+/* routine which returns the effective adiabatic index of CRs, P_cr = (gamma_eos - 1) * e_kinetic */
+double gamma_eos_of_crs_in_bin(int k_CRegy)
+{
+    return (4. + 1./return_CRbin_gamma_factor(-1,k_CRegy)) / 3.;
+}
+
 /* routine which returns the CR kinetic energy in GeV, for a given rigidity, etc. */
 double return_CRbin_kinetic_energy_in_GeV(int target, int k_CRegy)
 {
@@ -756,13 +762,15 @@ double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy)
 #ifdef COSMIC_RAYS_ALT_FLUX_FORM
     double v_flux_eff=0; int k; for(k=0;k<3;k++) {v_flux_eff += SphP[target].CosmicRayFluxPred[k_CRegy][k] * SphP[target].CosmicRayFluxPred[k_CRegy][k];} // need magnitude of flux vector
     if(v_flux_eff > 0) {v_flux_eff=sqrt(v_flux_eff) / (MIN_REAL_NUMBER + SphP[target].CosmicRayEnergyPred[k_CRegy]);} else {v_flux_eff=0;} // effective speed of CRs = |F|/E
-    streamfac = (vA * GAMMA_COSMICRAY_MINUS1 / fabs(SphP[target].CosmicRayDiffusionCoeff[k_CRegy])) * (v_flux_eff/COSMIC_RAYS_RSOL_CORRFAC(k_CRegy) - GAMMA_COSMICRAY*vA); // this is (vA/[3kappa])*(F - vA*(ecr+Pcr))/ecr, using the 'full F' [corrected back from rsol, b/c rsol correction moves outside this for loss terms]
+    double gamma_0=return_CRbin_gamma_factor(target,k_CRegy), gamma_fac=gamma_0/(gamma_0-1.), beta_fac=return_CRbin_beta_factor(target,k_CRegy); // lorentz factor here, needed in next line, because the loss term here scales with -total- energy, not kinetic energy
+    if(beta_fac<0.1) {gamma_fac=2./(beta_fac*beta_fac) -0.5 - 0.125*beta_fac*beta_fac;} // avoid accidental nan
+    streamfac = (vA * (beta_fac*beta_fac) / fabs(3.*SphP[target].CosmicRayDiffusionCoeff[k_CRegy])) * ((gamma_fac) * v_flux_eff/COSMIC_RAYS_RSOL_CORRFAC(k_CRegy) - (GAMMA_COSMICRAY(k_CRegy)-1. + (gamma_fac)) * vA); // this is (vA/[3kappa])*(F - vA*(ecr+Pcr))/ecr, using the 'full F' [corrected back from rsol, b/c rsol correction moves outside this for loss terms]
     return streamfac; // probably want to limit to make sure above doesn't take on too extreme a value... also above, initially only had positive term since this removes energy from CRs when streaming super-Alfvenically, but when streaming sub-Alfvenically, could this become a source term with energy going into CRs? seems problematic if vA very high, but then scattering would work inefficiently... so plausible, but really need to be careful again about magnitude...
 #endif
     
     if(vA>0) {vstream_0 = DMIN(vA, vstream_0);} /* account for the fact that the loss term is always [or below] the Alfven speed, regardless of the bulk streaming speed */
-    double L_cr = Get_CosmicRayGradientLength(target,k_CRegy), v_st_eff = SphP[target].CosmicRayDiffusionCoeff[k_CRegy] / (GAMMA_COSMICRAY * L_cr + MIN_REAL_NUMBER); // maximum possible streaming speed from combined diffusivity
-    streamfac = fabs(GAMMA_COSMICRAY_MINUS1 * DMIN(v_st_eff, vstream_0) / L_cr); // if upper-limit to streaming is less than nominal 'default' v_stream/loss term, this should be lower too
+    double L_cr = Get_CosmicRayGradientLength(target,k_CRegy), v_st_eff = SphP[target].CosmicRayDiffusionCoeff[k_CRegy] / (GAMMA_COSMICRAY(k_CRegy) * L_cr + MIN_REAL_NUMBER); // maximum possible streaming speed from combined diffusivity
+    streamfac = fabs((1./3.) * DMIN(v_st_eff, vstream_0) / L_cr); // if upper-limit to streaming is less than nominal 'default' v_stream/loss term, this should be lower too
 #endif
     return streamfac;
 }
@@ -787,7 +795,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         double DtCosmicRayFlux[3]={0}, flux[3]={0}, CR_veff[3]={0}, CR_vmag=0, q_cr = 0, cr_speed = COSMIC_RAY_REDUCED_C_CODE(k_CRegy), rsol_correction_factor = COSMIC_RAYS_RSOL_CORRFAC(k_CRegy);
         //cr_speed = DMAX(All.cf_afac3*SphP[i].MaxSignalVel , COSMIC_RAY_REDUCED_C_CODE(k_CRegy)); // may give slightly improved performance with modified rsol formulation
         cr_speed = DMAX(All.cf_afac3*SphP[i].MaxSignalVel , DMIN(COSMIC_RAY_REDUCED_C_CODE(k_CRegy) , 10.*fabs(SphP[i].CosmicRayDiffusionCoeff[k_CRegy])/(Get_Particle_Size(i)*All.cf_atime)));
-        for(k=0;k<3;k++) {DtCosmicRayFlux[k] = -fabs(rsol_correction_factor*SphP[i].CosmicRayDiffusionCoeff[k_CRegy]) * (P[i].Mass/SphP[i].Density) * (SphP[i].Gradients.CosmicRayPressure[k_CRegy][k]/GAMMA_COSMICRAY_MINUS1);}
+        for(k=0;k<3;k++) {DtCosmicRayFlux[k] = -fabs(rsol_correction_factor*SphP[i].CosmicRayDiffusionCoeff[k_CRegy]) * (P[i].Mass/SphP[i].Density) * (SphP[i].Gradients.CosmicRayPressure[k_CRegy][k]/(GAMMA_COSMICRAY(k_CRegy)-1.));}
 #ifdef MAGNETIC // do projection onto field lines
         double bhat[3]={0}, B0[3]={0}, Bmag2=0, DtCRDotBhat=0;
         for(k=0;k<3;k++)
@@ -803,7 +811,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         v_Alfven /= sqrt(1.e-16 + Get_Gas_Ionized_Fraction(i)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
         double dt_f_m=0; for(k=0;k<3;k++) {dt_f_m+=DtCosmicRayFlux[k]*DtCosmicRayFlux[k];}
-        if(dt_f_m>0) {for(k=0;k<3;k++) {DtCosmicRayFlux[k] += rsol_correction_factor * (DtCosmicRayFlux[k]/sqrt(dt_f_m)) * v_Alfven * (GAMMA_COSMICRAY*eCR);}} // (tilde[c]/c) * v_a * (ecr+Pcr), in same direction as gradient wants to 'push' naturally [natural direction of F]
+        if(dt_f_m>0) {for(k=0;k<3;k++) {DtCosmicRayFlux[k] += rsol_correction_factor * (DtCosmicRayFlux[k]/sqrt(dt_f_m)) * v_Alfven * (GAMMA_COSMICRAY(k_CRegy) * eCR);}} // (tilde[c]/c) * v_a * (ecr+Pcr), in same direction as gradient wants to 'push' naturally [natural direction of F]
 #endif
         if(mode==0) {for(k=0;k<3;k++) {flux[k]=SphP[i].CosmicRayFlux[k_CRegy][k];}} else {for(k=0;k<3;k++) {flux[k]=SphP[i].CosmicRayFluxPred[k_CRegy][k];}}
 #ifdef MAGNETIC // do projection onto field lines
@@ -816,7 +824,8 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         //fluxmag *= exp(-DMAX(-2.,DMIN(2.,rsol_correction_factor*fac_bv*dt_entr))); // limit factor for change here, should be small given Courant factor, then update flux term accordingly, before next step -- acts like a mod of the divv term //
         if(Bmag2>0) {for(k=0;k<3;k++) {flux[k] = fluxmag * B0[k] / sqrt(Bmag2);}} // re-assign to be along field
 #endif
-        double dt_cr_dimless = dt_entr * cr_speed*cr_speed * GAMMA_COSMICRAY_MINUS1 / (MIN_REAL_NUMBER + fabs(SphP[i].CosmicRayDiffusionCoeff[k_CRegy] * rsol_correction_factor));
+        double beta_fac = return_CRbin_beta_factor(i,k_CRegy); // velocity beta, to account for non-relativistic CRs
+        double dt_cr_dimless = dt_entr * beta_fac*beta_fac * cr_speed*cr_speed * (1./3.) / (MIN_REAL_NUMBER + fabs(SphP[i].CosmicRayDiffusionCoeff[k_CRegy] * rsol_correction_factor));
         dt_cr_dimless = DMIN(dt_cr_dimless , 0.1); // arbitrary limiter here for some additional numerical stability
         if((dt_cr_dimless > 0)&&(dt_cr_dimless < 20.)) {q_cr = exp(-dt_cr_dimless);} // factor for CR interpolation
         for(k=0;k<3;k++) {flux[k] = q_cr*flux[k] + (1.-q_cr)*DtCosmicRayFlux[k];} // updated flux
@@ -859,8 +868,8 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 #endif
         
 #if defined(COOLING_OPERATOR_SPLIT)
-        /* now need to account for the adiabatic heating/cooling of the 'fluid', here, with gamma=GAMMA_COSMICRAY */
-        double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt_entr, eCR_tmp, mode); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places
+        /* now need to account for the adiabatic heating/cooling of the 'fluid', here, with gamma=GAMMA_COSMICRAY(k_CRegy) */
+        double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt_entr, (GAMMA_COSMICRAY(k_CRegy)-1.)*eCR_tmp, mode); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places
         double uf = DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
         if(mode==0) {SphP[i].InternalEnergy = uf;} else {SphP[i].InternalEnergyPred = uf;} // update gas
 #if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
@@ -876,14 +885,14 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 
 
 /* subroutine to calculate which part of the adiabatic PdV work from the RP gets assigned to the CRs vs the gas; since the CRs are always smooth by definition under this operation this follows simply from the local cell divergence and the effective CR eos */
-double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double eCR_tmp, int mode)
+double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double gamma_minus_eCR_tmp, int mode)
 {
     double u0, d_CR; if(mode==0) {u0=SphP[i].InternalEnergy;} else {u0=SphP[i].InternalEnergyPred;} // initial energy
     if(u0<All.MinEgySpec) {u0=All.MinEgySpec;} // enforced throughout code
 
     double divv_p=-dt_entr*P[i].Particle_DivVel*All.cf_a2inv, divv_f=-dt_entr*SphP[i].Face_DivVel_ForAdOps, divv_u=0; // get locally-estimated gas velocity divergence for cells - if using non-Lagrangian method, need to modify. take negative of this [for sign of change to energy] and multiply by timestep
     if(All.ComovingIntegrationOn) {double divv_h=-dt_entr*(3.*All.cf_hubble_a); divv_p+=divv_h; divv_f+=divv_h;} // include hubble-flow terms
-    double P_cr = GAMMA_COSMICRAY_MINUS1 * eCR_tmp * SphP[i].Density * All.cf_a3inv / P[i].Mass, P_tot = SphP[i].Pressure * All.cf_a3inv; // define the pressure from CRs and total pressure (physical units)
+    double P_cr = gamma_minus_eCR_tmp * SphP[i].Density * All.cf_a3inv / P[i].Mass, P_tot = SphP[i].Pressure * All.cf_a3inv; // define the pressure from CRs and total pressure (physical units)
 #ifdef MAGNETIC
     double B2=0; int k; for(k=0;k<3;k++) {double B=Get_Gas_BField(i,k)*All.cf_a2inv; B2+=B*B;}
     P_tot += 0.5*B2; // add magnetic pressure [B^2/2], in physical code units, since it contributes to the PdV work but not included in 'pressure' total above
@@ -898,19 +907,19 @@ double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double 
         if(divv_p*dtI_hydro <= 0) {divv_u=divv_f;} // if divv_p agrees in sign here, use it
         if(divv_f*dtI_hydro <= 0) {divv_u=divv_p;} // if divv_u agrees in sign here, use it
         if(divv_p*divv_f > 0) {if(fabs(divv_p) > fabs(divv_f)) {divv_u=divv_p;} else {divv_u=divv_f;}} // if both agree in sign here, use -larger- since more accurately captures CR-dominated limit
-        d_CR = GAMMA_COSMICRAY_MINUS1 * eCR_tmp * divv_u; // expected PdV CR energy change
+        d_CR = gamma_minus_eCR_tmp * divv_u; // expected PdV CR energy change
         if(fabs(d_CR) > fabs(dtI_hydro)) {d_CR = dtI_hydro;} // do not allow this to exceed the sum (since all terms have the same sign here, in a well-ordered smooth flow)
         if(fabs(d_CR) < fac_P*fabs(dtI_hydro)) {d_CR = fac_P*dtI_hydro;} // but also do not allow CR term to be -below- CR pressure fraction times total term, since that should be attributed to the CR (as this is all a quasi-adiabatic term)
     } else { // both divv terms agree with each other, but dis-agree with the sign of the total change. can't assume anything about smoothness-of-the-flow
         if(fabs(divv_p) > fabs(divv_f)) {divv_u=divv_f;} else {divv_u=divv_p;} // pick the divv estimator with the smaller absolute magnitude, since it deviates
-        d_CR = GAMMA_COSMICRAY_MINUS1 * eCR_tmp * divv_u; // expected PdV CR energy change
+        d_CR = gamma_minus_eCR_tmp * divv_u; // expected PdV CR energy change
         double f_limiter, fac_test=fabs(d_CR)/fabs(dtI_hydro); if(fac_test>fac_P) {d_CR*=fac_P/fac_test;} // don't let CR change exceed their pressure fraction
         if(d_CR > 0) {if(Ui <= min_IEgy) {f_limiter = 1.e-20;} else {f_limiter=0.5;} // gas will be 'cooled', limit so don't overshoot when Pcr is large
             if(d_CR > f_limiter*(Ui-min_IEgy)) {d_CR = f_limiter*(Ui-min_IEgy);} // limit fractional loss to gas
         } else {f_limiter = 1000.; if(fabs(d_CR)>f_limiter*Ui) {d_CR=-f_limiter*Ui;}} // gas will be heated, limit fractional gain
     }
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) && !defined(COOLING_OPERATOR_SPLIT)
-    SphP[i].Face_DivVel_ForAdOps = -d_CR / (All.cf_a2inv * GAMMA_COSMICRAY_MINUS1 * eCR_tmp * dt_entr + MIN_REAL_NUMBER); // this is the 'effective' divergence here (in code units) which matches exactly the change in CR energy when the above limiters etc are applied. we can save this for use in the other CR subroutines
+    SphP[i].Face_DivVel_ForAdOps = -d_CR / (All.cf_a2inv * gamma_minus_eCR_tmp * dt_entr + MIN_REAL_NUMBER); // this is the 'effective' divergence here (in code units) which matches exactly the change in CR energy when the above limiters etc are applied. we can save this for use in the other CR subroutines
 #endif
     return d_CR; // return final value
 }
@@ -1649,7 +1658,7 @@ double evaluate_cr_transport_reductionfactor(int target, int k_CRegy, int mode)
     if(fluxmag>0 && SphP[target].CosmicRayEnergyPred[k_CRegy] > MIN_REAL_NUMBER) {veff = fluxmag / SphP[target].CosmicRayEnergyPred[k_CRegy];}
     //if(mode==0) {veff = COSMIC_RAY_REDUCED_C_CODE(k);} // we're injecting, so the relevant speed here is just the injection speed
     if(mode==0) {veff = COSMIC_RAYS_M1;} // we're injecting, so the relevant speed here is just the injection speed (note we speed-limit flux to this for timestepping reasons)
-    if(mode==0) {Lgrad = 1./UNIT_LENGTH_IN_KPC;} // ?? set initial gradient length to a constant to reduce noise? [looking at newer tests, don't -really- need this, but doesn't hurt either]
+    if(mode==0) {Lgrad = 1./UNIT_LENGTH_IN_KPC;} // set initial gradient length to a constant to reduce noise? [looking at newer tests, don't -really- need this, but doesn't hurt either]
     double v_max = DMIN( C_LIGHT_CODE , kappa / (MIN_REAL_NUMBER + Lgrad) ); // attempt at a limiter function here to determine if being flux-limited in the equations below //
     double RSOL_over_v_desired = veff / (MIN_REAL_NUMBER + v_max);
     if(isfinite(RSOL_over_v_desired) && (RSOL_over_v_desired > 0) && (RSOL_over_v_desired < MAX_REAL_NUMBER)) {if(RSOL_over_v_desired < 1) {return RSOL_over_v_desired;}}

@@ -355,9 +355,9 @@
             {
                 if(Fluxes.rho < 0)
                 {
-                    Fluxes.CosmicRayPressure[k] = Fluxes.rho * (local.CosmicRayPressure[k]*V_i/(GAMMA_COSMICRAY_MINUS1*local.Mass)); /* note: CosmicRayPressure and V_i have comoving units, their product has physical units */
+                    Fluxes.CosmicRayPressure[k] = Fluxes.rho * (local.CosmicRayPressure[k]*V_i/((GAMMA_COSMICRAY(k)-1.)*local.Mass)); /* note: CosmicRayPressure and V_i have comoving units, their product has physical units */
                 } else {
-                    Fluxes.CosmicRayPressure[k] = Fluxes.rho * (CosmicRayPressure_j[k]*V_j/(GAMMA_COSMICRAY_MINUS1*P[j].Mass));
+                    Fluxes.CosmicRayPressure[k] = Fluxes.rho * (CosmicRayPressure_j[k]*V_j/((GAMMA_COSMICRAY(k)-1.)*P[j].Mass));
                 }
 #ifdef COSMIC_RAYS_ALFVEN
                 int kAlf=0; for(kAlf=0;kAlf<2;kAlf++) {if(Fluxes.rho<0) {Fluxes.CosmicRayAlfvenEnergy[k][kAlf]+=local.CosmicRayAlfvenEnergy[k][kAlf]*Fluxes.rho/local.Mass;} else {Fluxes.CosmicRayAlfvenEnergy[k][kAlf]+=SphP[j].CosmicRayAlfvenEnergy[k][kAlf]*Fluxes.rho/local.Mass;}}

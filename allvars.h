@@ -409,8 +409,9 @@ USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
 #endif
 
 #ifdef COSMIC_RAYS
-#define GAMMA_COSMICRAY (4.0/3.0)
-#define GAMMA_COSMICRAY_MINUS1 (GAMMA_COSMICRAY-1)
+#if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#define GAMMA_COSMICRAY(k) (4.0/3.0)
+#endif
 #ifndef COSMIC_RAYS_DIFFUSION_MODEL
 #define COSMIC_RAYS_DIFFUSION_MODEL 0
 #endif
@@ -419,6 +420,7 @@ USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
 #define COSMIC_RAYS_M1 (COSMIC_RAYS_ALFVEN)
 #endif
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#define GAMMA_COSMICRAY(k) ((4.0+gamma_eos_of_crs_in_bin(k))/3.0)
 #if !defined(COSMIC_RAYS_ALT_FLUX_FORM)
 #define COSMIC_RAYS_ALT_FLUX_FORM /*<! set this as our default here */
 #endif

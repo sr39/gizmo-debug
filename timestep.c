@@ -523,7 +523,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #else
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + (1.-0.5*cr_diffusion_opt)/(L_particle*All.cf_atime)));
 #endif
-                    double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + kappa_cr_eff * GAMMA_COSMICRAY_MINUS1);
+                    double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + kappa_cr_eff * (GAMMA_COSMICRAY(k_CRegy)-1.));
                     double dt_conduction =  L_cr_strong * coeff_inv; /* true diffusion requires the stronger timestep criterion be applied */
                     explicit_timestep_on = 1;
 #if (COSMIC_RAYS_DIFFUSION_MODEL < 0)
@@ -532,7 +532,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 #ifndef COSMIC_RAYS_DISABLE_STREAMING
                     /* estimate whether diffusion is streaming-dominated: use stronger/weaker criterion accordingly */
-                    double diffusion_from_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * Get_CosmicRayStreamingVelocity(p,k_CRegy) * CRPressureGradScaleLength;
+                    double diffusion_from_streaming = (GAMMA_COSMICRAY(k_CRegy)/(GAMMA_COSMICRAY(k_CRegy)-1.)) * Get_CosmicRayStreamingVelocity(p,k_CRegy) * CRPressureGradScaleLength;
                     if(diffusion_from_streaming > 0.75*kappa_cr_eff) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
 #endif
 #ifdef GALSF
