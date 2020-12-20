@@ -1625,17 +1625,26 @@ double return_CRbin_kinetic_energy_in_GeV_binvalsNRR(int k_CRegy)
 }
 
 
+#endif
+
+
 /* optional code to allow the RSOL to depend on bin energy, still testing this */
 double return_CRbin_M1speed(int k_CRegy)
 {
+#if defined(COSMIC_RAYS_M1)
+#if (N_CR_PARTICLE_BINS > 1)    /* insert physics here */
 #if defined(COSMIC_RAYS_VARIABLE_RSOL) // experimental block here //
     double R = CR_global_rigidity_at_bin_center[k_CRegy];
     double f = All.CosmicRayDiffusionCoeff * UNIT_LENGTH_IN_KPC * pow(R , 0.8);
     if(f > COSMIC_RAYS_M1) {return f;}
 #endif
+#endif
     return COSMIC_RAYS_M1;
+#else
+    return C_LIGHT_CODE;
+#endif
 }
-                                                                                                                            
+
 
 /* estimate amount by which flux of CRs has been reduced relative to solution with c_reduced = c_true, for RSOL with M1 */
 double evaluate_cr_transport_reductionfactor(int target, int k_CRegy, int mode)
@@ -1668,11 +1677,6 @@ double evaluate_cr_transport_reductionfactor(int target, int k_CRegy, int mode)
     return 1;
 #endif
 }
-
-
-
-#endif
-
 
 
 /* routine which returns the typical absolute value of the rigidity of a given CR [in GV] in a given 'bin' of our multi-bin approximation */
