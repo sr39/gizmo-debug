@@ -198,7 +198,7 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_type, doubl
     if(species == -2) {f_norm = 1.e-10 * f_elec;} // e+ (assuming negligible e+ injection to start)
     if(species > 1 && species != 7) // heavy elements need to scale injection rates appropriately
     {
-        double Zfac=0; Zfac_ISM=P[target].Metallicity[0]/All.SolarAbundances[0], mu_wt=return_CRbin_CRmass_in_mp(-1,k_CRegy), Z_cr=fabs(return_CRbin_CR_charge_in_e(-1,k_CRegy)); // scale heavier elements to the metallicity of the gas into which CRs are being accelerated
+        double Zfac=0, Zfac_ISM=P[target].Metallicity[0]/All.SolarAbundances[0], mu_wt=return_CRbin_CRmass_in_mp(-1,k_CRegy), Z_cr=fabs(return_CRbin_CR_charge_in_e(-1,k_CRegy)); // scale heavier elements to the metallicity of the gas into which CRs are being accelerated
         Zfac = Zfac_ISM; // assume abundance of ejecta is identical to ambient ISM into which its being ejected
         if(source_type == 1) {Zfac = 0.5*(Zfac_ISM + 1.4*DMIN(Zfac_ISM,1.));} // stellar outflows. using FIRE-3 yields this is exact after IMF-integrating for Z_ism=Z_star, for CNO; basically get slight enhancement, but not much, b/c these are OB winds; even including AGB, would only move factor to 3.4 from 1.4, which is halved, so not much effect at all.
         if(source_type == 0) {if(shock_vel>5000./UNIT_VEL_IN_KMS) {Zfac=0.5*(Zfac_ISM + 9.70);} else {Zfac=0.5*(Zfac_ISM + 13.64);}} // shock_vel here tells us if its a 1a [faster] or CCSNe. for CCSNe, use Iwamoto 1999 and Nomoto 2006 to get abundances of ejecta in CNO, integrated over IMF and species of interest. for both, assume acceleration efficiency is maximized at highest mach numbers after shock actually develops, so swept-up ISM mass is ~ejecta mass
