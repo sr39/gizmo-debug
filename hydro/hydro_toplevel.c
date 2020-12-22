@@ -846,7 +846,7 @@ void hydro_final_operations_and_cleanup(void)
             for(k=0;k<3;k++) {bhat[k]=SphP[i].BPred[k]; Bmag+=bhat[k]*bhat[k];} // get direction vector for B-field needed below
             if(Bmag>0) {Bmag=sqrt(Bmag); for(k=0;k<3;k++) {bhat[k] /= Bmag;}} // make dimensionless
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-            v_Alfven /= sqrt(1.e-16 + Get_Gas_Ionized_Fraction(i)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
+            vA_eff /= sqrt(1.e-16 + Get_Gas_Ionized_Fraction(i)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
             if(Bmag>0) {for(k=0;k<N_CR_PARTICLE_BINS;k++) {
                 int m; double grad_P_dot_B=0, F_dot_B=0, h_cr=GAMMA_COSMICRAY(k) * SphP[i].CosmicRayEnergyPred[k] * vol_i, vA_k=vA_eff, fcorr[3]={0}, beta_fac=return_CRbin_beta_factor(i,k);

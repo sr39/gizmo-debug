@@ -166,8 +166,11 @@ void CR_spectrum_define_bins(void)
 #endif
 
 
-/* routine which determines the fraction of injected CR energy per 'bin' of CR energy. */
-double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, double shock_vel, int return_index_in_bin, int target)
+/* routine which determines the fraction of injected CR energy per 'bin' of CR energy.
+    so it can be used, we send the CR bin, the source type [0=SNe; 1=stellar winds; 2-4=unused now; 5=sink/AGN;],
+    the target gas cell, the shock velocity (used to scale if desired),
+    and a flag indicating the option to return the spectral slope/index */
+double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_type, double shock_vel, int return_index_in_bin, int target)
 {
     double f_bin = 1./N_CR_PARTICLE_BINS; /* uniformly distributed */
 #if (N_CR_PARTICLE_BINS > 1)    /* insert physics here */
@@ -193,15 +196,19 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_PType, doub
     if(species == -1) {f_norm = f_elec;} // e-
     if(species == +1) {f_norm = 1.-f_elec;} // p
     if(species == -2) {f_norm = 1.e-10 * f_elec;} // e+ (assuming negligible e+ injection to start)
-    if(species > 1)
+    if(species > 1 && species != 7) // heavy elements need to scale injection rates appropriately
     {
-        double Zfac = P[target].Metallicity[0]/All.SolarAbundances[0], mu_wt=return_CRbin_CRmass_in_mp(-1,k_CRegy), Z_cr=fabs(return_CRbin_CR_charge_in_e(-1,k_CRegy)); // scale heavier elements to the metallicity of the gas into which CRs are being accelerated
-        Zfac *= pow(mu_wt/Z_cr , inj_slope-3.) / mu_wt; // approximate injection factor for a constant-beta distribution at a given R_GV needed below
-        if(species == 2) {f_norm = 3.7e-9 * Zfac;} // B (for standard elements initialize to solar ratios assuming similar energy/nucleon)
-        if(species == 3) {f_norm = 2.4e-3 * Zfac;} // C
-        if(species == 4) {f_norm = 1.4e-10 * Zfac;} // Be7+9 (stable)
-        if(species == 5) {f_norm = 1.4e-20 * Zfac;} // Be10 (radioactive)
-        if(species == 6) {f_norm = 0.0094 * Zfac;} // CNO (combined bin)
+        double Zfac=0; Zfac_ISM=P[target].Metallicity[0]/All.SolarAbundances[0], mu_wt=return_CRbin_CRmass_in_mp(-1,k_CRegy), Z_cr=fabs(return_CRbin_CR_charge_in_e(-1,k_CRegy)); // scale heavier elements to the metallicity of the gas into which CRs are being accelerated
+        Zfac = Zfac_ISM; // assume abundance of ejecta is identical to ambient ISM into which its being ejected
+        if(source_type == 1) {Zfac = 0.5*(Zfac_ISM + 1.4*DMIN(Zfac_ISM,1.));} // stellar outflows. using FIRE-3 yields this is exact after IMF-integrating for Z_ism=Z_star, for CNO; basically get slight enhancement, but not much, b/c these are OB winds; even including AGB, would only move factor to 3.4 from 1.4, which is halved, so not much effect at all.
+        if(source_type == 0) {if(shock_vel>5000./UNIT_VEL_IN_KMS) {Zfac=0.5*(Zfac_ISM + 9.70);} else {Zfac=0.5*(Zfac_ISM + 13.64);}} // shock_vel here tells us if its a 1a [faster] or CCSNe. for CCSNe, use Iwamoto 1999 and Nomoto 2006 to get abundances of ejecta in CNO, integrated over IMF and species of interest. for both, assume acceleration efficiency is maximized at highest mach numbers after shock actually develops, so swept-up ISM mass is ~ejecta mass
+        // now scale to mass fraction for solar abundances which gives the units we work with above
+        if(species == 2) {Zfac *= 3.7e-9;} // B (for standard elements initialize to solar ratios assuming similar energy/nucleon)
+        if(species == 3) {Zfac *= 2.4e-3;} // C
+        if(species == 4) {Zfac *= 1.4e-10;} // Be7+9 (stable)
+        if(species == 5) {Zfac *= 1.4e-20;} // Be10 (radioactive)
+        if(species == 6) {Zfac *= 0.0094;} // CNO (combined bin)
+        fnorm = Zfac * pow(mu_wt/Z_cr , inj_slope-3.) / mu_wt; // approximate injection factor for a constant-beta distribution at a given R_GV needed below
     }
     f_bin *= f_norm; // normalize injection depending on the species (e- or p+, etc)
 #endif
@@ -543,12 +550,12 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 
 
 /* utility routine which handles the numerically-necessary parts of the CR 'injection' for you */
-void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_PType, int target, double *dir)
+void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_type, int target, double *dir)
 {
     if(CR_energy_to_inject <= 0) {return;}
     double f_injected[N_CR_PARTICLE_BINS]; f_injected[0]=1; int k_CRegy;;
 #if (N_CR_PARTICLE_BINS > 1) /* add a couple steps to make sure injected energy is always normalized properly! */
-    double sum_in=0.0; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {f_injected[k_CRegy]=CR_energy_spectrum_injection_fraction(k_CRegy,source_PType,injection_velocity,0,target); sum_in+=f_injected[k_CRegy];}
+    double sum_in=0.0; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {f_injected[k_CRegy]=CR_energy_spectrum_injection_fraction(k_CRegy,source_type,injection_velocity,0,target); sum_in+=f_injected[k_CRegy];}
     if(sum_in>0.0) {for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {f_injected[k_CRegy]/=sum_in;}} else {for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {f_injected[k_CRegy]=1./N_CR_PARTICLE_BINS;}}
 #endif
     for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
@@ -558,7 +565,7 @@ void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, i
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) // update the evolved slopes with the injection spectrum slope: do a simple energy-weighted mean for the updated/mixed slope here
         double E_GeV = return_CRbin_kinetic_energy_in_GeV_binvalsNRR(k_CRegy), egy_slopemode = 1, xm = CR_global_min_rigidity_in_bin[k_CRegy] / CR_global_rigidity_at_bin_center[k_CRegy], xp = CR_global_max_rigidity_in_bin[k_CRegy] / CR_global_rigidity_at_bin_center[k_CRegy], xm_e=xm, xp_e=xp; // values needed for bin injection parameters
         if(CR_check_if_bin_is_nonrelativistic(k_CRegy)) {egy_slopemode=2; xm_e=xm*xm; xp_e=xp*xp;} // values needed to scale from slope injected to number and back
-        double slope_inj = CR_energy_spectrum_injection_fraction(k_CRegy,source_PType,injection_velocity,1,target); // spectral slope of injected CRs
+        double slope_inj = CR_energy_spectrum_injection_fraction(k_CRegy,source_type,injection_velocity,1,target); // spectral slope of injected CRs
         if(k_CRegy>0) { // want to correct injection slope if we're modulating injection with a variable Psi-type rsol function
             int spec_0=return_CRbin_CR_species_ID(k_CRegy), spec_m=return_CRbin_CR_species_ID(k_CRegy-1), spec_p=-200; if(spec_m==spec_0) {
                 double rfac_0=evaluate_cr_transport_reductionfactor(target,k_CRegy,0), rfac_m=evaluate_cr_transport_reductionfactor(target,k_CRegy-1,0), rfac_p=rfac_0, R_0=CR_global_rigidity_at_bin_center[k_CRegy], R_m=CR_global_rigidity_at_bin_center[k_CRegy-1], R_p=R_0;
