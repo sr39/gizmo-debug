@@ -208,7 +208,7 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_type, doubl
         if(species == 4) {Zfac *= 1.4e-10;} // Be7+9 (stable)
         if(species == 5) {Zfac *= 1.4e-20;} // Be10 (radioactive)
         if(species == 6) {Zfac *= 0.0094;} // CNO (combined bin)
-        fnorm = Zfac * pow(mu_wt/Z_cr , inj_slope-3.) / mu_wt; // approximate injection factor for a constant-beta distribution at a given R_GV needed below
+        f_norm = Zfac * pow(mu_wt/Z_cr , inj_slope-3.) / mu_wt; // approximate injection factor for a constant-beta distribution at a given R_GV needed below
     }
     f_bin *= f_norm; // normalize injection depending on the species (e- or p+, etc)
 #endif
