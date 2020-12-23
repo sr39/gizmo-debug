@@ -826,8 +826,8 @@ void hydro_final_operations_and_cleanup(void)
 #if defined(COSMIC_RAYS)
 #if !defined(COOLING_OPERATOR_SPLIT)
             /* with the spectrum model, we account here the adiabatic heating/cooling of the 'fluid', here, which was solved in the hydro solver but doesn't resolve which portion goes to CRs and which to internal energy, with gamma=GAMMA_COSMICRAY */
-            double ECR_tot=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {ECR_tot+=SphP[i].CosmicRayEnergyPred[k];} // routine below only depends on the total CR energy, not bin-by-bin energies, when we do it this way here
-            double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt, ECR_tot, 1); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places
+            double gamma_minus_eCR_tmp=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {gamma_minus_eCR_tmp+=(GAMMA_COSMICRAY(k)-1.)*SphP[i].CosmicRayEnergyPred[k];} // routine below only depends on the total CR energy, not bin-by-bin energies, when we do it this way here
+            double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt, gamma_minus_eCR_tmp, 1); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places
             double u0=DMAX(SphP[i].InternalEnergyPred, All.MinEgySpec) , uf=DMAX(u0 - dCR_div/P[i].Mass , All.MinEgySpec); // final updated value of internal energy per above
             SphP[i].DtInternalEnergy += (uf - u0) / (dt + MIN_REAL_NUMBER); // update gas quantities to be used in cooling function
 #endif
@@ -846,13 +846,16 @@ void hydro_final_operations_and_cleanup(void)
             for(k=0;k<3;k++) {bhat[k]=SphP[i].BPred[k]; Bmag+=bhat[k]*bhat[k];} // get direction vector for B-field needed below
             if(Bmag>0) {Bmag=sqrt(Bmag); for(k=0;k<3;k++) {bhat[k] /= Bmag;}} // make dimensionless
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-            v_Alfven /= sqrt(1.e-16 + Get_Gas_Ionized_Fraction(i)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
+            vA_eff /= sqrt(1.e-16 + Get_Gas_Ionized_Fraction(i)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
             if(Bmag>0) {for(k=0;k<N_CR_PARTICLE_BINS;k++) {
-                int m; double grad_P_dot_B=0, F_dot_B=0, h_cr=GAMMA_COSMICRAY * SphP[i].CosmicRayEnergyPred[k] * vol_i, vA_k=vA_eff, fcorr[3]={0};
-                for(m=0;m<3;m++) {grad_P_dot_B += bhat[m] * SphP[i].Gradients.CosmicRayPressure[k][m] * (All.cf_a3inv/All.cf_atime); F_dot_B += bhat[m] * SphP[i].CosmicRayFluxPred[k][m] * vol_i;}
+                double three_chi = return_cosmic_ray_anisotropic_closure_function_threechi(i,k);
+                int m; double grad_P_dot_B=0, gradpcr[3]={0}, F_dot_B=0, h_cr=GAMMA_COSMICRAY(k) * SphP[i].CosmicRayEnergyPred[k] * vol_i, vA_k=vA_eff, fcorr[3]={0}, beta_fac=return_CRbin_beta_factor(i,k);
+                for(m=0;m<3;m++) {gradpcr[m] = SphP[i].Gradients.CosmicRayPressure[k][m] * (All.cf_a3inv/All.cf_atime);}
+                for(m=0;m<3;m++) {grad_P_dot_B += bhat[m] * gradpcr[m]; F_dot_B += bhat[m] * SphP[i].CosmicRayFluxPred[k][m] * vol_i;}
                 if(F_dot_B < 0) {vA_k *= -1;} // needs to have appropriately-matched signage below //
-                for(m=0;m<3;m++) {fcorr[m] = bhat[m] * (grad_P_dot_B + ((F_dot_B/COSMIC_RAYS_RSOL_CORRFAC(k)) - vA_k*h_cr)/(3.*SphP[i].CosmicRayDiffusionCoeff[k])) / (SphP[i].Density*All.cf_a3inv);} // physical units
+                for(m=0;m<3;m++) {fcorr[m] = bhat[m] * (grad_P_dot_B + ((F_dot_B/COSMIC_RAYS_RSOL_CORRFAC(k)) - three_chi*vA_k*h_cr)*(beta_fac*beta_fac)/(3.*SphP[i].CosmicRayDiffusionCoeff[k])) / (SphP[i].Density*All.cf_a3inv);} // physical units
+                for(m=0;m<3;m++) {fcorr[m] += (1.-three_chi) * (gradpcr[m] - bhat[m]*grad_P_dot_B) / (SphP[i].Density*All.cf_a3inv);} // physical units
                 for(m=0;m<3;m++) {SphP[i].HydroAccel[m] += fcorr[m];} // add correction term back into hydro acceleration terms -- need to check that don't end up with nasty terms for badly-initialized/limited scattering rates above
             }}
 #endif

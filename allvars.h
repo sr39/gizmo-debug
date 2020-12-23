@@ -409,8 +409,14 @@ USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
 #endif
 
 #ifdef COSMIC_RAYS
-#define GAMMA_COSMICRAY (4.0/3.0)
-#define GAMMA_COSMICRAY_MINUS1 (GAMMA_COSMICRAY-1)
+#if defined(COSMIC_RAYS_ANISO_CLOSURE)
+#if !defined(COSMIC_RAYS_ALT_FLUX_FORM)
+#define COSMIC_RAYS_ALT_FLUX_FORM /*<! set this as our default here */
+#endif
+#endif
+#if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#define GAMMA_COSMICRAY(k) (4.0/3.0)
+#endif
 #ifndef COSMIC_RAYS_DIFFUSION_MODEL
 #define COSMIC_RAYS_DIFFUSION_MODEL 0
 #endif
@@ -419,6 +425,7 @@ USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
 #define COSMIC_RAYS_M1 (COSMIC_RAYS_ALFVEN)
 #endif
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#define GAMMA_COSMICRAY(k) ((4.0+gamma_eos_of_crs_in_bin(k))/3.0)
 #if !defined(COSMIC_RAYS_ALT_FLUX_FORM)
 #define COSMIC_RAYS_ALT_FLUX_FORM /*<! set this as our default here */
 #endif
@@ -508,7 +515,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define OUTPUT_SINK_ACCRETION_HIST // save accretion histories
 #define OUTPUT_SINK_FORMATION_PROPS // save at-formation properties of sink particles
-#define BACKUP_RESTARTFILE_FREQUENCY 6 //keeps an extra set of backup files that are BACKUP_RESTARTFILE_FREQUENCY number of restarts old (allows for soft restarts from an older position)
+#define REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY 6 //keeps an extra set of backup files that are REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY number of restarts old (allows for soft restarts from an older position)
 #define BH_ALPHADISK_ACCRETION (1.0e6)
 #ifdef GRAIN_FLUID
 #define BH_GRAVCAPTURE_NONGAS
@@ -1363,12 +1370,12 @@ typedef unsigned long long peanokey;
 #else
 #define COSMIC_RAY_REDUCED_C_CODE(k) (COSMIC_RAYS_M1) // single-bin -- compiles to simply replace this macro with the M1 value, trivially
 #endif
-#if defined(COSMIC_RAYS_ALT_RSOL_FORM)
+#endif // M1 cosmic rays
+#if defined(COSMIC_RAYS_ALT_RSOL_FORM) && defined(COSMIC_RAYS_M1)
 #define COSMIC_RAYS_RSOL_CORRFAC(k) (((COSMIC_RAY_REDUCED_C_CODE(k))/(C_LIGHT_CODE))) // this needs to be defined after the code SOL for obvious reasons
 #else
 #define COSMIC_RAYS_RSOL_CORRFAC(k) (1) // this is always unity, macro is trivial
 #endif
-#endif // M1 cosmic rays
 
 
 #ifndef FOF_PRIMARY_LINK_TYPES

@@ -251,8 +251,7 @@ static inline void out2particle_GasGrad_iter(struct GasGraddata_out_iter *out, i
 static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gradient_iteration)
 {
     int k;
-    for(k = 0; k < 3; k++)
-        in->Pos[k] = P[i].Pos[k];
+    for(k = 0; k < 3; k++) {in->Pos[k] = P[i].Pos[k];}
     in->Hsml = PPP[i].Hsml;
     in->Mass = P[i].Mass;
     if(in->Mass < 0) {in->Mass = 0;}
@@ -268,9 +267,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
     in->Timestep = GET_PARTICLE_INTEGERTIME(i);
 #ifdef MHD_CONSTRAINED_GRADIENT
     in->ConditionNumber = SphP[i].ConditionNumber;
-    if(gradient_iteration > 0)
-        if(SphP[i].FlagForConstrainedGradients <= 0)
-            in->Mass = 0;
+    if(gradient_iteration > 0) {if(SphP[i].FlagForConstrainedGradients <= 0) {in->Mass = 0;}}
     int j;
     for(j=0;j<3;j++)
     {
@@ -297,23 +294,18 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
     {
         in->GQuant.Density = SphP[i].Density;
         in->GQuant.Pressure = SphP[i].Pressure;
-        for(k = 0; k < 3; k++)
-            in->GQuant.Velocity[k] = SphP[i].VelPred[k];
+        for(k = 0; k < 3; k++) {in->GQuant.Velocity[k] = SphP[i].VelPred[k];}
 #ifdef TURB_DIFF_DYNAMIC
-        for (k = 0; k < 3; k++) {
-            in->GQuant.Velocity_bar[k] = SphP[i].Velocity_bar[k];
-        }
+        for (k = 0; k < 3; k++) {in->GQuant.Velocity_bar[k] = SphP[i].Velocity_bar[k];}
 #endif
 #ifdef MAGNETIC
-        for(k = 0; k < 3; k++)
-            in->GQuant.B[k] = Get_Gas_BField(i,k);
+        for(k = 0; k < 3; k++) {in->GQuant.B[k] = Get_Gas_BField(i,k);}
 #ifdef DIVBCLEANING_DEDNER
         in->GQuant.Phi = Get_Gas_PhiField(i);
 #endif
 #endif
 #if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
-        for(k = 0; k < NUM_METAL_SPECIES; k++)
-            in->GQuant.Metallicity[k] = P[i].Metallicity[k];
+        for(k = 0; k < NUM_METAL_SPECIES; k++) {in->GQuant.Metallicity[k] = P[i].Metallicity[k];}
 #endif
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
         for(k = 0; k < N_RT_FREQ_BINS; k++)
@@ -380,9 +372,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
         for (j = 0; j < 3; j++) {
             MAX_ADD(GasGradDataPasser[i].Maxima.Velocity_bar[j], out->Maxima.Velocity_bar[j], mode);
             MIN_ADD(GasGradDataPasser[i].Minima.Velocity_bar[j], out->Minima.Velocity_bar[j], mode);
-
             ASSIGN_ADD_PRESET(SphP[i].Velocity_hat[j], out->Velocity_hat[j], mode);
-
             for (k = 0; k < 3; k++) {
                 ASSIGN_ADD_PRESET(GasGradDataPasser[i].GradVelocity_bar[j][k], out->Gradients[k].Velocity_bar[j], mode);
             }
@@ -447,10 +437,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
         {
             MAX_ADD(GasGradDataPasser[i].Maxima.Velocity[j],out->Maxima.Velocity[j],mode);
             MIN_ADD(GasGradDataPasser[i].Minima.Velocity[j],out->Minima.Velocity[j],mode);
-            for(k=0;k<3;k++)
-            {
-                ASSIGN_ADD_PRESET(SphP[i].Gradients.Velocity[j][k],out->Gradients[k].Velocity[j],mode);
-            }
+            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.Velocity[j][k],out->Gradients[k].Velocity[j],mode);}
         }
 
 #ifdef MAGNETIC
@@ -459,10 +446,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
 #ifdef DIVBCLEANING_DEDNER
         ASSIGN_ADD_PRESET(SphP[i].divB,out->divB, mode);
 #endif
-        for(k = 0; k < 3; k++)
-        {
-            ASSIGN_ADD_PRESET(SphP[i].DtB[k],out->DtB[k], mode);
-        }
+        for(k = 0; k < 3; k++) {ASSIGN_ADD_PRESET(SphP[i].DtB[k],out->DtB[k], mode);}
 #endif
 
 
@@ -494,8 +478,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
         MAX_ADD(GasGradDataPasser[i].Maxima.Phi,out->Maxima.Phi,mode);
         MIN_ADD(GasGradDataPasser[i].Minima.Phi,out->Minima.Phi,mode);
 #ifndef MHD_CONSTRAINED_GRADIENT_MIDPOINT
-        for(k=0;k<3;k++)
-            ASSIGN_ADD_PRESET(SphP[i].Gradients.Phi[k],out->Gradients[k].Phi,mode);
+        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.Phi[k],out->Gradients[k].Phi,mode);}
 #endif
 #endif
 #endif // closes MAGNETIC
@@ -505,10 +488,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
         {
             MAX_ADD(GasGradDataPasser[i].Maxima.Metallicity[j],out->Maxima.Metallicity[j],mode);
             MIN_ADD(GasGradDataPasser[i].Minima.Metallicity[j],out->Minima.Metallicity[j],mode);
-            for(k=0;k<3;k++)
-            {
-                ASSIGN_ADD_PRESET(SphP[i].Gradients.Metallicity[j][k],out->Gradients[k].Metallicity[j],mode);
-            }
+            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.Metallicity[j][k],out->Gradients[k].Metallicity[j],mode);}
         }
 #endif
 

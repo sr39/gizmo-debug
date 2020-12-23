@@ -169,7 +169,7 @@ double rt_kappa(int i, int k_freq)
 #endif
 
     
-#ifdef RT_FREEFREE /* pure (grey, non-relativistic) Thompson scattering opacity + free-free absorption opacity */
+#ifdef RT_FREEFREE /* pure (grey, non-relativistic) Thompson scattering opacity + free-free absorption opacity. standard expressions here from Rybicki & Lightman. */
     if(k_freq==RT_FREQ_BIN_FREEFREE)
     {
         double T_eff=0.59*(GAMMA(i)-1.)*U_TO_TEMP_UNITS*SphP[i].InternalEnergyPred, rho=SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS; // we're assuming fully-ionized gas with a simple equation-of-state here, nothing fancy, to get the temperature //
@@ -178,40 +178,43 @@ double rt_kappa(int i, int k_freq)
     }
 #endif
 #ifdef RT_HARD_XRAY
-    /* opacity comes from H+He (Thompson) + metal ions */
+    /* opacity comes from H+He (Thompson) + metal ions. expressions here for metal ions come from integrating over the standard Morrison & McCammmon 1983 metal cross-sections for a standard slope gamma in the band */
     if(k_freq==RT_FREQ_BIN_HARD_XRAY) {return (0.53 + 0.27*Zfac) * fac;}
 #endif
 #ifdef RT_SOFT_XRAY
-    /* opacity comes from H+He (Thompson) + metal ions */
+    /* opacity comes from H+He (Thompson) + metal ions. expressions here for metal ions come from integrating over the standard Morrison & McCammmon 1983 metal cross-sections for a standard slope gamma in the band */
     if(k_freq==RT_FREQ_BIN_SOFT_XRAY) {return (127. + 50.0*Zfac) * fac;}
 #endif
 #ifdef GALSF_FB_FIRE_RT_LONGRANGE
-    /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
+    /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models. mean opacities here come from integrating over the Hopkins 2004 (Pei 1992) opacities versus wavelength for the large bands here, using a luminosity-weighted mean stellar spectrum from the same starburst99 models used to compute the stellar feedback */
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-    double kappa_HHe=0.35; if(i>=0) {kappa_HHe=0.02 + 0.35*SphP[i].Ne;}
-    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return DMAX(kappa_HHe, 1800.*(1.e-2 + Zfac)) * fac;} // floored at Thomson/neutral H opacities
-    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return DMAX(kappa_HHe, 180.*(1.e-3 + Zfac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]
-    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return DMAX(kappa_HHe, 10.*(1.e-3 + Zfac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]
+    double kappa_HHe=0.35;
+#ifdef COOLING
+    if(i>=0) {kappa_HHe=0.02 + 0.35*SphP[i].Ne;}
+#endif
+    if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return DMAX(kappa_HHe, 800.*(1.e-2 + Zfac)) * fac;} // floored at Thomson/neutral H opacities. effective wavelength here is at something like ~0.2 micron, but spans a broad range from ~0.09-0.36 microns.
+    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return DMAX(kappa_HHe, 180.*(1.e-3 + Zfac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]. see O-NIR band notes below, effective wavelength here is ~R-band (0.36-3.4 micron is the rough range of the effective band)
+    if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return DMAX(kappa_HHe, 6.5*(1.e-3 + Zfac)) * fac;} // floored at Thomson/bound-free/bound-bound H opacities [Kramer's-type law gives the 1e-3 'floor' effective here]. this is updated to integrate through the 2007+ Draine+Li MW-like dust models, for a typical M101-like disk SED. slightly higher for e.g. M82-like with warmer dust. note this is a broad band, from ~3-300 micron, so contributions both from old-star direct IR emission and dust re-emission (warm and cold), which is why this is a bit higher than you would get for pure cold-dust re-emission.
 #endif
     if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return (1800.) * fac;}
-    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return (180.)  * fac;}
+    if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return (180.)  * fac;} /* note this is roughly equivalent to the specific extinction at R-band [bit higher in UBV, lower in IJHK] */
     if(k_freq==RT_FREQ_BIN_FIRE_IR)  {return (10.) * fac * (0.1 + Zfac);}
 #endif
 #ifdef RT_PHOTOELECTRIC
-    /* opacity comes primarily from dust (ignoring H2 molecular opacities here) */
-    if(k_freq==RT_FREQ_BIN_PHOTOELECTRIC) {return 2000. * DMAX(1.e-4,Zfac * dust_to_metals_vs_standard) * fac;}
+    /* opacity comes primarily from dust (ignoring H2 molecular opacities here). band is 8-13.6 eV [0.091-0.155 micron] (note overlap with LW band) */
+    if(k_freq==RT_FREQ_BIN_PHOTOELECTRIC) {return 720.*DMAX(1.e-4,Zfac * dust_to_metals_vs_standard) * fac;} // depends rather sensitively on assumed input spectrum+dust composition (e.g. MW vs SMC-like), using 2007+ Draine+Li MW-like dust results here, weighted over a flat spectrum with 1/2 of the weight for the portion of the band which overlaps with LW.
 #endif
 #ifdef RT_LYMAN_WERNER
-    /* opacity from molecular H2 and dust (dominant at higher-metallicity) should be included */
-    if(k_freq==RT_FREQ_BIN_LYMAN_WERNER) {return 2400.*Zfac * fac * dust_to_metals_vs_standard;} // just dust term for now
+    /* opacity from molecular H2 and dust (dominant at higher-metallicity) should be included. band is 11.2-13.6 eV [0.111-0.155 micron] */
+    if(k_freq==RT_FREQ_BIN_LYMAN_WERNER) {return 900.*Zfac * fac * dust_to_metals_vs_standard;} // just dust term for now, depends rather sensitively on assumed input spectrum+dust composition (e.g. MW vs SMC-like). using 2007+ Draine+Li MW-like dust results here, weighted by the LW cross-section and a flat spectrum in the range.
 #endif
 #ifdef RT_NUV
-    /* opacity comes primarily from dust */
-    if(k_freq==RT_FREQ_BIN_NUV) {return 1800.*Zfac * fac * dust_to_metals_vs_standard;}
+    /* opacity comes primarily from dust. effective waveband is 0.16-0.36 micron [~3.444-8 eV] */
+    if(k_freq==RT_FREQ_BIN_NUV) {return 480.*Zfac * fac * dust_to_metals_vs_standard;} // depends rather sensitively on assumed input spectrum+dust composition (e.g. MW vs SMC-like), using 2007+ Draine+Li MW-like dust results here
 #endif
 #ifdef RT_OPTICAL_NIR
-    /* opacity comes primarily from dust */
-    if(k_freq==RT_FREQ_BIN_OPTICAL_NIR) {return 180.*Zfac * fac * dust_to_metals_vs_standard;}
+    /* opacity comes primarily from dust. effective waveband is 0.36-3 microns [~0.4133-3.444 eV], e.g. between U-K+ band  */
+    if(k_freq==RT_FREQ_BIN_OPTICAL_NIR) {return 180.*Zfac * fac * dust_to_metals_vs_standard;} // this is close to the specific opacity at R-band, which you can treat very crudely as a sort of 'effective wavelength' for this
 #endif
 #ifdef RT_INFRARED
     /* IR with dust opacity */
