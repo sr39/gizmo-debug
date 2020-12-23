@@ -517,8 +517,8 @@ integertime get_timestep(int p,		/*!< particle index */
                     double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p,k_CRegy);
                     double L_cr_weak; L_cr_weak = CRPressureGradScaleLength;
                     double kappa_cr_eff = fabs(SphP[p].CosmicRayDiffusionCoeff[k_CRegy]);
-                    kappa_cr_eff *= COSMIC_RAYS_RSOL_CORRFAC(k_CRegy); // account for RSOL factor as it actually appears in the flux eqn in code units with this RSOL form
 #if defined(COSMIC_RAYS_M1)
+                    kappa_cr_eff *= COSMIC_RAYS_RSOL_CORRFAC(k_CRegy); // account for RSOL factor as it actually appears in the flux eqn in code units with this RSOL form
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
 #else
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + (1.-0.5*cr_diffusion_opt)/(L_particle*All.cf_atime)));

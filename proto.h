@@ -286,6 +286,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
 double CR_cooling_and_gas_heating(int target, double n_elec, double nH_cgs, double dtime_cgs, int mode);
 double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double gamma_minus_eCR_tmp, int mode);
 double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_type, double shock_vel, int return_index_in_bin, int target);
+double return_cosmic_ray_anisotropic_closure_function_threechi(int target, int k_CRegy);
 void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_type, int target, double *dir);
 double return_CRbin_M1speed(int k_CRegy);
 double evaluate_cr_transport_reductionfactor(int target, int k_CRegy, int mode);
