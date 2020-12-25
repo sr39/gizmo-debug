@@ -1712,15 +1712,17 @@ double return_cosmic_ray_anisotropic_closure_function_threechi(int target, int k
     double fluxmag2=0,ecr,ecrv,f,mu1_2,mu2; int k; ecr=SphP[target].CosmicRayEnergyPred[k_CRegy];
     for(k=0;k<3;k++) {f=SphP[target].CosmicRayFluxPred[k_CRegy][k]; fluxmag2+=f*f;}
 #if defined(COSMIC_RAYS_ALT_RSOL_FORM)
-    double v_eff_cr = COSMIC_RAY_REDUCED_C_CODE(k_CRegy);
+    double v_eff_cr = COSMIC_RAY_REDUCED_C_CODE(k_CRegy); // universal reduction factor
 #else
     double kappa=SphP[target].CosmicRayDiffusionCoeff[k_CRegy], Lgrad_inv=0, P=0; for(k=0;k<3;k++) {P=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]; Lgrad_inv+=P*P;}
     Lgrad_inv = (sqrt(Lgrad_inv) / Get_Gas_CosmicRayPressure(target, k_CRegy)) / All.cf_atime;
-    double v_eff_cr = DMIN(DMAX(COSMIC_RAY_REDUCED_C_CODE(k_CRegy) , kappa*Lgrad_inv) , C_LIGHT_CODE);
+    double v_eff_cr = DMIN(DMAX(COSMIC_RAY_REDUCED_C_CODE(k_CRegy) , kappa*Lgrad_inv) , C_LIGHT_CODE); // more complicated factor b/c transport not universally slowed-down
 #endif
     ecrv=ecr*v_eff_cr; f=fluxmag2/(ecrv*ecrv); mu1_2=DMAX(0,DMIN(1,f));
-    mu2 = (3.+4.*mu1_2) / (5.+2.*sqrt(4.-3.*mu1_2));
-    return 3.*(1.-mu2)/2.;
+    if(!isfinite(mu1_2) || fluxmag2 < MIN_REAL_NUMBER || ecrv < MIN_REAL_NUMBER || !isfinite(f) || f < MIN_REAL_NUMBER || !isfinite(ecrv) || !isfinite(fluxmag2)) {mu1_2=0;} else {if(isfinite(f) && f > 1) {mu1_2=1;}} // safety checks for initialization where may have 0's, etc.
+    mu1_2 = DMAX(0,DMIN(1,mu1_2)); // one more safety check
+    mu2 = (3.+4.*mu1_2) / (5.+2.*sqrt(4.-3.*mu1_2)); // actual closure relation
+    return 3.*(1.-mu2)/2.; // definition of chi variable
 #endif
     return 1;
 }
