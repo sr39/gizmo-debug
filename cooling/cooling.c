@@ -876,7 +876,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #ifdef RT_PHOTOELECTRIC
             photoelec = SphP[target].Rad_E_gamma[RT_FREQ_BIN_PHOTOELECTRIC] * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_CGS / 3.9e-14; photoelec=DMAX(DMIN(photoelec,1.e4),0); // convert to Habing field //
 #endif
-#ifdef RT_FUV_BACKGROUND
+#ifdef RT_ISRF_BACKGROUND
             photoelec += RT_ISRF_BACKGROUND * 1.7 * exp(-DMAX(P[target].Metallicity[0]/All.SolarAbundances[0],1e-4) * column * 500.); // RT_ISRF_BACKGROUND rescales the overal IRSF, factor of 1.7 gives Draine 1978 field in Habing units, extinction factor assumes the same FUV band-integrated dust opacity as RT module
 #endif
 #if !(defined(GALSF_FB_RT_UVHEATING) || defined(RT_PHOTOELECTRIC) || defined(RT_ISRF_BACKGROUND))
@@ -1007,7 +1007,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         
         if(LambdaCompton<0) {Heat -= LambdaCompton;} /* Compton heating rather than cooling */
 
-#if defined(GALSF_FB_FIRE_RT_UVHEATING) || defined(RT_PHOTOELECTRIC) || defined(RT_FUV_BACKGROUND)
+#if defined(GALSF_FB_FIRE_RT_UVHEATING) || defined(RT_PHOTOELECTRIC) || defined(RT_ISRF_BACKGROUND)
         /* Photoelectric heating following Bakes & Thielens 1994 (also Wolfire 1995); now with 'update' from Wolfire 2005 for PAH [fudge factor 0.5 below] */
         if((target >= 0) && (T < 1.0e6))
         {
