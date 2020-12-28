@@ -877,9 +877,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             photoelec = SphP[target].Rad_E_gamma[RT_FREQ_BIN_PHOTOELECTRIC] * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_CGS / 3.9e-14; photoelec=DMAX(DMIN(photoelec,1.e4),0); // convert to Habing field //
 #endif
 #ifdef RT_FUV_BACKGROUND
-            photoelec += RT_FUV_BACKGROUND * 1.7 * exp(-DMAX(P[target].Metallicity[0]/All.SolarAbundances[0],1e-4) * column * 500.); // RT_IRSF_BACKGROUND rescales the overal IRSF, factor of 1.7 gives Draine 1978 field in Habing units, extinction factor assumes the same FUV band-integrated dust opacity as RT module
+            photoelec += RT_ISRF_BACKGROUND * 1.7 * exp(-DMAX(P[target].Metallicity[0]/All.SolarAbundances[0],1e-4) * column * 500.); // RT_ISRF_BACKGROUND rescales the overal IRSF, factor of 1.7 gives Draine 1978 field in Habing units, extinction factor assumes the same FUV band-integrated dust opacity as RT module
 #endif
-#if !(defined(GALSF_FB_RT_UVHEATING) || defined(RT_PHOTOELECTRIC) || defined(RT_FUV_BACKGROUND))
+#if !(defined(GALSF_FB_RT_UVHEATING) || defined(RT_PHOTOELECTRIC) || defined(RT_ISRF_BACKGROUND))
 	    photoelec = 1; // if no explciit modeling of FUV, just assume Habing
 #endif
             f_Cplus_CCO = (nHcgs/(340.*DMAX(0.1,photoelec))); f_Cplus_CCO=1./(1.+f_Cplus_CCO*f_Cplus_CCO/sqrt_T); // fco/(1-fco) ~ 0.0022 * ((n/50 cm^-3)/G0)^2 * (100K/T)^(1/2) from Tielens
@@ -1021,9 +1021,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #ifdef RT_PHOTOELECTRIC
             photoelec += SphP[target].Rad_E_gamma[RT_FREQ_BIN_PHOTOELECTRIC] * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_CGS / 3.9e-14; // convert to Habing field //
 #endif
-#ifdef RT_FUV_BACKGROUND // add a constant assumed FUV background, for isolated ISM simulations that don't get FUV from local sources self-consistently
+#ifdef RT_ISRF_BACKGROUND // add a constant assumed FUV background, for isolated ISM simulations that don't get FUV from local sources self-consistently
             double column = evaluate_NH_from_GradRho(P[target].GradRho,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs            
-            photoelec += RT_FUV_BACKGROUND * 1.7 * exp(-DMAX(P[target].Metallicity[0]/All.SolarAbundances[0],1e-4) * column * 500.); // RT_IRSF_BACKGROUND rescales the overal IRSF, factor of 1.7 gives Draine 1978 field in Habing units, extinction factor assumes the same FUV band-integrated dust opacity as RT module
+            photoelec += RT_ISRF_BACKGROUND * 1.7 * exp(-DMAX(P[target].Metallicity[0]/All.SolarAbundances[0],1e-4) * column * 500.); // RT_IRSF_BACKGROUND rescales the overal IRSF, factor of 1.7 gives Draine 1978 field in Habing units, extinction factor assumes the same FUV band-integrated dust opacity as RT module
 #endif
             if(photoelec > 0) {if(photoelec > 1.e4) {photoelec = 1.e4;}}
 

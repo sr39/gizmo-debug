@@ -967,7 +967,13 @@ void rt_set_simple_inits(int RestartFlag)
                 SphP[i].Rad_Flux_Limiter[k] = 1;
 #endif
 #ifdef RT_INFRARED
-                if(k==RT_FREQ_BIN_INFRARED) {SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED] = (4.*5.67e-5 / C_LIGHT) * pow(DMIN(All.InitGasTemp,100.),4.) / UNIT_PRESSURE_IN_CGS * P[i].Mass / (SphP[i].Density*All.cf_a3inv);}
+                if(k==RT_FREQ_BIN_INFRARED) {
+#ifdef SINGLE_STAR_FB_RAD // for GMC simulations, initialize to the energy density of the dust emission component observed ISRF - 0.31eV/cm^3 (Draine 2011)
+		  SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED] = RT_ISRF_BACKGROUND * 0.31 * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS * P[i].Mass / (SphP[i].Density*All.cf_a3inv);
+#else
+		  SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED] = (4.*5.67e-5 / C_LIGHT) * pow(DMIN(All.InitGasTemp,100.),4.) / UNIT_PRESSURE_IN_CGS * P[i].Mass / (SphP[i].Density*All.cf_a3inv);
+#endif
+		}
 #endif
 #ifdef RT_EVOLVE_ENERGY
                 SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k]; SphP[i].Dt_Rad_E_gamma[k] = 0;
