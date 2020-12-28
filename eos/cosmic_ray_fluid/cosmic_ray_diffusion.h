@@ -20,6 +20,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     double kappa_i = fabs(local.CosmicRayDiffusionCoeff[k_CRegy]); // physical units
     double kappa_j = fabs(SphP[j].CosmicRayDiffusionCoeff[k_CRegy]);
     double d_scalar = scalar_i - scalar_j;
+    double gamma_cr_m1 = GAMMA_COSMICRAY(k_CRegy)-1.;
     
     if(((kappa_i>MIN_REAL_NUMBER)||(kappa_j>MIN_REAL_NUMBER))&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>MIN_REAL_NUMBER)&&(Face_Area_Norm>MIN_REAL_NUMBER))
     {
@@ -104,8 +105,8 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         if(fabs(diffusion_wt) > 0)
         {
             // enforce a flux limiter for stability (to prevent overshoot) //
-            double CR_egy_i = local.CosmicRayPressure[k_CRegy]*V_i / GAMMA_COSMICRAY_MINUS1; // (E_cr = Volume * (Pressure/GAMMA_COSMICRAY_MINUS1)) - this is physical units //
-            double CR_egy_j = CosmicRayPressure_j[k_CRegy]*V_j / GAMMA_COSMICRAY_MINUS1;
+            double CR_egy_i = local.CosmicRayPressure[k_CRegy]*V_i / gamma_cr_m1; // (E_cr = Volume * (Pressure/gamma_cr_m1)) - this is physical units //
+            double CR_egy_j = CosmicRayPressure_j[k_CRegy]*V_j / gamma_cr_m1;
             double prefac_duij = 0.25, flux_multiplier = 1;
             if((local.CosmicRayDiffusionCoeff[k_CRegy]<0)||(SphP[j].CosmicRayDiffusionCoeff[k_CRegy]<0)) {prefac_duij = 0.05;}
             double du_ij_cond = prefac_duij * DMAX(DMIN( fabs(CR_egy_i-CR_egy_j) , DMAX(CR_egy_i , CR_egy_j)) , DMIN(CR_egy_i , CR_egy_j));
@@ -151,7 +152,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
 #endif
         
         /* flux-limiter to ensure flow is always down the local gradient [no 'uphill' flow] */
-        double f_direct = -Face_Area_Norm * c_hll * (d_scalar/GAMMA_COSMICRAY_MINUS1) * renormerFAC; // simple HLL term for frame moving at 1/2 inter-particle velocity: here not limited //
+        double f_direct = -Face_Area_Norm * c_hll * (d_scalar/gamma_cr_m1) * renormerFAC; // simple HLL term for frame moving at 1/2 inter-particle velocity: here not limited //
         if(dt_hydrostep > 0)
         {
             double f_direct_max = 0.25 * fabs(d_scalar) * DMIN(V_i_phys , V_j_phys) / dt_hydrostep;
@@ -169,7 +170,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
             }
             // enforce a flux limiter for stability (to prevent overshoot) //
             cmag *= dt_hydrostep; // all in physical units //
-            double sVi = scalar_i*V_i_phys/GAMMA_COSMICRAY_MINUS1, sVj = scalar_j*V_j_phys/GAMMA_COSMICRAY_MINUS1; // physical units
+            double sVi = scalar_i*V_i_phys/gamma_cr_m1, sVj = scalar_j*V_j_phys/gamma_cr_m1; // physical units
             thold_hll = DMAX(DMIN(fabs(sVi), fabs(sVj)), DMIN(fabs(sVi-sVj), DMAX(fabs(sVi), fabs(sVj))));
             if(sign_c0 < 0) {thold_hll *= 0.001;} // if opposing signs, restrict this term //
             if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
