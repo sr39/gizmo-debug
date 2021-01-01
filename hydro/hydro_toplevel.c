@@ -854,7 +854,7 @@ void hydro_final_operations_and_cleanup(void)
                 for(m=0;m<3;m++) {gradpcr[m] = SphP[i].Gradients.CosmicRayPressure[k][m] * (All.cf_a3inv/All.cf_atime);}
                 for(m=0;m<3;m++) {grad_P_dot_B += bhat[m] * gradpcr[m]; F_dot_B += bhat[m] * SphP[i].CosmicRayFluxPred[k][m] * vol_i;}
                 if(F_dot_B < 0) {vA_k *= -1;} // needs to have appropriately-matched signage below //
-                double gamma_0=return_CRbin_gamma_factor(i,k), gamma_fac=gamma_0/(gamma_0-1.), beta_fac=return_CRbin_beta_factor(i,k); // lorentz factor here, needed in next line, because the loss term here scales with -total- energy, not kinetic energy
+                double gamma_0=return_CRbin_gamma_factor(i,k), gamma_fac=gamma_0/(gamma_0-1.); // lorentz factor here, needed in next line, because the loss term here scales with -total- energy, not kinetic energy
                 if(beta_fac<0.1) {gamma_fac=2./(beta_fac*beta_fac) -0.5 - 0.125*beta_fac*beta_fac;} // avoid accidental nan
                 for(m=0;m<3;m++) {fcorr[m] = bhat[m] * (grad_P_dot_B + (gamma_fac*(F_dot_B/COSMIC_RAYS_RSOL_CORRFAC(k)) - three_chi*vA_k*(gamma_fac*e0_cr + p0_cr))*(beta_fac*beta_fac)/(3.*SphP[i].CosmicRayDiffusionCoeff[k])) / (SphP[i].Density*All.cf_a3inv);} // physical units
                 for(m=0;m<3;m++) {fcorr[m] += (1.-three_chi) * (gradpcr[m] - bhat[m]*grad_P_dot_B) / (SphP[i].Density*All.cf_a3inv);} // physical units
