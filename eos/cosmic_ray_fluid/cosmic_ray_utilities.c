@@ -252,7 +252,9 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
     R_CR_GV=return_CRbin_CR_rigidity_in_GV(target,k_CRegy); Z_charge_CR=return_CRbin_CR_charge_in_e(target,k_CRegy); M_cr_mp=return_CRbin_CRmass_in_mp(target,k_CRegy);
     double e_CR = SphP[target].CosmicRayEnergyPred[k_CRegy]*vol_inv, n_cgs=rho_cgs/PROTONMASS, cos_Bgrad=0,B2=0,P2=0,EPSILON_SMALL=1.e-50; int k;
 #ifdef COSMIC_RAYS_EVOLVE_SPECTRUM
-    double xm=CR_global_min_rigidity_in_bin[k_CRegy], xp=CR_global_max_rigidity_in_bin[k_CRegy]; e_CR *= 2.5/log(xp/xm); // e_CR is in bin, but doesn't take account of bin width; needed only for NLL, want to include CRs 'close' to energy but not all b/c non-resonant, but don't want bin-size dependent, so replace with ~constant * de_cr / dlnR, which works pretty well
+    e_CR=0; double R0_m=CR_global_min_rigidity_in_bin[k_CRegy], R0_p=CR_global_max_rigidity_in_bin[k_CRegy];  // e_CR is in bin, but doesn't take account of bin width; needed only for NLL, want to include CRs 'close' to energy but not all b/c non-resonant, but don't want bin-size dependent, so replace with ~constant * de_cr / dlnR, which works pretty well
+    for(k=0;k<N_CR_PARTICLE_BINS;k++) {double R0_k=CR_global_rigidity_at_bin_center[k]; if(R0_k>R0_m && R0_k<R0_p) {e_CR+=SphP[target].CosmicRayEnergyPred[k_CRegy];}} // sum over all bins with their rigidity in the same range, so that we can get a total energy (dominated by p, but should include all for safety)
+    e_CR *= (2.5 / log(R0_p/R0_m)) * vol_inv; // correction factor for bin width, in de/dlnR, and to convert to energy-density units
 #endif
 #ifdef MAGNETIC
     for(k=0;k<3;k++) {double b0=SphP[target].BPred[k]*vol_inv*All.cf_a2inv, p0=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]; cos_Bgrad+=b0*p0; B2+=b0*b0; P2+=p0*p0;}
