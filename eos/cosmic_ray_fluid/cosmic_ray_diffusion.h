@@ -134,7 +134,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         
         /* add asymptotic-preserving correction so that numerical flux doesn't unphysically dominate in optically thick limit */
         double cr_m1_speed_touse = COSMIC_RAY_REDUCED_C_CODE(k_CRegy);
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
         double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + cr_m1_speed_touse; // physical
         double renormerFAC = cos_theta_face_flux*cos_theta_face_flux;
 #else
@@ -178,7 +178,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
             Fluxes.CosmicRayPressure[k_CRegy] = cmag; // physical, as it needs to be
         } // cmag != 0
         
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
         // pre-compute all the quanitities of interest //
         double A_dot_bhat=0, flux_tmp[2]; int k_j_to_i=0, k_i_to_j=1; for(k=0;k<3;k++) {A_dot_bhat += Face_Area_Vec[k]*bhat[k];}
         if(A_dot_bhat < 0) {k_j_to_i=1; k_i_to_j=0;}

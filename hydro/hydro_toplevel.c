@@ -126,7 +126,7 @@ struct Conserved_var_Riemann
 #ifdef COSMIC_RAYS_M1
     MyDouble CosmicRayFlux[N_CR_PARTICLE_BINS][3];
 #endif
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
     MyDouble CosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];
 #endif
 #endif
@@ -296,7 +296,7 @@ struct INPUT_STRUCT_NAME
 #ifdef COSMIC_RAYS_M1
     MyDouble CosmicRayFlux[N_CR_PARTICLE_BINS][3];
 #endif
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
     MyDouble CosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];
 #endif
 #ifdef COSMIC_RAYS_EVOLVE_SPECTRUM
@@ -381,7 +381,7 @@ struct OUTPUT_STRUCT_NAME
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
     MyDouble DtCosmicRay_Number_in_Bin[N_CR_PARTICLE_BINS];
 #endif
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
     MyDouble DtCosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];
 #endif
 #endif
@@ -544,7 +544,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #ifdef COSMIC_RAYS_M1
         for(k=0;k<3;k++) {in->CosmicRayFlux[j][k] = SphP[i].CosmicRayFluxPred[j][k];}
 #endif
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
         for(k=0;k<2;k++) {in->CosmicRayAlfvenEnergy[j][k] = SphP[i].CosmicRayAlfvenEnergyPred[j][k];}
 #endif
 #ifdef COSMIC_RAYS_EVOLVE_SPECTRUM
@@ -635,7 +635,7 @@ static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
         SphP[i].DtCosmicRay_Number_in_Bin[k] += out->DtCosmicRay_Number_in_Bin[k];
 #endif
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
         int kAlf; for(kAlf=0;kAlf<2;kAlf++) {SphP[i].DtCosmicRayAlfvenEnergy[k][kAlf] += out->DtCosmicRayAlfvenEnergy[k][kAlf];}
 #endif
     }
@@ -833,6 +833,7 @@ void hydro_final_operations_and_cleanup(void)
 #endif
             /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
                 (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
+#if !defined(COSMIC_RAYS_EVOLVE_SCATTERING_WAVES) // handled in separate solver if explicitly evolving the relevant wave families
             for(k=0;k<N_CR_PARTICLE_BINS;k++) {
                 double streamfac = fabs(CR_get_streaming_loss_rate_coefficient(i,k));
                 SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred[k] * streamfac;
@@ -840,7 +841,8 @@ void hydro_final_operations_and_cleanup(void)
                 SphP[i].DtCosmicRayEnergy[k] -= COSMIC_RAYS_RSOL_CORRFAC(k) * SphP[i].CosmicRayEnergyPred[k] * streamfac; // in the multi-bin formalism, save this operation for the CR cooling ops since can involve bin-to-bin transfer of energy
 #endif
             }
-#if defined(COSMIC_RAYS_ALT_FLUX_FORM) && defined(COSMIC_RAYS_M1) && defined(MAGNETIC) // only makes sense to include parallel correction below if all these terms enabled //
+#endif
+#if defined(COSMIC_RAYS_M1) && !defined(COSMIC_RAYS_ALT_FLUX_FORM_JOCH) && defined(MAGNETIC) // only makes sense to include parallel correction below if all these terms enabled //
             /* 'residual' term from parallel scattering of CRs being not-necessarily-in-equilibrium with a two-moment form of the equations */
             double vA_eff=Get_Gas_Alfven_speed_i(i), vol_i=SphP[i].Density*All.cf_a3inv/P[i].Mass, Bmag=0, bhat[3]={0}; // define some useful variables
             for(k=0;k<3;k++) {bhat[k]=SphP[i].BPred[k]; Bmag+=bhat[k]*bhat[k];} // get direction vector for B-field needed below
@@ -999,7 +1001,7 @@ void hydro_force_initial_operations_preloop(void)
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
                 SphP[i].DtCosmicRay_Number_in_Bin[k] = 0;
 #endif
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
                 int kAlf; for(kAlf=0;kAlf<2;kAlf++) {SphP[i].DtCosmicRayAlfvenEnergy[k][kAlf] = 0;}
 #endif
             }

@@ -403,7 +403,11 @@ double domain_particle_cost_multiplier(int i)
     /* With CHIMES, cost is dominated by the chemistry, particularly in dense gas.
        We therefore boost the cost factor of gas particles with nH >~ 1 cm^-3. */
     if(P[i].Type == 0) {double nH_cgs = SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS; if(nH_cgs > 1) {multiplier = 10.0;}}
-#endif 
+#endif
+    
+#ifdef COSMIC_RAYS_EVOLVE_SPECTRUM // again, cost totally dominated by dense gas here, this helps significantly
+    if(P[i].Type == 0) {double nH_cgs = SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS; if(nH_cgs > 1) {multiplier *= 100.;} else {multiplier *= 10.;}}
+#endif
     
     return multiplier;
 }

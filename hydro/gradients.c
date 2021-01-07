@@ -1539,7 +1539,7 @@ void hydro_gradient_calc(void)
 
 
 
-#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_ALFVEN) /* note that because of the way this depends on the gradient scale-length, we should calculate it -after- the slope-limiters are applied */
+#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_EVOLVE_SCATTERING_WAVES) /* note that because of the way this depends on the gradient scale-length, we should calculate it -after- the slope-limiters are applied */
             for(k=0;k<N_CR_PARTICLE_BINS;k++) {SphP[i].CosmicRayDiffusionCoeff[k]=0;}
             if(SphP[i].Density > 0 && P[i].Mass > 0) {CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(i);}/* only assign diffusivities to 'valid' gas particles */
 #ifndef COSMIC_RAYS_M1

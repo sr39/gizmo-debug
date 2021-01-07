@@ -159,7 +159,7 @@ void do_the_cooling_for_particle(int i)
 #endif
 
 
-#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_COOLING)
+#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_ALT_DISABLE_LOSSES)
         CR_cooling_and_losses(i, SphP[i].Ne, SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, dtime*UNIT_TIME_IN_CGS );
 #endif
 
@@ -978,7 +978,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
 
 
-#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_COOLING)
+#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_ALT_DISABLE_LOSSES)
         Heat += CR_gas_heating(target, n_elec, nHcgs);
 #else
 #ifdef COOL_LOW_TEMPERATURES
