@@ -59,9 +59,9 @@ void CR_spectrum_define_bins(void)
         for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {secondary_spec[j]=-200;}
         //if(primary_spec == -2) {secondary_spec[0]=-200;} // positrons -> gamma rays [un-tracked]
         //if(primary_spec == -1) {secondary_spec[0]=-200;} // electrons -> ? [un-tracked]
-        if(primary_spec == 1) {secondary_spec[0]=-1; secondary_spec[1]=-2; secondary_spec[2]=7;} // protons -> secondary e- and e+ and anti-p
+        if(primary_spec == 1) {secondary_spec[0]=-1; secondary_spec[1]=-2; if(N_CR_PARTICLE_SPECIES>2) {secondary_spec[2]=7;}} // protons -> secondary e- and e+ and anti-p
         if(primary_spec == 2) {secondary_spec[0]=4; secondary_spec[1]=5;} // B -> secondary p and e, Be [un-tracked for now, b/c small contributions]
-        if(primary_spec == 3 || primary_spec == 6) {secondary_spec[0]=2; secondary_spec[1]=4; secondary_spec[2]=5;} // C or CNO -> secondary B, Be-7+9, and Be-10 [also e, p, but untracked for now b/c small contributions]
+        if(primary_spec == 3 || primary_spec == 6) {secondary_spec[0]=2; secondary_spec[1]=4; if(N_CR_PARTICLE_SPECIES>2) {secondary_spec[2]=5;}} // C or CNO -> secondary B, Be-7+9, and Be-10 [also e, p, but untracked for now b/c small contributions]
         //if(primary_spec == 4) {secondary_spec[0]=-200;} // Be7+9 -> secondary p and e, [un-tracked for now, b/c small contributions]
         if(primary_spec == 5) {secondary_spec[0]=4;} // Be10 -> B10 (radioactive decay, not from fragmentation: separate vector?)
         for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {if(secondary_spec[j] > -100) {CR_secondary_species_listref[k][j] = temp_species_map[secondary_spec[j]+id_map_offset];} else {CR_secondary_species_listref[k][j]=-200;}}
@@ -246,10 +246,10 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
 {
     double vol_inv = SphP[target].Density*All.cf_a3inv / P[target].Mass, fturb_multiplier=1, f_QLT=1, R_CR_GV, Z_charge_CR, M_cr_mp;
     R_CR_GV=return_CRbin_CR_rigidity_in_GV(target,k_CRegy); Z_charge_CR=return_CRbin_CR_charge_in_e(target,k_CRegy); M_cr_mp=return_CRbin_CRmass_in_mp(target,k_CRegy);
-    double e_CR = SphP[target].CosmicRayEnergyPred[k_CRegy]*vol_inv, n_cgs=rho_cgs/PROTONMASS, cos_Bgrad=0,B2=0,P2=0,EPSILON_SMALL=1.e-50; int k;
+    double e_CR=0,n_cgs=rho_cgs/PROTONMASS,cos_Bgrad=0,B2=0,P2=0,EPSILON_SMALL=1.e-50; int k; e_CR=SphP[target].CosmicRayEnergyPred[k_CRegy]*vol_inv;
 #ifdef COSMIC_RAYS_EVOLVE_SPECTRUM
     e_CR=0; double R0_m=CR_global_min_rigidity_in_bin[k_CRegy], R0_p=CR_global_max_rigidity_in_bin[k_CRegy];  // e_CR is in bin, but doesn't take account of bin width; needed only for NLL, want to include CRs 'close' to energy but not all b/c non-resonant, but don't want bin-size dependent, so replace with ~constant * de_cr / dlnR, which works pretty well
-    for(k=0;k<N_CR_PARTICLE_BINS;k++) {double R0_k=CR_global_rigidity_at_bin_center[k]; if(R0_k>R0_m && R0_k<R0_p) {e_CR+=SphP[target].CosmicRayEnergyPred[k_CRegy];}} // sum over all bins with their rigidity in the same range, so that we can get a total energy (dominated by p, but should include all for safety)
+    for(k=0;k<N_CR_PARTICLE_BINS;k++) {double R0_k=CR_global_rigidity_at_bin_center[k]; if(R0_k>R0_m && R0_k<R0_p) {e_CR+=SphP[target].CosmicRayEnergyPred[k];}} // sum over all bins with their rigidity in the same range, so that we can get a total energy (dominated by p, but should include all for safety)
     e_CR *= (2.5 / log(R0_p/R0_m)) * vol_inv; // correction factor for bin width, in de/dlnR, and to convert to energy-density units
 #endif
 #ifdef MAGNETIC
@@ -258,8 +258,8 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
 #else
     B2=e_CR; cos_Bgrad=1; for(k=0;k<3;k++) {double p0=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]; P2+=p0*p0;} /* this model doesn't really make sense without B-fields, but included for completeness here */
 #endif
-    double Omega_gyro=(0.00898734*b_muG/R_CR_GV) * UNIT_TIME_IN_CGS, r_L=C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*C_LIGHT_CODE; /* all in physical -code- units */
-    double x_LL = DMAX( C_LIGHT_CODE / (Omega_gyro * L_scale), EPSILON_SMALL ), CRPressureGradScaleLength=Get_CosmicRayGradientLength(target,k_CRegy), vA_code=vA_noion, k_turb=1./L_scale, k_L=1./r_L, x_EB_ECR=(0.5*B2+EPSILON_SMALL)/(e_CR+EPSILON_SMALL);
+    double beta=return_CRbin_beta_factor(target,k_CRegy), Omega_gyro=beta*(0.00898734*b_muG/R_CR_GV) * UNIT_TIME_IN_CGS, r_L=beta*C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*beta*C_LIGHT_CODE; /* all in physical -code- units */
+    double x_LL = DMAX( r_L / L_scale, EPSILON_SMALL ), vA_code=vA_noion, k_turb=1./L_scale, k_L=1./r_L;
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
     if(f_ion>0) {vA_code /= sqrt(1.e-16 + f_ion);} // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
@@ -278,13 +278,29 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
     double G_dust = vA_code*k_L * Z_sol * f_grainsize; // also can increase by up to a factor of 2 for regimes where charge collisionally saturated, though this is unlikely to be realized
     if(mode<0) {G_dust = 0;} // for this choice, neglect the dust-damping term 
     double G_ion_neutral = (5.77e-11 * n_cgs * (0.97*nh0 + 0.03*nHe0) * sqrt(temperature)) * UNIT_TIME_IN_CGS / sqrt(M_cr_mp); // ion-neutral damping: need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
-    double G_turb_plus_linear_landau = (vA_noion + sqrt(M_PI)*cs_thermal/4.) * sqrt(k_turb*k_L) * fturb_multiplier; // linear Landau + turbulent (both have same form, assume k_turb from cascade above)
+    double fac_turb = sqrt(k_turb*k_L) * fturb_multiplier; // factor to use below
+    double G_turb_plus_linear_landau = (vA_noion + sqrt(M_PI)*cs_thermal/4.) * fac_turb; // linear Landau + turbulent (both have same form, assume k_turb from cascade above)
     double G0 = G_ion_neutral + G_turb_plus_linear_landau + G_dust; // linear terms all add into single G0 term
+
+#ifdef COSMIC_RAYS_ALT_FLUX_FORM_JOCH
+    double CRPressureGradScaleLength=Get_CosmicRayGradientLength(target,k_CRegy), x_EB_ECR=(0.5*B2+EPSILON_SMALL)/(e_CR+EPSILON_SMALL); // get scale length used below
     double Gamma_effective = G0, phi_0 = (sqrt(M_PI)/6.)*(fabs(cos_Bgrad))*(1./(x_EB_ECR+EPSILON_SMALL))*(cs_thermal*vA_code*k_L/(CRPressureGradScaleLength*G0*G0 + EPSILON_SMALL)); // parameter which determines whether NLL dominates
     if(isfinite(phi_0) && (phi_0>0.01)) {Gamma_effective *= phi_0/(2.*(sqrt(1.+phi_0)-1.));} // this accounts exactly for the steady-state solution for the Thomas+Pfrommer formulation, including both the linear [Landau,turbulent,ion-neutral] + non-linear terms. can estimate (G_nonlinear_landau_effective = Gamma_effective - G0)
     /* with damping rates above, equilibrium transport is equivalent to pure streaming, with v_stream = vA + (diffusive equilibrium part) give by the solution below, proportional to Gamma_effective and valid to O(v^2/c^2) */
     double v_st_eff = vA_code * (1. + f_QLT * 4. * kappa_0 * Gamma_effective * x_EB_ECR * (1. + 2.*vA_code*vA_code/(C_LIGHT_CODE*C_LIGHT_CODE)) / (M_PI*vA_code*vA_code + EPSILON_SMALL)); // effective equilibrium streaming speed for all terms accounted
     return (GAMMA_COSMICRAY(k_CRegy) * v_st_eff * CRPressureGradScaleLength) * (UNIT_VEL_IN_CGS*UNIT_LENGTH_IN_CGS); // convert to effective diffusivity from 'streaming speed' [this introduces the gamma and gradient length], and convert to CGS from code units
+#else
+    double Gamma_LIN = -G0 -0.5*P[target].Particle_DivVel*All.cf_a2inv; // sum of all the linear damping/growth terms
+    double Gamma_NLL = (sqrt(M_PI)/8.) * cs_thermal / r_L; // NLL prefactor: Gamma_NLL is this times (e_A/e_B)
+    double f_cas_ET = vA_noion / (0.007 * C_LIGHT_CODE); /* Alfvenic turbulence following an anisotropic Goldreich-Shridar cascade, per Chandran 2000 */
+    double S_ext_turb = f_cas_ET * vA_noion * fac_turb * M_A*M_A * (r_L/L_scale); // extrinsic turbulence cascade term. note consistency means multiplying by pitch-angle and gyro-averaging factors, and fcas above; expression here assumes whatever you do its a balanced cascade (defauly to GS95 scalings)
+    double S_ext_gri  = vA_code * fabs(cos_Bgrad)*sqrt(P2) / (0.5*B2 + MIN_REAL_NUMBER); // Flux-steady-state value of the GRI term, normalized to e_B
+    double S_ext = S_ext_turb + S_ext_gri; // total driving term, for the flux-steady assumption
+    double fac=0, f0 = Gamma_LIN/(2.*Gamma_NLL + MIN_REAL_NUMBER), f1 = 4.*Gamma_NLL*S_ext / (Gamma_LIN*Gamma_LIN + MIN_REAL_NUMBER);
+    if(f0>0) {fac=f0*(1.+sqrt(1.+f1));} else {if(f1>0.1) {fac=f0*(1.-sqrt(1.+f1));} else {fac=-0.5*f0*f1*(1.-f1/4.);}}
+    double gyro_avg_factor = 3./4.; // weighting factor from pitch-angle averaging over nu, gives ~3/4 for nu~|mu-vA/c|^2, etc.
+    return (kappa_0 / fac) * (4./(3.*M_PI*gyro_avg_factor)) * (UNIT_VEL_IN_CGS*UNIT_LENGTH_IN_CGS);
+#endif
 }
 
 
@@ -461,14 +477,14 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     /* first define some very general variables, and calculate some useful quantities that will be used for any model */
     int k_CRegy; double DiffusionCoeff, CR_kappa_streaming, CRPressureGradScaleLength, v_streaming;
 #if (COSMIC_RAYS_DIFFUSION_MODEL > 0)
-    double cs_thermal,M_A,L_scale,vA_code,vA_noion,gizmo2gauss,Omega_per_GeV,Bmag,unit_kappa_code,b_muG,E_B,f_ion,temperature,EPSILON_SMALL; int k; k=0;
+    double cs_thermal,M_A,L_scale,vA_code,vA_noion,gizmo2gauss,Omega_per_GeV_ifveqc,Bmag,unit_kappa_code,b_muG,E_B,f_ion,temperature,EPSILON_SMALL; int k; k=0;
     unit_kappa_code=UNIT_VEL_IN_CGS*UNIT_LENGTH_IN_CGS; gizmo2gauss=UNIT_B_IN_GAUSS; f_ion=1; temperature=0; EPSILON_SMALL=1.e-50;
     Bmag=2.*SphP[i].Pressure*All.cf_a3inv; cs_thermal=sqrt(convert_internalenergy_soundspeed2(i,SphP[i].InternalEnergyPred)); /* quick thermal pressure properties (we'll assume beta=1 if MHD not enabled) */
 #ifdef MAGNETIC /* get actual B-field */
     double B[3]={0}; Bmag=0; for(k=0;k<3;k++) {B[k]=Get_Gas_BField(i,k)*All.cf_a2inv; Bmag+=B[k]*B[k];} // B-field in code units (physical)
 #endif
     Bmag=sqrt(DMAX(Bmag,0)); b_muG=Bmag*gizmo2gauss/1.e-6; b_muG=sqrt(b_muG*b_muG + 1.e-6); vA_code=sqrt(Bmag*Bmag/(SphP[i].Density*All.cf_a3inv)); vA_noion=vA_code; E_B=0.5*Bmag*Bmag*(P[i].Mass/(SphP[i].Density*All.cf_a3inv));
-    Omega_per_GeV=(0.00898734*b_muG) * UNIT_TIME_IN_CGS; /* B-field in units of physical microGauss; set a floor at nanoGauss level. convert to physical code units */
+    Omega_per_GeV_ifveqc=(0.00898734*b_muG) * UNIT_TIME_IN_CGS; /* B-field in units of physical microGauss; set a floor at nanoGauss level. convert to physical code units */
 #ifdef COOLING
     double ne=1, nh0=0, nHe0=0, nHepp, nhp, nHeII, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, rho_cgs, u0=SphP[i].InternalEnergyPred;
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); rho_cgs=rho*UNIT_DENSITY_IN_CGS; // get thermodynamic properties
@@ -519,7 +535,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
         DiffusionCoeff = diffusion_coefficient_extrinsic_turbulence(scatter_modes,i,k_CRegy,M_A,L_scale,b_muG,vA_noion,rho_cgs,temperature,cs_thermal,nh0,nHe0,f_ion) / unit_kappa_code;
 #endif
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 6) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* self-confinement-based diffusivity */
-        double Omega_gyro=(0.00898734*b_muG/return_CRbin_CR_rigidity_in_GV(i,k_CRegy)) * UNIT_TIME_IN_CGS, r_L=C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*C_LIGHT_CODE; // some handy numbers for limiting extreme-kappa below. all in -physical- code units //
+        double Omega_gyro_ifveqc=(0.00898734*b_muG/return_CRbin_CR_rigidity_in_GV(i,k_CRegy)) * UNIT_TIME_IN_CGS, r_L=C_LIGHT_CODE/Omega_gyro_ifveqc, kappa_0=r_L*C_LIGHT_CODE; // some handy numbers for limiting extreme-kappa below. all in -physical- code units //
         CR_kappa_streaming = diffusion_coefficient_self_confinement(COSMIC_RAYS_SET_SC_MODEL,i,k_CRegy,M_A,L_scale,b_muG,vA_noion,rho_cgs,temperature,cs_thermal,nh0,nHe0,f_ion) / unit_kappa_code;
         if(!isfinite(CR_kappa_streaming)) {CR_kappa_streaming = 1.e30/unit_kappa_code;} /* apply some limiters since its very easy for the routine above to give wildly-large-or-small diffusivity, which wont make a difference compared to just 'small' or 'large', but will mess things up numerically */
         CR_kappa_streaming = DMIN( DMAX( DMIN(DMAX(CR_kappa_streaming,kappa_0) , 1.0e10*GAMMA_COSMICRAY(k_CRegy) * CRPressureGradScaleLength*COSMIC_RAY_REDUCED_C_CODE(k_CRegy)) , 1.e25/unit_kappa_code ) , 1.e34/unit_kappa_code );
@@ -1708,7 +1724,7 @@ double evaluate_cr_transport_reductionfactor(int target, int k_CRegy, int mode)
 /*<! closure function needed for arbitrarily anisotropic CR distribution function, from Hopkins '21 */
 double return_cosmic_ray_anisotropic_closure_function_threechi(int target, int k_CRegy)
 {
-#if !defined(COSMIC_RAYS_ALT_M1_ISO_CLOSURE)
+#if !defined(COSMIC_RAYS_ALT_M1_ISO_CLOSURE) && defined(COSMIC_RAYS_M1)
     double fluxmag2=0,ecr,ecrv,f,mu1_2,mu2; int k; ecr=SphP[target].CosmicRayEnergyPred[k_CRegy];
     for(k=0;k<3;k++) {f=SphP[target].CosmicRayFluxPred[k_CRegy][k]; fluxmag2+=f*f;}
 #if defined(COSMIC_RAYS_ALT_RSOL_FORM)
