@@ -147,7 +147,7 @@ void CR_spectrum_define_bins(void)
                 if(primary_id==6) { // CNO effective bin; fitting function to the results compiled and re-fit in Moskalenko & Mashnik 2003 (used for GALPROP), doing a solar-abundance-ratio weighted average over CNO, and summing over the relevant isotopes
                     if(secondary_id==2) { // CNO->B
                         CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * pow(10., 1.71801936 - 0.03475011*x -0.09856187*x*x +0.12369455*x*x*x +0.02958446*x*x*x*x -0.05273341*x*x*x*x*x -0.00223893*x*x*x*x*x*x +0.00639451*x*x*x*x*x*x*x + 0.464605776*exp(-17.769530*(x+1.23499649)*(x+1.23499649)) );}
-                    if(secondary_id==4) { // CNO->Be7+9
+                    if(secondary_id==4) { // CNO->Be7+9 // (could also use CNO->Be9 (not really a point here explicitly tracking Be7), but including all here since closer to what is actually observed)
                         CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * pow(10., 1.16648147  +0.09557578*x -0.17970136*x*x +0.06823829*x*x*x +0.04448299*x*x*x*x -0.02883429*x*x*x*x*x -0.00274047*x*x*x*x*x*x +0.00286316*x*x*x*x*x*x*x + 0.476812578*exp(-14.203615*(x+1.21352966)*(x+1.21352966)) );}
                     if(secondary_id==5) { // CNO->Be10
                         CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * (0.073388 + pow(10., 0.454778746 + 0.349074384*x -0.684152925*x*x -0.153016497*x*x*x +0.657169204*x*x*x*x +8.06147155e-04*x*x*x*x*x -0.296932460*x*x*x*x*x*x +0.0918014184*x*x*x*x*x*x*x ));}
@@ -1230,7 +1230,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                                     
                                     if(split_two_bin==0 && CR_species_ID_in_bin[j]==1 && k==0 && (CR_species_ID_in_bin[j_s]<0 || CR_species_ID_in_bin[j_s]==7)) { /* now code extending the CR spectrum of secondary production to energies higher than our max limit, assuming continued power-law extrapolation of the CR spectrum */
                                         double Rx0=CR_global_rigidity_at_bin_center[j_s], U00=U_donor, xm_0=CR_global_min_rigidity_in_bin[j_s]/CR_global_rigidity_at_bin_center[j_s], xp_0=CR_global_max_rigidity_in_bin[j_s]/CR_global_rigidity_at_bin_center[j_s];
-                                        int spec_0=CR_species_ID_in_bin[j_s], slope_0=2.+slope_inj; slope_0=DMAX(-4.,DMIN(slope_0,0.));
+                                        int spec_0=CR_species_ID_in_bin[j_s], slope_0=2.+slope_inj; slope_0=DMAX(-4.,DMIN(slope_0,0.)); if(spec_0==7) {slope=DMIN(slope_0,-0.7);}
                                         j_s++;
                                         while(j_s<N_CR_PARTICLE_BINS && CR_species_ID_in_bin[j_s]==spec_0) {
                                             double Rx1=CR_global_rigidity_at_bin_center[j_s];
