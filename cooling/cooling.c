@@ -993,9 +993,6 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
             cr_zeta=1.e-17; e_per_cr_ioniz=3.0e-11; // follow e.g. Glover+Jappsen 2007, Le Teuff et al. 2000, gives about a 3x lower CR heating rate compared to older numbers above
 #endif
-#ifdef RT_ISRF_BACKGROUND
-	    cr_zeta *= RT_ISRF_BACKGROUND; // we scale the CR background by the same factor as the ISRF
-#endif
             Heat += prefac_CR * cr_zeta * (1. + 1.68*n_elec*HYDROGEN_MASSFRAC) / (1.e-2 + nHcgs) * e_per_cr_ioniz; // final result
         }
 #endif
@@ -1799,9 +1796,6 @@ double return_electron_fraction_from_heavy_ions(int target, double temperature, 
 {
     if(All.ComovingIntegrationOn) {double rhofac=density_cgs/(1000.*COSMIC_BARYON_DENSITY_CGS); if(rhofac<0.2) {return 0;}} // ignore these reactions in the IGM
     double zeta_cr=1.0e-17, f_dustgas=0.01, n_ion_max=4.1533e-5, XH=HYDROGEN_MASSFRAC; // cosmic ray ionization rate (fixed as constant for non-CR runs) and dust-to-gas ratio
-#ifdef RT_ISRF_BACKGROUND
-    zeta_cr *= RT_ISRF_BACKGROUND; // we scale the CR background by the same factor as the ISRF
-#endif
 #ifdef COSMIC_RAYS
     if(target>=0) {double u_cr=0; int k; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_cr += SphP[target].CosmicRayEnergyPred[k];}
         zeta_cr = u_cr * 2.2e-6 * ((SphP[target].Density*All.cf_a3inv / P[target].Mass) * (UNIT_PRESSURE_IN_CGS));} // convert to ionization rate
