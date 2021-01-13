@@ -217,6 +217,7 @@
 #define DM_SIDM 8 /* use the SIDM module to handle scattering of otherwise-collisionless particles against each other -- set to Particle Type=3 here */
 #endif
 #if defined(PIC_MHD)
+#define PIC_MHD_NEW_RSOL_METHOD /* prefer new method for dealing with RSOL, should make simulations easier if done correctly */
 #ifdef GRAIN_FLUID
 #define GRAIN_FLUID_AND_PIC_BOTH_DEFINED /* keyword used later to know what we need to read in */
 #else
