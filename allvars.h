@@ -527,7 +527,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifdef SINGLE_STAR_FB_RAD
 #define RT_M1
 #define RT_SOURCES 32
-#define RT_SPEEDOFLIGHT_REDUCTION 1e-4
+#define RT_SPEEDOFLIGHT_REDUCTION (1.0e-4)
 #define RT_REPROCESS_INJECTED_PHOTONS
 #define RT_BH_ANGLEWEIGHT_PHOTON_INJECTION
 #define RT_OPTICAL_NIR
@@ -824,7 +824,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 /* default to speed-of-light equal to actual speed-of-light, and stars as photo-ionizing sources */
 #ifndef RT_SPEEDOFLIGHT_REDUCTION
-#define RT_SPEEDOFLIGHT_REDUCTION 1.0
+#define RT_SPEEDOFLIGHT_REDUCTION (1.0)
 #endif
 #ifndef RT_SOURCES
 #define RT_SOURCES 1+2+4+8+16+32 // default to allowing all types to act as sources //
@@ -1311,7 +1311,7 @@ typedef unsigned long long peanokey;
 
 #define U_TO_TEMP_UNITS         ((PROTONMASS/BOLTZMANN)*((UNIT_ENERGY_IN_CGS)/(UNIT_MASS_IN_CGS))) /* units to convert specific internal energy to temperature. needs to be multiplied by dimensionless factor=mean_molec_weight_in_amu*(gamma_eos-1) */
 #define C_LIGHT_CODE            ((C_LIGHT/UNIT_VEL_IN_CGS)) /* pure convenience function, speed-of-light in code units */
-#define C_LIGHT_CODE_REDUCED    ((RT_SPEEDOFLIGHT_REDUCTION*((C_LIGHT)/(UNIT_VEL_IN_CGS)))) /* reduced speed-of-light in code units, again here as a convenience function */
+#define C_LIGHT_CODE_REDUCED    (((RT_SPEEDOFLIGHT_REDUCTION)*((C_LIGHT)/(UNIT_VEL_IN_CGS)))) /* reduced speed-of-light in code units, again here as a convenience function */
 #define H0_CGS                  ((All.HubbleParam*HUBBLE_H100_CGS)) /* actual value of H0 in cgs */
 #define COSMIC_BARYON_DENSITY_CGS ((All.OmegaBaryon*(H0_CGS)*(H0_CGS)*(3./(8.*M_PI*GRAVITY_G))*All.cf_a3inv)) /* cosmic mean baryon density [scale-factor-dependent] in cgs units */
 

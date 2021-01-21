@@ -844,15 +844,12 @@ void hydro_final_operations_and_cleanup(void)
 #endif
 #if defined(COSMIC_RAYS_M1) && !defined(COSMIC_RAYS_ALT_FLUX_FORM_JOCH) && defined(MAGNETIC) // only makes sense to include parallel correction below if all these terms enabled //
             /* 'residual' term from parallel scattering of CRs being not-necessarily-in-equilibrium with a two-moment form of the equations */
-            double vA_eff=Get_Gas_Alfven_speed_i(i), vol_i=SphP[i].Density*All.cf_a3inv/P[i].Mass, Bmag=0, bhat[3]={0}; // define some useful variables
+            double vA_eff=Get_Gas_ion_Alfven_speed_i(i), vol_i=SphP[i].Density*All.cf_a3inv/P[i].Mass, Bmag=0, bhat[3]={0}; // define some useful variables
             for(k=0;k<3;k++) {bhat[k]=SphP[i].BPred[k]; Bmag+=bhat[k]*bhat[k];} // get direction vector for B-field needed below
             if(Bmag>0) {Bmag=sqrt(Bmag); for(k=0;k<3;k++) {bhat[k] /= Bmag;}} // make dimensionless
-#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-            vA_eff /= sqrt(1.e-16 + Get_Gas_Ionized_Fraction(i)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
-#endif
             if(Bmag>0) {for(k=0;k<N_CR_PARTICLE_BINS;k++) {
                 double three_chi = return_cosmic_ray_anisotropic_closure_function_threechi(i,k);
-                int m; double grad_P_dot_B=0, gradpcr[3]={0}, F_dot_B=0, e0_cr=SphP[i].CosmicRayEnergyPred[k]*vol_i, p0_cr=(GAMMA_COSMICRAY(k)-1.)*e0_cr, vA_k=vA_eff, fcorr[3]={0}, beta_fac=return_CRbin_beta_factor(i,k);
+                int m; double grad_P_dot_B=0, gradpcr[3]={0}, F_dot_B=0, e0_cr=SphP[i].CosmicRayEnergyPred[k]*vol_i, p0_cr=(GAMMA_COSMICRAY(k)-1.)*e0_cr, vA_k=vA_eff*return_CRbin_nuplusminus_asymmetry(i,k), fcorr[3]={0}, beta_fac=return_CRbin_beta_factor(i,k);
                 for(m=0;m<3;m++) {gradpcr[m] = SphP[i].Gradients.CosmicRayPressure[k][m] * (All.cf_a3inv/All.cf_atime);}
                 for(m=0;m<3;m++) {grad_P_dot_B += bhat[m] * gradpcr[m]; F_dot_B += bhat[m] * SphP[i].CosmicRayFluxPred[k][m] * vol_i;}
                 if(F_dot_B < 0) {vA_k *= -1;} // needs to have appropriately-matched signage below //

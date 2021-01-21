@@ -950,8 +950,8 @@ endif
 ##      (matching what you used for the installation) so that the code can find fftw2
 ##   4. in your job submission file, it is recommended for certain core types that additional settings
 ##      are used. for Sandy Bridge, they recommend:
-##          setenv MPI_DSM_DISTRIBUTE 0
-##          setenv KMP_AFFINITY disabled
+##          export MPI_DSM_DISTRIBUTE=0
+##          export KMP_AFFINITY=disabled
 ##      before the actual lines submitting your job
 ##
 
