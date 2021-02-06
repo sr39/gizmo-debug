@@ -1370,7 +1370,7 @@ typedef unsigned long long peanokey;
 #if defined(COSMIC_RAYS_ALT_RSOL_FORM) && defined(COSMIC_RAYS_M1)
 #define COSMIC_RAYS_RSOL_CORRFAC(k) (((COSMIC_RAY_REDUCED_C_CODE(k))/(C_LIGHT_CODE))) // this needs to be defined after the code SOL for obvious reasons
 #else
-#define COSMIC_RAYS_RSOL_CORRFAC(k) (1) // this is always unity, macro is trivial
+#define COSMIC_RAYS_RSOL_CORRFAC(k) (1.0) // this is always unity, macro is trivial
 #endif
 
 

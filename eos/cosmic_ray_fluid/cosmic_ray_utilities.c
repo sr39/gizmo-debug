@@ -770,7 +770,8 @@ double get_cell_Urad_in_eVcm3(int i)
 /* return pre-factor for CR streaming losses, such that loss rate dE/dt = -E * streamfac */
 double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy)
 {
-    double streamfac = 0;
+    double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target), streamfac = 0;
+    if((P[target].CosmicRayEnergy[k_CRegy] <= 0) || (P[target].CosmicRayEnergy[k_CRegy] <= 0) || (dt <= 0)) {return 0;}
 #if !defined(COSMIC_RAYS_ALT_DISABLE_STREAMING)
     double vstream_0 = Get_CosmicRayStreamingVelocity(target,k_CRegy), vA=Get_Gas_ion_Alfven_speed_i(target); /* define naive streaming and Alfven speeds */
 
@@ -780,6 +781,8 @@ double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy)
     double gamma_0=return_CRbin_gamma_factor(target,k_CRegy), gamma_fac=gamma_0/(gamma_0-1.), beta_fac=return_CRbin_beta_factor(target,k_CRegy); // lorentz factor here, needed in next line, because the loss term here scales with -total- energy, not kinetic energy
     if(beta_fac<0.1) {gamma_fac=2./(beta_fac*beta_fac) -0.5 - 0.125*beta_fac*beta_fac;} // avoid accidental nan
     streamfac = (vA * (beta_fac*beta_fac) / fabs(3.*SphP[target].CosmicRayDiffusionCoeff[k_CRegy])) * ((gamma_fac) * return_CRbin_nuplusminus_asymmetry(target,k_CRegy) * v_flux_eff/COSMIC_RAYS_RSOL_CORRFAC(k_CRegy) - (3.*(GAMMA_COSMICRAY(k_CRegy)-1.) + (gamma_fac)) * vA * (2./3.) * return_cosmic_ray_anisotropic_closure_function_threechi(target,k_CRegy)); // this is (vA/[3kappa])*(F - 2*chifac*vA*(ecr+3*Pcr))/ecr, using the 'full F' [corrected back from rsol, b/c rsol correction moves outside this for loss terms]
+    double sfac_max = fabs(0.1 * P[target].CosmicRayEnergy[k_CRegy] / (MIN_REAL_NUMBER + dt));
+    if(fabs(streamfac) > sfac_max) {streamfac *= sfac_max / fabs(streamfac);}
     return streamfac; // probably want to limit to make sure above doesn't take on too extreme a value... also above, initially only had positive term since this removes energy from CRs when streaming super-Alfvenically, but when streaming sub-Alfvenically, could this become a source term with energy going into CRs? seems problematic if vA very high, but then scattering would work inefficiently... so plausible, but really need to be careful again about magnitude...
 #endif
     

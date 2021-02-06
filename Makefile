@@ -915,10 +915,10 @@ CC       =  icc -lmpi
 CXX      =  icc -lmpi -lmpi++
 FC       =  ifort -nofor_main -lmpi
 ifeq ($(SYSTYPE),"Pleiades-Haswell")
-OPTIMIZE = -O3 -ip -funroll-loops -no-prec-div -fp-model fast=2 -xCORE-AVX2 # Haswell cores
+OPTIMIZE = -O3 -ip -funroll-loops -no-prec-div -fp-model fast=2 -xCORE-AVX2 -diag-disable 3180 # Haswell cores
 endif
 ifeq ($(SYSTYPE),"Pleiades-SIBridge")
-OPTIMIZE = -O3 -ip -funroll-loops -no-prec-div -fp-model fast=2 -xAVX # Sandy or Ivy-Bridge cores
+OPTIMIZE = -O3 -ip -funroll-loops -no-prec-div -fp-model fast=2 -xAVX -diag-disable 3180 # Sandy or Ivy-Bridge cores
 endif
 OPTIMIZE += -Wall # compiler warnings
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
