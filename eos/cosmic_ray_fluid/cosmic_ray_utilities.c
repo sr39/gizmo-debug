@@ -771,7 +771,7 @@ double get_cell_Urad_in_eVcm3(int i)
 double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy)
 {
     double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target), streamfac = 0;
-    if((P[target].CosmicRayEnergy[k_CRegy] <= 0) || (P[target].CosmicRayEnergy[k_CRegy] <= 0) || (dt <= 0)) {return 0;}
+    if((P[target].CosmicRayEnergy[k_CRegy] <= MIN_REAL_NUMBER) || (P[target].CosmicRayEnergy[k_CRegy] <= MIN_REAL_NUMBER) || (dt <= 0)) {return 0;}
 #if !defined(COSMIC_RAYS_ALT_DISABLE_STREAMING)
     double vstream_0 = Get_CosmicRayStreamingVelocity(target,k_CRegy), vA=Get_Gas_ion_Alfven_speed_i(target); /* define naive streaming and Alfven speeds */
 
