@@ -332,6 +332,39 @@ OPT     += -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_
 endif
 
 
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Bridges2")
+CC       = mpicc
+CXX      = mpic++
+FC       = mpif90 -nofor_main  # intel
+#FC       = mpif90  # gcc/clang
+OPTIMIZE = -O3
+OPTIMIZE += -march=core-avx2 -fma -ftz -fomit-frame-pointer  -ipo -funroll-loops -no-prec-div -fp-model fast=2  # intel
+#OPTIMIZE += -march=znver1 -mfma -fvectorize -mfma -mavx2 -m3dnow -floop-unswitch-aggressive  # clang
+#OPTIMIZE += -march=znver1 -mtune=znver1 -mfma -mavx2 -m3dnow -fomit-frame-pointer  # gcc
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -qopenmp  # intel
+#OPTIMIZE += -fopenmp  # gcc/clang
+endif
+MKL_INCL = -I$(INCLUDE)
+MKL_LIBS = -L$(LIBRARY_PATH) -mkl=sequential
+GSL_INCL = -I$(INCLUDE)
+GSL_LIBS = -L$(LIBRARY_PATH)
+FFTW_INCL= -I$(INCLUDE)
+FFTW_LIBS= -L$(LIBRARY_PATH)
+HDF5INCL = -I$(INCLUDE) -DH5_USE_16_API
+HDF5LIB  = -L$(LIBRARY_PATH) -lhdf5 -lz
+MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE
+## the above works for:
+## module load intel
+## module load openmpi/4.0.2-intel20.4
+## module load mkl
+## module load hdf5
+## module load fftw
+endif
+
+
 #----------------------------
 ifeq ($(SYSTYPE),"MacBookPro")
 CC       =  mpicc
