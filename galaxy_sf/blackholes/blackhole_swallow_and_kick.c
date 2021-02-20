@@ -914,7 +914,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #ifdef COSMIC_RAYS_M1
             for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k_CRegy][k]=SphP[j].CosmicRayFluxPred[k_CRegy][k]=0;}
 #endif
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
             for(k=0;k<3;k++) {SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k]=SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k]=SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k]=0;}
 #endif
         } /* complete CR initialization to null */

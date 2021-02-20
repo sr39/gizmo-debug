@@ -20,13 +20,17 @@
 /* routine which defines the actual bin list for the multi-bin spectral CR models. note the number of entries MUST match the hard-coded N_CR_PARTICLE_BINS defined in allvars.h */
 void CR_spectrum_define_bins(void)
 {
-    int k;
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK)
+#if (COSMIC_RAYS_EVOLVE_SPECTRUM == 2)
     int species_list[N_CR_PARTICLE_SPECIES]={-2, -1, +1, 2,   6, 4, 5,  7}; // {-2=positrons, -1=electrons, 1=protons, 2=B, 3=C, 4=Be7+9, 5=Be10, 6=CNO, 7=antiprotons}
     double charge_v[N_CR_PARTICLE_SPECIES] ={ 1, -1,  1, 5, 7.4, 4, 4, -1}; // list of charge for each of the species above, matched to their codes
-#define CR_NUMBER_OF_R_BINS_FOR_LEPTONIC_SPECIES 11 // needs to be defined to match below, both hard-coded here
-#define CR_NUMBER_OF_R_BINS_FOR_HADRONIC_SPECIES 8  // needs to be defined to match below, both hard-coded here
-    double R[N_CR_PARTICLE_BINS], Z[N_CR_PARTICLE_BINS]; int spec[N_CR_PARTICLE_BINS], ispec, n0=0;
+#else
+    int species_list[N_CR_PARTICLE_SPECIES]={-1, 1};
+    double charge_v[N_CR_PARTICLE_SPECIES] ={-1, 1};
+#endif
+    
+#define CR_NUMBER_OF_R_BINS_FOR_LEPTONIC_SPECIES 11 /* needs to be defined to match below, both hard-coded here */
+#define CR_NUMBER_OF_R_BINS_FOR_HADRONIC_SPECIES 8  /* needs to be defined to match below, both hard-coded here; note, we by default don't go to extremely low-energy proton bins since those have incredibly rapid Coulomb loss times, which without continuous injection grind the code down and just give zero energy in the bins */
+    int k; double R[N_CR_PARTICLE_BINS], Z[N_CR_PARTICLE_BINS]; int spec[N_CR_PARTICLE_BINS], ispec, n0=0;
     double R_lepton[CR_NUMBER_OF_R_BINS_FOR_LEPTONIC_SPECIES]={3.16227766e-03, 1.00000000e-02, 3.16227766e-02, 1.00000000e-01, 3.16227766e-01, 1.00000000e+00, 3.16227766e+00, 1.00000000e+01, 3.16227766e+01, 1.00000000e+02, 3.16227766e+02};
     double R_nuclei[CR_NUMBER_OF_R_BINS_FOR_HADRONIC_SPECIES]={1.00000000e-01, 3.16227766e-01, 1.00000000e+00, 3.16227766e+00, 1.00000000e+01, 3.16227766e+01, 1.00000000e+02, 3.16227766e+02};
     for(ispec=0;ispec<N_CR_PARTICLE_SPECIES;ispec++)
@@ -34,22 +38,14 @@ void CR_spectrum_define_bins(void)
         int is_lepton=0, nmax=CR_NUMBER_OF_R_BINS_FOR_HADRONIC_SPECIES; if(species_list[ispec] < 0) {is_lepton=1; nmax=CR_NUMBER_OF_R_BINS_FOR_LEPTONIC_SPECIES;}
         for(k=0;k<nmax;k++) {Z[n0]=charge_v[ispec]; spec[n0]=species_list[ispec]; if(is_lepton) {R[n0]=R_lepton[k];} else {R[n0]=R_nuclei[k];} n0++;}
     }
-#else
-    /* note, we by default don't go to extremely low-energy proton bins since those have incredibly rapid Coulomb loss times, which without continuous injection grind the code down and just give zero energy in the bins */
-    double R[N_CR_PARTICLE_BINS] = {3.16227766e-03, 1.00000000e-02, 3.16227766e-02, 1.00000000e-01, 3.16227766e-01, 1.00000000e+00, 3.16227766e+00, 1.00000000e+01, 3.16227766e+01, 1.00000000e+02, 3.16227766e+02,
-                                                                                    1.00000000e-01, 3.16227766e-01, 1.00000000e+00, 3.16227766e+00, 1.00000000e+01, 3.16227766e+01, 1.00000000e+02, 3.16227766e+02}; // bin-centered rigidity in GV, defined here for each bin
-    double Z[N_CR_PARTICLE_BINS] = {            -1,             -1,             -1,             -1,             -1,             -1,             -1,             -1,             -1,             -1,             -1,
-                                                                                                +1,             +1,             +1,             +1,             +1,             +1,             +1,             +1}; // charge: -1 for electrons, +1 for protons, defined here for each bin
-    int spec[N_CR_PARTICLE_BINS] = {            -1,             -1,             -1,             -1,             -1,             -1,             -1,             -1,             -1,             -1,             -1,
-                                                                                                +1,             +1,             +1,             +1,             +1,             +1,             +1,             +1}; // charge: -1 for electrons, +1 for protons, defined here for each bin
-#endif
+    
     /* for ease-of-use purposes rather than adding a bunch of extra flags, we will use spec = -2 to signify positrons. the code will understand what to do with them and treat them with the correct charge, but its just a special
         flag. otherwise the charge should correspond to -1 for electrons, or to the fully-ionized charge of a given nucleus (e.g. its atomic number, 1=p/H, 2=He, etc. [some can have hard-coded behaviors/cross-sections below for various processes designed for their use as tracers, including e.g. 4=Be, 5=B, 6/7/8=C/N/O, etc.)
      can use some slightly-offset values if desired to hard-code special flags, or code a shared weight here [e.g. weight in amu] to represent different isotopes, if desired (e.g. 10Be vs 7Be) */
     int ibin=0, ilast=-200; for(k=0;k<N_CR_PARTICLE_BINS;k++) {if(ibin>=N_CR_PARTICLE_SPECIES) {continue;} else {if(spec[k] != ilast) {CR_species_ID_active_list[ibin]=spec[k]; ilast=spec[k]; ibin++;}}} /* creates list of all species here that are active */
     for(k=0;k<N_CR_PARTICLE_BINS;k++) {CR_global_rigidity_at_bin_center[k]=R[k]; CR_global_charge_in_bin[k]=Z[k]; CR_species_ID_in_bin[k]=spec[k];}
 
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK)
+#if 1 // (COSMIC_RAYS_EVOLVE_SPECTRUM == 2) // now even the simpler network has secondary e-, important for dense regions synchrotron
     /* note that some of our assumptions here and below are hard-coded to the fact below that the species are -ordered- in the order given by 'species list' at the top */
     int temp_species_map[100]; int min_species_id=99999, id_last=-200, n00=0, j; for(k=0;k<N_CR_PARTICLE_SPECIES;k++) {if(species_list[k]<min_species_id) {min_species_id=species_list[k];}}
     int id_map_offset=0; if(min_species_id<0) {id_map_offset=-min_species_id;}
@@ -63,9 +59,9 @@ void CR_spectrum_define_bins(void)
         for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {secondary_spec[j]=-200;}
         //if(primary_spec == -2) {secondary_spec[0]=-200;} // positrons -> gamma rays [un-tracked]
         //if(primary_spec == -1) {secondary_spec[0]=-200;} // electrons -> ? [un-tracked]
-        if(primary_spec == 1) {secondary_spec[0]=-1; secondary_spec[1]=-2; secondary_spec[2]=7;} // protons -> secondary e- and e+ and anti-p
+        if(primary_spec == 1) {secondary_spec[0]=-1; secondary_spec[1]=-2; if(N_CR_PARTICLE_SPECIES>2) {secondary_spec[2]=7;}} // protons -> secondary e- and e+ and anti-p
         if(primary_spec == 2) {secondary_spec[0]=4; secondary_spec[1]=5;} // B -> secondary p and e, Be [un-tracked for now, b/c small contributions]
-        if(primary_spec == 3 || primary_spec == 6) {secondary_spec[0]=2; secondary_spec[1]=4; secondary_spec[2]=5;} // C or CNO -> secondary B, Be-7+9, and Be-10 [also e, p, but untracked for now b/c small contributions]
+        if(primary_spec == 3 || primary_spec == 6) {secondary_spec[0]=2; secondary_spec[1]=4; if(N_CR_PARTICLE_SPECIES>2) {secondary_spec[2]=5;}} // C or CNO -> secondary B, Be-7+9, and Be-10 [also e, p, but untracked for now b/c small contributions]
         //if(primary_spec == 4) {secondary_spec[0]=-200;} // Be7+9 -> secondary p and e, [un-tracked for now, b/c small contributions]
         if(primary_spec == 5) {secondary_spec[0]=4;} // Be10 -> B10 (radioactive decay, not from fragmentation: separate vector?)
         for(j=0;j<N_CR_PARTICLE_SPECIES;j++) {if(secondary_spec[j] > -100) {CR_secondary_species_listref[k][j] = temp_species_map[secondary_spec[j]+id_map_offset];} else {CR_secondary_species_listref[k][j]=-200;}}
@@ -87,7 +83,8 @@ void CR_spectrum_define_bins(void)
                 {
                     if(CR_species_ID_in_bin[m] != secondary_id) {continue;}
                     double E_target = E_GeV[k] * DMAX(1.,A_wt[m]) / DMAX(1.,A_wt[k]); // fixed energy per nucleon/particle (treating e-/e+ as 1)
-                    if(secondary_id < 0 || secondary_id == 7) {E_target *= 0.14;} // secondary e+/e- from protons (pion decay) get ~1/8 original p energy, likewise for anti-protons
+                    if(secondary_id < 0) {E_target *= 0.14;} // secondary e+/e- from protons (pion decay) get ~1/8 original p energy, likewise for anti-protons
+                    if(secondary_id == 7) {E_target *= 0.08;} // anti-protons similar but get slightly-less energy on average [testing effects right now of this level of hair-splitting!]
                     double diff = log(E_GeV[m]/E_target); diff*=diff; // square of log-diff between energies
                     if(diff < diff_min) {diff_min=diff; target_bin=m; E_target_0=E_target;} // set to this as the 'closest' option
                 }
@@ -150,7 +147,7 @@ void CR_spectrum_define_bins(void)
                 if(primary_id==6) { // CNO effective bin; fitting function to the results compiled and re-fit in Moskalenko & Mashnik 2003 (used for GALPROP), doing a solar-abundance-ratio weighted average over CNO, and summing over the relevant isotopes
                     if(secondary_id==2) { // CNO->B
                         CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * pow(10., 1.71801936 - 0.03475011*x -0.09856187*x*x +0.12369455*x*x*x +0.02958446*x*x*x*x -0.05273341*x*x*x*x*x -0.00223893*x*x*x*x*x*x +0.00639451*x*x*x*x*x*x*x + 0.464605776*exp(-17.769530*(x+1.23499649)*(x+1.23499649)) );}
-                    if(secondary_id==4) { // CNO->Be7+9
+                    if(secondary_id==4) { // CNO->Be7+9 // (could also use CNO->Be9 (not really a point here explicitly tracking Be7), but including all here since closer to what is actually observed)
                         CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * pow(10., 1.16648147  +0.09557578*x -0.17970136*x*x +0.06823829*x*x*x +0.04448299*x*x*x*x -0.02883429*x*x*x*x*x -0.00274047*x*x*x*x*x*x +0.00286316*x*x*x*x*x*x*x + 0.476812578*exp(-14.203615*(x+1.21352966)*(x+1.21352966)) );}
                     if(secondary_id==5) { // CNO->Be10
                         CR_frag_secondary_coeff[k][j] = cx_mb_to_coeff * (0.073388 + pow(10., 0.454778746 + 0.349074384*x -0.684152925*x*x -0.153016497*x*x*x +0.657169204*x*x*x*x +8.06147155e-04*x*x*x*x*x -0.296932460*x*x*x*x*x*x +0.0918014184*x*x*x*x*x*x*x ));}
@@ -198,10 +195,10 @@ double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_type, doubl
     if(species == -2) {f_norm = 1.e-10 * f_elec;} // e+ (assuming negligible e+ injection to start)
     if(species > 1 && species != 7) // heavy elements need to scale injection rates appropriately
     {
-        double Zfac=0, Zfac_ISM=P[target].Metallicity[0]/All.SolarAbundances[0], mu_wt=return_CRbin_CRmass_in_mp(-1,k_CRegy), Z_cr=fabs(return_CRbin_CR_charge_in_e(-1,k_CRegy)); // scale heavier elements to the metallicity of the gas into which CRs are being accelerated
+        double Zfac=0, Zfac_ISM=P[target].Metallicity[0]/All.SolarAbundances[0], mu_wt=return_CRbin_CRmass_in_mp(-1,k_CRegy), Z_cr=fabs(return_CRbin_CR_charge_in_e(-1,k_CRegy)), Mism_over_Mej=1; // scale heavier elements to the metallicity of the gas into which CRs are being accelerated
         Zfac = Zfac_ISM; // assume abundance of ejecta is identical to ambient ISM into which its being ejected
-        if(source_type == 1) {Zfac = 0.5*(Zfac_ISM + 1.4*DMIN(Zfac_ISM,1.));} // stellar outflows. using FIRE-3 yields this is exact after IMF-integrating for Z_ism=Z_star, for CNO; basically get slight enhancement, but not much, b/c these are OB winds; even including AGB, would only move factor to 3.4 from 1.4, which is halved, so not much effect at all.
-        if(source_type == 0) {if(shock_vel>5000./UNIT_VEL_IN_KMS) {Zfac=0.5*(Zfac_ISM + 9.70);} else {Zfac=0.5*(Zfac_ISM + 13.64);}} // shock_vel here tells us if its a 1a [faster] or CCSNe. for CCSNe, use Iwamoto 1999 and Nomoto 2006 to get abundances of ejecta in CNO, integrated over IMF and species of interest. for both, assume acceleration efficiency is maximized at highest mach numbers after shock actually develops, so swept-up ISM mass is ~ejecta mass
+        if(source_type == 1) {Zfac = (Mism_over_Mej*Zfac_ISM + 1.4*DMIN(Zfac_ISM,1.))/(Mism_over_Mej*HYDROGEN_MASSFRAC + HYDROGEN_MASSFRAC);} // stellar outflows. using FIRE-3 yields this is exact after IMF-integrating for Z_ism=Z_star, for CNO; basically get slight enhancement, but not much, b/c these are OB winds; even including AGB, would only move factor to 3.4 from 1.4, which is halved, so not much effect at all.
+        if(source_type == 0) {if(shock_vel>5000./UNIT_VEL_IN_KMS) {Zfac=(Mism_over_Mej*Zfac_ISM + 9.70)/(Mism_over_Mej*HYDROGEN_MASSFRAC + 0.025);} else {Zfac=(Mism_over_Mej*Zfac_ISM + 13.645)/(Mism_over_Mej*HYDROGEN_MASSFRAC + 0.441);}} // shock_vel here tells us if its a 1a [faster] or CCSNe. for CCSNe, use Iwamoto 1999 and Nomoto 2006 to get abundances of ejecta in CNO, integrated over IMF and species of interest. for both, assume acceleration efficiency is maximized at highest mach numbers after shock actually develops, so swept-up ISM mass is ~ejecta mass
         // now scale to mass fraction for solar abundances which gives the units we work with above
         if(species == 2) {Zfac *= 3.7e-9;} // B (for standard elements initialize to solar ratios assuming similar energy/nucleon)
         if(species == 3) {Zfac *= 2.4e-3;} // C
@@ -224,7 +221,7 @@ double diffusion_coefficient_constant(int target, int k_CRegy)
 {
     double dimensionless_kappa_relative_to_GV_protons = 1;
 #if (N_CR_PARTICLE_BINS > 1)    /* insert physics here */
-    dimensionless_kappa_relative_to_GV_protons = return_CRbin_beta_factor(target,k_CRegy) * pow( return_CRbin_CR_rigidity_in_GV(-1,k_CRegy) , 1.0 ); // assume a quasi-empirical scaling here //
+    dimensionless_kappa_relative_to_GV_protons = return_CRbin_beta_factor(target,k_CRegy) * pow( return_CRbin_CR_rigidity_in_GV(-1,k_CRegy) , 0.5 ); // assume a quasi-empirical scaling here //
 #endif
     return All.CosmicRayDiffusionCoeff * dimensionless_kappa_relative_to_GV_protons;
 }
@@ -247,27 +244,38 @@ double diffusion_coefficient_constant(int target, int k_CRegy)
 double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy, double M_A, double L_scale, double b_muG,
     double vA_noion, double rho_cgs, double temperature, double cs_thermal, double nh0, double nHe0, double f_ion)
 {
-    double vol_inv = SphP[target].Density*All.cf_a3inv / P[target].Mass, fturb_multiplier=1, f_QLT=1, R_CR_GV, Z_charge_CR, M_cr_mp;
+    double vol_inv = SphP[target].Density*All.cf_a3inv / P[target].Mass, fturb_multiplier=1, f_QLT=1, R_CR_GV, Z_charge_CR, M_cr_mp, b0[3]={0}, p0[3]={0};
     R_CR_GV=return_CRbin_CR_rigidity_in_GV(target,k_CRegy); Z_charge_CR=return_CRbin_CR_charge_in_e(target,k_CRegy); M_cr_mp=return_CRbin_CRmass_in_mp(target,k_CRegy);
-    double e_CR = SphP[target].CosmicRayEnergyPred[k_CRegy]*vol_inv, n_cgs=rho_cgs/PROTONMASS, cos_Bgrad=0,B2=0,P2=0,EPSILON_SMALL=1.e-50; int k;
+    int k; double n_cgs=rho_cgs/PROTONMASS, EPSILON_SMALL=1.e-50, e_CR=0, e_B=0, bhat_dot_CR_Pgrad=0, B2=0;
 #ifdef MAGNETIC
-    for(k=0;k<3;k++) {double b0=SphP[target].BPred[k]*vol_inv*All.cf_a2inv, p0=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]; cos_Bgrad+=b0*p0; B2+=b0*b0; P2+=p0*p0;}
-    cos_Bgrad/=sqrt(B2*P2+EPSILON_SMALL);
+    for(k=0;k<3;k++) {b0[k]=SphP[target].BPred[k]*vol_inv*All.cf_a2inv; B2+=b0[k]*b0[k];}
+    e_B=0.5*B2; B2=1./sqrt(B2+MIN_REAL_NUMBER); for(k=0;k<3;k++) {b0[k]*=B2;} // calculate B-field energy and bhat vector
 #else
-    B2=e_CR; cos_Bgrad=1; for(k=0;k<3;k++) {double p0=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]; P2+=p0*p0;} /* this model doesn't really make sense without B-fields, but included for completeness here */
+    for(k=0;k<3;k++) {b0[k]=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]; B2+=b0[k]*b0[k];} // just assume equilibrium here, convert to physical units, pick arbitrary direction here //
+    e_B=SphP[target].Pressure*All.cf_a3inv; for(k=0;k<3;k++) {b0[k]/=sqrt(B2+MIN_REAL_NUMBER);} // calculate B-field energy and bhat vector
 #endif
-    double Omega_gyro=(0.00898734*b_muG/R_CR_GV) * UNIT_TIME_IN_CGS, r_L=C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*C_LIGHT_CODE; /* all in physical -code- units */
-    double x_LL = DMAX( C_LIGHT_CODE / (Omega_gyro * L_scale), EPSILON_SMALL ), CRPressureGradScaleLength=Get_CosmicRayGradientLength(target,k_CRegy), vA_code=vA_noion, k_turb=1./L_scale, k_L=1./r_L, x_EB_ECR=(0.5*B2+EPSILON_SMALL)/(e_CR+EPSILON_SMALL);
-#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-    if(f_ion>0) {vA_code /= sqrt(1.e-16 + f_ion);} // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
+#ifdef COSMIC_RAYS_EVOLVE_SPECTRUM
+    double R0_m=CR_global_min_rigidity_in_bin[k_CRegy], R0_p=CR_global_max_rigidity_in_bin[k_CRegy];  // e_CR is in bin, but doesn't take account of bin width; needed only for NLL, want to include CRs 'close' to energy but not all b/c non-resonant, but don't want bin-size dependent, so replace with ~constant * de_cr / dlnR, which works pretty well
+    double fac_dXdlnR = 1.0 / log(R0_p/R0_m); // factor to multiply by to account for 'width' of gyro-resonance
+    for(k=0;k<N_CR_PARTICLE_BINS;k++) {
+        double R0_k=CR_global_rigidity_at_bin_center[k];
+        if(R0_k>R0_m && R0_k<R0_p) {
+            e_CR += SphP[target].CosmicRayEnergyPred[k] * fac_dXdlnR * vol_inv; // convert to energy density units
+            int mk; for(mk=0;mk<3;mk++) {p0[mk] += SphP[target].Gradients.CosmicRayPressure[k][mk] * fac_dXdlnR * All.cf_a3inv/All.cf_atime;} // convert to appropriate physical units
+        }} // sum over all bins with their rigidity in the same range, so that we can get a total energy (dominated by p, but should include all for safety)
+#else
+    e_CR=SphP[target].CosmicRayEnergyPred[k_CRegy]*vol_inv; for(k=0;k<3;k++) {p0[k]=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]*All.cf_a3inv/All.cf_atime;}
 #endif
+    for(k=0;k<3;k++) {bhat_dot_CR_Pgrad += b0[k]*p0[k];} // dot product of bhat and CR pressure gradient, summed over relevant bins
+    double beta=return_CRbin_beta_factor(target,k_CRegy), Omega_gyro=beta*(0.00898734*b_muG/R_CR_GV) * UNIT_TIME_IN_CGS, r_L=beta*C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*beta*C_LIGHT_CODE; /* all in physical -code- units */
+    double x_LL = DMAX( r_L / L_scale, EPSILON_SMALL ), vA_code=Get_Gas_ion_Alfven_speed_i(target), k_turb=1./L_scale, k_L=1./r_L;
+
     if(mode==1) {f_QLT = 100;} // multiplier to account for arbitrary deviation from QLT, applies to all damping mechanisms [100 = favored value in our study; or could use fcas = 100]
     fturb_multiplier = pow(M_A,3./2.); // multiplier to account for different turbulent cascade models (fcas = 1)
     if(mode==2) {fturb_multiplier *= 100.;} // arbitrary multiplier (fcas = 100, here)
     if(mode==3) {fturb_multiplier = pow(M_A,3./2.) * 1./(pow(M_A,1./2.)*pow(x_LL,1./6.));} // pure-Kolmogorov (fcas-K41)
     if(mode==4) {fturb_multiplier = pow(M_A,3./2.) / pow(x_LL,1./10.);} // GS anisotropic but perp cascade is IK (fcas-IK) /
 
-    //if(M_A<1.) {fturb_multiplier*=DMIN(sqrt(M_A),pow(M_A,7./6.)/pow(x_LL,1./6.));} else {fturb_multiplier*=DMIN(1.,1./(pow(M_A,1./2.)*pow(x_LL,1./6.)));} // corrects to Alfven scale, for correct estimate according to Farmer and Goldreich, Lazarian, etc. /* Lazarian+ 2016 multi-part model for where the resolved scales lie on the cascade */
     /* ok now we finally have all the terms needed to calculate the various damping rates that determine the equilibrium diffusivity */
     double U0bar_grain=3., rhograin_int_cgs=1., fac_grain=R_CR_GV*sqrt(n_cgs)*U0bar_grain/(b_muG*rhograin_int_cgs), f_grainsize = DMAX(8.e-4*pow(fac_grain*(temperature/1.e4),0.25), 3.e-3*sqrt(fac_grain)), Z_sol=1.; // b=2, uniform logarithmic grain spectrum over a factor of ~100 in grain size; f_grainsize = 0.07*pow(sqrt(fion*n1)*EcrGeV*T4/BmuG,0.25); // MRN size spectrum
 #ifdef METALS
@@ -276,13 +284,29 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
     double G_dust = vA_code*k_L * Z_sol * f_grainsize; // also can increase by up to a factor of 2 for regimes where charge collisionally saturated, though this is unlikely to be realized
     if(mode<0) {G_dust = 0;} // for this choice, neglect the dust-damping term 
     double G_ion_neutral = (5.77e-11 * n_cgs * (0.97*nh0 + 0.03*nHe0) * sqrt(temperature)) * UNIT_TIME_IN_CGS / sqrt(M_cr_mp); // ion-neutral damping: need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
-    double G_turb_plus_linear_landau = (vA_noion + sqrt(M_PI)*cs_thermal/4.) * sqrt(k_turb*k_L) * fturb_multiplier; // linear Landau + turbulent (both have same form, assume k_turb from cascade above)
+    double fac_turb = sqrt(k_turb*k_L) * fturb_multiplier; // factor to use below
+    double G_turb_plus_linear_landau = (vA_noion + sqrt(M_PI)*cs_thermal/4.) * fac_turb; // linear Landau + turbulent (both have same form, assume k_turb from cascade above)
     double G0 = G_ion_neutral + G_turb_plus_linear_landau + G_dust; // linear terms all add into single G0 term
-    double Gamma_effective = G0, phi_0 = (sqrt(M_PI)/6.)*(fabs(cos_Bgrad))*(1./(x_EB_ECR+EPSILON_SMALL))*(cs_thermal*vA_code*k_L/(CRPressureGradScaleLength*G0*G0 + EPSILON_SMALL)); // parameter which determines whether NLL dominates
+
+#ifdef COSMIC_RAYS_ALT_FLUX_FORM_JOCH
+    double CRPressureGradScaleLength=Get_CosmicRayGradientLength(target,k_CRegy), x_EB_ECR=(e_B+EPSILON_SMALL)/(e_CR+EPSILON_SMALL); // get scale length used below
+    double Gamma_effective = G0, phi_0 = fabs(bhat_dot_CR_Pgrad) * ((sqrt(M_PI)*cs_thermal*vA_code*k_L)/(2.*e_B*G0*G0 + EPSILON_SMALL)); // parameter which determines whether NLL dominates
     if(isfinite(phi_0) && (phi_0>0.01)) {Gamma_effective *= phi_0/(2.*(sqrt(1.+phi_0)-1.));} // this accounts exactly for the steady-state solution for the Thomas+Pfrommer formulation, including both the linear [Landau,turbulent,ion-neutral] + non-linear terms. can estimate (G_nonlinear_landau_effective = Gamma_effective - G0)
     /* with damping rates above, equilibrium transport is equivalent to pure streaming, with v_stream = vA + (diffusive equilibrium part) give by the solution below, proportional to Gamma_effective and valid to O(v^2/c^2) */
     double v_st_eff = vA_code * (1. + f_QLT * 4. * kappa_0 * Gamma_effective * x_EB_ECR * (1. + 2.*vA_code*vA_code/(C_LIGHT_CODE*C_LIGHT_CODE)) / (M_PI*vA_code*vA_code + EPSILON_SMALL)); // effective equilibrium streaming speed for all terms accounted
     return (GAMMA_COSMICRAY(k_CRegy) * v_st_eff * CRPressureGradScaleLength) * (UNIT_VEL_IN_CGS*UNIT_LENGTH_IN_CGS); // convert to effective diffusivity from 'streaming speed' [this introduces the gamma and gradient length], and convert to CGS from code units
+#else
+    double Gamma_LIN = -G0 -0.5*P[target].Particle_DivVel*All.cf_a2inv; // sum of all the linear damping/growth terms
+    double Gamma_NLL = (sqrt(M_PI)/8.) * cs_thermal / r_L; // NLL prefactor: Gamma_NLL is this times (e_A/e_B)
+    double f_cas_ET = vA_noion / (0.007 * C_LIGHT_CODE); /* Alfvenic turbulence following an anisotropic Goldreich-Shridar cascade, per Chandran 2000 */
+    double S_ext_turb = f_cas_ET * vA_noion * fac_turb * M_A*M_A * (r_L/L_scale); // extrinsic turbulence cascade term. note consistency means multiplying by pitch-angle and gyro-averaging factors, and fcas above; expression here assumes whatever you do its a balanced cascade (defauly to GS95 scalings)
+    double S_ext_gri  = vA_code * fabs(bhat_dot_CR_Pgrad) / (e_B + MIN_REAL_NUMBER); // Flux-steady-state value of the GRI term, normalized to e_B. note unless we rewrite this to the 5th-order polynomial version, assumption here is that return_CRbin_nuplusminus_asymmetry(i,k_CRegy) -> 1 for the term here in steady state
+    double S_ext = S_ext_turb + S_ext_gri; // total driving term, for the flux-steady assumption
+    double fac=0, f0 = Gamma_LIN/(2.*Gamma_NLL + MIN_REAL_NUMBER), f1 = 4.*Gamma_NLL*S_ext / (Gamma_LIN*Gamma_LIN + MIN_REAL_NUMBER);
+    if(f0>0) {fac=f0*(1.+sqrt(1.+f1));} else {if(f1>0.1) {fac=f0*(1.-sqrt(1.+f1));} else {fac=-0.5*f0*f1*(1.-f1/4.);}}
+    double gyro_avg_factor = 3./4.; // weighting factor from pitch-angle averaging over nu, gives ~3/4 for nu~|mu-vA/c|^2, etc.
+    return (kappa_0 / fac) * (4./(3.*M_PI*gyro_avg_factor)) * (UNIT_VEL_IN_CGS*UNIT_LENGTH_IN_CGS);
+#endif
 }
 
 
@@ -459,21 +483,18 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     /* first define some very general variables, and calculate some useful quantities that will be used for any model */
     int k_CRegy; double DiffusionCoeff, CR_kappa_streaming, CRPressureGradScaleLength, v_streaming;
 #if (COSMIC_RAYS_DIFFUSION_MODEL > 0)
-    double cs_thermal,M_A,L_scale,vA_code,vA_noion,gizmo2gauss,Omega_per_GeV,Bmag,unit_kappa_code,b_muG,E_B,f_ion,temperature,EPSILON_SMALL; int k; k=0;
+    double cs_thermal,M_A,L_scale,vA_code,vA_noion,gizmo2gauss,Omega_per_GeV_ifveqc,Bmag,unit_kappa_code,b_muG,E_B,f_ion,temperature,EPSILON_SMALL; int k; k=0;
     unit_kappa_code=UNIT_VEL_IN_CGS*UNIT_LENGTH_IN_CGS; gizmo2gauss=UNIT_B_IN_GAUSS; f_ion=1; temperature=0; EPSILON_SMALL=1.e-50;
     Bmag=2.*SphP[i].Pressure*All.cf_a3inv; cs_thermal=sqrt(convert_internalenergy_soundspeed2(i,SphP[i].InternalEnergyPred)); /* quick thermal pressure properties (we'll assume beta=1 if MHD not enabled) */
 #ifdef MAGNETIC /* get actual B-field */
     double B[3]={0}; Bmag=0; for(k=0;k<3;k++) {B[k]=Get_Gas_BField(i,k)*All.cf_a2inv; Bmag+=B[k]*B[k];} // B-field in code units (physical)
 #endif
     Bmag=sqrt(DMAX(Bmag,0)); b_muG=Bmag*gizmo2gauss/1.e-6; b_muG=sqrt(b_muG*b_muG + 1.e-6); vA_code=sqrt(Bmag*Bmag/(SphP[i].Density*All.cf_a3inv)); vA_noion=vA_code; E_B=0.5*Bmag*Bmag*(P[i].Mass/(SphP[i].Density*All.cf_a3inv));
-    Omega_per_GeV=(0.00898734*b_muG) * UNIT_TIME_IN_CGS; /* B-field in units of physical microGauss; set a floor at nanoGauss level. convert to physical code units */
+    Omega_per_GeV_ifveqc=(0.00898734*b_muG) * UNIT_TIME_IN_CGS; /* B-field in units of physical microGauss; set a floor at nanoGauss level. convert to physical code units */
 #ifdef COOLING
     double ne=1, nh0=0, nHe0=0, nHepp, nhp, nHeII, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, rho_cgs, u0=SphP[i].InternalEnergyPred;
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); rho_cgs=rho*UNIT_DENSITY_IN_CGS; // get thermodynamic properties
     f_ion = DMIN(DMAX(DMAX(DMAX(1-nh0, nhp), ne/1.2), 1.e-8), 1.); // account for different measures above (assuming primordial composition)
-#endif
-#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-    vA_code /= sqrt(1.e-16 + f_ion); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
     M_A = Get_AlfvenMachNumber_Local(i,vA_noion,0); /* get turbulent Alfven Mach number estimate. 0 or 1 to turn on shear-correction */
     L_scale = Get_Particle_Size(i)*All.cf_atime; /* define turbulent scales [estimation of M_A defined by reference to this scale */
@@ -483,7 +504,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     {
         v_streaming=Get_CosmicRayStreamingVelocity(i,k_CRegy);
         DiffusionCoeff=0; CR_kappa_streaming=0; CRPressureGradScaleLength=Get_CosmicRayGradientLength(i,k_CRegy); /* set these for the bin as we get started */
-#ifndef COSMIC_RAYS_DISABLE_STREAMING /* self-consistently calculate the diffusion coefficients for cosmic ray fluids; first the streaming part of this (kappa~v_stream*L_CR_grad) following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
+#ifndef COSMIC_RAYS_ALT_DISABLE_STREAMING /* self-consistently calculate the diffusion coefficients for cosmic ray fluids; first the streaming part of this (kappa~v_stream*L_CR_grad) following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
         CR_kappa_streaming = GAMMA_COSMICRAY(k_CRegy) * v_streaming * CRPressureGradScaleLength; /* the diffusivity is now just the product of these two coefficients (all physical units) */
 #endif
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 0) /* set diffusivity to a universal power-law scaling (constant per-bin)  */
@@ -517,7 +538,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
         DiffusionCoeff = diffusion_coefficient_extrinsic_turbulence(scatter_modes,i,k_CRegy,M_A,L_scale,b_muG,vA_noion,rho_cgs,temperature,cs_thermal,nh0,nHe0,f_ion) / unit_kappa_code;
 #endif
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 6) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* self-confinement-based diffusivity */
-        double Omega_gyro=(0.00898734*b_muG/return_CRbin_CR_rigidity_in_GV(i,k_CRegy)) * UNIT_TIME_IN_CGS, r_L=C_LIGHT_CODE/Omega_gyro, kappa_0=r_L*C_LIGHT_CODE; // some handy numbers for limiting extreme-kappa below. all in -physical- code units //
+        double Omega_gyro_ifveqc=(0.00898734*b_muG/return_CRbin_CR_rigidity_in_GV(i,k_CRegy)) * UNIT_TIME_IN_CGS, r_L=C_LIGHT_CODE/Omega_gyro_ifveqc, kappa_0=r_L*C_LIGHT_CODE; // some handy numbers for limiting extreme-kappa below. all in -physical- code units //
         CR_kappa_streaming = diffusion_coefficient_self_confinement(COSMIC_RAYS_SET_SC_MODEL,i,k_CRegy,M_A,L_scale,b_muG,vA_noion,rho_cgs,temperature,cs_thermal,nh0,nHe0,f_ion) / unit_kappa_code;
         if(!isfinite(CR_kappa_streaming)) {CR_kappa_streaming = 1.e30/unit_kappa_code;} /* apply some limiters since its very easy for the routine above to give wildly-large-or-small diffusivity, which wont make a difference compared to just 'small' or 'large', but will mess things up numerically */
         CR_kappa_streaming = DMIN( DMAX( DMIN(DMAX(CR_kappa_streaming,kappa_0) , 1.0e10*GAMMA_COSMICRAY(k_CRegy) * CRPressureGradScaleLength*COSMIC_RAY_REDUCED_C_CODE(k_CRegy)) , 1.e25/unit_kappa_code ) , 1.e34/unit_kappa_code );
@@ -649,20 +670,10 @@ double Get_CosmicRayGradientLength(int i, int k_CRegy)
 /* return the effective CR 'streaming' velocity for sub-grid [unresolved] models with streaming velocity set by e.g. the Alfven speed along the gradient of the CR pressure */
 double Get_CosmicRayStreamingVelocity(int i, int k_CRegy)
 {
-#ifdef COSMIC_RAYS_ALT_FLUX_FORM
+#if defined(COSMIC_RAYS_M1) && !defined(COSMIC_RAYS_ALT_FLUX_FORM_JOCH)
     return 0; // with this option, the streaming is included by default in the flux equation, different from what we do below where we include it as an 'effective diffusivity'
 #endif
-    /* if we don't evolve magnetic fields, we'll assume the streaming velocity is approximately the sound speed, i.e. assume beta~1 */
-    double v_streaming = sqrt(convert_internalenergy_soundspeed2(i,SphP[i].InternalEnergyPred)); // thermal ion sound speed //
-#ifdef MAGNETIC  /* since we actually evolve B-fields, it's actually the Alfven velocity: use this */
-    double vA_2 = 0.0; double cs_stream = v_streaming;
-    int k; for(k=0;k<3;k++) {vA_2 += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);}
-    vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
-#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-    vA_2 /= 1.e-16 + Get_Gas_Ionized_Fraction(i); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
-#endif
-    v_streaming = DMIN(1.0e6*cs_stream, sqrt(MIN_REAL_NUMBER*cs_stream*cs_stream + vA_2)); // limit to Alfven speed, but put some limiters for extreme cases //
-#endif
+    double v_streaming = Get_Gas_ion_Alfven_speed_i(i); // limit to Alfven speed, but put some limiters for extreme cases //
 #if defined(COSMIC_RAYS_M1)
     v_streaming = DMIN(v_streaming , COSMIC_RAY_REDUCED_C_CODE(k_CRegy)); // limit to maximum transport speed //
 #endif
@@ -759,19 +770,19 @@ double get_cell_Urad_in_eVcm3(int i)
 /* return pre-factor for CR streaming losses, such that loss rate dE/dt = -E * streamfac */
 double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy)
 {
-    double streamfac = 0;
-#if !defined(COSMIC_RAYS_DISABLE_STREAMING) && !defined(COSMIC_RAYS_ALFVEN)
-    double vstream_0 = Get_CosmicRayStreamingVelocity(target,k_CRegy), vA=Get_Gas_Alfven_speed_i(target); /* define naive streaming and Alfven speeds */
-#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-    vA /= sqrt(1.e-16 + Get_Gas_Ionized_Fraction(target)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
-#endif
-    
-#ifdef COSMIC_RAYS_ALT_FLUX_FORM
+    double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target), streamfac = 0;
+    if((SphP[target].CosmicRayEnergy[k_CRegy] <= MIN_REAL_NUMBER) || (SphP[target].CosmicRayEnergy[k_CRegy] <= MIN_REAL_NUMBER) || (dt <= 0)) {return 0;}
+#if !defined(COSMIC_RAYS_ALT_DISABLE_STREAMING)
+    double vstream_0 = Get_CosmicRayStreamingVelocity(target,k_CRegy), vA=Get_Gas_ion_Alfven_speed_i(target); /* define naive streaming and Alfven speeds */
+
+#if defined(COSMIC_RAYS_M1) && !defined(COSMIC_RAYS_ALT_FLUX_FORM_JOCH)
     double v_flux_eff=0; int k; for(k=0;k<3;k++) {v_flux_eff += SphP[target].CosmicRayFluxPred[k_CRegy][k] * SphP[target].CosmicRayFluxPred[k_CRegy][k];} // need magnitude of flux vector
     if(v_flux_eff > 0) {v_flux_eff=sqrt(v_flux_eff) / (MIN_REAL_NUMBER + SphP[target].CosmicRayEnergyPred[k_CRegy]);} else {v_flux_eff=0;} // effective speed of CRs = |F|/E
     double gamma_0=return_CRbin_gamma_factor(target,k_CRegy), gamma_fac=gamma_0/(gamma_0-1.), beta_fac=return_CRbin_beta_factor(target,k_CRegy); // lorentz factor here, needed in next line, because the loss term here scales with -total- energy, not kinetic energy
     if(beta_fac<0.1) {gamma_fac=2./(beta_fac*beta_fac) -0.5 - 0.125*beta_fac*beta_fac;} // avoid accidental nan
-    streamfac = (vA * (beta_fac*beta_fac) / fabs(3.*SphP[target].CosmicRayDiffusionCoeff[k_CRegy])) * ((gamma_fac) * v_flux_eff/COSMIC_RAYS_RSOL_CORRFAC(k_CRegy) - (GAMMA_COSMICRAY(k_CRegy)-1. + (gamma_fac)) * vA * return_cosmic_ray_anisotropic_closure_function_threechi(target,k_CRegy)); // this is (vA/[3kappa])*(F - vA*(ecr+Pcr))/ecr, using the 'full F' [corrected back from rsol, b/c rsol correction moves outside this for loss terms]
+    streamfac = (vA * (beta_fac*beta_fac) / fabs(3.*SphP[target].CosmicRayDiffusionCoeff[k_CRegy])) * ((gamma_fac) * return_CRbin_nuplusminus_asymmetry(target,k_CRegy) * v_flux_eff/COSMIC_RAYS_RSOL_CORRFAC(k_CRegy) - (3.*(GAMMA_COSMICRAY(k_CRegy)-1.) + (gamma_fac)) * vA * (2./3.) * return_cosmic_ray_anisotropic_closure_function_threechi(target,k_CRegy)); // this is (vA/[3kappa])*(F - 2*chifac*vA*(ecr+3*Pcr))/ecr, using the 'full F' [corrected back from rsol, b/c rsol correction moves outside this for loss terms]
+    double sfac_max = fabs(0.1 * SphP[target].CosmicRayEnergy[k_CRegy] / (MIN_REAL_NUMBER + dt));
+    if(fabs(streamfac) > sfac_max) {streamfac *= sfac_max / fabs(streamfac);}
     return streamfac; // probably want to limit to make sure above doesn't take on too extreme a value... also above, initially only had positive term since this removes energy from CRs when streaming super-Alfvenically, but when streaming sub-Alfvenically, could this become a source term with energy going into CRs? seems problematic if vA very high, but then scattering would work inefficiently... so plausible, but really need to be careful again about magnitude...
 #endif
     
@@ -785,7 +796,7 @@ double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy)
 
 
 /* routine to do the drift/kick operations for CRs: mode=0 is kick, mode=1 is drift */
-#if !defined(COSMIC_RAYS_ALFVEN)
+#if !defined(COSMIC_RAYS_EVOLVE_SCATTERING_WAVES)
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 {
     if(dt_entr <= 0) {return 0;} // no update
@@ -797,7 +808,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         if(u0<All.MinEgySpec) {u0=All.MinEgySpec;} // enforced throughout code
         if(eCR < 0) {eCR=0;} // limit to physical values
         double closure_f1, closure_f2; closure_f1=1, closure_f2=0; // prefactors for below
-#ifdef COSMIC_RAYS_ALT_FLUX_FORM
+#if defined(COSMIC_RAYS_M1) && !defined(COSMIC_RAYS_ALT_FLUX_FORM_JOCH)
         double three_chi = return_cosmic_ray_anisotropic_closure_function_threechi(i,k_CRegy); // 3*chi = 3*(1-<mu^2>)/2 closure function //
         closure_f1 = 3.-2.*three_chi; closure_f2 = 1.-three_chi; // prefactors for both terms below //
 #endif
@@ -821,11 +832,8 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
             DtCosmicRayFlux[k] = fac_for_DtCosmicRayFlux * (closure_f1*DtCRDotBhat*B0[k]/Bmag2 + closure_f2*P0_cr*bbGB);
         }
 #endif
-#ifdef COSMIC_RAYS_ALT_FLUX_FORM
-        double v_Alfven = three_chi * Get_Gas_Alfven_speed_i(i); /* define naive streaming and Alfven speeds */
-#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-        v_Alfven /= sqrt(1.e-16 + Get_Gas_Ionized_Fraction(i)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
-#endif
+#if defined(COSMIC_RAYS_M1) && !defined(COSMIC_RAYS_ALT_FLUX_FORM_JOCH)
+        double v_Alfven = three_chi * Get_Gas_ion_Alfven_speed_i(i) * return_CRbin_nuplusminus_asymmetry(i,k_CRegy); /* define naive streaming and Alfven speeds */
         double dt_f_m=0; for(k=0;k<3;k++) {dt_f_m+=DtCosmicRayFlux[k]*DtCosmicRayFlux[k];}
         if(dt_f_m>0) {for(k=0;k<3;k++) {DtCosmicRayFlux[k] += rsol_correction_factor * (DtCosmicRayFlux[k]/sqrt(dt_f_m)) * v_Alfven * (GAMMA_COSMICRAY(k_CRegy) * eCR);}} // (tilde[c]/c) * v_a * (ecr+Pcr), in same direction as gradient wants to 'push' naturally [natural direction of F]
 #endif
@@ -964,7 +972,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
     if(Ucr_tot < MIN_REAL_NUMBER) {return;} // catch - nothing to do here //
     double t=0, dt=0, E_rest_e_GeV=0.000511, f_ion=DMAX(DMIN(Get_Gas_Ionized_Fraction(target),1.),0.), b_muG=get_cell_Bfield_in_microGauss(target), U_mag_ev=0.0248342*b_muG*b_muG, U_rad_ev=get_cell_Urad_in_eVcm3(target);
 
-#if defined(COSMIC_RAYS_DIFFUSIVE_REACCELERATION)
+#if defined(COSMIC_RAYS_ALT_REACCEL_ONLY_DIFFUSIVE)
     double vA=Get_Gas_Alfven_speed_i(target), vA_ion, vA_touse, kappa_max=0, kappa_i[N_CR_PARTICLE_BINS], delta_diffcoeff[N_CR_PARTICLE_BINS], reaccel_coeff[N_CR_PARTICLE_BINS]; vA_ion=vA/sqrt(f_ion); vA_touse=vA;
     for(k=0;k<N_CR_PARTICLE_BINS;k++) {kappa_i[k] = SphP[target].CosmicRayDiffusionCoeff[k]; if(kappa_i[k]>kappa_max) {kappa_max=kappa_i[k];}} // will use diffusion coefficient below
     double reaccel_coeff_0 = 2. * vA_touse*vA_touse / UNIT_TIME_IN_CGS; // below we'll adopt the standard ansatz that the momentum-space diffusion coefficient is related to the spatial coefficient by the usual heuristic expression Dxx*Dpp = <dv^2>
@@ -976,7 +984,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
     double adiabatic_coeff[N_CR_PARTICLE_BINS], adiabatic_coeff_divv = (1./3.) * (P[target].Particle_DivVel*All.cf_a2inv) / UNIT_TIME_IN_CGS; // need to use full DivVel to get the right answer here for CR EOS scaling at high-p
     if(All.ComovingIntegrationOn) {adiabatic_coeff_divv += (1./3.) * (3.*All.cf_hubble_a) / UNIT_TIME_IN_CGS;} // adiabatic term from Hubble expansion (needed for cosmological integrations. also converted to physical, cgs, and sign convention we use here.
     // here we calculate the anisotropic stress correction terms, as needed to properly evaluate the CR energy loss. note we don't need to do this for the 'post hydro' correction step since that is the correction for the isotropic pressure used in the Riemann problem; the additional terms here come entirely outside of that.
-#if defined(COSMIC_RAYS_ALT_FLUX_FORM) && defined(MAGNETIC)
+#if defined(COSMIC_RAYS_M1) && !defined(COSMIC_RAYS_ALT_FLUX_FORM_JOCH) && defined(MAGNETIC)
     double bbGv=0, Bmag2=0, bhat[3]={0}; for(k=0;k<3;k++) {double B00=Get_Gas_BField(target,k)*All.cf_a2inv; bhat[k]=B00; Bmag2+=B00*B00;}
     if(Bmag2>0) {for(k=0;k<3;k++) {bhat[k]/=sqrt(Bmag2);}}
     for(k=0;k<3;k++) {int k2; for(k2=0;k2<3;k2++) {bbGv += bhat[k]*bhat[k2]*SphP[target].Gradients.Velocity[k][k2] * All.cf_a2inv / UNIT_TIME_IN_CGS;}} // bhat bhat : grad u -> needed to obtain double-dot-product appropriately
@@ -1037,7 +1045,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
     
     if(sign_flip_adiabatic_terms==1) {sign_key_for_adiabatic_loop=-1;} // have sign-flips, so adiabatic term -must- have the oppose sign. otherwise -no- sign flips, so just follow the last sign recorded above
 
-#if defined(COSMIC_RAYS_DIFFUSIVE_REACCELERATION)
+#if defined(COSMIC_RAYS_ALT_REACCEL_ONLY_DIFFUSIVE)
     for(k=0;k<N_CR_PARTICLE_BINS;k++) // additional variables need to be initialized here, after the previous loop definitions
     {
         int minbin_flag=0, maxbin_flag=0;
@@ -1085,7 +1093,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                if(Coul_coeff > abs_bin_coeff_limit) {dt_tmp = CourFac * DMIN(x_p[k]-x_m[k], x_m[k]) / Coul_coeff; dt_min_p=DMIN(dt_min_p, dt_tmp);}
            }
         }
-#if defined(COSMIC_RAYS_DIFFUSIVE_REACCELERATION)
+#if defined(COSMIC_RAYS_ALT_REACCEL_ONLY_DIFFUSIVE)
         double rcoeff_bin = fabs(reaccel_coeff[k]) * (1.-0.5*DMIN(bin_slopes[k],1.)) * M1SpeedCorrFac[k]; // limit b/c this might change in step, then estimate rate coefficient at bin center
         if(rcoeff_bin > abs_bin_coeff_limit) {dt_tmp = CourFac * (pow(x_p[k],delta_diffcoeff[k]) - pow(x_m[k],delta_diffcoeff[k])) / rcoeff_bin;} // set timestep limit
         if(CR_species_ID_in_bin[k]<0) {dt_min_e=DMIN(dt_min_e, dt_tmp);} else {dt_min_p=DMIN(dt_min_p, dt_tmp);} // applies to both e and p
@@ -1099,7 +1107,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
         if(dt_target < 1.e-8*dtime_cgs)
         {
             printf("WARNING: timestep for subcycling wants to exceed limit: dt_min_e/p=%g/%g dt_tot=%g \n",dt_min_e,dt_min_p,dtime_cgs);
-#if defined(COSMIC_RAYS_DIFFUSIVE_REACCELERATION)
+#if defined(COSMIC_RAYS_ALT_REACCEL_ONLY_DIFFUSIVE)
             printf(" ID=%llu mode=%d nH=%g ne=%g vA=%g vA_ion=%g dt=%g Utot=%g hadronic_coeff=%g coulomb_coeff=%g brems_coeff_0=%g synchIC_coeff_0=%g (U_mag_eV=%g U_rad_eV=%g) dtmin=%g signflip=%d signkey=%d \n",(unsigned long long)P[target].ID,mode_driftkick,nHcgs,n_elec,vA,vA_ion,dtime_cgs,Ucr_tot,hadronic_coeff,coulomb_coeff,brems_coeff_0,synchIC_coeff_0,U_mag_ev,U_rad_ev,DMIN(dt_min_e,dt_min_p),sign_flip_adiabatic_terms,sign_key_for_adiabatic_loop);
             for(k=0;k<N_CR_PARTICLE_BINS;k++) {printf("  k=%d U=%g Z=%g R0=%g E=%g NR=%d xm=%g xp=%g slope=%g kappa=%g adiabatic_coeff=%g brem_c=%g stream_c=%g reacc_c=%g delta_DxxSlope=%g IC_sync_c=%g el_ion_coul_c=%g p_ion_coul_c_R/NR=%g/%g binratec=%g \n",k,Ucr[k],Z[k],R0[k],E_GeV[k],NR_key[k],x_m[k],x_p[k],bin_slopes[k],kappa_i[k],adiabatic_coeff[k],brems_coeff[k],streaming_coeff[k],reaccel_coeff[k],delta_diffcoeff[k],(E_GeV[k]/E_rest_e_GeV) * synchIC_coeff_0,(e_coulomb_coeff + (1.+0.07*log(E_GeV[k])) * e_ion_coeff) / R0[k], (fabs(Z[k])/R0[k]) * coulomb_coeff,0.88/ (R0[k]*R0[k]*R0[k] * fabs(Z[k])) * coulomb_coeff,bin_centered_rate_coeff[k]);}
 #else
@@ -1132,7 +1140,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                 if(loss_mode==0) {if(species_ID==-1) {continue;}} // loss-mode=0 [Hadronic] uses only nuclei and positrons, skip to next in loop
                 if(loss_mode==3) {if(species_ID>0) {continue;}} // loss-mode=3 [Compton+Synchrotron] uses only electrons+positrons
                 if(loss_mode==4) {if(sign_flip_adiabatic_terms == 0) {continue;}} // adiabatic+streaming+brems term walked in same order, so we don't need to do an additional loop here
-#if !defined(COSMIC_RAYS_DIFFUSIVE_REACCELERATION)
+#if !defined(COSMIC_RAYS_ALT_REACCEL_ONLY_DIFFUSIVE)
                 if(loss_mode==5) {continue;}
 #endif
                 
@@ -1148,7 +1156,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                     
                     if(loss_mode==0) // hadronic+catastrophic losses.
                     {
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK)
+#if 1 // (COSMIC_RAYS_EVOLVE_SPECTRUM == 2) // now even the simpler network has secondary e-, important for dense regions synchrotron
                         /* this is where we also include losses from fragmentation and radioactive decay, for heavier nuclei */
                         double frag_coeff=CR_frag_coeff[j]*nHcgs, rad_coeff=CR_rad_decay_coeff[j], total_catastrophic_coeff=frag_coeff+rad_coeff;
                         if(total_catastrophic_coeff > 0) // have some losses here, account for those
@@ -1175,7 +1183,8 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                                     if(CR_species_ID_in_bin[j_s] < 0) {frac_secondary *= 1./HYDROGEN_MASSFRAC;} // crude correction for He secondary e-/e+ production terms
 
                                     double U_donor = frac_secondary*dfac_e*Ucr[j] * DMAX(1.,A_wt[j_s])/DMAX(1.,A_wt[j]); // need to account for the different total energy assuming fixed energy per nucleon here
-                                    if(CR_species_ID_in_bin[j_s] < 0 || CR_species_ID_in_bin[j_s] == 7) {U_donor *= 0.1;} // secondary e+/e- from protons (pion decay) get ~0.1 original p energy -- needs to match assumption above
+                                    if(CR_species_ID_in_bin[j_s] < 0) {U_donor *= 0.1;} // secondary e+/e- from protons (pion decay) get ~0.1 original p energy -- needs to match assumption above
+                                    if(CR_species_ID_in_bin[j_s] == 7) {U_donor *= 0.08;} // pbar get ~0.08 original p energy -- needs to match assumption above
                                     double N_donor = frac_secondary*dfac_n*ntot_evolved[j]; // absolute number being transferred between bins
                                     
                                     if(CR_species_ID_in_bin[j]==6 && CR_species_ID_in_bin[j_s]==5) {U_donor *= 0.9;} // 10Be assumption needs tiny correction b/c of mean molecular weight of CNO bin putting it slightly in the wrong place (giving problematic slopes)
@@ -1211,7 +1220,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                                     
                                     if(split_two_bin==0 && CR_species_ID_in_bin[j]==1 && k==0 && (CR_species_ID_in_bin[j_s]<0 || CR_species_ID_in_bin[j_s]==7)) { /* now code extending the CR spectrum of secondary production to energies higher than our max limit, assuming continued power-law extrapolation of the CR spectrum */
                                         double Rx0=CR_global_rigidity_at_bin_center[j_s], U00=U_donor, xm_0=CR_global_min_rigidity_in_bin[j_s]/CR_global_rigidity_at_bin_center[j_s], xp_0=CR_global_max_rigidity_in_bin[j_s]/CR_global_rigidity_at_bin_center[j_s];
-                                        int spec_0=CR_species_ID_in_bin[j_s], slope_0=2.+slope_inj; slope_0=DMAX(-4.,DMIN(slope_0,0.));
+                                        int spec_0=CR_species_ID_in_bin[j_s], slope_0=2.+slope_inj; slope_0=DMAX(-4.,DMIN(slope_0,0.)); if(spec_0==7) {slope_0=DMIN(slope_0,-0.7);}
                                         j_s++;
                                         while(j_s<N_CR_PARTICLE_BINS && CR_species_ID_in_bin[j_s]==spec_0) {
                                             double Rx1=CR_global_rigidity_at_bin_center[j_s];
@@ -1271,7 +1280,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                         }
                     }
                     if(loss_mode==3) {rate_prefac = (E_GeV[j]/E_rest_e_GeV) * synchIC_coeff_0;} // IC + synch
-#if defined(COSMIC_RAYS_DIFFUSIVE_REACCELERATION)
+#if defined(COSMIC_RAYS_ALT_REACCEL_ONLY_DIFFUSIVE)
                     if(loss_mode==5) {if(slope_gamma>2.) {rate_prefac=0;} else {rate_prefac=reaccel_coeff[j]*(1.-0.5*slope_gamma); extra_var_topass_for_xe=delta_diffcoeff[j];}} // we will treat gamma as constant over this integration sub-step
 #endif
                     
@@ -1347,7 +1356,7 @@ void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, dou
                         }
                         if(loss_mode==5) // diffusive re-acceleration
                         {
-#if defined(COSMIC_RAYS_DIFFUSIVE_REACCELERATION)
+#if defined(COSMIC_RAYS_ALT_REACCEL_ONLY_DIFFUSIVE)
                             double norm_fac = etot * (gamma_one+1.) / (xp_gamma_one*xp - xm_gamma_one*xm); // get the pre-factor for the integral from numbers we already have
                             if(NR_key[j]) {norm_fac = etot * (gamma_one+2.) / (xp_gamma_one*xp*xp - xm_gamma_one*xm*xm);} // use correct NR form
                             double delta_j = delta_diffcoeff[j], rate_dt_abs = fabs(rate_dt); // value of delta-slope needed below
@@ -1554,15 +1563,12 @@ double CR_compton_energy_integrand(double x, double tau, double slope)
 /* quick boolean to determine if we should use relativistic or non-relativistic scalings for a given bin, in our cooling subroutines where we need this to be true across the bin */
 int CR_check_if_bin_is_nonrelativistic(int k_bin) // relativistic binflag: all e-, protons/nuclei with R_GV > 1.87655 * A/Z = 1.87655 for protons : need this globally
 {
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK)
     if(return_CRbin_CR_species_ID(k_bin) <= 0) {return 0;} // assume e-, e+ relativistic here
     else {
         double m_cr_mp = return_CRbin_CRmass_in_mp(-1,k_bin), Zabs = fabs(return_CRbin_CR_charge_in_e(-1,k_bin)); // mass in proton masses, charge in e
         if(CR_global_rigidity_at_bin_center[k_bin] < 1.87655*m_cr_mp/Zabs) {return 1;} else {return 0;} // use a simple momentum criterion, dividing exactly for protons as desired here
     }
-#else
-    if((CR_species_ID_in_bin[k_bin] > 0) && (CR_global_rigidity_at_bin_center[k_bin] < 1.87655)) {return 1;} // simpler version if just using e- and p; for now, only protons with division at p=2m0*c, so NR and R expressions equate, qualify as non-relativistic
-#endif
+    //if((CR_species_ID_in_bin[k_bin] > 0) && (CR_global_rigidity_at_bin_center[k_bin] < 1.87655)) {return 1;} // simpler version if just using e- and p; for now, only protons with division at p=2m0*c, so NR and R expressions equate, qualify as non-relativistic
     return 0; // default to relativistic otherwise
 }
 
@@ -1708,7 +1714,7 @@ double evaluate_cr_transport_reductionfactor(int target, int k_CRegy, int mode)
 /*<! closure function needed for arbitrarily anisotropic CR distribution function, from Hopkins '21 */
 double return_cosmic_ray_anisotropic_closure_function_threechi(int target, int k_CRegy)
 {
-#if defined(COSMIC_RAYS_ANISO_CLOSURE)
+#if !defined(COSMIC_RAYS_ALT_M1_ISO_CLOSURE) && defined(COSMIC_RAYS_M1)
     double fluxmag2=0,ecr,ecrv,f,mu1_2,mu2; int k; ecr=SphP[target].CosmicRayEnergyPred[k_CRegy];
     for(k=0;k<3;k++) {f=SphP[target].CosmicRayFluxPred[k_CRegy][k]; fluxmag2+=f*f;}
 #if defined(COSMIC_RAYS_ALT_RSOL_FORM)
@@ -1765,6 +1771,28 @@ int return_CRbin_CR_species_ID(int k_CRegy)
     if(k_CRegy==0) {return 1} else {return -1;}; // proton, then e- bin
 #endif
     return 1; // default to protons
+}
+
+
+
+/* calculate the -ion- Alfven speed in a given element, relevant for very short-wavelength modes with frequency larger than the ion-neutral collision timescale (relevant for CRs in particular) */
+double Get_Gas_ion_Alfven_speed_i(int i)
+{
+#if defined(MAGNETIC)
+    return Get_Gas_thermal_soundspeed_i(i); // if no B-fields, just assume Alfven speed equal to thermal sound speed
+#endif
+    double vA = Get_Gas_Alfven_speed_i(i); // normal ideal-MHD Alfven speed
+#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
+    vA /= sqrt(1.e-10 + Get_Gas_Ionized_Fraction(i)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
+#endif
+    return vA;
+}
+
+
+/* calculate |nu_+ - nu_-|/|nu_+ + nu_-|, i.e. the asymmetry between scattering by forward-vs-backward propagating waves. in SC limit, this is 1, in ET limit with fully-isotropic scattering, this is 0. relevant here because we want in principle to be able to interpolate between the two, and that's important in particular in the strong ion-neutral damping limit. */
+double return_CRbin_nuplusminus_asymmetry(int i, int k_CRegy)
+{
+    return 1; // default to unity; basically always true with reasonable SC growth rates, even for extremely low ionization fractions //
 }
 
 

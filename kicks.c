@@ -428,7 +428,7 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #ifdef COSMIC_RAYS_M1
             for(k=0;k<3;k++) {SphP[i].CosmicRayFluxPred[kf][k] = SphP[i].CosmicRayFlux[kf][k];}
 #endif
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
             for(k=0;k<2;k++) {SphP[i].CosmicRayAlfvenEnergyPred[kf][k] = SphP[i].CosmicRayAlfvenEnergy[kf][k];}
 #endif
         }

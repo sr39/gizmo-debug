@@ -308,6 +308,8 @@ double CR_gas_heating(int target, double n_elec, double nHcgs);
 double return_CRbin_CRmass_in_mp(int target, int k_CRegy);
 double return_CRbin_CR_rigidity_in_GV(int target, int k_CRegy);
 double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy);
+double Get_Gas_ion_Alfven_speed_i(int i);
+double return_CRbin_nuplusminus_asymmetry(int i, int k_CRegy);
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
 void CR_spectrum_define_bins(void);
 void CR_initialize_multibin_quantities(void);

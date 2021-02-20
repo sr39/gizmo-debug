@@ -11,9 +11,12 @@
 * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
 */
 
-#if defined(COSMIC_RAYS_ALFVEN)
+#if defined(COSMIC_RAYS_EVOLVE_SCATTERING_WAVES)
 
-// needs some RSOL factors more carefully placed, here
+/*! To Do: with new RSOL scheme, needs some RSOL factors more carefully placed, here.
+    generally can be updated to be a bit more flexible
+    to handle newer damping rate estimates more modularly, and to deal with extinsic turbulence as well
+    (which just appears as a source term in the e_A equations) */
 
 /* routine to do the drift/kick operations for CRs: mode=0 is kick, mode=1 is drift */
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
@@ -33,7 +36,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     {
         // first update the CR energies from fluxes. since this is positive-definite, some additional care is needed //
         double dCR_dt = SphP[i].DtCosmicRayEnergy[k_CRegy], gamma_eff = GAMMA_COSMICRAY(k_CRegy), eCR_tmp = eCR;
-        if(q_whichupdate>0) {dCR_dt=SphP[i].DtCosmicRayAlfvenEnergy[k_CRegy][q_whichupdate-1]; gamma_eff=GAMMA_ALFVEN_CRS; if(mode==0) {eCR_tmp=SphP[i].CosmicRayAlfvenEnergy[k_CRegy][q_whichupdate-1];} else {eCR_tmp=SphP[i].CosmicRayAlfvenEnergyPred[k_CRegy][q_whichupdate-1];}}
+        if(q_whichupdate>0) {dCR_dt=SphP[i].DtCosmicRayAlfvenEnergy[k_CRegy][q_whichupdate-1]; gamma_eff=(3./2.); if(mode==0) {eCR_tmp=SphP[i].CosmicRayAlfvenEnergy[k_CRegy][q_whichupdate-1];} else {eCR_tmp=SphP[i].CosmicRayAlfvenEnergyPred[k_CRegy][q_whichupdate-1];}}
         double dCR = dCR_dt*dt_entr, dCRmax = 1.e10*(eCR_tmp+MIN_REAL_NUMBER);
         if(dCR > dCRmax) {dCR=dCRmax;} // don't allow excessively large values
         if(dCR < -eCR_tmp) {dCR=-eCR_tmp;} // don't allow it to go negative
@@ -79,10 +82,8 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     E_B = 0.5*Bmag*Bmag * (P[i].Mass/(SphP[i].Density*All.cf_a3inv)); // B-field energy (energy density times volume, for ratios with energies above)
     Bmag_Gauss = Bmag * UNIT_B_IN_GAUSS; // turn it into Gauss
     Omega_gyro = (8987.34 * Bmag_Gauss * (Z_charge_CR/E_CRs_Gev)) * UNIT_TIME_IN_CGS; // gyro frequency of the CR population we're evolving, converted to physical code units //
-    vA_code = sqrt( Bmag*Bmag / (SphP[i].Density*All.cf_a3inv) ); double vA_noion=vA_code; // Alfven speed^2 in code units [recall B units such that there is no 4pi here]
-#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-    vA_code /= sqrt(1.e-16 + f_ion); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
-#endif
+    double vA_noion = Get_Gas_Alfven_speed_i(i); // Alfven speed in code units [recall B units such that there is no 4pi here]
+    vA_code = Get_Gas_ion_Alfven_speed_i(i); // include ionization appropriately for small-scale modes
     cs_thermal = sqrt(convert_internalenergy_soundspeed2(i,u0)); // thermal sound speed at appropriate drift-time [in code units, physical]
     vA2_c2 = vA_code*vA_code / (clight_code*clight_code); // Alfven speed vs speed of light
     fac_Omega = (3.*M_PI/16.) * Omega_gyro * (1.+2.*vA2_c2); // factor which will be used heavily below
@@ -117,8 +118,9 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     //  more carefully or else we get very large over/under-shoots
 
     // first define some convenient units and dimensionless quantities, and enforce limits on values of input quantities
-    double eCR_0 = 1.e-6*(E_B + P[i].Mass*u0) + eCR + eA[0] + eA[1] + fabs(f_CR/COSMIC_RAYS_ALFVEN); // this can be anything, just need a normalization for the characteristic energy scale of the problem //
-    double ceff2_va2=(COSMIC_RAYS_ALFVEN*COSMIC_RAYS_ALFVEN)/(vA_code*vA_code), t0=1./(fac_Omega*(eCR_0/E_B)*vA2_c2), gammCR=GAMMA_COSMICRAY(k_CRegy), f_unit=vA_code*eCR_0, volume=P[i].Mass/(SphP[i].Density*All.cf_a3inv); // factors used below , and for units
+    double cr_speed = COSMIC_RAY_REDUCED_C_CODE(k_CRegy);
+    double eCR_0 = 1.e-6*(E_B + P[i].Mass*u0) + eCR + eA[0] + eA[1] + fabs(f_CR/cr_speed); // this can be anything, just need a normalization for the characteristic energy scale of the problem //
+    double ceff2_va2=(cr_speed*cr_speed)/(vA_code*vA_code), t0=1./(fac_Omega*(eCR_0/E_B)*vA2_c2), gammCR=GAMMA_COSMICRAY(k_CRegy), f_unit=vA_code*eCR_0, volume=P[i].Mass/(SphP[i].Density*All.cf_a3inv); // factors used below , and for units
     double x_e=eCR/eCR_0, x_f=f_CR/f_unit, x_up=eA[0]/eCR_0, x_um=eA[1]/eCR_0, dtau=dt_entr/t0; e_tot/=eCR_0; Min_Egy/=eCR_0; // initial values in relevant units
     Min_Egy=DMAX(DMIN(Min_Egy,DMIN(x_e,DMIN(x_up,x_um))),EPSILON_SMALL); if(!isfinite(Min_Egy)) {Min_Egy=EPSILON_SMALL;} // enforce positive-definite-ness
     // we can more robustly define a minimum and maximum e_A by reference to a minimum and maximum 'effective diffusivity' over which it is physically meaningful, and numerically possible to evolve them

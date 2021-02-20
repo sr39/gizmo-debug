@@ -829,7 +829,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_COSMICRAY_ALFVEN:    /* energy in the resonant (~gyro-radii) Alfven modes field, in the +/- (with respect to B) fields  */
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1793,7 +1793,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
 
         case IO_COSMICRAY_ALFVEN:
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
             if(mode)
                 bytes_per_blockelement = (2 * N_CR_PARTICLE_BINS) * sizeof(MyInputFloat);
             else
@@ -2066,7 +2066,7 @@ int get_values_per_blockelement(enum iofields blocknr)
             break;
 
         case IO_COSMICRAY_ALFVEN:
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
             values = (2*N_CR_PARTICLE_BINS);
 #endif
             break;
@@ -2590,7 +2590,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_COSMICRAY_ALFVEN:
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
             return 1;
 #endif
             break;
@@ -4209,9 +4209,7 @@ void write_header_attributes_in_hdf5(hid_t handle)
     {hdf5_dataspace = H5Screate(H5S_SIMPLE); hsize_t tmp_dim[2]={N_CR_PARTICLE_BINS,N_CR_SPECTRUM_LUT}; H5Sset_extent_simple(hdf5_dataspace, 2, tmp_dim, NULL);
     hdf5_attribute = H5Acreate(handle, "CR_Bin_Energy_vs_Number_GlobalLookupTable", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, CR_global_slope_lut); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
-#endif
 
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK)
     {hdf5_dataspace = H5Screate(H5S_SIMPLE); hsize_t tmp_dim[2]={N_CR_PARTICLE_SPECIES,N_CR_PARTICLE_SPECIES}; H5Sset_extent_simple(hdf5_dataspace, 2, tmp_dim, NULL);
     hdf5_attribute = H5Acreate(handle, "CR_Primary_to_Secondary_Products_List", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_INT, CR_secondary_species_listref); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}

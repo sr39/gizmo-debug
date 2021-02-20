@@ -159,7 +159,7 @@ void do_the_cooling_for_particle(int i)
 #endif
 
 
-#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_COOLING)
+#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_ALT_DISABLE_LOSSES)
         CR_cooling_and_losses(i, SphP[i].Ne, SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, dtime*UNIT_TIME_IN_CGS );
 #endif
 
@@ -880,7 +880,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             photoelec += RT_ISRF_BACKGROUND * 1.7 * exp(-DMAX(P[target].Metallicity[0]/All.SolarAbundances[0],1e-4) * column * 500.); // RT_ISRF_BACKGROUND rescales the overal ISRF, factor of 1.7 gives Draine 1978 field in Habing units, extinction factor assumes the same FUV band-integrated dust opacity as RT module
 #endif
 #if !(defined(GALSF_FB_RT_UVHEATING) || defined(RT_PHOTOELECTRIC) || defined(RT_ISRF_BACKGROUND))
-	    photoelec = 1; // if no explciit modeling of FUV, just assume Habing
+            photoelec = 1; // if no explicit modeling of FUV, just assume Habing
 #endif
             f_Cplus_CCO = (nHcgs/(340.*DMAX(0.1,photoelec))); f_Cplus_CCO=1./(1.+f_Cplus_CCO*f_Cplus_CCO/sqrt_T); // fco/(1-fco) ~ 0.0022 * ((n/50 cm^-3)/G0)^2 * (100K/T)^(1/2) from Tielens
             double Lambda_Cplus = Z_C * (4.7e-28 * (pow(T,0.15) + 1.04e4*n_elec/sqrt_T) * exp(-DMIN(91.211/T,EXPmax)) + 2.08e-29*exp(-DMIN(23.6/T,EXPmax))); // fit from Barinovs et al., ApJ, 620, 537, 2005, and Wilson & Bell MNRAS 337 1027 2002; assuming factor of 0.5 depletion factor in ISM; rate per C+ relative to solar; + plus [CI]-609 µm line cooling from Hocuk⋆ et al. 2016MNRAS.456.2586H
@@ -978,7 +978,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
 
 
-#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_COOLING)
+#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_ALT_DISABLE_LOSSES)
         Heat += CR_gas_heating(target, n_elec, nHcgs);
 #else
 #ifdef COOL_LOW_TEMPERATURES

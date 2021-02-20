@@ -217,6 +217,7 @@
 #define DM_SIDM 8 /* use the SIDM module to handle scattering of otherwise-collisionless particles against each other -- set to Particle Type=3 here */
 #endif
 #if defined(PIC_MHD)
+#define PIC_MHD_NEW_RSOL_METHOD /* prefer new method for dealing with RSOL, should make simulations easier if done correctly */
 #ifdef GRAIN_FLUID
 #define GRAIN_FLUID_AND_PIC_BOTH_DEFINED /* keyword used later to know what we need to read in */
 #else
@@ -409,30 +410,20 @@ USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
 #endif
 
 #ifdef COSMIC_RAYS
-#if defined(COSMIC_RAYS_ANISO_CLOSURE)
-#if !defined(COSMIC_RAYS_ALT_FLUX_FORM)
-#define COSMIC_RAYS_ALT_FLUX_FORM /*<! set this as our default here */
-#endif
-#endif
 #if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
 #define GAMMA_COSMICRAY(k) (4.0/3.0)
 #endif
 #ifndef COSMIC_RAYS_DIFFUSION_MODEL
 #define COSMIC_RAYS_DIFFUSION_MODEL 0
 #endif
-#ifdef COSMIC_RAYS_ALFVEN
-#define GAMMA_ALFVEN_CRS (3.0/2.0)
-#define COSMIC_RAYS_M1 (COSMIC_RAYS_ALFVEN)
-#endif
 #if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
 #define GAMMA_COSMICRAY(k) ((4.0+gamma_eos_of_crs_in_bin(k))/3.0)
-#if !defined(COSMIC_RAYS_ALT_FLUX_FORM)
-#define COSMIC_RAYS_ALT_FLUX_FORM /*<! set this as our default here */
-#endif
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK)
+#if (COSMIC_RAYS_EVOLVE_SPECTRUM == 2)
 #define COSMIC_RAYS_MULTIBIN 70     /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
+#define N_CR_PARTICLE_SPECIES 8     /*<! total number of CR species to be evolved. must be set here because of references below*/
 #else
 #define COSMIC_RAYS_MULTIBIN 19     /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
+#define N_CR_PARTICLE_SPECIES 2     /*<! total number of CR species to be evolved. must be set here because of references below*/
 #endif
 #endif
 #ifndef N_CR_PARTICLE_BINS
@@ -446,6 +437,8 @@ USE_FFTW3     # use fftw3 on this machine (need to have correct modules loaded)
 #define COSMIC_RAYS_EVOLVE_SPECTRUM
 #endif
 #endif
+
+
 
 
 #if defined(COOL_GRACKLE)
@@ -534,7 +527,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifdef SINGLE_STAR_FB_RAD
 #define RT_M1
 #define RT_SOURCES 32
-#define RT_SPEEDOFLIGHT_REDUCTION 1e-4
+#define RT_SPEEDOFLIGHT_REDUCTION (1.0e-4)
 #define RT_REPROCESS_INJECTED_PHOTONS
 #define RT_BH_ANGLEWEIGHT_PHOTON_INJECTION
 #define RT_OPTICAL_NIR
@@ -831,7 +824,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 /* default to speed-of-light equal to actual speed-of-light, and stars as photo-ionizing sources */
 #ifndef RT_SPEEDOFLIGHT_REDUCTION
-#define RT_SPEEDOFLIGHT_REDUCTION 1.0
+#define RT_SPEEDOFLIGHT_REDUCTION (1.0)
 #endif
 #ifndef RT_SOURCES
 #define RT_SOURCES 1+2+4+8+16+32 // default to allowing all types to act as sources //
@@ -1318,7 +1311,7 @@ typedef unsigned long long peanokey;
 
 #define U_TO_TEMP_UNITS         ((PROTONMASS/BOLTZMANN)*((UNIT_ENERGY_IN_CGS)/(UNIT_MASS_IN_CGS))) /* units to convert specific internal energy to temperature. needs to be multiplied by dimensionless factor=mean_molec_weight_in_amu*(gamma_eos-1) */
 #define C_LIGHT_CODE            ((C_LIGHT/UNIT_VEL_IN_CGS)) /* pure convenience function, speed-of-light in code units */
-#define C_LIGHT_CODE_REDUCED    ((RT_SPEEDOFLIGHT_REDUCTION*((C_LIGHT)/(UNIT_VEL_IN_CGS)))) /* reduced speed-of-light in code units, again here as a convenience function */
+#define C_LIGHT_CODE_REDUCED    (((RT_SPEEDOFLIGHT_REDUCTION)*((C_LIGHT)/(UNIT_VEL_IN_CGS)))) /* reduced speed-of-light in code units, again here as a convenience function */
 #define H0_CGS                  ((All.HubbleParam*HUBBLE_H100_CGS)) /* actual value of H0 in cgs */
 #define COSMIC_BARYON_DENSITY_CGS ((All.OmegaBaryon*(H0_CGS)*(H0_CGS)*(3./(8.*M_PI*GRAVITY_G))*All.cf_a3inv)) /* cosmic mean baryon density [scale-factor-dependent] in cgs units */
 
@@ -1377,7 +1370,7 @@ typedef unsigned long long peanokey;
 #if defined(COSMIC_RAYS_ALT_RSOL_FORM) && defined(COSMIC_RAYS_M1)
 #define COSMIC_RAYS_RSOL_CORRFAC(k) (((COSMIC_RAY_REDUCED_C_CODE(k))/(C_LIGHT_CODE))) // this needs to be defined after the code SOL for obvious reasons
 #else
-#define COSMIC_RAYS_RSOL_CORRFAC(k) (1) // this is always unity, macro is trivial
+#define COSMIC_RAYS_RSOL_CORRFAC(k) (1.0) // this is always unity, macro is trivial
 #endif
 
 
@@ -1879,16 +1872,11 @@ double CR_global_charge_in_bin[N_CR_PARTICLE_BINS];
 int CR_species_ID_in_bin[N_CR_PARTICLE_BINS];
 #define N_CR_SPECTRUM_LUT 101 /*!< number of elements per bin in the look-up-tables we will pre-compute to use for inverting the energy-number relation to determine the spectral slope */
 double CR_global_slope_lut[N_CR_PARTICLE_BINS][N_CR_SPECTRUM_LUT]; /*!< holder for the actual look-up-tables */
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_EXTENDED_NETWORK)
-#define N_CR_PARTICLE_SPECIES 8
 int CR_secondary_species_listref[N_CR_PARTICLE_SPECIES][N_CR_PARTICLE_SPECIES]; /*!< list for each type of the different secondaries to which it can decay */
 int CR_secondary_target_bin[N_CR_PARTICLE_BINS][N_CR_PARTICLE_SPECIES]; /*!< destination bin for the secondaries produced by different primaries */
 double CR_frag_secondary_coeff[N_CR_PARTICLE_BINS][N_CR_PARTICLE_SPECIES]; /*!< coefficients for fragmentation to the given secondaries (also pre-computed for simplicity) */
 double CR_frag_coeff[N_CR_PARTICLE_BINS]; /*!< total coefficients for fragmentation processes (pre-compute b/c cross-sections are complicated) */
 double CR_rad_decay_coeff[N_CR_PARTICLE_BINS]; /*!< radioactive decay coefficients (pre-computed for ease, also because of dilation dependence) */
-#else
-#define N_CR_PARTICLE_SPECIES 2 /* total number of CR species to be evolved. must be set here because of references below*/
-#endif
 int CR_species_ID_active_list[N_CR_PARTICLE_SPECIES]; /*!< holds the list of species ids to loop over */
 #endif
 
@@ -2952,7 +2940,7 @@ extern struct sph_particle_data
     MyFloat CosmicRayFlux[N_CR_PARTICLE_BINS][3];       /*!< CR flux vector [explicitly evolved] - conserved-variable */
     MyFloat CosmicRayFluxPred[N_CR_PARTICLE_BINS][3];   /*!< CR flux vector [explicitly evolved] - conserved-variable */
 #endif
-#ifdef COSMIC_RAYS_ALFVEN
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
     MyFloat CosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];       /*!< forward and backward-traveling Alfven wave-packet energies */
     MyFloat CosmicRayAlfvenEnergyPred[N_CR_PARTICLE_BINS][2];   /*!< drifted forward and backward-traveling Alfven wave-packet energies */
     MyFloat DtCosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];     /*!< time derivative fof forward and backward-traveling Alfven wave-packet energies */
