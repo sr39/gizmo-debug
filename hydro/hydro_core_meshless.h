@@ -364,12 +364,12 @@
                         if(Pressure_i/local.Density > Pressure_j/SphP[j].Density)
                         {
                             double dtoj = -du_old + facenorm_pm * face_vel_j;
-                            //if(dtoj > 0) {use_entropic_energy_equation=0;} else {
-                            if(dtoj < 0) {if(dtoj > -du_new+facenorm_pm*face_vel_j) {use_entropic_energy_equation=0;}}
+                            if(dtoj > 0) {use_entropic_energy_equation=0;} else
+                                {if(dtoj < 0) {if(dtoj > -du_new+facenorm_pm*face_vel_j) {use_entropic_energy_equation=0;}}}
                         } else {
                             double dtoi = +du_old - facenorm_pm * face_vel_i;
-                            //if(dtoi > 0) {use_entropic_energy_equation=0;} else {
-                            if(dtoi < 0) {if(dtoi > +du_new-facenorm_pm*face_vel_i) {use_entropic_energy_equation=0;}}
+                            if(dtoi > 0) {use_entropic_energy_equation=0;} else
+                                {if(dtoi < 0) {if(dtoi > +du_new-facenorm_pm*face_vel_i) {use_entropic_energy_equation=0;}}}
                         }
                     }
                 }
