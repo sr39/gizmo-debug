@@ -552,7 +552,7 @@ int rt_get_lum_band_singlestar(int i, int mode, double *lum)
 double rt_absorption_rate(int i, int k_freq)
 {
     /* should be equal to (c_reduced * Kappa_opacity * rho) */
-    return C_LIGHT_CODE_REDUCED * rt_absorb_frac_albedo(i, k_freq) * rt_kappa(i,k_freq) * SphP[i].Density*All.cf_a3inv;
+    return (C_LIGHT_CODE_REDUCED) * rt_absorb_frac_albedo(i,k_freq) * (rt_kappa(i,k_freq) * SphP[i].Density*All.cf_a3inv);
 }
 #endif 
 

@@ -82,10 +82,8 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     E_B = 0.5*Bmag*Bmag * (P[i].Mass/(SphP[i].Density*All.cf_a3inv)); // B-field energy (energy density times volume, for ratios with energies above)
     Bmag_Gauss = Bmag * UNIT_B_IN_GAUSS; // turn it into Gauss
     Omega_gyro = (8987.34 * Bmag_Gauss * (Z_charge_CR/E_CRs_Gev)) * UNIT_TIME_IN_CGS; // gyro frequency of the CR population we're evolving, converted to physical code units //
-    vA_code = sqrt( Bmag*Bmag / (SphP[i].Density*All.cf_a3inv) ); double vA_noion=vA_code; // Alfven speed^2 in code units [recall B units such that there is no 4pi here]
-#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
-    vA_code /= sqrt(1.e-16 + f_ion); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
-#endif
+    double vA_noion = Get_Gas_Alfven_speed_i(i); // Alfven speed in code units [recall B units such that there is no 4pi here]
+    vA_code = Get_Gas_ion_Alfven_speed_i(i); // include ionization appropriately for small-scale modes
     cs_thermal = sqrt(convert_internalenergy_soundspeed2(i,u0)); // thermal sound speed at appropriate drift-time [in code units, physical]
     vA2_c2 = vA_code*vA_code / (clight_code*clight_code); // Alfven speed vs speed of light
     fac_Omega = (3.*M_PI/16.) * Omega_gyro * (1.+2.*vA2_c2); // factor which will be used heavily below
