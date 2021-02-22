@@ -1761,6 +1761,9 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
     double e_CMB=0.262*All.cf_a3inv/All.cf_atime, T_cmb=2.73/All.cf_atime; // CMB [energy in eV/cm^3, T in K]
     double e_IR=0.31, Tdust_ext=DMAX(30.,T_cmb); // Milky way ISRF from Draine (2011), assume peak of dust emission at ~100 microns
     double e_HiEgy=0.66, T_hiegy=5800.; // Milky way ISRF from Draine (2011), assume peak of stellar emission at ~0.6 microns [can still have hot dust, this effect is pretty weak]
+#ifdef RT_ISRF_BACKGROUND
+    e_IR *= RT_ISRF_BACKGROUND; e_HiEgy *= RT_ISRF_BACKGROUND; // need to re-scale the assumed ISRF components
+#endif
     if(i >= 0)
     {
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
