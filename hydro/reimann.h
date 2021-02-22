@@ -408,7 +408,7 @@ void HLLC_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
         HLLC_fluxes(Riemann_vec, Riemann_out, n_unit,  v_line_L, v_line_R, cs_L, cs_R, h_L, h_R, S_L, S_R);
 #else
     Riemann_out->Fluxes.rho = 0; /* vanishes by definition in this frame */
-    for(k=0;k<3;k++) {Riemann_out->Fluxes.v[k] = Riemann_out->P_M * n_unit[k];} /* becomes extremely simple for MFM in this frame */
+    int k; for(k=0;k<3;k++) {Riemann_out->Fluxes.v[k] = Riemann_out->P_M * n_unit[k];} /* becomes extremely simple for MFM in this frame */
     Riemann_out->Fluxes.p = Riemann_out->P_M * Riemann_out->S_M; /* becomes extremely simple for MFM in this frame */
 #ifdef SAVE_FACE_DENSITY
     if((Riemann_out->S_M==0) || ((Riemann_out->P_M<=0)&&(!isnan(Riemann_out->P_M))))
@@ -443,12 +443,12 @@ void Riemann_solver_Rusanov(struct Input_vec_Riemann Riemann_vec, struct Riemann
         //P_M = 0.5 * ((Riemann_vec.L.p + Riemann_vec.R.p) + (v_line_L-v_line_R) * rho_csnd_hat);
         //S_M = 0.5 * ((v_line_R+v_line_L) + (Riemann_vec.L.p-Riemann_vec.R.p) / (rho_csnd_hat));
         S_M = ((v_line_L*Riemann_vec.L.rho + v_line_R*Riemann_vec.R.rho) + S_plus*(Riemann_vec.L.rho - Riemann_vec.R.rho)) / (Riemann_vec.L.rho + Riemann_vec.R.rho);
-        P_M = 0.5 * (Riemann_vec.L.p + Riemann_vec.R.p + (v_line_L - v_line_R) * ((2.*S_plus + v_line_L - v_line_R) * Riemann_vec.L.rho * Riemann_vec.R.rho / (Riemann_vec.L.rho + Riemann_vec.R.rho)))
+        P_M = 0.5 * (Riemann_vec.L.p + Riemann_vec.R.p + (v_line_L - v_line_R) * ((2.*S_plus + v_line_L - v_line_R) * Riemann_vec.L.rho * Riemann_vec.R.rho / (Riemann_vec.L.rho + Riemann_vec.R.rho)));
         Riemann_out->P_M = P_M;
         Riemann_out->S_M = S_M;
     }
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME
     int k;
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
     if((P_M > 0)&&(!isnan(P_M)))
     {
         /* flux = (1/2) * ( F_L + F_R ) - (S_plus/2) * (Q_R - Q_L) */
