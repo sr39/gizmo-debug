@@ -369,7 +369,7 @@ OPT     += -DUSE_MPI_IN_PLACE
 ## module load mkl
 ## module load hdf5
 ## module load fftw
-endifq
+endif
 
 
 #----------------------------
