@@ -191,7 +191,7 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
 #endif
     surfacedensity = P[i].MencInRcrit / (M_PI*Rcrit*Rcrit) * UNIT_SURFDEN_IN_CGS * All.cf_a2inv; /* this is the -total- mass density inside the critical kernel radius Rcrit, evaluated within the tree walk */
     double Z_u = Z_in_solar/Z_threshold_solar, S_u = surfacedensity / surfacedensity_threshold_cgs;
-    if(!isfinite(Z_u) || !isfinite(S_u)) {return 0;}
+    if(!isfinite(Z_u) || !isfinite(S_u) || (S_u < 0.01)) {return 0;}
     if(S_u < 3.5) {p *= 1 - exp(-S_u*S_u);} // quadratic cutoff at low densities: probability drops as S^(2), saturates at 1
     p /= 1 + Z_u + 0.5*Z_u*Z_u; // quadratic expansion of exponential cutoff: probability drops as Z^(-2) rather than exp(-Z), saturates at 1
 #else

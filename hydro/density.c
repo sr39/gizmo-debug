@@ -803,17 +803,16 @@ void density(void)
                             if(Right[i] == 0 && Left[i] > 0)
                             {
                                 if (PPP[i].NumNgb > 1)
-                                    fac_lim = log( desnumngb / PPP[i].NumNgb ) / NUMDIMS; // this would give desnumgb if constant density (+0.231=2x desnumngb)
+                                    {fac_lim = log( desnumngb / PPP[i].NumNgb ) / NUMDIMS;} // this would give desnumgb if constant density (+0.231=2x desnumngb)
                                 else
-                                    fac_lim = 1.4; // factor ~66 increase in N_NGB in constant-density medium
+                                    {fac_lim = 1.4;} // factor ~66 increase in N_NGB in constant-density medium
 
                                 if((PPP[i].NumNgb < 2*desnumngb)&&(PPP[i].NumNgb > 0.1*desnumngb))
                                 {
                                     double slope = PPP[i].DhsmlNgbFactor;
                                     if(iter>2 && slope<1) slope = 0.5*(slope+1);
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
-                                    if(iter>=4)
-                                        if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
+                                    if(iter>=4) {if(PPP[i].DhsmlNgbFactor==1) {fac *= 10;}} // tries to help with being trapped in small steps
 
                                     if(fac < fac_lim+0.231)
                                     {
@@ -827,43 +826,42 @@ void density(void)
                                     }
                                 }
                                 else
-                                    PPP[i].Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
+                                    {PPP[i].Hsml *= exp(fac_lim);} // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
 
                             if(Right[i] > 0 && Left[i] == 0)
                             {
-                                if (PPP[i].NumNgb > 1)
-                                    fac_lim = log( desnumngb / PPP[i].NumNgb ) / NUMDIMS; // this would give desnumgb if constant density (-0.231=0.5x desnumngb)
+                                if(PPP[i].NumNgb > 1)
+                                    {fac_lim = log( desnumngb / PPP[i].NumNgb ) / NUMDIMS;} // this would give desnumgb if constant density (-0.231=0.5x desnumngb)
                                 else
-                                    fac_lim = 1.4; // factor ~66 increase in N_NGB in constant-density medium
+                                    {fac_lim = 1.4;} // factor ~66 increase in N_NGB in constant-density medium
 
-                                if (fac_lim < -1.535) fac_lim = -1.535; // decreasing N_ngb by factor ~100
+                                if(fac_lim < -1.535) {fac_lim = -1.535;} // decreasing N_ngb by factor ~100
 
                                 if((PPP[i].NumNgb < 2*desnumngb)&&(PPP[i].NumNgb > 0.1*desnumngb))
                                 {
                                     double slope = PPP[i].DhsmlNgbFactor;
                                     if(iter>2 && slope<1) slope = 0.5*(slope+1);
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
-                                    if(iter>=4)
-                                        if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
+                                    if(iter>=4) {if(PPP[i].DhsmlNgbFactor==1) {fac *= 10;}} // tries to help with being trapped in small steps
 
                                     if(fac > fac_lim-0.231)
                                     {
                                         PPP[i].Hsml *= exp(fac); // more expensive function, but faster convergence
                                     }
                                     else
-                                        PPP[i].Hsml *= exp(fac_lim-0.231); // limiter to prevent --too-- far a jump in a single iteration
+                                        {PPP[i].Hsml *= exp(fac_lim-0.231);} // limiter to prevent --too-- far a jump in a single iteration
                                 }
                                 else
-                                    PPP[i].Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
+                                    {PPP[i].Hsml *= exp(fac_lim);} // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
                         } // closes if[particle_set_to_max/minhsml_flag]
                     } // closes redo_particle
                     /* resets for max/min values */
-                    if(PPP[i].Hsml < minsoft) PPP[i].Hsml = minsoft;
-                    if(particle_set_to_minhsml_flag==1) PPP[i].Hsml = minsoft;
-                    if(PPP[i].Hsml > maxsoft) PPP[i].Hsml = maxsoft;
-                    if(particle_set_to_maxhsml_flag==1) PPP[i].Hsml = maxsoft;
+                    if(PPP[i].Hsml < minsoft) {PPP[i].Hsml = minsoft;}
+                    if(particle_set_to_minhsml_flag==1) {PPP[i].Hsml = minsoft;}
+                    if(PPP[i].Hsml > maxsoft) {PPP[i].Hsml = maxsoft;}
+                    if(particle_set_to_maxhsml_flag==1) {PPP[i].Hsml = maxsoft;}
                 }
                 else {P[i].TimeBin = -P[i].TimeBin - 1;}	/* Mark as inactive */
             } //  if(density_isactive(i))
