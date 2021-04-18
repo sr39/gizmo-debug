@@ -344,6 +344,8 @@
 #if defined(FIRE_BHS)
 #define BLACK_HOLES                 /* top-level flag */
 #define BH_SEED_FROM_LOCALGAS       /* seed BHs locally in SF-ing gas */
+#define BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA /* use the total surface-density criterion, not just gas */
+#define BH_CALC_DISTANCES           /* use this for various checks, particularly in seeding */
 #define BH_REPOSITION_ON_POTMIN 2   /* anchor BHs to centers smoothly */
 #define BH_SWALLOWGAS               /* allow BHs to accrete in principle */
 #if !defined(BH_GRAVACCRETION)
