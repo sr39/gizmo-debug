@@ -466,7 +466,7 @@ void force_create_empty_nodes(int no, int topnode, int bits, int x, int y, int z
                                ThisTask, MaxNodes, MaxTopNodes, NTopnodes, NTopleaves, *nodecount);
                         printf("in create empty nodes\n");
                         dump_particles();
-                        endrun(11);
+                       endrun(11);
                     }
 
                     force_create_empty_nodes(*nextfree - 1, TopNodes[topnode].Daughter + sub,
