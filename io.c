@@ -313,6 +313,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
             break;
 
+	case IO_ADM:		/* adm particle type */
+#if defined(ADM)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *ip_int++ = P[pindex].adm;
+                    n++;
+                }
+#endif
+	    break;
+
         case IO_NE:		/* electron abundance */
 #if (defined(COOLING) || defined(RT_CHEM_PHOTOION)) && !defined(CHIMES)
             for(n = 0; n < pc; pindex++)
@@ -1689,6 +1700,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
 
         case IO_BHPROGS:
         case IO_GRAINTYPE:
+	case IO_ADM:
         case IO_EOSCOMP:
         case IO_STAGE_PROTOSTAR:
             bytes_per_blockelement = sizeof(int);
@@ -1934,6 +1946,7 @@ int get_datatype_in_block(enum iofields blocknr)
 
         case IO_BHPROGS:
         case IO_GRAINTYPE:
+	case IO_ADM:
         case IO_EOSCOMP:
         case IO_STAGE_PROTOSTAR:
             typekey = 0;		/* native int */
@@ -1973,6 +1986,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_MASS:
         case IO_BH_DIST:
         case IO_U:
+	case IO_ADM:
         case IO_RHO:
         case IO_NE:
         case IO_NH:
@@ -2263,6 +2277,13 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return ngas;
             break;
 
+
+        case IO_ADM:
+            for(i = 0; i < 6; i++) {if(i != 0 && i != 4) {typelist[i] = 0;}}
+            return ngas + nstars;
+            break;
+
+
         case IO_AGE:
 #ifdef BLACK_HOLES
             for(i = 0; i < 6; i++) {if(i != 4 && i != 5) {typelist[i] = 0;}}
@@ -2278,6 +2299,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             for(i = 0; i < 6; i++) {if(i != 4) {typelist[i] = 0;}}
             return nstars;
             break;
+
 
         case IO_GRAINSIZE:
         case IO_GRAINTYPE:
@@ -2377,6 +2399,12 @@ int blockpresent(enum iofields blocknr)
             return 1;
 #endif
             break;
+
+	case IO_ADM:
+#if defined(ADM)
+	    return 1;
+#endif
+	    break;
 
         case IO_RADGAMMA:
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
@@ -2909,6 +2937,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_U:
             strncpy(label, "U   ", 4);
             break;
+        case IO_ADM:
+            strncpy(label, "ADM", 4);
+            break;
         case IO_RHO:
             strncpy(label, "RHO ", 4);
             break;
@@ -3268,6 +3299,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_U:
             strcpy(buf, "InternalEnergy");
             break;
+	case IO_ADM:
+	    strcpy(buf, "ADMType");
+	    break;
         case IO_RHO:
             strcpy(buf, "Density");
             break;

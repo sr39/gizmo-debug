@@ -280,6 +280,11 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
+	case IO_ADM:		/* adm type */
+#ifdef ADM
+	    for (n=0; n < pc; n++) {P[offset + n].adm = *ip_int++;}
+#endif 
+	    break;
 
         case IO_HSML:		/* gas kernel length */
             for(n = 0; n < pc; n++) {PPP[offset + n].Hsml = *fp++;}
@@ -851,6 +856,9 @@ void read_file(char *fname, int readTask, int lastTask)
 #endif
 #if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM)
                    && blocknr != IO_CHIMES_ABUNDANCES
+#endif
+#ifdef ADM
+                   && blocknr != IO_ADM
 #endif
 #ifdef PIC_MHD
                    && blocknr != IO_GRAINTYPE

@@ -2528,6 +2528,10 @@ extern ALIGN(32) struct particle_data
     MyIDType ID_generation;
 #endif
 
+#ifdef ADM
+    int adm;	// ADM particle type integer. Will apply to gas and stars (types 0 and 4)
+#endif
+
     integertime Ti_begstep;         /*!< marks start of current timestep of particle on integer timeline */
     integertime Ti_current;         /*!< current time of the particle */
 
@@ -3501,6 +3505,7 @@ enum iofields
   IO_GENERATION_ID,
   IO_MASS,
   IO_U,
+  IO_ADM,
   IO_RHO,
   IO_NE,
   IO_NH,
