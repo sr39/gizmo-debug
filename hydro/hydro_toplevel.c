@@ -195,6 +195,10 @@ struct INPUT_STRUCT_NAME
     MyFloat alpha;
 #endif
 
+#ifdef ADM
+    int adm;
+#endif
+
     /* matrix of the conserved variable gradients: rho, u, vx, vy, vz */
     struct
     {
@@ -434,6 +438,9 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #endif
 #endif
 
+#ifdef ADM
+    in->adm = P[i].adm;
+#endif
 #ifdef HYDRO_PRESSURE_SPH
     in->EgyWtRho = SphP[i].EgyWtDensity;
 #endif
