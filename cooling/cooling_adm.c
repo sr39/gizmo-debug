@@ -708,7 +708,7 @@ double find_abundances_and_rates_adm(double logT, double rho, int target, double
         double LambdaFF = bff * (nHp + nHep + 4 * nHepp) * n_elec; /* free-free (Bremsstrahlung) */
 
         double Lambda = LambdaExc + LambdaIon + LambdaRec + LambdaFF; /* sum all of the above */
-        return 3*Lambda; /* send it back */
+        return Lambda; /* send it back */
     }
     return 0;
 } // end of find_abundances_and_rates_adm() //

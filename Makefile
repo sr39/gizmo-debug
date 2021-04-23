@@ -1312,9 +1312,14 @@ endif
 # These are the different ADM-specific physics files that are enabled if the ADM flag is turned on in combination with the other
 # relevant flags (e.g. COOLING, ...)
 ifeq (ADM,$(findstring ADM,$(CONFIGVARS)))
+
 ifeq (COOLING,$(findstring COOLING,$(CONFIGVARS)))
 OBJS    += cooling/cooling_adm.o 
 endif
+ifeq (GALSF,$(findstring GALSF,$(CONFIGVARS)))
+OBJS    += galaxy_sf/adm/sfr_eff_adm.o 
+endif
+
 endif
 
 # if HDF5 explicitly disabled, remove the linked libraries

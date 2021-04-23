@@ -752,6 +752,7 @@ double return_electron_fraction_from_heavy_ions(int target, double temperature, 
 void do_the_cooling_for_particle_adm(int i);
 double get_equilibrium_dust_temperature_estimate_adm(int i, double shielding_factor_for_exgalbg);
 double return_electron_fraction_from_heavy_ions_adm(int target, double temperature, double density_cgs, double n_elec_HHe);
+double get_starformation_rate_adm(int i);
 #endif
 void apply_pm_hires_region_clipping_selection(int i);
 double get_starformation_rate(int i);

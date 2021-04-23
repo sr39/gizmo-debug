@@ -394,6 +394,11 @@ void star_formation_parent_routine(void)
 
         /* check whether an initial (not fully-complete!) conditions for star formation are fulfilled for a given particle */
         if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh) {flag = 0;} // if sufficiently dense, go forward into SF routine //
+#ifdef ADM
+        if(P[i].adm != 0) { //if ADM particle
+                if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh) {flag = 0;} // if sufficiently dense, go forward into SF routine //
+        }
+#endif
         if(All.ComovingIntegrationOn) {if(SphP[i].Density < All.OverDensThresh) {flag = 1;}} // (additional density check for cosmological runs) //
 
 #ifdef GALSF_SUBGRID_WINDS
@@ -406,9 +411,17 @@ void star_formation_parent_routine(void)
 
         if((flag == 0)&&(dtime>0))		/* active star formation (upon start-up, we need to protect against dt==0) */
 	    {
-          sm = get_starformation_rate(i) * dtime; // expected stellar mass formed this timestep
+#ifdef ADM
+	if(P[i].adm != 0) { // if ADM particle
+	  sm =  get_starformation_rate_adm(i) * dtime; // expected adm stellar mass formed in this time step
+        } else { 
+	  sm = get_starformation_rate(i) * dtime; // expected stellar mass formed this timestep
+	}
+#else 
+            sm = get_starformation_rate(i) * dtime; // expected stellar mass formed this timestep
             // (this also updates entropies for the effective equation-of-state model) //
-	      p = sm / P[i].Mass;
+#endif
+          p = sm / P[i].Mass;
 	      sum_sm += P[i].Mass * (1 - exp(-p));
 
 
