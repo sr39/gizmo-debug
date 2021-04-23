@@ -46,7 +46,7 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
 ///////////////////////////
 // ADM Cooling Functions //
 ///////////////////////////
-/*#ifdef ADM
+#ifdef ADM
 
 double ThermalProperties_adm(double u, double rho, int target, double *mu_guess, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess);
 double return_uvb_shieldfac_adm(int target, double gamma_12, double nHcgs, double logT);
@@ -63,7 +63,7 @@ void   MakeCoolingTable_adm(void);
 void   ReadIonizeParams_adm(char *fname);
 void   SetZeroIonization_adm(void);
 #endif 
-*/
+
 #ifndef CHIMES 
 double find_abundances_and_rates_adm(double logT, double rho, int target, double shieldfac, int return_cooling_mode,
                                  double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess, double *mu_guess);

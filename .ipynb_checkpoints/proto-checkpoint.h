@@ -343,9 +343,9 @@ double Get_Gas_Alfven_speed_i(int i);
 double Get_Gas_Fast_MHD_wavespeed_i(int i);
 double Get_Gas_Mean_Molecular_Weight_mu(double T_guess, double rho, double *xH0, double *ne_guess, double urad_from_uvb_in_G0, int target);
 void update_explicit_molecular_fraction(int i, double dtime_cgs);
-/*#ifdef ADM
+#ifdef ADM
 void update_explicit_molecular_fraction_adm(int i, double dtime_cgs);
-#endif*/
+#endif
 double yhelium(int target);
 double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral_fraction, double free_electron_ratio, double urad_from_uvb_in_G0);
 double INLINE_FUNC Get_Gas_BField(int i_particle_id, int k_vector_component);
@@ -638,9 +638,9 @@ int HIIheating_evaluate(int target, int mode, int *nexport, int *nsend_local);
 
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
 void selfshield_local_incident_uv_flux(void);
-/*#ifdef ADM
+#ifdef ADM
 void selfshield_local_incident_uv_flux_adm(void);
-#endif*/
+#endif
 #endif
 
 #ifdef GALSF_FB_MECHANICAL
@@ -663,13 +663,13 @@ void LoadMultiSpeciesTables(void);
 void ReadMultiSpeciesTables(int iT);
 char *GetMultiSpeciesFilename(int i, int hk);
 
-/*#ifdef ADM
+#ifdef ADM
 double GetCoolingRateWSpecies_adm(double nHcgs, double logT, double *Z);
 double GetLambdaSpecies_adm(long k_index, long index_x0y0, long index_x0y1, long index_x1y0, long index_x1y1, double dx, double dy, double dz, double mdz);
 void LoadMultiSpeciesTables_adm(void);
 void ReadMultiSpeciesTables_adm(int iT);
 char *GetMultiSpeciesFilename_adm(int i, int hk);
-#endif*/
+#endif
 
 #endif
 #endif
@@ -748,11 +748,11 @@ void init(void);
 void do_the_cooling_for_particle(int i);
 double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_for_exgalbg);
 double return_electron_fraction_from_heavy_ions(int target, double temperature, double density_cgs, double n_elec_HHe);
-/*#ifdef ADM
+#ifdef ADM
 void do_the_cooling_for_particle_adm(int i);
 double get_equilibrium_dust_temperature_estimate_adm(int i, double shielding_factor_for_exgalbg);
 double return_electron_fraction_from_heavy_ions_adm(int target, double temperature, double density_cgs, double n_elec_HHe);
-#endif*/
+#endif
 void apply_pm_hires_region_clipping_selection(int i);
 double get_starformation_rate(int i);
 void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double cloudmass_fraction, double rateOfSF);
