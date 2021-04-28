@@ -546,12 +546,19 @@ struct addFB_evaluate_data_in_
 #ifdef METALS
     MyDouble yields[NUM_METAL_SPECIES];
 #endif
+#ifdef ADM
+    int adm;
+#endif
     int NodeList[NODELISTLENGTH];
 }
 *addFB_evaluate_DataIn_, *addFB_evaluate_DataGet_;
 
 void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int fb_loop_iteration);
 double mechanical_fb_calculate_eventrates(int i, double dt);
+#ifdef ADM
+void particle2in_addFB_fromstars_adm(struct addFB_evaluate_data_in_ *in, int i, int fb_loop_iteration);
+double mechanical_fb_calculate_eventrates_adm(int i, double dt);
+#endif
 #ifdef METALS
 void get_jet_yields(double *yields, int i);
 #endif

@@ -110,7 +110,7 @@ int ngb_treefind_pairs_threads(MyDouble searchcenter[3], MyFloat hsml, int targe
 #undef SEARCHBOTHWAYS // must be undefined after code block inserted, or compiler will crash
 }
 
-
+#ifdef ADM
 /* Same as the ngb_treefind_pairs_threads function above but modified to check that gas particles have the same 
  *  * ADM type as well.
  *   */
@@ -125,7 +125,7 @@ int ngb_treefind_pairs_threads_adm(MyDouble searchcenter[3], int adm_type, MyFlo
 #include "system/ngb_codeblock_after_condition_threaded.h"
 #undef SEARCHBOTHWAYS // must be undefined after code block inserted, or compiler will crash
 }
-
+#endif
 /*! This function returns neighbours with distance <= hsml and returns them in Ngblist. Actually, particles in a box of half side length hsml are
  *  returned, i.e. the reduction to a sphere still needs to be done in the calling routine.
  */
@@ -140,6 +140,7 @@ int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int ta
 #undef SEARCHBOTHWAYS
 }
 
+#ifdef ADM
 /*! Same as the ngb_treefind_variable_threads function above but modified to only allow gas particles of same ADM type
  *  *   */
 int ngb_treefind_variable_threads_adm(MyDouble searchcenter[3], int adm_type,  MyFloat hsml, int target, int *startnode,
@@ -153,6 +154,7 @@ int ngb_treefind_variable_threads_adm(MyDouble searchcenter[3], int adm_type,  M
 #include "system/ngb_codeblock_after_condition_threaded.h"
 #undef SEARCHBOTHWAYS
 }
+#endif
 
 /* this is the same as above, but the simpler un-threaded version, useful for historical reasons and because some sub-routines use 
     this model without threading because there is no real performance gain. note the slightly different construction of the subroutine below.

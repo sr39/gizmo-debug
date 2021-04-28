@@ -19,6 +19,12 @@ int addFB_evaluate_active_check(int i, int fb_loop_iteration);
 int addFB_evaluate_active_check(int i, int fb_loop_iteration)
 {
     if(P[i].Type <= 1) {return 0;} // note quantities used here must -not- change in the loop [hence not using mass here], b/c can change offsets for return from different processors, giving a negative mass and undefined behaviors
+//#ifdef ADM
+//    if(P[i].Type == 4)
+//    {
+//	if(P[i].adm != 0) {return 0;}
+//   }
+//#endif
     if(PPP[i].Hsml <= 0) {return 0;}
     if(PPP[i].NumNgb <= 0) {return 0;}
     if(P[i].SNe_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==0) {return 1;}}
@@ -76,7 +82,17 @@ void determine_where_SNe_occur(void)
         if(star_age<=0) {continue;} // unphysical age, no events
         // now use a calculation of mechanical event rates to determine where/when the events actually occur //
         npossible++;
-        double RSNe = mechanical_fb_calculate_eventrates(i,dt);
+#ifdef ADM
+	double RSNe;
+	if(P[i].Type == 4) { // if it's a generic star particle (gas particles are omitted from this loop so we don't care about them)
+	    if(P[i].adm != 0) {RSNe = mechanical_fb_calculate_eventrates_adm(i,dt);}	    
+            else {RSNe = mechanical_fb_calculate_eventrates(i,dt);}
+	} else { // if it's not a star particle
+		RSNe = mechanical_fb_calculate_eventrates(i,dt);
+	}
+#else
+	double RSNe = mechanical_fb_calculate_eventrates(i,dt);
+#endif
         rmean += RSNe; ptotal += RSNe * (P[i].Mass*UNIT_MASS_IN_SOLAR) * (dt*UNIT_TIME_IN_MYR);
 #ifdef GALSF_SFR_IMF_SAMPLING
         if(P[i].IMF_NumMassiveStars>0) {P[i].IMF_NumMassiveStars=DMAX(0,P[i].IMF_NumMassiveStars-P[i].SNe_ThisTimeStep);} // lose an O-star for every SNe //
@@ -134,9 +150,24 @@ void particle2in_addFB(struct addFB_evaluate_data_in_ *in, int i, int loop_itera
 #endif
     for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {in->Area_weighted_sum[k] = P[i].Area_weighted_sum[k];}
     in->Msne = 0; in->unit_mom_SNe = 0; in->SNe_v_ejecta = 0;
+#ifdef ADM
+    in->adm = 0; // set ADM type to 0 by default and update accordingly
+    if((P[i].Type == 4)||(P[i].Type == 0)) { // ADM particles can only be stars or gas currently.
+	if(P[i].adm != 0) {in->adm = P[i].adm;}
+    } // In the future, use the in.adm value for the "particle2in_addFB_from_stars" function.  
+#endif
     if((P[i].DensAroundStar <= 0)||(P[i].Mass <= 0)) {return;} // events not possible [catch for mass->0]
     if(loop_iteration < 0) {in->Msne=P[i].Mass; in->unit_mom_SNe=1.e-4; in->SNe_v_ejecta=1.0e-4; return;} // weighting loop
-    particle2in_addFB_fromstars(in,i,loop_iteration); // subroutine that actually deals with the assignment of feedback properties
+#ifdef ADM
+    if((P[i].Type == 4)||(P[i].Type == 0)) { // ADM particles can only be stars or gas currently.
+        if(P[i].adm != 0) {particle2in_addFB_fromstars_adm(in,i,loop_iteration);}
+	else {particle2in_addFB_fromstars(in,i,loop_iteration);}
+    } else { // if not a star or gas particle
+	particle2in_addFB_fromstars(in,i,loop_iteration);
+    }  
+#else
+    particle2in_addFB_fromstars(in,i,loop_iteration);
+#endif 
     in->unit_mom_SNe = in->Msne * in->SNe_v_ejecta;
 }
 
@@ -197,7 +228,11 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     {
         while(startnode >= 0)
         {
+#ifdef ADM
+	    numngb_inbox = ngb_treefind_pairs_threads_adm(local.Pos, local.adm, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);	
+#else
             numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+#endif
             if(numngb_inbox < 0) {return -2;}
 
             E_coupled = dP_sum = dP_boost_sum = 0;
@@ -517,7 +552,11 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     {
         while(startnode >= 0)
         {
+#ifdef ADM
+            numngb_inbox = ngb_treefind_pairs_threads_adm(local.Pos, local.adm, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+#else 
             numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+#endif
             if(numngb_inbox < 0) {return -2;}
 
             E_coupled = dP_sum = dP_boost_sum = 0;

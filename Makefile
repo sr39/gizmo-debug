@@ -1320,7 +1320,11 @@ ifeq (GALSF,$(findstring GALSF,$(CONFIGVARS)))
 OBJS    += galaxy_sf/adm/sfr_eff_adm.o 
 endif
 
+ifeq (GALSF_FB_MECHANICAL,$(findstring GALSF_FB_MECHANICAL,$(CONFIGVARS)))
+OBJS    += galaxy_sf/adm/stellar_evolution_adm.o
 endif
+
+endif # ADM
 
 # if HDF5 explicitly disabled, remove the linked libraries
 ifeq (IO_DISABLE_HDF5,$(findstring IO_DISABLE_HDF5,$(CONFIGVARS)))
