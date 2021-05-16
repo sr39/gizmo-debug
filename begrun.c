@@ -1152,6 +1152,19 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
+#ifdef ADM
+        strcpy(tag[nt], "ADM_ProtonMass");
+        addr[nt] = &All.ADM_ProtonMass;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "ADM_ElectronMass");
+        addr[nt] = &All.ADM_ElectronMass;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "ADM_FineStructure");
+        addr[nt] = &All.ADM_FineStructure;
+        id[nt++] = REAL;
+#endif
 
 
 #ifdef DM_SIDM

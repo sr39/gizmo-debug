@@ -2003,6 +2003,12 @@ extern struct global_data_all_processes
     MyDouble DM_InteractionVelocityScale; /*!< scale above which the scattering becomes velocity-dependent */
 #endif
 
+#if defined(ADM)
+    MyDouble ADM_ProtonMass;	// Dark proton mass 
+    MyDouble ADM_FineStructure;	// Dark fine structure constant
+    MyDouble ADM_ElectronMass;	// Dark electron mass
+#endif
+
   int MaxPart;			/*!< This gives the maxmimum number of particles that can be stored on one processor. */
   int MaxPartSph;		/*!< This gives the maxmimum number of SPH particles that can be stored on one processor. */
   int ICFormat;			/*!< selects different versions of IC file-format */
