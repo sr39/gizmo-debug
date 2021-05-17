@@ -6,6 +6,7 @@
 #include "../allvars.h"
 #include "../proto.h"
 #include "./cooling.h"
+#include "./adm_cooling_functions.h"
 
 /*
  * This file contains the routines for optically-thin cooling (generally aimed towards simulations of the ISM,
@@ -1116,8 +1117,10 @@ void MakeCoolingTable_adm(void)
         BetaH0_adm[i] = BetaHep_adm[i] = Betaff_adm[i] = AlphaHp_adm[i] = AlphaHep_adm[i] = AlphaHepp_adm[i] = Alphad_adm[i] = GammaeH0_adm[i] = GammaeHe0_adm[i] = GammaeHep_adm[i] = 0;
         T = pow(10.0, Tmin_adm + deltaT_adm * i);
         Tfact = 1.0 / (1 + sqrt(T / 1.0e5));
-        if(118348. / T < 70.) {BetaH0_adm[i] = 7.5e-19 * exp(-118348 / T) * Tfact;}
-        if(473638. / T < 70.) {BetaHep_adm[i] = 5.54e-17 * pow(T, -0.397) * exp(-473638 / T) * Tfact;}
+	BetaH0_adm[i] = 7.4e-18 * pow(All.ADM_FineStructure/0.01,2.0) * sqrt(ELECTRONMASS / All.ADM_ElectronMass) *  sqrt(1.0e5/T) * g_integral(All.ADM_ElectronMass * pow(All.ADM_FineStructure, 2.0) * pow(C_LIGHT,2.0) / (2 * BOLTZMANN * T));
+	//printf("BetaH0_i = %.10e\n", BetaH0_adm[i]);
+	//if(118348. / T < 70.) {BetaH0_adm[i] = 7.5e-19 * exp(-118348 / T) * Tfact;}
+        //if(473638. / T < 70.) {BetaHep_adm[i] = 5.54e-17 * pow(T, -0.397) * exp(-473638 / T) * Tfact;}
 
         Betaff_adm[i] = 1.43e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - log10(T)) * (5.5 - log10(T)) / 3));
         //AlphaHp_adm[i] = 8.4e-11 * pow(T / 1000, -0.2) / (1. + pow(T / 1.0e6, 0.7)) / sqrt(T);	/* old Cen92 fit */

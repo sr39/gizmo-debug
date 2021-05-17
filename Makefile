@@ -1314,7 +1314,7 @@ endif
 ifeq (ADM,$(findstring ADM,$(CONFIGVARS)))
 
 ifeq (COOLING,$(findstring COOLING,$(CONFIGVARS)))
-OBJS    += cooling/cooling_adm.o 
+OBJS    += cooling/cooling_adm.o cooling/adm_cooling_functions.o 
 endif
 ifeq (GALSF,$(findstring GALSF,$(CONFIGVARS)))
 OBJS    += galaxy_sf/adm/sfr_eff_adm.o 
