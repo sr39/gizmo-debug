@@ -42,3 +42,29 @@ double g_integral(double y2) {
 	return result;
 }
 
+////////////////////////////////
+////  Collisional Ionisation  //
+////////////////////////////////
+
+// Function to be integrated
+
+double f(double u, void* params) {
+	double y2 = *(double*)params;
+	double u2 = pow(u, 2.0);
+	return (u * exp(-u2) / (1 + 2 * y2 / u2)) * (1 - y2 / u2 - 0.5 * (1 - pow(y2 / u2, 2.0)) * log(y2 / u2) + (y2 / u2) * log(y2 / u2) / (1 + y2 / u2));
+}
+
+
+// Numerical Integrator
+
+double f_integral(double y2) {
+	int GSLWORKSIZE = 1000;
+	double result, error;
+	gsl_function F; gsl_integration_workspace* workspace; workspace = gsl_integration_workspace_alloc(GSLWORKSIZE);
+	F.function = &f; F.params = &y2;
+	gsl_integration_qagiu(&F, sqrt(y2), 0, 1.0e-6, GSLWORKSIZE, workspace, &result, &error);
+	gsl_integration_workspace_free(workspace);
+	return result;
+}
+
+

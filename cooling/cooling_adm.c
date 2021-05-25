@@ -692,7 +692,7 @@ double find_abundances_and_rates_adm(double logT, double rho, int target, double
         /* Compute cooling and heating rate (cf KWH Table 1) in units of nH**2 */
         double LambdaExcH0 = bH0 * n_elec * nH0;
         double LambdaExcHep = bHep * n_elec * nHep;
-        double LambdaExc = LambdaExcH0 + LambdaExcHep;	/* collisional excitation */
+        double LambdaExc =  LambdaExcH0 + LambdaExcHep;	/* collisional excitation */
 
         double LambdaIonH0 = 2.18e-11 * geH0 * n_elec * nH0;
         double LambdaIonHe0 = 3.94e-11 * geHe0 * n_elec * nHe0;
@@ -734,6 +734,11 @@ extern FILE *fd;
 
 
 #ifndef CHIMES
+////////////////////////////////////////////
+// DISABLED COMPTON HEATING. CHANGE THIS! //
+// /////////////////////////////////////////
+
+
 /*  Calculates (heating rate-cooling rate)/n_h^2 in cgs units
  */
 double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
@@ -782,7 +787,7 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
         Lambda = find_abundances_and_rates_adm(logT, rho, target, shieldfac, 1, &n_elec, &nH0, &nHp, &nHe0, &nHep, &nHepp, &mu);
 
         LambdaCompton = evaluate_Compton_heating_cooling_rate_adm(target,T,nHcgs,n_elec,shieldfac); /* note this can have either sign: heating or cooling */
-        if(LambdaCompton > 0) {Lambda += LambdaCompton;}
+	if(LambdaCompton > 0) {Lambda += LambdaCompton;}
 
 #ifdef COOL_METAL_LINES_BY_SPECIES
         /* can restrict to low-densities where not self-shielded, but let shieldfac (in ne) take care of this self-consistently */
@@ -1111,28 +1116,32 @@ void MakeCoolingTable_adm(void)
     int i; double T,Tfact;
     if(All.MinGasTemp > 0.0) {Tmin_adm = log10(All.MinGasTemp);} else {Tmin_adm=-1.0;} // set minimum temperature in this table to some very low value if zero, where none of the cooling approximations above make sense
     deltaT_adm = (Tmax_adm - Tmin_adm) / NCOOLTAB_ADM;
+    double y2;
     /* minimum internal energy for neutral gas */
     for(i = 0; i <= NCOOLTAB_ADM; i++)
     {
         BetaH0_adm[i] = BetaHep_adm[i] = Betaff_adm[i] = AlphaHp_adm[i] = AlphaHep_adm[i] = AlphaHepp_adm[i] = Alphad_adm[i] = GammaeH0_adm[i] = GammaeHe0_adm[i] = GammaeHep_adm[i] = 0;
         T = pow(10.0, Tmin_adm + deltaT_adm * i);
         Tfact = 1.0 / (1 + sqrt(T / 1.0e5));
-	BetaH0_adm[i] = 7.4e-18 * pow(All.ADM_FineStructure/0.01,2.0) * sqrt(ELECTRONMASS / All.ADM_ElectronMass) *  sqrt(1.0e5/T) * g_integral(All.ADM_ElectronMass * pow(All.ADM_FineStructure, 2.0) * pow(C_LIGHT,2.0) / (2 * BOLTZMANN * T));
+	y2 = All.ADM_ElectronMass * pow(All.ADM_FineStructure, 2.0) * pow(C_LIGHT,2.0) / (2 * BOLTZMANN * T);
+	//BetaH0_adm[i] = 7.4e-18 * pow(All.ADM_FineStructure/0.01,2.0) * sqrt(ELECTRONMASS / All.ADM_ElectronMass) *  sqrt(1.0e5/T) * g_integral(y2);
 	//printf("BetaH0_i = %.10e\n", BetaH0_adm[i]);
-	//if(118348. / T < 70.) {BetaH0_adm[i] = 7.5e-19 * exp(-118348 / T) * Tfact;}
-        //if(473638. / T < 70.) {BetaHep_adm[i] = 5.54e-17 * pow(T, -0.397) * exp(-473638 / T) * Tfact;}
+	if(118348. / T < 70.) {BetaH0_adm[i] = 7.5e-19 * exp(-118348 / T) * Tfact;}
+        
+	if(473638. / T < 70.) {BetaHep_adm[i] = 5.54e-17 * pow(T, -0.397) * exp(-473638 / T) * Tfact;} // UNCOMMENT LATER
 
-        Betaff_adm[i] = 1.43e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - log10(T)) * (5.5 - log10(T)) / 3));
-        //AlphaHp_adm[i] = 8.4e-11 * pow(T / 1000, -0.2) / (1. + pow(T / 1.0e6, 0.7)) / sqrt(T);	/* old Cen92 fit */
-        //AlphaHep_adm[i] = 1.5e-10 * pow(T, -0.6353); /* old Cen92 fit */
-        //AlphaHepp_adm[i] = 4. * AlphaHp_adm[i];	/* old Cen92 fit */
-        AlphaHp_adm[i] = 7.982e-11 / ( sqrt(T/3.148) * pow((1.0+sqrt(T/3.148)), 0.252) * pow((1.0+sqrt(T/7.036e5)), 1.748) ); /* Verner & Ferland (1996) [more accurate than Cen92] */
-        AlphaHep_adm[i]= 9.356e-10 / ( sqrt(T/4.266e-2) * pow((1.0+sqrt(T/4.266e-2)), 0.2108) * pow((1.0+sqrt(T/3.676e7)), 1.7892) ); /* Verner & Ferland (1996) [more accurate than Cen92] */
-        AlphaHepp_adm[i] = 2. * 7.982e-11 / ( sqrt(T/(4.*3.148)) * pow((1.0+sqrt(T/(4.*3.148))), 0.252) * pow((1.0+sqrt(T/(4.*7.036e5))), 1.748) ); /* Verner & Ferland (1996) : ~ Z*AlphaHp_adm[1,T/Z^2] */
+        Betaff_adm[i] = 1.43e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - log10(T)) * (5.5 - log10(T)) / 3)); //UNCOMMENT LATER
+        
 
-        if(470000.0 / T < 70) {Alphad_adm[i] = 1.9e-3 * pow(T, -1.5) * exp(-470000 / T) * (1. + 0.3 * exp(-94000 / T));}
+        AlphaHp_adm[i] = 7.982e-11 / ( sqrt(T/3.148) * pow((1.0+sqrt(T/3.148)), 0.252) * pow((1.0+sqrt(T/7.036e5)), 1.748) ); /* Verner & Ferland (1996) [more accurate than Cen92] */ //UNCOMMENT LATER 
+	AlphaHep_adm[i]= 9.356e-10 / ( sqrt(T/4.266e-2) * pow((1.0+sqrt(T/4.266e-2)), 0.2108) * pow((1.0+sqrt(T/3.676e7)), 1.7892) ); /* Verner & Ferland (1996) [more accurate than Cen92] */ //UNCOMMENT LATER
+        AlphaHepp_adm[i] = 2. * 7.982e-11 / ( sqrt(T/(4.*3.148)) * pow((1.0+sqrt(T/(4.*3.148))), 0.252) * pow((1.0+sqrt(T/(4.*7.036e5))), 1.748) ); /* Verner & Ferland (1996) : ~ Z*AlphaHp_adm[1,T/Z^2] */ //UNCOMMENT LATER
+
+        // UNCOMMENT ALL LATER
+	if(470000.0 / T < 70) {Alphad_adm[i] = 1.9e-3 * pow(T, -1.5) * exp(-470000 / T) * (1. + 0.3 * exp(-94000 / T));}
         if(157809.1 / T < 70) {GammaeH0_adm[i] = 5.85e-11 * sqrt(T) * exp(-157809.1 / T) * Tfact;}
-        if(285335.4 / T < 70) {GammaeHe0_adm[i] = 2.38e-11 * sqrt(T) * exp(-285335.4 / T) * Tfact;}
+        //GammaeH0_adm[i] = (9.0e-18/(2.18e-11))*pow(All.ADM_FineStructure/0.01,2.0)*sqrt(ELECTRONMASS / All.ADM_ElectronMass) * sqrt(1.0e5 / T) * f_integral(y2);
+	if(285335.4 / T < 70) {GammaeHe0_adm[i] = 2.38e-11 * sqrt(T) * exp(-285335.4 / T) * Tfact;}
         if(631515.0 / T < 70) {GammaeHep_adm[i] = 5.68e-12 * sqrt(T) * exp(-631515.0 / T) * Tfact;}
     }
 }
@@ -1233,6 +1242,9 @@ char *GetMultiSpeciesFilename_adm(int i, int hk)
 #endif
 
 
+////////////////////////////////////////////////
+// CHANGE JAMPL_ADM IN FUTURE IF NECESSARY!!! //
+// /////////////////////////////////////////////
 
 /* table input (from file TREECOOL) for ionizing parameters */
 #define JAMPL_ADM	1.0		/* amplitude factor relative to input table */
