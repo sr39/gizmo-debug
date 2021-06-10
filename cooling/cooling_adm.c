@@ -695,7 +695,8 @@ double find_abundances_and_rates_adm(double logT, double rho, int target, double
         double LambdaExc =  LambdaExcH0 + LambdaExcHep;	/* collisional excitation */
 
         double LambdaIonH0 = 2.18e-11 * geH0 * n_elec * nH0;
-        double LambdaIonHe0 = 3.94e-11 * geHe0 * n_elec * nHe0;
+        //double LambdaIonH0 = 0.5 * All.ADM_ElectronMass * pow(C_LIGHT,2.0) * pow(All.ADM_FineStructure,2.0) * geH0 * n_elec * nH0;
+	double LambdaIonHe0 = 3.94e-11 * geHe0 * n_elec * nHe0;
         double LambdaIonHep = 8.72e-11 * geHep * n_elec * nHep;
         double LambdaIon = LambdaIonH0 + LambdaIonHe0 + LambdaIonHep;	/* collisional ionization */
 
@@ -706,7 +707,7 @@ double find_abundances_and_rates_adm(double logT, double rho, int target, double
         double LambdaRecHepd = 6.526e-11 * ad * n_elec * nHep;
         double LambdaRec = LambdaRecHp + LambdaRecHep + LambdaRecHepp + LambdaRecHepd; /* recombination */
 
-        double LambdaFF = bff * (nHp + nHep + 4 * nHepp) * n_elec; /* free-free (Bremsstrahlung) */
+        double LambdaFF = bff * (nHp + nHep + 4 * nHepp) * n_elec; /* free-free (Bremsstrahlung) */	
 
         double Lambda = LambdaExc + LambdaIon + LambdaRec + LambdaFF; /* sum all of the above */
         return Lambda; /* send it back */
@@ -1006,6 +1007,8 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
       nHp = 1.0; nHep = 0; nHepp = yhelium(target); n_elec = nHp + 2.0 * nHepp; /* very hot: H and He both fully ionized */
 
       LambdaFF = 1.42e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - logT) * (5.5 - logT) / 3)) * (nHp + 4 * nHepp) * n_elec; // free-free
+      //LambdaFF = 3.7e-27 * (pow(All.ADM_FineStructure/0.01, 3.0) / pow(All.ADM_ElectronMass/ELECTRONMASS, 1.5)) * sqrt(T) * (nHp + 4*nHepp)*n_elec;
+
       LambdaCompton = evaluate_Compton_heating_cooling_rate_adm(target,T,nHcgs,n_elec,shieldfac); // Compton
 
       Lambda = LambdaFF + DMAX(LambdaCompton,0);
@@ -1131,7 +1134,7 @@ void MakeCoolingTable_adm(void)
 	if(473638. / T < 70.) {BetaHep_adm[i] = 5.54e-17 * pow(T, -0.397) * exp(-473638 / T) * Tfact;} // UNCOMMENT LATER
 
         Betaff_adm[i] = 1.43e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - log10(T)) * (5.5 - log10(T)) / 3)); //UNCOMMENT LATER
-        
+        //Betaff_adm[i] = 3.7e-27 * (pow(All.ADM_FineStructure/0.01, 3.0) / pow(All.ADM_ElectronMass/ELECTRONMASS, 1.5)) * sqrt(T); 
 
         AlphaHp_adm[i] = 7.982e-11 / ( sqrt(T/3.148) * pow((1.0+sqrt(T/3.148)), 0.252) * pow((1.0+sqrt(T/7.036e5)), 1.748) ); /* Verner & Ferland (1996) [more accurate than Cen92] */ //UNCOMMENT LATER 
 	AlphaHep_adm[i]= 9.356e-10 / ( sqrt(T/4.266e-2) * pow((1.0+sqrt(T/4.266e-2)), 0.2108) * pow((1.0+sqrt(T/3.676e7)), 1.7892) ); /* Verner & Ferland (1996) [more accurate than Cen92] */ //UNCOMMENT LATER
@@ -1140,7 +1143,7 @@ void MakeCoolingTable_adm(void)
         // UNCOMMENT ALL LATER
 	if(470000.0 / T < 70) {Alphad_adm[i] = 1.9e-3 * pow(T, -1.5) * exp(-470000 / T) * (1. + 0.3 * exp(-94000 / T));}
         if(157809.1 / T < 70) {GammaeH0_adm[i] = 5.85e-11 * sqrt(T) * exp(-157809.1 / T) * Tfact;}
-        //GammaeH0_adm[i] = (9.0e-18/(2.18e-11))*pow(All.ADM_FineStructure/0.01,2.0)*sqrt(ELECTRONMASS / All.ADM_ElectronMass) * sqrt(1.0e5 / T) * f_integral(y2);
+        //GammaeH0_adm[i] = (2.2e-7)*pow(ELECTRONMASS / All.ADM_ElectronMass,1.5)*sqrt(1.0e5 / T) * f_integral(y2);
 	if(285335.4 / T < 70) {GammaeHe0_adm[i] = 2.38e-11 * sqrt(T) * exp(-285335.4 / T) * Tfact;}
         if(631515.0 / T < 70) {GammaeHep_adm[i] = 5.68e-12 * sqrt(T) * exp(-631515.0 / T) * Tfact;}
     }
