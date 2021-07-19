@@ -28,7 +28,7 @@
 
 #if !defined(CHIMES)
 static double Tmin_adm = -1.0, Tmax_adm = 9.0, deltaT_adm; /* minimum/maximum temp, in log10(T/K) and temperature gridding: will be appropriately set in make_cooling_tables subroutine below */
-static double *BetaH0_adm, *BetaHep_adm, *Betaff_adm, *AlphaHp_adm, *AlphaHep_adm, *Alphad_adm, *AlphaHepp_adm, *GammaeH0_adm, *GammaeHe0_adm, *GammaeHep_adm; // UV background parameters
+static double *BetaH0_adm, *BetaHep_adm, *Betaff_adm, *AlphaHpRate_adm, *AlphaHp_adm, *AlphaHep_adm, *Alphad_adm, *AlphaHepp_adm, *GammaeH0_adm, *GammaeHe0_adm, *GammaeHep_adm; // UV background parameters
 #ifdef COOL_METAL_LINES_BY_SPECIES
 /* if this is enabled, the cooling table files should be in a folder named 'spcool_tables' in the run directory.
  cooling tables can be downloaded at: http://www.tapir.caltech.edu/~phopkins/public/spcool_tables.tgz or on the Bitbucket site (downloads section) */
@@ -472,7 +472,7 @@ double find_abundances_and_rates_adm(double logT, double rho, int target, double
 {
     int j, niter;
     double Tlow, Thi, flow, fhi, t, gJH0ne, gJHe0ne, gJHepne, logT_input, rho_input, ne_input, neold, nenew;
-    double bH0, bHep, bff, aHp, aHep, aHepp, ad, geH0, geHe0, geHep, EPSILON_SMALL=1.e-40;
+    double bH0, bHep, bff, aHpRate, aHp, aHep, aHepp, ad, geH0, geHe0, geHep, EPSILON_SMALL=1.e-40;
     double n_elec, nH0, nHe0, nHp, nHep, nHepp; /* ionization states */
     logT_input = logT; rho_input = rho; ne_input = *ne_guess; /* save inputs (in case of failed convergence below) */
     if(!isfinite(logT)) {logT=Tmin_adm;}    /* nan trap (just in case) */
@@ -538,7 +538,8 @@ double find_abundances_and_rates_adm(double logT, double rho, int target, double
         niter++;
 
         aHp = flow * AlphaHp_adm[j] + fhi * AlphaHp_adm[j + 1];
-        aHep = flow * AlphaHep_adm[j] + fhi * AlphaHep_adm[j + 1];
+        aHpRate = flow*AlphaHpRate_adm[j] + fhi*AlphaHpRate_adm[j+1];
+	aHep = flow * AlphaHep_adm[j] + fhi * AlphaHep_adm[j + 1];
         aHepp = flow * AlphaHepp_adm[j] + fhi * AlphaHepp_adm[j + 1];
         ad = flow * Alphad_adm[j] + fhi * Alphad_adm[j + 1];
         geH0 = flow * GammaeH0_adm[j] + fhi * GammaeH0_adm[j + 1];
@@ -702,7 +703,8 @@ double find_abundances_and_rates_adm(double logT, double rho, int target, double
 
         double T_lin = pow(10.0, logT);
         double LambdaRecHp = 1.036e-16 * T_lin * n_elec * (aHp * nHp);
-        double LambdaRecHep = 1.036e-16 * T_lin * n_elec * (aHep * nHep);
+        //double LambdaRecHp = aHpRate * n_elec * nHp;
+	double LambdaRecHep = 1.036e-16 * T_lin * n_elec * (aHep * nHep);
         double LambdaRecHepp = 1.036e-16 * T_lin * n_elec * (aHepp * nHepp);
         double LambdaRecHepd = 6.526e-11 * ad * n_elec * nHep;
         double LambdaRec = LambdaRecHp + LambdaRecHep + LambdaRecHepp + LambdaRecHepd; /* recombination */
@@ -1095,6 +1097,7 @@ void InitCoolMemory_adm(void)
     BetaH0_adm = (double *) mymalloc("BetaH0_adm", (NCOOLTAB_ADM + 1) * sizeof(double));
     BetaHep_adm = (double *) mymalloc("BetaHep_adm", (NCOOLTAB_ADM + 1) * sizeof(double));
     AlphaHp_adm = (double *) mymalloc("AlphaHp_adm", (NCOOLTAB_ADM + 1) * sizeof(double));
+    AlphaHpRate_adm = (double *) mymalloc("AlphaHpRate_adm", (NCOOLTAB_ADM + 1) * sizeof(double));
     AlphaHep_adm = (double *) mymalloc("AlphaHep_adm", (NCOOLTAB_ADM + 1) * sizeof(double));
     Alphad_adm = (double *) mymalloc("Alphad_adm", (NCOOLTAB_ADM + 1) * sizeof(double));
     AlphaHepp_adm = (double *) mymalloc("AlphaHepp_adm", (NCOOLTAB_ADM + 1) * sizeof(double));
@@ -1119,11 +1122,16 @@ void MakeCoolingTable_adm(void)
     int i; double T,Tfact;
     if(All.MinGasTemp > 0.0) {Tmin_adm = log10(All.MinGasTemp);} else {Tmin_adm=-1.0;} // set minimum temperature in this table to some very low value if zero, where none of the cooling approximations above make sense
     deltaT_adm = (Tmax_adm - Tmin_adm) / NCOOLTAB_ADM;
-    double y2;
+    double y2;    
+    double gtoGeV = 1.0 / (1.79e-24);
+    double TtoGeV = 1.0 / (1.16e13);
+    double InGeVcm = 1.9733e-14;
+    double GeVtoergs = 0.001602;    
+
     /* minimum internal energy for neutral gas */
     for(i = 0; i <= NCOOLTAB_ADM; i++)
     {
-        BetaH0_adm[i] = BetaHep_adm[i] = Betaff_adm[i] = AlphaHp_adm[i] = AlphaHep_adm[i] = AlphaHepp_adm[i] = Alphad_adm[i] = GammaeH0_adm[i] = GammaeHe0_adm[i] = GammaeHep_adm[i] = 0;
+        BetaH0_adm[i] = BetaHep_adm[i] = Betaff_adm[i] = AlphaHp_adm[i] = AlphaHpRate_adm[i] = AlphaHep_adm[i] = AlphaHepp_adm[i] = Alphad_adm[i] = GammaeH0_adm[i] = GammaeHe0_adm[i] = GammaeHep_adm[i] = 0;
         T = pow(10.0, Tmin_adm + deltaT_adm * i);
         Tfact = 1.0 / (1 + sqrt(T / 1.0e5));
 	y2 = All.ADM_ElectronMass * pow(All.ADM_FineStructure, 2.0) * pow(C_LIGHT,2.0) / (2 * BOLTZMANN * T);
@@ -1137,6 +1145,8 @@ void MakeCoolingTable_adm(void)
         //Betaff_adm[i] = 3.7e-27 * (pow(All.ADM_FineStructure/0.01, 3.0) / pow(All.ADM_ElectronMass/ELECTRONMASS, 1.5)) * sqrt(T); 
 
         AlphaHp_adm[i] = 7.982e-11 / ( sqrt(T/3.148) * pow((1.0+sqrt(T/3.148)), 0.252) * pow((1.0+sqrt(T/7.036e5)), 1.748) ); /* Verner & Ferland (1996) [more accurate than Cen92] */ //UNCOMMENT LATER 
+	//AlphaHp_adm[i] = (pow(All.ADM_FineStructure, 5.0) / sqrt(pow(T,3.0) * All.ADM_ElectronMass)) * sqrt(pow(2.0, 11.0) * M_PI / 27.0) * (C_LIGHT * pow(InGeVcm, 2.0) / sqrt(gtoGeV * pow(TtoGeV,3.0)))*recomb_rate_integral(y2);
+	//AlphaHpRate_adm[i] = (pow(All.ADM_FineStructure,5.0)/sqrt(T*All.ADM_ElectronMass))*sqrt(pow(2.0,11.0)*M_PI/27.0)*(C_LIGHT*pow(InGeVcm,2.0)*GeVtoergs/sqrt(gtoGeV*TtoGeV))*recomb_cool_integral(y2);
 	AlphaHep_adm[i]= 9.356e-10 / ( sqrt(T/4.266e-2) * pow((1.0+sqrt(T/4.266e-2)), 0.2108) * pow((1.0+sqrt(T/3.676e7)), 1.7892) ); /* Verner & Ferland (1996) [more accurate than Cen92] */ //UNCOMMENT LATER
         AlphaHepp_adm[i] = 2. * 7.982e-11 / ( sqrt(T/(4.*3.148)) * pow((1.0+sqrt(T/(4.*3.148))), 0.252) * pow((1.0+sqrt(T/(4.*7.036e5))), 1.748) ); /* Verner & Ferland (1996) : ~ Z*AlphaHp_adm[1,T/Z^2] */ //UNCOMMENT LATER
 

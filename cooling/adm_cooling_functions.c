@@ -68,3 +68,56 @@ double f_integral(double y2) {
 }
 
 
+
+///////////////////
+// Recombination //
+///////////////////
+
+
+// Functions to be integrated
+
+double recomb_rate_f(double u, void* params) {
+	double y2 = *(double*)params;
+	double N = 100;
+	double f = 0.0;
+	int i;
+	for(i = 1; i <= N; i++) {
+		f += u * exp(-u * u) / (pow(u, 2.0) * pow(i, 3.0) + y2 * i);
+	}
+	return f;
+}
+
+
+double recomb_cool_f(double u, void* params) {
+	double y2 = *(double*)params;
+	double N = 100;
+	double f = 0.0;
+	int i;
+	for(i = 1; i <= N; i++) {
+		f += pow(u, 3.0) * exp(-u * u) / (pow(u, 2.0) * pow(i, 3.0) + y2 * i);
+	}
+	return f;
+}
+
+
+// Numerical Integrators
+
+double recomb_rate_integral(double y2) {
+	int GSLWORKSIZE = 1000;
+	double result, error;
+	gsl_function F; gsl_integration_workspace* workspace; workspace = gsl_integration_workspace_alloc(GSLWORKSIZE);
+	F.function = &recomb_rate_f; F.params = &y2;
+	gsl_integration_qagiu(&F, 0.0, 0.0, 1.0e-6, GSLWORKSIZE, workspace, &result, &error);
+	gsl_integration_workspace_free(workspace);
+	return result;
+}
+
+double recomb_cool_integral(double y2) {
+	int GSLWORKSIZE = 1000;
+	double result, error;
+	gsl_function F; gsl_integration_workspace* workspace; workspace = gsl_integration_workspace_alloc(GSLWORKSIZE);
+	F.function = &recomb_cool_f; F.params = &y2;
+	gsl_integration_qagiu(&F, 0.0, 0.0, 1.0e-6, GSLWORKSIZE, workspace, &result, &error);
+	gsl_integration_workspace_free(workspace);
+	return result;
+}
