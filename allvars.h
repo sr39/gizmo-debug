@@ -1256,6 +1256,10 @@ typedef unsigned long long peanokey;
 #define  HYDROGEN_MASSFRAC 1.0  /*!< mass fraction of hydrogen, relevant only for radiative cooling */
 #endif
 
+#if defined(ADM)
+#define HYDROGEN_MASSFRAC_ADM 1.0 // mass fraction of dark hydrogen for ADM (relevant only for radiative cooling)
+#endif
+
 #define  MAX_REAL_NUMBER  1e37
 #define  MIN_REAL_NUMBER  1e-37
 
@@ -1316,8 +1320,6 @@ typedef unsigned long long peanokey;
 #define C_LIGHT_CODE_REDUCED    (((RT_SPEEDOFLIGHT_REDUCTION)*((C_LIGHT)/(UNIT_VEL_IN_CGS)))) /* reduced speed-of-light in code units, again here as a convenience function */
 #define H0_CGS                  ((All.HubbleParam*HUBBLE_H100_CGS)) /* actual value of H0 in cgs */
 #define COSMIC_BARYON_DENSITY_CGS ((All.OmegaBaryon*(H0_CGS)*(H0_CGS)*(3./(8.*M_PI*GRAVITY_G))*All.cf_a3inv)) /* cosmic mean baryon density [scale-factor-dependent] in cgs units */
-
-
 
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
 #define HIIRegion_Temp (1.0e4) /* temperature (in K) of heated gas */
@@ -2007,6 +2009,7 @@ extern struct global_data_all_processes
     MyDouble ADM_ProtonMass;	// Dark proton mass 
     MyDouble ADM_FineStructure;	// Dark fine structure constant
     MyDouble ADM_ElectronMass;	// Dark electron mass
+    double MinEgySpec_adm;      /*!< the minimum allowed temperature (for ADM) expressed as energy per unit mass */
 #endif
 
   int MaxPart;			/*!< This gives the maxmimum number of particles that can be stored on one processor. */

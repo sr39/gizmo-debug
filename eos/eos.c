@@ -214,6 +214,14 @@ void check_particle_for_temperature_minimum(int i)
             SphP[i].InternalEnergy = All.MinEgySpec;
             SphP[i].DtInternalEnergy = 0;
         }
+#ifdef ADM
+	if(P[i].adm != 0) { // If ADM particle, use ADM min energy specification
+	    if (SphP[i].InternalEnergy < All.MinEgySpec_adm) {
+	    	SphP[i].InternalEnergy = All.MinEgySpec_adm;
+		SphP[i].DtInternalEnergy = 0;
+	    }
+	}
+#endif
     }
 }
 
@@ -326,6 +334,10 @@ double Get_Gas_Ionized_Fraction(int i)
 /* return an estimate of the Hydrogen molecular fraction of gas, intended for simulations of e.g. molecular clouds, galaxies, and star formation */
 double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral_fraction, double free_electron_ratio, double urad_from_uvb_in_G0)
 {
+#ifdef ADM
+    if(P[i].adm != 0) {return 0;} // if ADM particle, force it to return 0 molecular fraction.
+#endif
+
     /* if tracking chemistry explicitly, return the explicitly-evolved H2 fraction */
 #ifdef CHIMES // use the CHIMES molecular network for H2
     return DMIN(1,DMAX(0, ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_H2]] * 2.0)); // factor 2 converts to mass fraction in molecular gas, as desired
@@ -516,6 +528,9 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 /* return helium -number- fraction, not mass fraction */
 double yhelium(int target)
 {
+#ifdef ADM
+    if(P[target].adm != 0) {return 0;} // if ADM particle, force it to be purely atomic (no dark He)
+#endif
 #ifdef COOL_METAL_LINES_BY_SPECIES
     if(target >= 0) {double ytmp=DMIN(0.5,P[target].Metallicity[1]); return 0.25*ytmp/(1.-ytmp);} else {return ((1.-HYDROGEN_MASSFRAC)/(4.*HYDROGEN_MASSFRAC));}
 #else
@@ -531,6 +546,13 @@ double Get_Gas_Mean_Molecular_Weight_mu(double T_guess, double rho, double *xH0,
     return calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars);
 #elif defined(COOLING)
     double X=HYDROGEN_MASSFRAC, Y=1.-X, Z=0, fmol;
+
+#ifdef ADM
+    if(P[target].adm != 0) { // if ADM particle
+    	return 1. / (1.0 + *ne_guess); // Assuming that fmol_adm=0, H_MASSFRAC_ADM=1, Z_adm=0. Edit this if abandoning that assumption.
+    }
+#endif
+
 #ifdef METALS
     if(target >= 0)
     {

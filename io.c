@@ -299,7 +299,12 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
+#ifdef ADM
+		    if(P[pindex].adm != 0) {*fp++ = DMAX(All.MinEgySpec_adm, SphP[pindex].InternalEnergyPred);}    
+		    else {*fp++ = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergyPred);}
+#else
                     *fp++ = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergyPred);
+#endif
                     n++;
                 }
             break;
@@ -345,9 +350,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #elif (COOL_GRACKLE_CHEMISTRY > 0)
                     *fp++ = SphP[pindex].grHI;
 #else
-                    double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp; u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy); // needs to be in code units
+		    
+		    double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp;
 #ifdef ADM
-		    if(P[pindex].adm == 0) {
+		    if(P[pindex].adm != 0) {u = DMAX(All.MinEgySpec_adm, SphP[pindex].InternalEnergy);} // if ADM particle, use minimum energy for ADM
+		    else {u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy);}
+#else
+		    u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy);
+#endif
+
+#ifdef ADM
+		    if(P[pindex].adm == 0) { // if baryonic (std. model), use normal function. Otherwise, use ADM function.
 		        temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
 		    } else {
                 temp = ThermalProperties_adm(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
@@ -693,7 +706,14 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #if defined(COOL_MOLECFRAC_NONEQM)
                     *fp++ = (MyOutputFloat) SphP[pindex].MolecularMassFraction_perNeutralH; /* more useful to output this particular value, rather than fH2 */
 #else
-                    double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp; u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy); // needs to be in code units
+                    double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp; 
+#ifdef ADM			
+		    if(P[pindex].adm != 0)  {u = DMAX(All.MinEgySpec_adm, SphP[pindex].InternalEnergy);}
+		    else {u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy);}
+#else
+		    u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy);
+#endif
+
 #ifdef ADM
 		    if(P[pindex].adm == 0) {
 		        temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);

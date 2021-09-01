@@ -223,6 +223,12 @@ double get_starformation_rate(int i)
 #endif
     tsfr = sqrt(All.PhysDensThresh / (SphP[i].Density * All.cf_a3inv)) * All.MaxSfrTimescale; /* set default SFR timescale to scale appropriately with the gas dynamical time */
     rateOfSF = P[i].Mass / tsfr; /* 'normal' sfr from density law above */
+    
+    //if(All.PhysDensThresh <= 0) { // if density threshold is 0, then modify equation (otherwise it'll become singular)
+    //	double G = 47500;    
+    //	tsfr = sqrt(1.0/(G*SphP[i].Density * All.cf_a3inv)) * All.MaxSfrTimescale;
+    //	rateOfSF = P[i].Mass / tsfr; 
+    //}
     if(tsfr<=0 || rateOfSF<=0 || flag==0) {return 0;} /* nonsense here, return 0 */
 
 #ifdef GALSF_EFFECTIVE_EQS /* do the SFR calc for the Springel-Hernquist EOS, before any 'fancy' sf criteria, when above-threshold, or else risk incorrect entropies */

@@ -538,6 +538,10 @@ void set_units(void)
     }
 
     double meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC); /* assumes fully-atomic otherwise */
+#ifdef ADM
+    double meanweight_adm = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC_ADM); /* assumes fully-atomic otherwise */
+    All.MinEgySpec_adm = All.MinGasTemp / (meanweight_adm * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS * All.ADM_ProtonMass/PROTONMASS);
+#endif
 #ifdef COOL_LOW_TEMPERATURES
     meanweight = 1. / ( HYDROGEN_MASSFRAC*0.5 + (1-HYDROGEN_MASSFRAC)/4. + 1./(16.+12.)); /* assumes fully-molecular if low-temp cooling enabled */
 #endif

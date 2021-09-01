@@ -218,8 +218,15 @@ void drift_particle(int i, integertime time1)
 #else
             if(etmp<0.5*SphP[i].InternalEnergyPred) {SphP[i].InternalEnergyPred *= 0.5;} else {SphP[i].InternalEnergyPred=etmp;}
 #endif
-            if(SphP[i].InternalEnergyPred<All.MinEgySpec) SphP[i].InternalEnergyPred=All.MinEgySpec;
+
+#ifdef ADM
+	if(P[i].adm != 0) {if(SphP[i].InternalEnergyPred<All.MinEgySpec_adm) SphP[i].InternalEnergyPred=All.MinEgySpec_adm;}
+        else {if(SphP[i].InternalEnergyPred<All.MinEgySpec) SphP[i].InternalEnergyPred=All.MinEgySpec;}
+#else
+	if(SphP[i].InternalEnergyPred<All.MinEgySpec) SphP[i].InternalEnergyPred=All.MinEgySpec;
+#endif
             
+
 #ifdef HYDRO_PRESSURE_SPH
             SphP[i].EgyWtDensity *= exp(-divv_fac);
 #endif

@@ -60,7 +60,7 @@ void do_the_cooling_for_particle_adm(int i)
 #ifdef COOL_MOLECFRAC_NONEQM
         update_explicit_molecular_fraction_adm(i, 0.5*dtime*UNIT_TIME_IN_CGS); // if we're doing the H2 explicitly with this particular model, we update it in two half-steps before and after the main cooling step
 #endif
-        double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
+        double uold = DMAX(All.MinEgySpec_adm, SphP[i].InternalEnergy);
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
         double uion=HIIRegion_Temp/(0.59*(5./3.-1.)*U_TO_TEMP_UNITS); if(SphP[i].DelayTimeHII>0) {if(uold<uion) {uold=uion;}} /* u_old should be >= ionized temp if used here [unless using newer model] */
 #endif
@@ -83,7 +83,7 @@ void do_the_cooling_for_particle_adm(int i)
         SphP[i].DtInternalEnergy = DMAX(SphP[i].DtInternalEnergy , -0.99*SphP[i].InternalEnergy/dtime ); // equivalent to saying this wouldn't lower internal energy to below 1% in one timestep
         SphP[i].DtInternalEnergy = DMIN(SphP[i].DtInternalEnergy ,  1.e4*SphP[i].InternalEnergy/dtime ); // equivalent to saying we cant massively enhance internal energy in a single timestep from the hydro work terms: should be big, since just numerical [shocks are real!]
         /* and convert to cgs before use in the cooling sub-routine */
-        SphP[i].DtInternalEnergy *= (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS/HYDROGEN_MASSFRAC);
+        SphP[i].DtInternalEnergy *= (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (All.ADM_ProtonMass/HYDROGEN_MASSFRAC_ADM);
 #endif
 
 
@@ -176,7 +176,7 @@ double DoCooling_adm(double u_old, double rho, double dt, double ne_guess, int t
 #ifndef COOLING_OPERATOR_SPLIT
     /* because grackle uses a pre-defined set of libraries, we can't properly incorporate the hydro heating
      into the cooling subroutine. instead, we will use the approximate treatment below to split the step */
-    du = dt * SphP[target].DtInternalEnergy / ( (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS/HYDROGEN_MASSFRAC));
+    du = dt * SphP[target].DtInternalEnergy / ( (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (All.ADM_ProtonMass/HYDROGEN_MASSFRAC_ADM));
     u_old += 0.5*du;
     u = CallGrackle(u_old, rho, dt, ne_guess, target, 0);
     /* now we attempt to correct for what the solution would have been if we had included the remaining half-step heating
@@ -221,7 +221,7 @@ double DoCooling_adm(double u_old, double rho, double dt, double ne_guess, int t
     rho *= UNIT_DENSITY_IN_CGS;	/* convert to physical cgs units */
     u_old *= UNIT_SPECEGY_IN_CGS;
     dt *= UNIT_TIME_IN_CGS;
-    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
+    double nHcgs = HYDROGEN_MASSFRAC_ADM * rho / All.ADM_ProtonMass;	/* hydrogen number dens in cgs units */
     ratefact = nHcgs * nHcgs / rho;
 
     u = u_old; u_lower = u; u_upper = u; /* initialize values */
@@ -302,7 +302,7 @@ double GetCoolingTime_adm(double u_old, double rho, double ne_guess, int target)
 #else
     rho *= UNIT_DENSITY_IN_CGS;	/* convert to physical cgs units */
     u_old *= UNIT_SPECEGY_IN_CGS;
-    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
+    double nHcgs = HYDROGEN_MASSFRAC_ADM * rho / All.ADM_ProtonMass;	/* hydrogen number dens in cgs units */
     double LambdaNet = CoolingRateFromU_adm(u_old, rho, ne_guess, target);
     if(LambdaNet >= 0) {return 0;} /* net heating due to UV background */
     return u_old / (-(nHcgs * nHcgs / rho) * LambdaNet) / UNIT_TIME_IN_CGS;
@@ -323,7 +323,7 @@ double DoInstabilityCooling_adm(double m_old, double u, double rho, double dt, d
     u *= UNIT_SPECEGY_IN_CGS;
     dt *= UNIT_TIME_IN_CGS;
     fac /= UNIT_SPECEGY_IN_CGS;
-    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
+    double nHcgs = HYDROGEN_MASSFRAC_ADM * rho / All.ADM_ProtonMass;	/* hydrogen number dens in cgs units */
     ratefact = nHcgs * nHcgs / rho * fac;
     m = m_old; m_lower = m; m_upper = m;
     LambdaNet = CoolingRateFromU_adm(u, rho, ne_guess, target);
@@ -383,7 +383,7 @@ double convert_u_to_temp_adm(double u, double rho, int target, double *ne_guess,
     int iter = 0;
     double temp, temp_old, temp_old_old = 0, temp_new, prefac_fun_old, prefac_fun, fac, err_old, err_new, T_bracket_errneg = 0, T_bracket_errpos = 0, T_bracket_min = 0, T_bracket_max = 1.e20, bracket_sign = 0; // double max = 0;
     double u_input = u, rho_input = rho, temp_guess;
-    double T_0 = u * PROTONMASS / BOLTZMANN; // this is the dimensional temperature, which since u is fixed is -frozen- in this calculation: we can work dimensionlessly below
+    double T_0 = u * All.ADM_ProtonMass / BOLTZMANN; // this is the dimensional temperature, which since u is fixed is -frozen- in this calculation: we can work dimensionlessly below
     temp_guess = (GAMMA(target)-1) * T_0; // begin assuming mu ~ 1
     *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp_guess, rho, nH0_guess, ne_guess, 0., target); // get mu with that temp
     prefac_fun = (GAMMA(target)-1) * (*mu_guess); // dimensionless pre-factor determining the temperature
@@ -513,7 +513,7 @@ double find_abundances_and_rates_adm(double logT, double rho, int target, double
     }
     /* CAFG: this is the density that we should use for UV background threshold */
     double local_gammamultiplier = return_local_gammamultiplier_adm(target); // account for local UVB terms in some expressions below
-    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
+    double nHcgs = HYDROGEN_MASSFRAC_ADM * rho / All.ADM_ProtonMass;	/* hydrogen number dens in cgs units */
     if(shieldfac < 0) {shieldfac = return_uvb_shieldfac_adm(target, local_gammamultiplier*gJH0_adm/1.0e-12, nHcgs, logT);} // if < 0, that's a key to tell us this needs to be recalculated
     n_elec = *ne_guess; if(!isfinite(n_elec)) {n_elec=1;}
     neold = n_elec; niter = 0;
@@ -749,7 +749,7 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
     double n_elec=n_elec_guess, nH0, nHe0, nHp, nHep, nHepp, mu; /* ionization states [computed below] */
     double Lambda, Heat, LambdaFF, LambdaCompton, LambdaExcH0, LambdaExcHep, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
     double LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, T, shieldfac, LambdaMol, LambdaMetal;
-    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
+    double nHcgs = HYDROGEN_MASSFRAC_ADM * rho / All.ADM_ProtonMass;	/* hydrogen number dens in cgs units */
     LambdaMol=0; LambdaMetal=0; LambdaCompton=0;
     if(logT <= Tmin_adm) {logT = Tmin_adm + 0.5 * deltaT_adm;}	/* floor at Tmin_adm */
     if(!isfinite(rho)) {return 0;}

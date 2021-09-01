@@ -34,6 +34,9 @@ void read_ic(char *fname)
 {
     long i; int num_files, rest_files, ngroups, gr, filenr, primaryTask, lastTask, groupTaskIterator;
     double u_init, molecular_weight; char buf[500];
+#ifdef ADM
+    double u_init_adm, molecular_weight_adm;
+#endif
 
     CPU_Step[CPU_MISC] += measure_time();
 
@@ -137,6 +140,11 @@ void read_ic(char *fname)
 #endif
 
     u_init = All.InitGasTemp / ((GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS);
+#ifdef ADM
+    u_init_adm = All.InitGasTemp / ((GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS * All.ADM_ProtonMass/PROTONMASS);
+    molecular_weight_adm = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC_ADM)); /* assume full ionization */
+    u_init_adm /= molecular_weight_adm;
+#endif
 
     molecular_weight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC)); /* assume full ionization */
     if(All.InitGasTemp < 1.0e4) {molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC);} /* assume neutral gas */
@@ -159,11 +167,21 @@ void read_ic(char *fname)
                            All.InitGasTemp,All.InitGasU,All.MinEgySpec,SphP[i].InternalEnergy);}
 
                 SphP[i].InternalEnergy = All.InitGasU;
+#ifdef ADM
+		if(P[i].adm != 0) {SphP[i].InternalEnergy = u_init_adm;}
+#endif
             }
         }
     }
 
-    for(i = 0; i < N_gas; i++) {SphP[i].InternalEnergyPred = SphP[i].InternalEnergy = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);}
+    for(i = 0; i < N_gas; i++) {
+#ifdef ADM
+	if(P[i].adm != 0) {SphP[i].InternalEnergyPred = SphP[i].InternalEnergy = DMAX(All.MinEgySpec_adm, SphP[i].InternalEnergy);}
+	else {SphP[i].InternalEnergyPred = SphP[i].InternalEnergy = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);}
+#else
+	SphP[i].InternalEnergyPred = SphP[i].InternalEnergy = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);    
+#endif
+    }
     MPI_Barrier(MPI_COMM_WORLD);
     if(ThisTask == 0) {printf("Reading done. Total number of particles :  %d%09d\n\n", (int) (All.TotNumPart / 1000000000), (int) (All.TotNumPart % 1000000000)); fflush(stdout);}
 

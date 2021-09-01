@@ -6,7 +6,6 @@ printf(
 "        ALLOW_IMBALANCED_GASPARTICLELOAD\n"
 "        GALSF\n"
 "        ADAPTIVE_GRAVSOFT_FORGAS\n"
-"        SELFGRAVITY_OFF\n"
 "        GRAVITY_ANALYTIC\n"
 "        ADM\n"
 "        EOS_GAMMA=(5.0/3.0)\n"
