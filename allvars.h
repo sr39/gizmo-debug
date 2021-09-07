@@ -1257,7 +1257,10 @@ typedef unsigned long long peanokey;
 #endif
 
 #if defined(ADM)
-#define HYDROGEN_MASSFRAC_ADM 1.0 // mass fraction of dark hydrogen for ADM (relevant only for radiative cooling)
+#define HYDROGEN_MASSFRAC_ADM 0.76 // mass fraction of dark hydrogen for ADM (relevant only for radiative cooling)
+#ifdef GALSF
+#define CritPhysDensity_ADM 1.0e-4 // low density (cm^-3) threshold
+#endif
 #endif
 
 #define  MAX_REAL_NUMBER  1e37

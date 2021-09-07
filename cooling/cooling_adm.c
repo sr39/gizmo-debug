@@ -695,15 +695,15 @@ double find_abundances_and_rates_adm(double logT, double rho, int target, double
         double LambdaExcHep = bHep * n_elec * nHep;
         double LambdaExc =  LambdaExcH0 + LambdaExcHep;	/* collisional excitation */
 
-        double LambdaIonH0 = 2.18e-11 * geH0 * n_elec * nH0;
-        //double LambdaIonH0 = 0.5 * All.ADM_ElectronMass * pow(C_LIGHT,2.0) * pow(All.ADM_FineStructure,2.0) * geH0 * n_elec * nH0;
+        //double LambdaIonH0 = 2.18e-11 * geH0 * n_elec * nH0; // GIZMO Rate
+        double LambdaIonH0 = 0.5 * All.ADM_ElectronMass * pow(C_LIGHT,2.0) * pow(All.ADM_FineStructure,2.0) * geH0 * n_elec * nH0; // ADM Rate
 	double LambdaIonHe0 = 3.94e-11 * geHe0 * n_elec * nHe0;
         double LambdaIonHep = 8.72e-11 * geHep * n_elec * nHep;
         double LambdaIon = LambdaIonH0 + LambdaIonHe0 + LambdaIonHep;	/* collisional ionization */
 
         double T_lin = pow(10.0, logT);
-        double LambdaRecHp = 1.036e-16 * T_lin * n_elec * (aHp * nHp);
-        //double LambdaRecHp = aHpRate * n_elec * nHp;
+        //double LambdaRecHp = 1.036e-16 * T_lin * n_elec * (aHp * nHp); // GIZMO rate
+        double LambdaRecHp = aHpRate * n_elec * nHp; // ADM Rate
 	double LambdaRecHep = 1.036e-16 * T_lin * n_elec * (aHep * nHep);
         double LambdaRecHepp = 1.036e-16 * T_lin * n_elec * (aHepp * nHepp);
         double LambdaRecHepd = 6.526e-11 * ad * n_elec * nHep;
@@ -1008,8 +1008,8 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
       Heat = LambdaExcH0 = LambdaExcHep = LambdaIonH0 = LambdaIonHe0 = LambdaIonHep = LambdaRecHp = LambdaRecHep = LambdaRecHepp = LambdaRecHepd = 0;
       nHp = 1.0; nHep = 0; nHepp = yhelium(target); n_elec = nHp + 2.0 * nHepp; /* very hot: H and He both fully ionized */
 
-      LambdaFF = 1.42e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - logT) * (5.5 - logT) / 3)) * (nHp + 4 * nHepp) * n_elec; // free-free
-      //LambdaFF = 3.7e-27 * (pow(All.ADM_FineStructure/0.01, 3.0) / pow(All.ADM_ElectronMass/ELECTRONMASS, 1.5)) * sqrt(T) * (nHp + 4*nHepp)*n_elec;
+      //LambdaFF = 1.42e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - logT) * (5.5 - logT) / 3)) * (nHp + 4 * nHepp) * n_elec; // free-free GIZMO Rate
+      LambdaFF = 3.7e-27 * (pow(All.ADM_FineStructure/0.01, 3.0) / pow(All.ADM_ElectronMass/ELECTRONMASS, 1.5)) * sqrt(T) * (nHp + 4*nHepp)*n_elec; // ADM Rate
 
       LambdaCompton = evaluate_Compton_heating_cooling_rate_adm(target,T,nHcgs,n_elec,shieldfac); // Compton
 
@@ -1135,27 +1135,27 @@ void MakeCoolingTable_adm(void)
         T = pow(10.0, Tmin_adm + deltaT_adm * i);
         Tfact = 1.0 / (1 + sqrt(T / 1.0e5));
 	y2 = All.ADM_ElectronMass * pow(All.ADM_FineStructure, 2.0) * pow(C_LIGHT,2.0) / (2 * BOLTZMANN * T);
-	//BetaH0_adm[i] = 7.4e-18 * pow(All.ADM_FineStructure/0.01,2.0) * sqrt(ELECTRONMASS / All.ADM_ElectronMass) *  sqrt(1.0e5/T) * g_integral(y2);
+	BetaH0_adm[i] = 7.4e-18 * pow(All.ADM_FineStructure/0.01,2.0) * sqrt(ELECTRONMASS / All.ADM_ElectronMass) *  sqrt(1.0e5/T) * g_integral(y2);
 	//printf("BetaH0_i = %.10e\n", BetaH0_adm[i]);
-	if(118348. / T < 70.) {BetaH0_adm[i] = 7.5e-19 * exp(-118348 / T) * Tfact;}
+	//if(118348. / T < 70.) {BetaH0_adm[i] = 7.5e-19 * exp(-118348 / T) * Tfact;}
         
 	if(473638. / T < 70.) {BetaHep_adm[i] = 5.54e-17 * pow(T, -0.397) * exp(-473638 / T) * Tfact;} // UNCOMMENT LATER
 
-        Betaff_adm[i] = 1.43e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - log10(T)) * (5.5 - log10(T)) / 3)); //UNCOMMENT LATER
-        //Betaff_adm[i] = 3.7e-27 * (pow(All.ADM_FineStructure/0.01, 3.0) / pow(All.ADM_ElectronMass/ELECTRONMASS, 1.5)) * sqrt(T); 
+        //Betaff_adm[i] = 1.43e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - log10(T)) * (5.5 - log10(T)) / 3)); //UNCOMMENT LATER
+        Betaff_adm[i] = 3.7e-27 * (pow(All.ADM_FineStructure/0.01, 3.0) / pow(All.ADM_ElectronMass/ELECTRONMASS, 1.5)) * sqrt(T); 
 
-        AlphaHp_adm[i] = 7.982e-11 / ( sqrt(T/3.148) * pow((1.0+sqrt(T/3.148)), 0.252) * pow((1.0+sqrt(T/7.036e5)), 1.748) ); /* Verner & Ferland (1996) [more accurate than Cen92] */ //UNCOMMENT LATER 
-	//AlphaHp_adm[i] = (pow(All.ADM_FineStructure, 5.0) / sqrt(pow(T,3.0) * All.ADM_ElectronMass)) * sqrt(pow(2.0, 11.0) * M_PI / 27.0) * (C_LIGHT * pow(InGeVcm, 2.0) / sqrt(gtoGeV * pow(TtoGeV,3.0)))*recomb_rate_integral(y2);
-	//AlphaHpRate_adm[i] = (pow(All.ADM_FineStructure,5.0)/sqrt(T*All.ADM_ElectronMass))*sqrt(pow(2.0,11.0)*M_PI/27.0)*(C_LIGHT*pow(InGeVcm,2.0)*GeVtoergs/sqrt(gtoGeV*TtoGeV))*recomb_cool_integral(y2);
+        //AlphaHp_adm[i] = 7.982e-11 / ( sqrt(T/3.148) * pow((1.0+sqrt(T/3.148)), 0.252) * pow((1.0+sqrt(T/7.036e5)), 1.748) ); /* Verner & Ferland (1996) [more accurate than Cen92] */ //UNCOMMENT LATER 
+	AlphaHp_adm[i] = (pow(All.ADM_FineStructure, 5.0) / sqrt(pow(T,3.0) * All.ADM_ElectronMass)) * sqrt(pow(2.0, 11.0) * M_PI / 27.0) * (C_LIGHT * pow(InGeVcm, 2.0) / sqrt(gtoGeV * pow(TtoGeV,3.0)))*recomb_rate_integral(y2);
+	AlphaHpRate_adm[i] = (pow(All.ADM_FineStructure,5.0)/sqrt(T*All.ADM_ElectronMass))*sqrt(pow(2.0,11.0)*M_PI/27.0)*(C_LIGHT*pow(InGeVcm,2.0)*GeVtoergs/sqrt(gtoGeV*TtoGeV))*recomb_cool_integral(y2);
 	AlphaHep_adm[i]= 9.356e-10 / ( sqrt(T/4.266e-2) * pow((1.0+sqrt(T/4.266e-2)), 0.2108) * pow((1.0+sqrt(T/3.676e7)), 1.7892) ); /* Verner & Ferland (1996) [more accurate than Cen92] */ //UNCOMMENT LATER
         AlphaHepp_adm[i] = 2. * 7.982e-11 / ( sqrt(T/(4.*3.148)) * pow((1.0+sqrt(T/(4.*3.148))), 0.252) * pow((1.0+sqrt(T/(4.*7.036e5))), 1.748) ); /* Verner & Ferland (1996) : ~ Z*AlphaHp_adm[1,T/Z^2] */ //UNCOMMENT LATER
 
-        // UNCOMMENT ALL LATER
-	if(470000.0 / T < 70) {Alphad_adm[i] = 1.9e-3 * pow(T, -1.5) * exp(-470000 / T) * (1. + 0.3 * exp(-94000 / T));}
-        if(157809.1 / T < 70) {GammaeH0_adm[i] = 5.85e-11 * sqrt(T) * exp(-157809.1 / T) * Tfact;}
-        //GammaeH0_adm[i] = (2.2e-7)*pow(ELECTRONMASS / All.ADM_ElectronMass,1.5)*sqrt(1.0e5 / T) * f_integral(y2);
-	if(285335.4 / T < 70) {GammaeHe0_adm[i] = 2.38e-11 * sqrt(T) * exp(-285335.4 / T) * Tfact;}
-        if(631515.0 / T < 70) {GammaeHep_adm[i] = 5.68e-12 * sqrt(T) * exp(-631515.0 / T) * Tfact;}
+        
+	if(470000.0 / T < 70) {Alphad_adm[i] = 1.9e-3 * pow(T, -1.5) * exp(-470000 / T) * (1. + 0.3 * exp(-94000 / T));} // GIZMO rate
+        //if(157809.1 / T < 70) {GammaeH0_adm[i] = 5.85e-11 * sqrt(T) * exp(-157809.1 / T) * Tfact;} // GIZMO rate
+        GammaeH0_adm[i] = (2.2e-7)*pow(ELECTRONMASS / All.ADM_ElectronMass,1.5)*sqrt(1.0e5 / T) * f_integral(y2);
+	if(285335.4 / T < 70) {GammaeHe0_adm[i] = 2.38e-11 * sqrt(T) * exp(-285335.4 / T) * Tfact;} // GIZMO rate
+        if(631515.0 / T < 70) {GammaeHep_adm[i] = 5.68e-12 * sqrt(T) * exp(-631515.0 / T) * Tfact;} // GIZMO rate
     }
 }
 
@@ -1260,7 +1260,7 @@ char *GetMultiSpeciesFilename_adm(int i, int hk)
 // /////////////////////////////////////////////
 
 /* table input (from file TREECOOL) for ionizing parameters */
-#define JAMPL_ADM	1.0		/* amplitude factor relative to input table */
+#define JAMPL_ADM	0.0		/* amplitude factor relative to input table */
 #define TABLESIZE_ADM 250		/* Max # of lines in TREECOOL */
 static float inlogz_adm[TABLESIZE_ADM];
 static double gH0_adm[TABLESIZE_ADM], gHe_adm[TABLESIZE_ADM], gHep_adm[TABLESIZE_ADM]; // upgrade from float to double, should read fine
@@ -1821,18 +1821,18 @@ double return_electron_fraction_from_heavy_ions_adm(int target, double temperatu
 double evaluate_Compton_heating_cooling_rate_adm(int target, double T, double nHcgs, double n_elec, double shielding_factor_for_exgalbg)
 {
     double Lambda = 0;
-    double compton_prefac_eV = 2.16e-35 / nHcgs; // multiply field in eV/cm^3 by this and temperature difference to obtain rate
+    //double compton_prefac_eV = 2.16e-35 / nHcgs; // multiply field in eV/cm^3 by this and temperature difference to obtain rate
 
-    double e_CMB_eV=0.262*All.cf_a3inv/All.cf_atime, T_cmb = 2.73/All.cf_atime; // CMB [energy in eV/cm^3, T in K]
-    Lambda += compton_prefac_eV * n_elec * e_CMB_eV * (T-T_cmb);
+    //double e_CMB_eV=0.262*All.cf_a3inv/All.cf_atime, T_cmb = 2.73/All.cf_atime; // CMB [energy in eV/cm^3, T in K]
+    //Lambda += compton_prefac_eV * n_elec * e_CMB_eV * (T-T_cmb);
 
-    double e_UVB_eV = shielding_factor_for_exgalbg * 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // this comes from the cosmic optical+UV backgrounds. small correction, so treat simply, and ignore when self-shielded.
-    Lambda += compton_prefac_eV * n_elec * e_UVB_eV * (T-2.e4); // assume very crude approx Compton temp ~2e4 for UVB
+    //double e_UVB_eV = shielding_factor_for_exgalbg * 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // this comes from the cosmic optical+UV backgrounds. small correction, so treat simply, and ignore when self-shielded.
+    //Lambda += compton_prefac_eV * n_elec * e_UVB_eV * (T-2.e4); // assume very crude approx Compton temp ~2e4 for UVB
 
-//    double compton_prefac_eV = 1.9e-37/nHcgs; // multiply field in eV/cm^3 by this and temperature difference to obtain rate
+    double compton_prefac_eV = 1.9e-37/nHcgs; // multiply field in eV/cm^3 by this and temperature difference to obtain rate
 
-//    double e_CMB_eV=pow(ELECTRONMASS/All.ADM_ElectronMass,3.0)*pow(All.ADM_FineStructure/0.01,2), T_cmb = 1.35/All.cf_atime; // CMB [energy in eV/cm^3, T in K]
-//    Lambda += compton_prefac_eV * n_elec * e_CMB_eV * (T-T_cmb) * pow(T_cmb, 4.0);
+    double e_CMB_eV=pow(ELECTRONMASS/All.ADM_ElectronMass,3.0)*pow(All.ADM_FineStructure/0.01,2), T_cmb = 1.35/All.cf_atime; // CMB [energy in eV/cm^3, T in K]
+    Lambda += compton_prefac_eV * n_elec * e_CMB_eV * (T-T_cmb) * pow(T_cmb, 4.0);
 
 //    double e_UVB_eV = shielding_factor_for_exgalbg * 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // this comes from the cosmic optical+UV backgrounds. small correction, so treat simply, and ignore when self-shielded.
 //    Lambda += compton_prefac_eV * n_elec * e_UVB_eV * (T-2.e4); // assume very crude approx Compton temp ~2e4 for UVB

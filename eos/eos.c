@@ -529,7 +529,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 double yhelium(int target)
 {
 #ifdef ADM
-    if(P[target].adm != 0) {return 0;} // if ADM particle, force it to be purely atomic (no dark He)
+    if(P[target].adm != 0) {return ((1.-HYDROGEN_MASSFRAC_ADM)/(4.*HYDROGEN_MASSFRAC_ADM));} // if ADM particle, force it to be purely atomic (no dark He)
 #endif
 #ifdef COOL_METAL_LINES_BY_SPECIES
     if(target >= 0) {double ytmp=DMIN(0.5,P[target].Metallicity[1]); return 0.25*ytmp/(1.-ytmp);} else {return ((1.-HYDROGEN_MASSFRAC)/(4.*HYDROGEN_MASSFRAC));}

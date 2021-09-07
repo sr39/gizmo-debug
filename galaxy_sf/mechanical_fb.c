@@ -207,6 +207,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     if(local.Hsml<=0) {return 0;} // zero-extent kernel, no particles //
     h2 = local.Hsml*local.Hsml; kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
     double unitlength_in_kpc=UNIT_LENGTH_IN_KPC * All.cf_atime, density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS; // some units (just used below, but handy to define for clarity) //
+#ifdef ADM
+    if(local.adm != 0) {density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS*PROTONMASS/All.ADM_ProtonMass;}
+#endif
 
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
     double CR_energy_to_inject = 0; // account for energy going into CRs, so we don't 'double count' //
@@ -503,6 +506,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double h2 = local.Hsml*local.Hsml; kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0; // define the kernel zero-point value, needed to prevent some nasty behavior when no neighbors found
     kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4); // define kernel quantities
     double unitlength_in_kpc= UNIT_LENGTH_IN_KPC * All.cf_atime, density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS;
+#ifdef ADM
+    if(local.adm != 0) {density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS*PROTONMASS/All.ADM_ProtonMass;}
+#endif
 
     // now define quantities that will be used below //
     double psi_cool=1, psi_egycon=1, v_ejecta_eff=local.SNe_v_ejecta;

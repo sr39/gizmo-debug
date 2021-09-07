@@ -400,12 +400,14 @@ void star_formation_parent_routine(void)
 
         /* check whether an initial (not fully-complete!) conditions for star formation are fulfilled for a given particle */
         if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh) {flag = 0;} // if sufficiently dense, go forward into SF routine //
+	if(All.ComovingIntegrationOn) {if(SphP[i].Density < All.OverDensThresh) {flag = 1;}} // (additional density check for cosmological runs) //
 #ifdef ADM
-        if(P[i].adm != 0) { //if ADM particle
-                if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh) {flag = 0;} // if sufficiently dense, go forward into SF routine //
+        double PhysDensThresh_ADM = CritPhysDensity_ADM / (HYDROGEN_MASSFRAC_ADM * UNIT_DENSITY_IN_NHCGS * PROTONMASS/All.ADM_ProtonMass); 
+	if(P[i].adm != 0) { //if ADM particle
+                //if(SphP[i].Density * All.cf_a3inv >= PhysDensThresh_ADM) {flag = 0;} // if sufficiently dense, go forward into SF routine //
+		if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh) {flag = 0;}
         }
 #endif
-        if(All.ComovingIntegrationOn) {if(SphP[i].Density < All.OverDensThresh) {flag = 1;}} // (additional density check for cosmological runs) //
 
 #ifdef GALSF_SUBGRID_WINDS
         if(SphP[i].DelayTime > 0) {flag=1; SphP[i].DelayTime -= dtime;} /* no star formation for particles in the wind; update our wind delay-time calculations */
@@ -551,8 +553,17 @@ void star_formation_parent_routine(void)
                 P[i].SinkRadius = All.ForceSoftening[5];
                 double cs = 0.2 / UNIT_VEL_IN_KMS;
 #if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) || defined(EOS_GMC_BAROTROPIC)
-                double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
+		double nHcgs;
+#ifdef ADM
+		if(P[i].adm != 0) {nHcgs = HYDROGEN_MASSFRAC_ADM * (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS * PROTONMASS/All.ADM_ProtonMass);}
+		else{
+			nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
+			if(nHcgs > 1e10) cs *= pow(nHcgs/1e10, 1./5); // if we're getting opacity-limited then we can set a smaller sink radius, since cs ~ n^1/5	
+		}
+#else
+                nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
                 if(nHcgs > 1e10) cs *= pow(nHcgs/1e10, 1./5); // if we're getting opacity-limited then we can set a smaller sink radius, since cs ~ n^1/5
+#endif
 #endif
                 P[i].SinkRadius = DMAX(0.79 * P[i].Mass * All.G / (cs * cs), All.ForceSoftening[5]); // volume-equivalent particle radius R= (3V/(4PI))^(1/3) at the density where cell length = Jeans length/2
 #endif

@@ -11,6 +11,7 @@ printf(
 "        EOS_GAMMA=(5.0/3.0)\n"
 "        COOLING\n"
 "        HYDRO_MESHLESS_FINITE_MASS\n"
+"        GALSF_SFR_VIRIAL_SF_CRITERION=1\n"
 "        MULTIPLEDOMAINS=64\n"
 "\n");
 }

@@ -38,8 +38,9 @@ double get_starformation_rate_adm(int i)
 #ifdef BH_WIND_SPAWN
     if(P[i].ID == All.AGNWindID) {flag=0;} /* spawned hyper-resolution elements not eligible for SF */
 #endif
-    if(All.ComovingIntegrationOn && SphP[i].Density < All.OverDensThresh) {flag=0;} /* below overdensity threshold required for SF */
-    if(SphP[i].Density*All.cf_a3inv < All.PhysDensThresh) {flag=0;} /* below physical density threshold */
+    // FURTHER DENSITY CHECKS. EDIT IF NECESSARY.
+    // if(All.ComovingIntegrationOn && SphP[i].Density < All.OverDensThresh) {flag=0;} /* below overdensity threshold required for SF */
+    // if(SphP[i].Density*All.cf_a3inv < All.PhysDensThresh) {flag=0;} /* below physical density threshold */
 #if defined(GALSF_SFR_VIRIAL_CRITERION_TIMEAVERAGED)
     if(flag==0) {SphP[i].AlphaVirial_SF_TimeSmoothed=0;} /* for time-smoothed virial param, reset to nil if fall below threshold */
 #endif
