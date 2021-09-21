@@ -1252,14 +1252,15 @@ typedef unsigned long long peanokey;
 
 #if !defined(RT_HYDROGEN_GAS_ONLY) || defined(RT_CHEM_PHOTOION_HE)
 #define  HYDROGEN_MASSFRAC 0.76 /*!< mass fraction of hydrogen, relevant only for radiative cooling */
+//#define  HYDROGEN_MASSFRAC 1.0
 #else
 #define  HYDROGEN_MASSFRAC 1.0  /*!< mass fraction of hydrogen, relevant only for radiative cooling */
 #endif
 
 #if defined(ADM)
-#define HYDROGEN_MASSFRAC_ADM 0.76 // mass fraction of dark hydrogen for ADM (relevant only for radiative cooling)
+#define HYDROGEN_MASSFRAC_ADM 1.0 // mass fraction of dark hydrogen for ADM (relevant only for radiative cooling)
 #ifdef GALSF
-#define CritPhysDensity_ADM 1.0e-4 // low density (cm^-3) threshold
+#define CritPhysDensity_ADM 1.0e-6 // low density (cm^-3) threshold
 #endif
 #endif
 

@@ -404,8 +404,8 @@ void star_formation_parent_routine(void)
 #ifdef ADM
         double PhysDensThresh_ADM = CritPhysDensity_ADM / (HYDROGEN_MASSFRAC_ADM * UNIT_DENSITY_IN_NHCGS * PROTONMASS/All.ADM_ProtonMass); 
 	if(P[i].adm != 0) { //if ADM particle
-                //if(SphP[i].Density * All.cf_a3inv >= PhysDensThresh_ADM) {flag = 0;} // if sufficiently dense, go forward into SF routine //
-		if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh) {flag = 0;}
+                if(SphP[i].Density * All.cf_a3inv >= PhysDensThresh_ADM) {flag = 0;} // if sufficiently dense, go forward into SF routine //
+		//if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh) {flag = 0;}
         }
 #endif
 

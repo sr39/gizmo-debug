@@ -390,6 +390,9 @@ void init(void)
         if(RestartFlag == 0) {
 #if defined(INIT_STELLAR_METALS_AGES_DEFINED)
             P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
+#ifdef ADM
+	    if(P[i].adm != 0) {P[i].Metallicity[0] = 0;}
+#endif
 #else
             P[i].Metallicity[0] = 0;
 #endif
@@ -397,6 +400,12 @@ void init(void)
             for(j=0;j<NUM_METAL_SPECIES;j++) {P[i].Metallicity[j]=All.SolarAbundances[j]*(P[i].Metallicity[0]/All.SolarAbundances[0]);}
             /* need to allow for a primordial He abundance */
             if(NUM_LIVE_SPECIES_FOR_COOLTABLES>=10) P[i].Metallicity[1]=(1.-HYDROGEN_MASSFRAC)+(All.SolarAbundances[1]-(1.-HYDROGEN_MASSFRAC))*P[i].Metallicity[0]/All.SolarAbundances[0];
+#ifdef ADM
+	    if(P[i].adm != 0) {
+		    for(j=0;j<NUM_METAL_SPECIES;j++) {P[i].Metallicity[j]=0;}
+		    if(NUM_LIVE_SPECIES_FOR_COOLTABLES>=10) P[i].Metallicity[1]=0;
+	    }
+#endif
         } // if(RestartFlag == 0)
 
 #ifdef CHIMES

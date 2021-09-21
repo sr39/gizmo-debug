@@ -6,12 +6,14 @@ printf(
 "        ALLOW_IMBALANCED_GASPARTICLELOAD\n"
 "        GALSF\n"
 "        ADAPTIVE_GRAVSOFT_FORGAS\n"
-"        GRAVITY_ANALYTIC\n"
 "        ADM\n"
 "        EOS_GAMMA=(5.0/3.0)\n"
 "        COOLING\n"
 "        HYDRO_MESHLESS_FINITE_MASS\n"
 "        GALSF_SFR_VIRIAL_SF_CRITERION=1\n"
+"        GALSF_FB_MECHANICAL\n"
+"        METALS\n"
+"        COOL_METAL_LINES_BY_SPECIES\n"
 "        MULTIPLEDOMAINS=64\n"
 "\n");
 }
