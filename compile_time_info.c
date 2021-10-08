@@ -10,6 +10,8 @@ printf(
 "        EOS_GAMMA=(5.0/3.0)\n"
 "        HYDRO_MESHLESS_FINITE_MASS\n"
 "        GALSF_SFR_VIRIAL_SF_CRITERION=1\n"
+"        GALSF_SFR_MOLECULAR_CRITERION\n"
+"        GALSF_SFR_VIRIAL_SF_CRITERION_ADM=1\n"
 "        GALSF_FB_MECHANICAL\n"
 "        METALS\n"
 "        TURB_DIFF_METALS\n"
