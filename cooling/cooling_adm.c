@@ -50,6 +50,8 @@ struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 
 
+
+
 /* subroutine which actually sends the particle data to the cooling routine and updates the entropies */
 void do_the_cooling_for_particle_adm(int i)
 {
@@ -653,9 +655,15 @@ double find_abundances_and_rates_adm(double logT, double rho, int target, double
 
         neold = n_elec;
         n_elec = nHp + nHep + 2 * nHepp;	/* eqn (38) */
-#ifdef COOL_LOW_TEMPERATURES
+
+/* ////////////////////////////////////// 
+ * COMMENTED OUT COOL_LOW_TEMPERATURES //
+ *///////////////////////////////////////
+
+/* #ifdef COOL_LOW_TEMPERATURES
         n_elec += return_electron_fraction_from_heavy_ions_adm(target, pow(10.,logT), rho, n_elec);
-#endif
+#endif */
+
         necgs = n_elec * nHcgs;
 
         if(J_UV_adm == 0) break;
@@ -770,16 +778,21 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
     double local_gammamultiplier = return_local_gammamultiplier_adm(target);
     shieldfac = return_uvb_shieldfac_adm(target, local_gammamultiplier*gJH0_adm/1.0e-12, nHcgs, logT);
 
+////////////////////////////////////////
+// COMMENTED OUT COOL_LOW_TEMPERATURE //
+// /////////////////////////////////////
+
+/*
 #if defined(COOL_LOW_TEMPERATURES)
-    double Tdust = 30., LambdaDust = 0.; /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS)
+    double Tdust = 30., LambdaDust = 0.;*/ /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
+/*#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS)
     Tdust = get_equilibrium_dust_temperature_estimate_adm(target, shieldfac);
 #endif
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_FB_RT_HEATING)
     Tdust = DMIN(DMAX(10., 2.73/All.cf_atime),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
 #endif
 #endif
-
+*/
 
 #if defined(RT_CHEM_PHOTOION) || defined(RT_PHOTOELECTRIC)
     double cx_to_kappa = HYDROGEN_MASSFRAC / PROTONMASS * UNIT_MASS_IN_CGS; // pre-factor for converting cross sections into opacities
@@ -818,18 +831,23 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
         }
 #endif
 
+/////////////////////////////////
+// COMMENTED OUT COOL_LOW_TEMP //
+// //////////////////////////////
+
+/*
 #ifdef COOL_LOW_TEMPERATURES
         if(logT <= 5.3)
         {
-            /* approx to cooling function for solar metallicity and nH=1 cm^(-3) -- want to do something
+*/            /* approx to cooling function for solar metallicity and nH=1 cm^(-3) -- want to do something
              much better, definitely, but for now use this just to get some idea of system with cooling to very low-temp */
-            LambdaMol = 2.8958629e-26/(pow(T/125.21547,-4.9201887)+pow(T/1349.8649,-1.7287826)+pow(T/6450.0636,-0.30749082));
+/*            LambdaMol = 2.8958629e-26/(pow(T/125.21547,-4.9201887)+pow(T/1349.8649,-1.7287826)+pow(T/6450.0636,-0.30749082));
             LambdaMol *= (1-shieldfac) / (1. + nHcgs/700.); // above the critical density, cooling rate suppressed by ~1/n; use critical density of CO[J(1-0)] as a proxy for this
-            double Z_sol=1, truncation_factor=1; /* if don't have actual metallicities, we'll assume solar */
-            if(logT>4.5) {double dx=(logT-4.5)/0.20; truncation_factor *= exp(-DMIN(dx*dx,40.));} /* continuous cutoff here just to avoid introducing artificial features in temperature-density */
-#ifdef COOL_METAL_LINES_BY_SPECIES
-            Z_sol = Z[0] / All.SolarAbundances[0]; /* use actual metallicity for this */
-#endif
+            double Z_sol=1, truncation_factor=1;*/ /* if don't have actual metallicities, we'll assume solar */
+/*            if(logT>4.5) {double dx=(logT-4.5)/0.20; truncation_factor *= exp(-DMIN(dx*dx,40.));}*/ /* continuous cutoff here just to avoid introducing artificial features in temperature-density */
+/*#ifdef COOL_METAL_LINES_BY_SPECIES
+            Z_sol = Z[0] / All.SolarAbundances[0];*/  /* use actual metallicity for this */
+/*#endif
             LambdaMol *= (1+Z_sol)*(0.001 + 0.1*nHcgs/(1.+nHcgs) + 0.09*nHcgs/(1.+0.1*nHcgs) + Z_sol*Z_sol/(1.0+nHcgs)); // gives very crude estimate of metal-dependent terms //
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
             double column = evaluate_NH_from_GradRho(P[target].GradRho,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs
@@ -851,8 +869,8 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
             double Lambda_Cplus = Z_C * (4.7e-28 * (pow(T,0.15) + 1.04e4*n_elec/sqrt_T) * exp(-DMIN(91.211/T,EXPmax)) + 2.08e-29*exp(-DMIN(23.6/T,EXPmax))); // fit from Barinovs et al., ApJ, 620, 537, 2005, and Wilson & Bell MNRAS 337 1027 2002; assuming factor of 0.5 depletion factor in ISM; rate per C+ relative to solar; + plus [CI]-609 µm line cooling from Hocuk⋆ et al. 2016MNRAS.456.2586H
             double Lambda_CCO = Z_C * T*sqrt_T * 2.73e-31 / (1. + (nHcgs/ncrit_CO)*(1.+1.*DMAX(column,0.017)/Sigma_crit_CO)); // fit from Hollenbach & McKee 1979 for CO (+CH/OH/HCN/OH/HCl/H20/etc., but those don't matter), with slight re-calibration of normalization (factor ~1.4 or so) to better fit the results from the full Glover+Clark network. As Glover+Clark show, if you shift gas out of CO into C+ and O, you have almost no effect on the integrated cooling rate, so this is a surprisingly good approximation without knowing anything about the detailed chemical/molecular state of the gas. uncertainties in e.g. ambient radiation are -much- larger. also note this rate is really carbon-dominated as the limiting abundance, so should probably use that.
             double Lambda_Metals = f_Cplus_CCO * Lambda_Cplus + (1.-f_Cplus_CCO) * Lambda_CCO; // interpolate between both regimes //
-            /* in the above Lambda_Metals expression, the column density expression attempts to account for the optically-thick correction in a slab. this is largely redundant (not exactly, b/c this is specific for CO-type molecules) with our optically-thick cooling module already included below, so we will not double-count it here [coefficient set to zero]. But it's included so you can easily turn it back on, if desired, instead of using the module below. */
-            double Lambda_H2_thick = (6.7e-19*exp(-DMIN(5.86/T3,EXPmax)) + 1.6e-18*exp(-DMIN(11.7/T3,EXPmax)) + 3.e-24*exp(-DMIN(0.51/T3,EXPmax)) + 9.5e-22*pow(T3,3.76)*exp(-DMIN(0.0022/(T3*T3*T3),EXPmax))/(1.+0.12*pow(T3,2.1))) / nHcgs; // super-critical H2-H cooling rate [per H2 molecule]
+          */  /* in the above Lambda_Metals expression, the column density expression attempts to account for the optically-thick correction in a slab. this is largely redundant (not exactly, b/c this is specific for CO-type molecules) with our optically-thick cooling module already included below, so we will not double-count it here [coefficient set to zero]. But it's included so you can easily turn it back on, if desired, instead of using the module below. */
+/*            double Lambda_H2_thick = (6.7e-19*exp(-DMIN(5.86/T3,EXPmax)) + 1.6e-18*exp(-DMIN(11.7/T3,EXPmax)) + 3.e-24*exp(-DMIN(0.51/T3,EXPmax)) + 9.5e-22*pow(T3,3.76)*exp(-DMIN(0.0022/(T3*T3*T3),EXPmax))/(1.+0.12*pow(T3,2.1))) / nHcgs; // super-critical H2-H cooling rate [per H2 molecule]
             double Lambda_HD_thin = ((1.555e-25 + 1.272e-26*pow(T,0.77))*exp(-DMIN(128./T,EXPmax)) + (2.406e-25 + 1.232e-26*pow(T,0.92))*exp(-DMIN(255./T,EXPmax))) * exp(-DMIN(T3*T3/25.,EXPmax)); // optically-thin HD cooling rate [assuming all D locked into HD at temperatures where this is relevant], per molecule
             double f_molec = 0.5 * Get_Gas_Molecular_Mass_Fraction(target, T, nH0, n_elec, sqrt(shieldfac)*(gJH0_adm/2.29e-10)); // [0.5*f_molec for H2/HD cooling b/c cooling rates above are per molecule, not per nucleon]
 
@@ -877,21 +895,21 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
             if(!isfinite(LambdaMol)) {LambdaMol=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
             Lambda += LambdaMol;
 
-            /* now add the dust cooling/heating terms */
-            LambdaDust = 1.116e-32 * (Tdust-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol;  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
+*/            /* now add the dust cooling/heating terms */
+/*            LambdaDust = 1.116e-32 * (Tdust-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol;  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
 #ifdef RT_INFRARED
             if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, rho, &nH0, &n_elec, target);} // call our specialized subroutine, because radiation and gas energy fields are co-evolving and tightly-coupled here //
 #endif
-            if(T>3.e5) {double dx=(T-3.e5)/2.e5; LambdaDust *= exp(-DMIN(dx*dx,40.));} /* needs to truncate at high temperatures b/c of dust destruction */
-            LambdaDust *= truncation_factor; // cutoff factor from above for where the tabulated rates take over at high temperatures
+            if(T>3.e5) {double dx=(T-3.e5)/2.e5; LambdaDust *= exp(-DMIN(dx*dx,40.));} *//* needs to truncate at high temperatures b/c of dust destruction */
+/*            LambdaDust *= truncation_factor; // cutoff factor from above for where the tabulated rates take over at high temperatures
 #ifdef RT_INFRARED
             SphP[target].LambdaDust = LambdaDust;
 #endif
             if(!isfinite(LambdaDust)) {LambdaDust=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
-            if(LambdaDust<0) {Lambda -= LambdaDust;} /* add the -positive- Lambda-dust associated with cooling */
-        }
+            if(LambdaDust<0) {Lambda -= LambdaDust;} *//* add the -positive- Lambda-dust associated with cooling */
+/*        }
 #endif
-
+*/
 
 
         Heat = 0;  /* Now, collect heating terms */
@@ -946,10 +964,14 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
 #if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_ALT_DISABLE_LOSSES)
         Heat += CR_gas_heating(target, n_elec, nHcgs);
 #else
-#ifdef COOL_LOW_TEMPERATURES
-        /* if COSMIC_RAYS is not enabled, but low-temperature cooling is on, we account for the CRs as a heating source using
+///////////////////////////////////////
+// COMMENTED OUT COOL_LOW_TEMPERATURE// 
+// ////////////////////////////////////
+
+/*#ifdef COOL_LOW_TEMPERATURES
+*/        /* if COSMIC_RAYS is not enabled, but low-temperature cooling is on, we account for the CRs as a heating source using
          a more approximate expression (assuming the mean background of the Milky Way clouds) */
-        if(logT <= 5.2)
+/*        if(logT <= 5.2)
         {
             double prefac_CR=1.; if(All.ComovingIntegrationOn) {
                 double rhofac = rho / (1000.*COSMIC_BARYON_DENSITY_CGS);
@@ -960,16 +982,16 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
 #endif
             Heat += prefac_CR * cr_zeta * (1. + 1.68*n_elec*HYDROGEN_MASSFRAC) / (1.e-2 + nHcgs) * e_per_cr_ioniz; // final result
         }
-#endif
+#endif */
 #endif
 
-#if defined(COOL_LOW_TEMPERATURES)
-        if(LambdaDust>0) {Heat += LambdaDust;} /* Dust collisional heating (Tdust > Tgas) */
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+/*#if defined(COOL_LOW_TEMPERATURES)
+        if(LambdaDust>0) {Heat += LambdaDust;}*/ /* Dust collisional heating (Tdust > Tgas) */
+/*#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         if(LambdaMetal<0) {Heat -= LambdaMetal;} // potential net heating from low-temperature gas-phase metal line absorption //
 #endif
 #endif
-
+*/
         if(LambdaCompton<0) {Heat -= LambdaCompton;} /* Compton heating rather than cooling */
 
 #if defined(GALSF_FB_FIRE_RT_UVHEATING) || defined(RT_PHOTOELECTRIC) || defined(RT_ISRF_BACKGROUND)
@@ -1020,8 +1042,11 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
 #if defined(OUTPUT_COOLRATE_DETAIL)
     if(target>=0) {SphP[target].CoolingRate = Lambda; SphP[target].HeatingRate = Heat;}
 #endif
+/////////////////////////////////
+// COMMENTED OUT COOL_LOW_TEMP //
+// //////////////////////////////
 
-#if defined(COOL_LOW_TEMPERATURES) && !defined(COOL_LOWTEMP_THIN_ONLY)
+//#if defined(COOL_LOW_TEMPERATURES) && !defined(COOL_LOWTEMP_THIN_ONLY)
     /* if we are in the optically thick limit, we need to modify the cooling/heating rates according to the appropriate limits;
         this flag does so by using a simple approximation. we consider the element as if it were a slab, with a column density
         calculated from the simulation properties and the Sobolev approximation. we then assume it develops an equilibrium internal
@@ -1043,8 +1068,8 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
                 temperature-dependent, though, fairly easily - for this particular problem it won't make much difference
         This rate then acts as an upper limit to the net heating/cooling calculated above (restricts absolute value)
      */
-    if( (nHcgs > 0.1) && (target >= 0) )  /* don't bother at very low densities, since youre not optically thick, and protect from target=-1 with GALSF_EFFECTIVE_EQS */
-    {
+/*    if( (nHcgs > 0.1) && (target >= 0) ) */ /* don't bother at very low densities, since youre not optically thick, and protect from target=-1 with GALSF_EFFECTIVE_EQS */
+/*    {
         double surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target);
         surface_density *= 0.2 * UNIT_SURFDEN_IN_CGS; // converts to cgs; 0.2 is a tuning factor so that the Masunaga & Inutsuka 2000 solution is reproduced
         double effective_area = 2.3 * PROTONMASS / surface_density; // since cooling rate is ultimately per-particle, need a particle-weight here
@@ -1055,20 +1080,21 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
             kappa_eff *= P[target].Metallicity[0]/All.SolarAbundances[0];
             if(kappa_eff < 0.1) {kappa_eff=0.1;}
         } else {
-            /* this is an approximate result for high-temperature opacities, but provides a pretty good fit from 1.5e3 - 1.0e9 K */
-            double k_electron = 0.2 * (1. + HYDROGEN_MASSFRAC); //0.167 * n_elec; /* Thompson scattering (non-relativistic) */
-            double k_molecular = 0.1 * P[target].Metallicity[0]; /* molecular line opacities */
-            double k_Hminus = 1.1e-25 * sqrt(P[target].Metallicity[0] * rho) * pow(T,7.7); /* negative H- ion opacity */
-            double k_Kramers = 4.0e25 * (1.+HYDROGEN_MASSFRAC) * (P[target].Metallicity[0]+0.001) * rho / (T*T*T*sqrt(T)); /* free-free, bound-free, bound-bound transitions */
-            double k_radiative = k_molecular + 1./(1./k_Hminus + 1./(k_electron+k_Kramers)); /* approximate interpolation between the above opacities */
-            double k_conductive = 2.6e-7 * n_elec * T*T/(rho*rho); //*(1+pow(rho/1.e6,0.67) /* e- thermal conductivity can dominate at low-T, high-rho, here it as expressed as opacity */
-            kappa_eff = 1./(1./k_radiative + 1./k_conductive); /* effective opacity including both heat carriers (this is exact) */
-        }
+*/            /* this is an approximate result for high-temperature opacities, but provides a pretty good fit from 1.5e3 - 1.0e9 K */
+//            double k_electron = 0.2 * (1. + HYDROGEN_MASSFRAC); //0.167 * n_elec; /* Thompson scattering (non-relativistic) */
+//            double k_molecular = 0.1 * P[target].Metallicity[0]; /* molecular line opacities */
+//            double k_Hminus = 1.1e-25 * sqrt(P[target].Metallicity[0] * rho) * pow(T,7.7); /* negative H- ion opacity */
+//            double k_Kramers = 4.0e25 * (1.+HYDROGEN_MASSFRAC) * (P[target].Metallicity[0]+0.001) * rho / (T*T*T*sqrt(T)); /* free-free, bound-free, bound-bound transitions */
+//            double k_radiative = k_molecular + 1./(1./k_Hminus + 1./(k_electron+k_Kramers)); /* approximate interpolation between the above opacities */
+//            double k_conductive = 2.6e-7 * n_elec * T*T/(rho*rho); //*(1+pow(rho/1.e6,0.67) /* e- thermal conductivity can dominate at low-T, high-rho, here it as expressed as opacity */
+//            kappa_eff = 1./(1./k_radiative + 1./k_conductive); /* effective opacity including both heat carriers (this is exact) */
+/*        }
         double tau_eff = kappa_eff * surface_density;
         double Lambda_Thick_BlackBody = 5.67e-5 * (T*T*T*T) * effective_area / ((1.+tau_eff) * nHcgs);
         if(Q > 0) {if(Q > Lambda_Thick_BlackBody) {Q=Lambda_Thick_BlackBody;}} else {if(Q < -Lambda_Thick_BlackBody) {Q=-Lambda_Thick_BlackBody;}}
     }
 #endif
+*/
 
 #if defined(OUTPUT_COOLRATE_DETAIL)
     if(target>=0){SphP[target].NetHeatingRateQ = Q;}
