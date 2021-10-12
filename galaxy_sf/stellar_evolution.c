@@ -94,6 +94,12 @@ double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr
 /* routine to compute the -ionizing- luminosity coming from either individual stars or an SSP */
 double particle_ionizing_luminosity_in_cgs(long i)
 {
+#ifdef ADM
+    if((P[i].Type == 0) || (P[i].Type == 4)) { // if we have an ADM star or gas particle, return 0 luminosity
+	if(P[i].adm != 0) {return 0;} 
+    }
+#endif
+
 #ifdef SINGLE_STAR_SINK_DYNAMICS /* SINGLE STAR VERSION: use effective temperature as a function of stellar mass and size to get ionizing photon production */
     double l_sol=bh_lum_bol(0,P[i].Mass,i)*(UNIT_LUM_IN_SOLAR), m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR, r_sol=pow(m_sol,0.738); // L/Lsun, M/Msun, R/Rsun
     double T_eff=5780.*pow(l_sol/(r_sol*r_sol),0.25), x0=157800./T_eff, fion=0; // ZAMS effective temperature; x0=h*nu/kT for nu>13.6 eV; fion=fraction of blackbody emitted above x0

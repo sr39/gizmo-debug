@@ -30,6 +30,13 @@ void radiation_pressure_winds_consolidated(void)
     {
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
         {
+
+#ifdef ADM
+	    if(P[i].Type == 4) { // if the source is an ADM star particle, ignore it.
+		if(P[i].adm != 0) {continue;}
+	    }
+#endif
+
             double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
             if( (star_age < age_threshold_in_gyr) && (P[i].Mass > 0) && (P[i].DensAroundStar > 0) )
             {
@@ -72,7 +79,11 @@ void radiation_pressure_winds_consolidated(void)
                     N_MIN_KERNEL=10;N_MAX_KERNEL=256;MAXITER_FB=100;NITER=0;wt_sum=0; startnode=All.MaxPart;dummy=0;numngb_inbox=0;h=1.0*P[i].Hsml;pos=P[i].Pos;
                     if(h<=0) {h=All.ForceSoftening[0];} else {if(h>RtauMax) {h=RtauMax;}}
                     do {
+#ifdef ADM
+			numngb_inbox = ngb_treefind_variable_targeted_adm(i, pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas of same ADM type, use the 'see one way' search, since weights below are all within-kernel, for now
+#else
                         numngb_inbox = ngb_treefind_variable_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
+#endif
                         if((numngb_inbox>=N_MIN_KERNEL)&&(numngb_inbox<=N_MAX_KERNEL))
                         {
                             wt_sum=0; /* note these lines and many below assume 3D sims! */
@@ -225,6 +236,9 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
             if(dt<=0) {continue;} // don't keep going with this loop
 
             stellum = All.HIIRegion_fLum_Coupled * particle_ionizing_luminosity_in_cgs(i); // ionizing luminosity in cgs [will be appropriately weighted for assumed spectral shape]
+	    //printf("stellum : %.3e\n",stellum);
+	    //puts("Press any key to continue ... ");
+  	    //getchar();
 #ifdef CHIMES_HII_REGIONS
             stellum = chimes_ion_luminosity(evaluate_stellar_age_Gyr(P[i].StellarAge)*1000.,P[i].Mass*UNIT_MASS_IN_SOLAR) * 4.68e-11; // chimes ionizing photon flux rescaled to mean spectrum here appropriately (~29eV per photon)
 #endif
@@ -251,7 +265,11 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                 do {
                     jnearest=-1; rnearest=MAX_REAL_NUMBER;
                     R_search = RHII; if(h_i>R_search) {R_search=h_i;}
+#ifdef ADM
+                    numngb = ngb_treefind_variable_targeted_adm(i, pos, R_search, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas of same ADM type, use the 'see one way' search, since weights below are all within-kernel, for now
+#else
                     numngb = ngb_treefind_variable_targeted(pos, R_search, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
+#endif
                     if(numngb>0)
                     {
                         int ngb_list_touse[numngb]; for(n=0; n<numngb; n++) {ngb_list_touse[n]=Ngblist[n];}
@@ -380,6 +398,11 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 
 int do_the_local_ionization(int target, double dt, int source)
 {
+
+#ifdef ADM
+    if(P[target].adm != 0) {return 1;} // if ADM neighbor particle, don't alter/ionise it. 
+#endif
+
 #if defined(CHIMES_HII_REGIONS) // set a number of chimes-specific quantities here //
     int k,age_bin=0; double stellar_age_myr=1000.*evaluate_stellar_age_Gyr(P[source].StellarAge), log_age_Myr=log10(stellar_age_myr); // determine stellar age bin
     if(log_age_Myr<CHIMES_LOCAL_UV_AGE_LOW) {age_bin=0;} else if(log_age_Myr < CHIMES_LOCAL_UV_AGE_MID) {age_bin = (int) floor(((log_age_Myr - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW) + 1);}
@@ -397,6 +420,9 @@ int do_the_local_ionization(int target, double dt, int source)
 #else
 
 #if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) 
+    //printf("We're doing the local ionization! Cool! Target type = %i\n",P[target].adm);
+    //	puts("Press any key to continue ... ");
+    //	getchar();
     SphP[target].InternalEnergy = DMAX(SphP[target].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
     SphP[target].InternalEnergyPred = SphP[target].InternalEnergy; /* full reset of the internal energy */
 #else

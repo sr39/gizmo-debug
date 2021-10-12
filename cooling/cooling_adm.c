@@ -18,6 +18,8 @@
  *   Phil Hopkins (phopkins@caltech.edu) for GIZMO; essentially everything has been re-written at this point */
 
 
+// Note that I have commented out all the FIRE flags i.e.STELLAREVOLUTION, RT_HIIHEATING. This should be changed in the future when feedback is implemented.
+
 #ifdef COOLING
 #ifdef ADM
 
@@ -63,9 +65,13 @@ void do_the_cooling_for_particle_adm(int i)
         update_explicit_molecular_fraction_adm(i, 0.5*dtime*UNIT_TIME_IN_CGS); // if we're doing the H2 explicitly with this particular model, we update it in two half-steps before and after the main cooling step
 #endif
         double uold = DMAX(All.MinEgySpec_adm, SphP[i].InternalEnergy);
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
-        double uion=HIIRegion_Temp/(0.59*(5./3.-1.)*U_TO_TEMP_UNITS); if(SphP[i].DelayTimeHII>0) {if(uold<uion) {uold=uion;}} /* u_old should be >= ionized temp if used here [unless using newer model] */
-#endif
+//////////////////////
+// STELLAREVOLUTION //
+// ///////////////////
+
+//#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
+//        double uion=HIIRegion_Temp/(0.59*(5./3.-1.)*U_TO_TEMP_UNITS); if(SphP[i].DelayTimeHII>0) {if(uold<uion) {uold=uion;}} /* u_old should be >= ionized temp if used here [unless using newer model] */
+//#endif
 
 #ifndef COOLING_OPERATOR_SPLIT
         /* do some prep operations on the hydro-step determined heating/cooling rates before passing to the cooling subroutine */
@@ -101,16 +107,19 @@ void do_the_cooling_for_particle_adm(int i)
         unew = uold + dtime * (rt_DoHeating(i, dtime) + rt_DoCooling(i, dtime));
 #endif
 
+////////////////////////
+//// STELLAREVOLUTION //
+//// ///////////////////
 
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) /* for older model, set internal energy to minimum level if marked as ionized by stars */
-        if(SphP[i].DelayTimeHII > 0)
-        {
-            if(unew<uion) {unew=uion; if(SphP[i].DtInternalEnergy<0) SphP[i].DtInternalEnergy=0;}
-#ifndef CHIMES
-            SphP[i].Ne = 1.0 + 2.0*yhelium(i); /* fully ionized. note that this gives Ne as free electron fraction per H */
-#endif
-        }
-#endif
+//#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) /* for older model, set internal energy to minimum level if marked as ionized by stars */
+//        if(SphP[i].DelayTimeHII > 0)
+//        {
+//            if(unew<uion) {unew=uion; if(SphP[i].DtInternalEnergy<0) SphP[i].DtInternalEnergy=0;}
+//#ifndef CHIMES
+//            SphP[i].Ne = 1.0 + 2.0*yhelium(i); /* fully ionized. note that this gives Ne as free electron fraction per H */
+//#endif
+//        }
+//#endif
 
 
 #if defined(BH_THERMALFEEDBACK)
@@ -156,10 +165,10 @@ void do_the_cooling_for_particle_adm(int i)
 #ifdef COOL_MOLECFRAC_NONEQM
         update_explicit_molecular_fraction_adm(i, 0.5*dtime*UNIT_TIME_IN_CGS); // if we're doing the H2 explicitly with this particular model, we update it in two half-steps before and after the main cooling step
 #endif
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) /* count off time which has passed since ionization 'clock' */
-        if(SphP[i].DelayTimeHII > 0) {SphP[i].DelayTimeHII -= dtime;}
-        if(SphP[i].DelayTimeHII < 0) {SphP[i].DelayTimeHII = 0;}
-#endif
+//#if defined(GALSF_FB_FIRE_RT_HIIHEATING) /* count off time which has passed since ionization 'clock' */
+//        if(SphP[i].DelayTimeHII > 0) {SphP[i].DelayTimeHII -= dtime;}
+//        if(SphP[i].DelayTimeHII < 0) {SphP[i].DelayTimeHII = 0;}
+//#endif
 
     } // closes if((dt>0)&&(P[i].Mass>0)&&(P[i].Type==0)) check
 }
@@ -807,11 +816,14 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
 
 #ifdef COOL_METAL_LINES_BY_SPECIES
         /* can restrict to low-densities where not self-shielded, but let shieldfac (in ne) take care of this self-consistently */
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-        if(J_UV_adm != 0)
-#else
+//////////////////////
+//// STELLAREVOLUTION //
+//// ///////////////////
+//#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+//        if(J_UV_adm != 0)
+//#else
         if((J_UV_adm != 0)&&(logT > 4.00))
-#endif
+//#endif
         {
             /* cooling rates tabulated for each species from Wiersma, Schaye, & Smith tables (2008) */
             LambdaMetal = GetCoolingRateWSpecies_adm(nHcgs, logT, Z); //* nHcgs*nHcgs;
@@ -819,12 +831,15 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
             /* (sorry, -- dont -- multiply by nH^2 here b/c that's how everything is normalized in this function) */
             LambdaMetal *= n_elec;
             /* (modified now to correct out tabulated ne so that calculated ne can be inserted; ni not used b/c it should vary species-to-species */
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-            if(logT<2) {LambdaMetal *= exp(-DMIN((2.-logT)*(2.-logT)/0.1,40.));}
-            if(LambdaMetal > 0) {Lambda += LambdaMetal;}
-#else
+//////////////////////
+//// STELLAREVOLUTION //
+//// ///////////////////
+//#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+//            if(logT<2) {LambdaMetal *= exp(-DMIN((2.-logT)*(2.-logT)/0.1,40.));}
+//            if(LambdaMetal > 0) {Lambda += LambdaMetal;}
+//#else
             Lambda += LambdaMetal;
-#endif
+//#endif
 #if defined(OUTPUT_COOLRATE_DETAIL)
             if(target >= 0) {SphP[target].MetalCoolingRate = LambdaMetal;}
 #endif
@@ -914,12 +929,15 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
 
         Heat = 0;  /* Now, collect heating terms */
 
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
+//////////////////////
+//// STELLAREVOLUTION //
+//// ///////////////////
+//#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
         // here we account for the fact that the local spectrum is softer than the UVB which includes AGN and is hardened by absorption within galaxies. we do this by simply lowering the effective heating rate [mean photon energy absorbed per ionization], which captures the leading-order effect //
-        if(J_UV_adm != 0) {Heat += (1. + (local_gammamultiplier-1.) * 0.33) * (nH0 * epsH0_adm + nHe0 * epsHe0_adm + nHep * epsHep_adm) / nHcgs * shieldfac;} // shieldfac allows for self-shielding from background
-#else
+//        if(J_UV_adm != 0) {Heat += (1. + (local_gammamultiplier-1.) * 0.33) * (nH0 * epsH0_adm + nHe0 * epsHe0_adm + nHep * epsHep_adm) / nHcgs * shieldfac;} // shieldfac allows for self-shielding from background
+//#else
         if(J_UV_adm != 0) {Heat += local_gammamultiplier * (nH0 * epsH0_adm + nHe0 * epsHe0_adm + nHep * epsHep_adm) / nHcgs * shieldfac;} // shieldfac allows for self-shielding from background
-#endif
+//#endif
 #if defined(RT_DISABLE_UV_BACKGROUND)
         Heat = 0;
 #endif
@@ -1599,23 +1617,23 @@ void selfshield_local_incident_uv_flux_adm(void)
                 SphP[i].Rad_Flux_UV *= UNIT_FLUX_IN_CGS * 1276.19; SphP[i].Rad_Flux_EUV *= UNIT_FLUX_IN_CGS * 1276.19; // convert to Habing units (normalize strength to local MW field in this [narrow] band, so not the 'full' Habing flux)
                 double surfdensity = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); // in CGS
                 double tau_nuv = rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * surfdensity; // optical depth: this part is attenuated by dust //
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
-                tau_nuv *= (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // if using older FIRE defaults, this was manually added instead of rolled into rt_kappa -- annoying but here for completeness //
-#endif
+//#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
+//                tau_nuv *= (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // if using older FIRE defaults, this was manually added instead of rolled into rt_kappa -- annoying but here for completeness //
+//#endif
                 double tau_euv = 3.7e6 * surfdensity * UNIT_SURFDEN_IN_CGS; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas //
                 SphP[i].Rad_Flux_UV *= exp(-DMIN(tau_nuv,90.)); // attenuate [important in newer modules depending on UV flux to fully-attenuate down to << 1e-6 in dense gas]
                 //SphP[i].Rad_Flux_UV *= 0.01 + 0.99/(1.0 + 0.8*tau_nuv + 0.85*tau_nuv*tau_nuv); // attenuate (for clumpy medium with hard-minimum 1% scattering)
                 //SphP[i].Rad_Flux_EUV *= exp(-DMIN(tau_euv,90.)); // attenuate [important in newer modules depending on UV flux to fully-attenuate down to << 1e-6 in dense gas]
                 SphP[i].Rad_Flux_EUV *= 0.01 + 0.99/(1.0 + 0.8*tau_euv + 0.85*tau_euv*tau_euv); // attenuate (for clumpy medium with hard-minimum 1% scattering) //
             } else {SphP[i].Rad_Flux_UV = SphP[i].Rad_Flux_EUV = 0;}
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS)
-            if(SphP[i].DelayTimeHII > 0)
-            {   /* assign typical strong HII region flux + enough flux to maintain cell fully-ionized, regardless (x'safety-factor') */
-                double n1000 = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS / 1000.; // density in 1000 cm^-3
-                double flux_compactHII = DMAX(0.85*pow(n1000,1./3.) , 1) * 2.6e5*n1000; // set to typical value in HII region or minimum needed to maintain f_neutral < 1e-5-ish, whichever is larger
-                SphP[i].Rad_Flux_UV += flux_compactHII; SphP[i].Rad_Flux_EUV += flux_compactHII;
-            }
-#endif
+//#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS)
+//            if(SphP[i].DelayTimeHII > 0)
+//            {   /* assign typical strong HII region flux + enough flux to maintain cell fully-ionized, regardless (x'safety-factor') */
+//                double n1000 = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS / 1000.; // density in 1000 cm^-3
+//                double flux_compactHII = DMAX(0.85*pow(n1000,1./3.) , 1) * 2.6e5*n1000; // set to typical value in HII region or minimum needed to maintain f_neutral < 1e-5-ish, whichever is larger
+//                SphP[i].Rad_Flux_UV += flux_compactHII; SphP[i].Rad_Flux_EUV += flux_compactHII;
+//           }
+//#endif
         }
     }
 }
@@ -1624,7 +1642,9 @@ void selfshield_local_incident_uv_flux_adm(void)
 
 
 
-/* subroutine to update the molecular fraction using our implicit solver for a simple --single-species-- network (just H2) */
+/* subroutine to update the molecular fraction using our implicit solver for a simple --single-species-- network (just H2) 
+ * This function does nothing unless COOL_MOLEFRAC_NONEQM is enabled.
+ * */
 void update_explicit_molecular_fraction_adm(int i, double dtime_cgs)
 {
     if(dtime_cgs <= 0) {return;}
@@ -1635,9 +1655,9 @@ void update_explicit_molecular_fraction_adm(int i, double dtime_cgs)
     temperature = ThermalProperties_adm(u0, rho, i, &mu_meanwt, &xn_e, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties [will assume fixed value of fH2 at previous update value]
     double T=1, Z_Zsol=1, urad_G0=1, xH0=1, x_e=0, nH_cgs=rho*UNIT_DENSITY_IN_NHCGS; // initialize definitions of some variables used below to prevent compiler warnings
     Z_Zsol=1; urad_G0=1; // initialize metal and radiation fields. will assume solar-Z and spatially-uniform Habing field for incident FUV radiation unless reset below.
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING)
-    if(SphP[i].DelayTimeHII > 0) {SphP[i].MolecularMassFraction_perNeutralH=SphP[i].MolecularMassFraction=0; return;} // force gas flagged as in HII regions to have zero molecular fraction
-#endif
+//#if defined(GALSF_FB_FIRE_RT_HIIHEATING)
+//    if(SphP[i].DelayTimeHII > 0) {SphP[i].MolecularMassFraction_perNeutralH=SphP[i].MolecularMassFraction=0; return;} // force gas flagged as in HII regions to have zero molecular fraction
+//#endif
     if(temperature > 3.e5) {SphP[i].MolecularMassFraction_perNeutralH=SphP[i].MolecularMassFraction=0; return;} else {T=temperature;} // approximations below not designed for high temperatures, should simply give null
     xH0 = DMIN(DMAX(nh0, 0.),1.); // get neutral fraction [given by call to this program]
     if(xH0 <= MIN_REAL_NUMBER) {SphP[i].MolecularMassFraction_perNeutralH=SphP[i].MolecularMassFraction=0; return;} // no neutral gas, no molecules!
@@ -1960,10 +1980,10 @@ double ThermalProperties_adm(double u, double rho, int target, double *mu_guess,
     if(target >= 0) {*ne_guess=SphP[target].Ne; *nH0_guess = DMAX(0,DMIN(1,1.-( *ne_guess / 1.2 )));} else {*ne_guess=1.; *nH0_guess=0.;}
     rho *= UNIT_DENSITY_IN_CGS; u *= UNIT_SPECEGY_IN_CGS;   /* convert to physical cgs units */
     double temp = convert_u_to_temp_adm(u, rho, target, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess);
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS)
-    if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target); *nH0_guess=0; nHe0_guess=0;}} /* fully ionized [if using older model] */
-    *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp, rho, nH0_guess, ne_guess, 0, target);
-#endif
+//#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS)
+//    if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target); *nH0_guess=0; nHe0_guess=0;}} /* fully ionized [if using older model] */
+//    *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp, rho, nH0_guess, ne_guess, 0, target);
+//#endif
     return temp;
 #endif
 }
@@ -1992,9 +2012,9 @@ double return_uvb_shieldfac_adm(int target, double gamma_12, double nHcgs, doubl
 #ifdef GALSF_EFFECTIVE_EQS
     return 1; // self-shielding is implicit in the sub-grid model already //
 #endif
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
-    if(target>=0) {if(SphP[target].DelayTimeHII > 0) {return 1;}} // newer HII region model irradiates and removes shielding for regions, but allows cooling function to evolve //
-#endif
+//#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
+//    if(target>=0) {if(SphP[target].DelayTimeHII > 0) {return 1;}} // newer HII region model irradiates and removes shielding for regions, but allows cooling function to evolve //
+//#endif
     double NH_SS_z, NH_SS = 0.0123; /* CAFG: H number density above which we assume no ionizing bkg (proper cm^-3) */
     if(gamma_12>0) {NH_SS_z = NH_SS*pow(gamma_12,0.66)*pow(10.,0.173*(logT-4.));} else {NH_SS_z = NH_SS*pow(10.,0.173*(logT-4.));}
     double q_SS = nHcgs/NH_SS_z;
@@ -2027,10 +2047,10 @@ void chimes_update_gas_vars(int target)
 
   // If there is an EoS, need to set TempFloor to that instead.
   ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(All.MinGasTemp, 10.1);
-#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
-    if (SphP[target].DelayTimeHII > 0) {ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(HIIRegion_Temp, 10.1);}
-        else {ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(All.MinGasTemp, 10.1);}
-#endif
+//#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
+//    if (SphP[target].DelayTimeHII > 0) {ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(HIIRegion_Temp, 10.1);}
+//        else {ChimesGasVars[target].TempFloor = (ChimesFloat) DMAX(All.MinGasTemp, 10.1);}
+//#endif
 
   // Flag to control how the temperature
   // floor is implemented in CHIMES.

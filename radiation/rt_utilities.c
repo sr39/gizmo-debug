@@ -137,6 +137,10 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
 double rt_kappa(int i, int k_freq)
 {
 
+#ifdef ADM
+    if(P[i].adm != 0) {return 0;} // if ADM particle, assume 0 opacity (for now, ignore the absorption properties of ADM)
+#endif
+
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION /* special test problem implementation */
     return SphP[i].Interpolated_Opacity[k_freq] + 1.e-3 * All.Dust_to_Gas_Mass_Ratio*0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/(All.Grain_Internal_Density*All.Grain_Size_Max); /* enforce minimum */
@@ -335,6 +339,13 @@ double rt_absorb_frac_albedo(int i, int k_freq)
 int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum)
 {
     if(!((P[i].Type == 4) || ((All.ComovingIntegrationOn==0)&&((P[i].Type==2)||(P[i].Type==3))))) {return 0;} // only star-type particles act in this subroutine //
+
+#ifdef ADM
+    if(P[i].Type == 4) { // if ADM star particle, return 0 luminosity
+	if(P[i].adm != 0) {return 0;}
+    }
+#endif
+
     int active_check = 0; // default to inactive //
 #if defined(GALSF) /* basically none of these modules make sense without the GALSF module active */
     double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), m_sol = P[i].Mass * UNIT_MASS_IN_SOLAR;

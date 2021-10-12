@@ -20,5 +20,7 @@ printf(
 "        COOL_METAL_LINES_BY_SPECIES\n"
 "        COOL_LOW_TEMPERATURES\n"
 "        MULTIPLEDOMAINS=64\n"
+"        GALSF_FB_FIRE_STELLAREVOLUTION=2\n"
+"        GALSF_FB_FIRE_RT_HIIHEATING\n"
 "\n");
 }

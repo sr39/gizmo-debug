@@ -419,7 +419,11 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double uion = HIIRegion_Temp / (0.59*(5./3.-1.)*U_TO_TEMP_UNITS);
                 if(InternalEnergy_j > uion) {
                     #pragma omp atomic write
+#ifdef ADM	
+		    if(P[j].adm == 0) {SphP[j].Ne = 1.0 + 2.0*yhelium(j);} // if baryonic, then do ionisation.
+#else
                     SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* reset ionized fraction and treat as fully-ionized from the shock */
+#endif
                 }
 #endif
                 /* inject momentum */
@@ -808,7 +812,11 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double uion = HIIRegion_Temp / (0.59*(5./3.-1.)*U_TO_TEMP_UNITS);
                     if(InternalEnergy_j > uion) {
                         #pragma omp atomic write
+#ifdef ADM          
+                   	 if(P[j].adm == 0) {SphP[j].Ne = 1.0 + 2.0*yhelium(j);} // if baryonic, then do ionisation.
+#else
                         SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* reset ionized fraction and treat as fully-ionized from the shock */
+#endif
                     }
 #endif
                 }
