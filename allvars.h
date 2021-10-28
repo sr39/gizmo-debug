@@ -1327,6 +1327,7 @@ typedef unsigned long long peanokey;
 
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
 #define HIIRegion_Temp (1.0e4) /* temperature (in K) of heated gas */
+//#define HIIRegion_Temp (3.0*1.0e6) /* temperature (in K) of heated gas */
 #endif
 
 

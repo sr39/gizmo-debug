@@ -18,7 +18,7 @@
  *   Phil Hopkins (phopkins@caltech.edu) for GIZMO; essentially everything has been re-written at this point */
 
 
-// Note that I have commented out all the FIRE flags i.e.STELLAREVOLUTION, RT_HIIHEATING. This should be changed in the future when feedback is implemented.
+// Note that I have commented out all the FIRE flags i.e.STELLAREVOLUTION, RT_HIIHEATING, UVHEATING, RT_USE_GRAVTREE.... This should be changed in the future when ADM feedback is implemented.
 
 #ifdef COOLING
 #ifdef ADM
@@ -1019,6 +1019,7 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
             double photoelec = 0;
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
             photoelec += SphP[target].Rad_Flux_UV;
+	    //printf("ADM UV Flux: %.4e, %.4e\n",SphP[target].Rad_Flux_UV,SphP[target].Rad_Flux_EUV);
 #ifdef COOL_UVB_SELFSHIELD_RAHMATI
             if(gJH0_adm>0 && shieldfac>0) {photoelec += sqrt(shieldfac) * (gJH0_adm / 2.29e-10);} // uvb contribution //
 #endif
@@ -1612,6 +1613,7 @@ void selfshield_local_incident_uv_flux_adm(void)
     {
         if(P[i].Type==0)
         {
+	    //printf("ADM UV Flux selfshield: %.4e, %.4e\n",SphP[i].Rad_Flux_UV,SphP[i].Rad_Flux_EUV);
             if((SphP[i].Rad_Flux_UV>0) && (PPP[i].Hsml>0) && (SphP[i].Density>0) && (P[i].Mass>0) && (All.Time>0))
             {
                 SphP[i].Rad_Flux_UV *= UNIT_FLUX_IN_CGS * 1276.19; SphP[i].Rad_Flux_EUV *= UNIT_FLUX_IN_CGS * 1276.19; // convert to Habing units (normalize strength to local MW field in this [narrow] band, so not the 'full' Habing flux)
@@ -1667,9 +1669,14 @@ void update_explicit_molecular_fraction_adm(int i, double dtime_cgs)
     Z_Zsol = P[i].Metallicity[0]/All.SolarAbundances[0]; // metallicity in solar units [scale to total Z, since this mixes dust and C opacity], and enforce a low-Z floor to prevent totally unphysical behaviors at super-low Z [where there is still finite opacity in reality; e.g. Kramer's type and other opacities enforce floor around ~1e-3]
 #endif
     /* get incident radiation field from whatever module we are using to track it */
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
-    urad_G0 = DMAX(SphP[i].Rad_Flux_UV, 1.e-10); // note this is ALREADY self-shielded by dust, so we need to be careful about 2x-counting the self-shielding approximation below; hence limit this to a rather sizeable value  //
-#endif
+
+///////////////////////////////
+//  Commented out UV_HEATING //
+//  ///////////////////////////
+
+//#ifdef GALSF_FB_FIRE_RT_UVHEATING
+//    urad_G0 = DMAX(SphP[i].Rad_Flux_UV, 1.e-10); // note this is ALREADY self-shielded by dust, so we need to be careful about 2x-counting the self-shielding approximation below; hence limit this to a rather sizeable value  //
+//#endif
 #if defined(RT_PHOTOELECTRIC) || defined(RT_LYMAN_WERNER)
     int whichbin = RT_FREQ_BIN_LYMAN_WERNER;
 #if !defined(RT_LYMAN_WERNER)
@@ -1798,8 +1805,11 @@ double get_equilibrium_dust_temperature_estimate_adm(int i, double shielding_fac
 #endif
     if(i >= 0)
     {
-#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
-        e_HiEgy=0; e_IR = 0; int k; double E_tot_to_evol_eVcgs = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_EV;
+//////////////////////////////////////////////////////////////////////////
+// COMMENTED OUT ALL RT_USE_GRAVTREE LINES HERE. EDIT FOR FUTURE USE!!! //
+// ///////////////////////////////////////////////////////////////////////
+//#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
+/*        e_HiEgy=0; e_IR = 0; int k; double E_tot_to_evol_eVcgs = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_EV;
         for(k=0;k<N_RT_FREQ_BINS;k++) {e_HiEgy+=SphP[i].Rad_E_gamma_Pred[k];}
 #if defined(GALSF_FB_FIRE_RT_LONGRANGE)
         e_IR += SphP[i].Rad_E_gamma_Pred[RT_FREQ_BIN_FIRE_IR]; // note IR
@@ -1809,7 +1819,7 @@ double get_equilibrium_dust_temperature_estimate_adm(int i, double shielding_fac
 #endif
         e_HiEgy -= e_IR; // don't double-count the IR component flagged above //
         e_IR *= E_tot_to_evol_eVcgs; e_HiEgy *= E_tot_to_evol_eVcgs;
-#endif
+#endif */
     }
     e_HiEgy += shielding_factor_for_exgalbg * 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // this comes from the cosmic optical+UV backgrounds. small correction, so treat simply, and ignore when self-shielded.
     double Tdust_eqm = 10.; // arbitrary initial value //
@@ -1880,58 +1890,62 @@ double evaluate_Compton_heating_cooling_rate_adm(int target, double T, double nH
     double e_CMB_eV=pow(ELECTRONMASS/All.ADM_ElectronMass,3.0)*pow(All.ADM_FineStructure/0.01,2), T_cmb = 1.35/All.cf_atime; // CMB [energy in eV/cm^3, T in K]
     Lambda += compton_prefac_eV * n_elec * e_CMB_eV * (T-T_cmb) * pow(T_cmb, 4.0);
 
+/////////////////////////////////////////////
+// COMMENTED OUT ALL RT_USE_GRAVTREE TERMS //
+// //////////////////////////////////////////
+
 //    double e_UVB_eV = shielding_factor_for_exgalbg * 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // this comes from the cosmic optical+UV backgrounds. small correction, so treat simply, and ignore when self-shielded.
 //    Lambda += compton_prefac_eV * n_elec * e_UVB_eV * (T-2.e4); // assume very crude approx Compton temp ~2e4 for UVB
 
-#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
-    if(target >= 0)
+//#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
+/*    if(target >= 0)
     {
         int k; double E_tot_to_evol_eVcgs = (SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_EV;
         for(k=0;k<N_RT_FREQ_BINS;k++)
         {
             double e_tmp = SphP[target].Rad_E_gamma_Pred[k] * E_tot_to_evol_eVcgs, Teff = 0;
-
+*/
 //#if defined(GALSF_FB_FIRE_RT_LONGRANGE) /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
 //            if(k==RT_FREQ_BIN_FIRE_IR) {Teff=30.;}
 //            if(k==RT_FREQ_BIN_FIRE_OPT) {Teff=4000.;}
 //            if(k==RT_FREQ_BIN_FIRE_UV) {Teff=15000.;}
 //#endif
-#if defined(RT_INFRARED) /* special mid-through-far infrared band, which includes IR radiation temperature evolution */
-            if(k==RT_FREQ_BIN_INFRARED) {Teff=SphP[target].Dust_Temperature;}
-#endif
-#if defined(RT_OPTICAL_NIR) /* Optical-NIR approximate spectra for stars as used in the FIRE (Hopkins et al.) models; from 0.41-3.4 eV */
-            if(k==RT_FREQ_BIN_OPTICAL_NIR) {Teff=2800.;}
-#endif
-#if defined(RT_NUV) /* Near-UV approximate spectra (UV/optical spectra, sub-photo-electric, but high-opacity) for stars as used in the FIRE (Hopkins et al.) models; from 3.4-8 eV */
-            if(k==RT_FREQ_BIN_NUV) {Teff=12000.;}
-#endif
-#if defined(RT_PHOTOELECTRIC) /* photo-electric bands (8-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
-            if(k==RT_FREQ_BIN_PHOTOELECTRIC) {Teff=24400.;}
-#endif
-#if defined(RT_LYMAN_WERNER) /* lyman-werner bands (11.2-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
-            if(k==RT_FREQ_BIN_LYMAN_WERNER) {Teff=28800.;}
-#endif
-#if defined(RT_CHEM_PHOTOION) /* Hydrogen and Helium ionizing bands: H0 here */
-            if(k==RT_FREQ_BIN_H0) {Teff=2340.*rt_nu_eff_eV[k];}
-#endif
-#if defined(RT_PHOTOION_MULTIFREQUENCY) /* Hydrogen and Helium ionizing bands: He bands */
-            if(k==RT_FREQ_BIN_He0 || k==RT_FREQ_BIN_He1 || k==RT_FREQ_BIN_He2) {Teff=2340.*rt_nu_eff_eV[k];}
-#endif
-#if defined(RT_SOFT_XRAY) /* soft and hard X-rays for e.g. compton heating by X-ray binaries */
-            if(k==RT_FREQ_BIN_SOFT_XRAY) {Teff=3.6e6;}
-#endif
-#if defined(RT_HARD_XRAY) /* soft and hard X-rays for e.g. compton heating by X-ray binaries */
-            if(k==RT_FREQ_BIN_HARD_XRAY) {Teff=1.7e7;}
-#endif
-            if(Teff < 3.e4) {e_tmp *= n_elec;} // low-energy radiation acts inefficiently on neutrals here
-            Lambda += compton_prefac_eV * e_tmp * (T - Teff); // add to compton heating/cooling terms
-        }
-    }
+//#if defined(RT_INFRARED) /* special mid-through-far infrared band, which includes IR radiation temperature evolution */
+//            if(k==RT_FREQ_BIN_INFRARED) {Teff=SphP[target].Dust_Temperature;}
+//#endif
+//#if defined(RT_OPTICAL_NIR) /* Optical-NIR approximate spectra for stars as used in the FIRE (Hopkins et al.) models; from 0.41-3.4 eV */
+//            if(k==RT_FREQ_BIN_OPTICAL_NIR) {Teff=2800.;}
+//#endif
+//#if defined(RT_NUV) /* Near-UV approximate spectra (UV/optical spectra, sub-photo-electric, but high-opacity) for stars as used in the FIRE (Hopkins et al.) models; from 3.4-8 eV */
+//            if(k==RT_FREQ_BIN_NUV) {Teff=12000.;}
+//#endif
+//#if defined(RT_PHOTOELECTRIC) /* photo-electric bands (8-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
+//            if(k==RT_FREQ_BIN_PHOTOELECTRIC) {Teff=24400.;}
+//#endif
+//#if defined(RT_LYMAN_WERNER) /* lyman-werner bands (11.2-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
+//            if(k==RT_FREQ_BIN_LYMAN_WERNER) {Teff=28800.;}
+//#endif
+//#if defined(RT_CHEM_PHOTOION) /* Hydrogen and Helium ionizing bands: H0 here */
+//            if(k==RT_FREQ_BIN_H0) {Teff=2340.*rt_nu_eff_eV[k];}
+//#endif
+//#if defined(RT_PHOTOION_MULTIFREQUENCY) /* Hydrogen and Helium ionizing bands: He bands */
+//            if(k==RT_FREQ_BIN_He0 || k==RT_FREQ_BIN_He1 || k==RT_FREQ_BIN_He2) {Teff=2340.*rt_nu_eff_eV[k];}
+//#endif
+//#if defined(RT_SOFT_XRAY) /* soft and hard X-rays for e.g. compton heating by X-ray binaries */
+//            if(k==RT_FREQ_BIN_SOFT_XRAY) {Teff=3.6e6;}
+//#endif
+//#if defined(RT_HARD_XRAY) /* soft and hard X-rays for e.g. compton heating by X-ray binaries */
+//            if(k==RT_FREQ_BIN_HARD_XRAY) {Teff=1.7e7;}
+//#endif
+//            if(Teff < 3.e4) {e_tmp *= n_elec;} // low-energy radiation acts inefficiently on neutrals here
+///            Lambda += compton_prefac_eV * e_tmp * (T - Teff); // add to compton heating/cooling terms
+//        }
+//    }
 //#else // no explicit RHD terms evolved, so assume a MW-like ISRF instead
 //    double e_IR_eV=0.31, T_IR=DMAX(30.,T_cmb); // Milky way ISRF from Draine (2011), assume peak of dust emission at ~100 microns
 //    double e_OUV_eV=0.66, T_OUV=5800.; // Milky way ISRF from Draine (2011), assume peak of stellar emission at ~0.6 microns [can still have hot dust, this effect is pretty weak]
 //    Lambda += compton_prefac_eV * n_elec * (e_IR_eV*(T-T_IR) + e_OUV_eV*(T-T_OUV));
-#endif
+//#endif
 
 //#ifdef BH_COMPTON_HEATING /* custom band to represent (non)relativistic X-ray compton cooling from an AGN source without full RHD */
 //    if(target >= 0)
@@ -1993,6 +2007,9 @@ double ThermalProperties_adm(double u, double rho, int target, double *mu_guess,
 /* function to return the local multiplier relative to the UVB model to account in some local RHD models for local ionizing sources */
 double return_local_gammamultiplier_adm(int target)
 {
+// Added this first line to automatically turn off any local UVB multiplier for ADM. Edit this for future, feedback-related runs!
+return 1;
+
 #if defined(GALSF_FB_FIRE_RT_UVHEATING) && !defined(CHIMES)
     if((target >= 0) && (gJH0_adm > 0))
     {

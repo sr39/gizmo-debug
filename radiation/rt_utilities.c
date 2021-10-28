@@ -66,7 +66,15 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
     if(!((1 << P[i].Type) & (RT_SOURCES))) {return 0;}; // boolean test of whether i is a source or not - end if not a valid source particle
     if(P[i].Mass <= 0) {return 0;} // reject invalid particles scheduled for deletion
     int active_check = 0; // default to inactive //
+
+// basically, if particle is ADM, then it is not luminous.
+#ifdef ADM
+    if((P[i].Type == 0)||(P[i].Type == 4)) { // if particle is gas or star...
+	if(P[i].adm != 0) {return 0;}	
+    }
+#endif    
     
+
 #if defined(GALSF)
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
     active_check += rt_get_lum_band_singlestar(i,mode,lum); // get luminosities for individual star/sink particles assuming they are protostars or stars

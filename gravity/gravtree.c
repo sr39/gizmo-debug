@@ -392,8 +392,13 @@ void gravity_tree(void)
                 if(P[place].Type==0) {int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) for(k=0;k<6;k++) SphP[place].ET[k_freq][k] += GravDataOut[j].ET[k_freq][k];}
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef ADM
+               	if(P[place].Type==0) {if(P[place].adm == 0) {SphP[place].Rad_Flux_UV += GravDataOut[j].Rad_Flux_UV;}}
+                if(P[place].Type==0) {if(P[place].adm == 0) {SphP[place].Rad_Flux_EUV += GravDataOut[j].Rad_Flux_EUV;}}
+#else
                 if(P[place].Type==0) {SphP[place].Rad_Flux_UV += GravDataOut[j].Rad_Flux_UV;}
                 if(P[place].Type==0) {SphP[place].Rad_Flux_EUV += GravDataOut[j].Rad_Flux_EUV;}
+#endif
 #ifdef CHIMES
                 if(P[place].Type == 0)
                 {
@@ -409,10 +414,22 @@ void gravity_tree(void)
                 if(P[place].Type==0) SphP[place].Rad_Flux_AGN += GravDataOut[j].Rad_Flux_AGN;
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
+
+#ifdef ADM
+		if(P[place].Type==0) {if(P[place].adm == 0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[place].Rad_E_gamma[kf] += GravDataOut[j].Rad_E_gamma[kf];}} }
+#else
                 if(P[place].Type==0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[place].Rad_E_gamma[kf] += GravDataOut[j].Rad_E_gamma[kf];}}
 #endif
+
+#endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
+
+#ifdef ADM
+		if(P[place].Type==0) {if(P[place].adm == 0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[place].Rad_Flux[kf][k2] += GravDataOut[j].Rad_Flux[kf][k2];}}} }
+#else
                 if(P[place].Type==0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[place].Rad_Flux[kf][k2] += GravDataOut[j].Rad_Flux[kf][k2];}}}
+#endif
+
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 {int i1tt,i2tt; for(i1tt=0;i1tt<3;i1tt++) {for(i2tt=0;i2tt<3;i2tt++) {P[place].tidal_tensorps[i1tt][i2tt] += GravDataOut[j].tidal_tensorps[i1tt][i2tt];}}}
