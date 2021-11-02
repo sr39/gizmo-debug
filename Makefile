@@ -173,6 +173,25 @@ HDF5LIB   = -L/usr/local/hdf5/gcc/1.8.16/lib64 -lhdf5 -lz
 MPICHLIB  =
 endif
 
+#---------------------------------------------------------------------------------------------
+
+ifeq ($(SYSTYPE),"Niagara")
+CC               = mpicc
+OPTIMIZE = -O2 -xHost -funroll-loops -no-prec-div -fast-transcendentals -fp-model fast=2 -ipo
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE +=-qopenmp -parallel  # openmp required compiler flags
+endif
+FC       =  $(CC)
+GSL_INCL =  -I${SCINET_GSL_ROOT}/include
+GSL_LIBS =  -L${SCINET_GSL_ROOT}/lib -mkl
+FFTW_INCL=  -I${SCINET_FFTW_MPI_ROOT}/include
+FFTW_LIBS=  -L${SCINET_FFTW_MPI_ROOT}/lib
+MPICHLIB =
+HDF5INCL =  -I${SCINET_HDF5_ROOT}/include -DH5_USE_16_API
+HDF5LIB  =  -L${SCINET_HDF5_ROOT}/lib -lhdf5 -lz
+MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK
+endif
 
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Stampede")
