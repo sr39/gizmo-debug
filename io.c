@@ -4171,6 +4171,12 @@ void write_header_attributes_in_hdf5(hid_t handle)
 
         hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Omega_Radiation", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
         H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.OmegaRadiation); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+
+        hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Omega0", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+        H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.OmegaMatter); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+
+        hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "OmegaLambda", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+        H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.OmegaLambda); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
     }
 
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "HubbleParam", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
@@ -4255,15 +4261,6 @@ void write_header_attributes_in_hdf5(hid_t handle)
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "DM_InteractionVelocityScale", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.DM_InteractionVelocityScale); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
-#endif
-
-#ifdef ADM
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "ADM_ProtonMass", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.ADM_ProtonMass); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "ADM_ElectronMass", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.ADM_ElectronMass); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "ADM_FineStructure", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.ADM_FineStructure); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
 
 #ifdef DM_SCALARFIELD_SCREENING

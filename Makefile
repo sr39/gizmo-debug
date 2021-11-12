@@ -193,6 +193,30 @@ MPICHLIB =
 OPT     += -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK
 endif
 
+#--------------------------------------------------------------------------------------------
+
+ifeq ($(SYSTYPE),"SciNet_niagara")
+CC       =  mpicc     # sets the C-compiler
+OPTIMIZE = -O3 -xHost -funroll-loops -no-prec-div -fast-transcendentals -fp-model fast=2 -ipo
+
+OPTIMIZE += -g -debug parallel -Wall  # warnings
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE +=-qopenmp -parallel -mt_mpi   # openmp required compiler flags
+endif
+FC       =  $(CC)
+GSL_INCL =  -lgsl -mkl=sequential
+GSL_LIBS =
+FFTW_INCL=  -I/home/m/murray/lkeating/lib/fftw-2.1.5-single-mpi/include
+FFTW_LIBS=  -L/home/m/murray/lkeating/lib/fftw-2.1.5-single-mpi/lib
+MPICHLIB =
+HDF5INCL =   -DH5_USE_16_API
+HDF5LIB  =   -lhdf5 -lz
+MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE
+
+endif
+
+
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Stampede")
 CC       =  mpicc
