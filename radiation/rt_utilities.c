@@ -70,7 +70,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
 // basically, if particle is ADM, then it is not luminous.
 #ifdef ADM
     if((P[i].Type == 0)||(P[i].Type == 4)) { // if particle is gas or star...
-	if(P[i].adm != 0) {return 0;}	
+	if(P[i].adm != 0) {printf("ADM Alert! rt_utilities.c. get_source_luminosity\n"); return 0;}	
     }
 #endif    
     
@@ -146,7 +146,7 @@ double rt_kappa(int i, int k_freq)
 {
 
 #ifdef ADM
-    if(P[i].adm != 0) {return 0;} // if ADM particle, assume 0 opacity (for now, ignore the absorption properties of ADM)
+    if(P[i].adm != 0) {printf("ADM Alert! rt_utilities, rt_kappa.\n"); return 0;} // if ADM particle, assume 0 opacity (for now, ignore the absorption properties of ADM)
 #endif
 
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
@@ -350,7 +350,7 @@ int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum)
 
 #ifdef ADM
     if(P[i].Type == 4) { // if ADM star particle, return 0 luminosity
-	if(P[i].adm != 0) {return 0;}
+	if(P[i].adm != 0) {printf("ADM Alert! rt_utilities, rt_get_lum_band_stellarpopulation\n"); return 0;}
     }
 #endif
 

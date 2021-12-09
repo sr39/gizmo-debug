@@ -220,7 +220,7 @@ void drift_particle(int i, integertime time1)
 #endif
 
 #ifdef ADM
-	if(P[i].adm != 0) {if(SphP[i].InternalEnergyPred<All.MinEgySpec_adm) SphP[i].InternalEnergyPred=All.MinEgySpec_adm;}
+	if(P[i].adm != 0) {if(SphP[i].InternalEnergyPred<All.MinEgySpec_adm) SphP[i].InternalEnergyPred=All.MinEgySpec_adm; printf("ADM Alert! predict.c, minegy_adm.\n");}
         else {if(SphP[i].InternalEnergyPred<All.MinEgySpec) SphP[i].InternalEnergyPred=All.MinEgySpec;}
 #else
 	if(SphP[i].InternalEnergyPred<All.MinEgySpec) SphP[i].InternalEnergyPred=All.MinEgySpec;

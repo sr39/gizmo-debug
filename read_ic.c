@@ -168,7 +168,7 @@ void read_ic(char *fname)
 
                 SphP[i].InternalEnergy = All.InitGasU;
 #ifdef ADM
-		if(P[i].adm != 0) {SphP[i].InternalEnergy = u_init_adm;}
+		if(P[i].adm != 0) {SphP[i].InternalEnergy = u_init_adm; printf("ADM Alert! read_ic.c, internal energy\n");}
 #endif
             }
         }
@@ -176,7 +176,7 @@ void read_ic(char *fname)
 
     for(i = 0; i < N_gas; i++) {
 #ifdef ADM
-	if(P[i].adm != 0) {SphP[i].InternalEnergyPred = SphP[i].InternalEnergy = DMAX(All.MinEgySpec_adm, SphP[i].InternalEnergy);}
+	if(P[i].adm != 0) {SphP[i].InternalEnergyPred = SphP[i].InternalEnergy = DMAX(All.MinEgySpec_adm, SphP[i].InternalEnergy);printf("ADM Alert! read_ic.c, minegy_adm.\n");}
 	else {SphP[i].InternalEnergyPred = SphP[i].InternalEnergy = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);}
 #else
 	SphP[i].InternalEnergyPred = SphP[i].InternalEnergy = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);    

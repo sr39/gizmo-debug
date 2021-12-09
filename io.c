@@ -300,7 +300,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 if(P[pindex].Type == type)
                 {
 #ifdef ADM
-		    if(P[pindex].adm != 0) {*fp++ = DMAX(All.MinEgySpec_adm, SphP[pindex].InternalEnergyPred);}    
+		    if(P[pindex].adm != 0) {*fp++ = DMAX(All.MinEgySpec_adm, SphP[pindex].InternalEnergyPred); printf("ADM Alert! io.c, fill_write_buffer, add Egy_adm\n");}    
 		    else {*fp++ = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergyPred);}
 #else
                     *fp++ = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergyPred);
@@ -353,17 +353,18 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 		    
 		    double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp;
 #ifdef ADM
-		    if(P[pindex].adm != 0) {u = DMAX(All.MinEgySpec_adm, SphP[pindex].InternalEnergy);} // if ADM particle, use minimum energy for ADM
+		    if(P[pindex].adm != 0) {u = DMAX(All.MinEgySpec_adm, SphP[pindex].InternalEnergy); printf("ADM Alert! io.c, fill_write_buffer. u is DMAX\n");} // if ADM particle, use minimum energy for ADM
 		    else {u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy);}
 #else
 		    u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy);
 #endif
 
 #ifdef ADM
-		    if(P[pindex].adm == 0) { // if baryonic (std. model), use normal function. Otherwise, use ADM function.
-		        temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
-		    } else {
+		    if(P[pindex].adm != 0) { // if ADM, use ADM function. Otherwise, use original function.
                 temp = ThermalProperties_adm(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
+                printf("ADM Alert! io.c, fill_write_buffer, thermal properties.\n");
+		    } else {
+                temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
 		    } 
 #else 
                     temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
@@ -481,6 +482,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 		    if(P[pindex].adm != 0)
 		    { 
 			*fp++ = get_starformation_rate_adm(pindex) * UNIT_MASS_IN_SOLAR / UNIT_TIME_IN_YR;
+            printf("ADM Alert! io.c, fill_write_buffer, star_formation_rate_adm\n");
 		    } else {
                         *fp++ = get_starformation_rate(pindex) * UNIT_MASS_IN_SOLAR / UNIT_TIME_IN_YR;
                     }
@@ -708,17 +710,19 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #else
                     double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp; 
 #ifdef ADM			
-		    if(P[pindex].adm != 0)  {u = DMAX(All.MinEgySpec_adm, SphP[pindex].InternalEnergy);}
+		    if(P[pindex].adm != 0)  {u = DMAX(All.MinEgySpec_adm, SphP[pindex].InternalEnergy); printf("ADM Alert! io.c, fill_write_buffer. minegy_adm\n");}
 		    else {u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy);}
 #else
 		    u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy);
 #endif
 
 #ifdef ADM
-		    if(P[pindex].adm == 0) {
-		        temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
-		    } else {
+		    if(P[pindex].adm != 0) {
                 temp = ThermalProperties_adm(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
+                printf("ADM Alert! io.c, fill_write_buffer, thermal_properties\n");
+		    } else {
+		        temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
+
 		    } 
 #else 
                     temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
@@ -963,10 +967,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     /* get cooling time */
                     u = SphP[pindex].InternalEnergyPred;
 #ifdef ADM
-		    if(P[pindex].adm == 0) {
-		         tcool = GetCoolingTime(u, SphP[pindex].Density * All.cf_a3inv, ne, pindex);
-		    } else {
+		    if(P[pindex].adm != 0) {
                 tcool = GetCoolingTime_adm(u, SphP[pindex].Density * All.cf_a3inv, ne, pindex);
+                printf("ADM Alert! io.c, fill_write_buffer, getcoolingtime");
+		    } else {
+		         tcool = GetCoolingTime(u, SphP[pindex].Density * All.cf_a3inv, ne, pindex);
 		    } 
 #else 
                     tcool = GetCoolingTime(u, SphP[pindex].Density * All.cf_a3inv, ne, pindex);
@@ -1753,7 +1758,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
 
         case IO_BHPROGS:
         case IO_GRAINTYPE:
-	case IO_ADM:
+	    case IO_ADM:
         case IO_EOSCOMP:
         case IO_STAGE_PROTOSTAR:
             bytes_per_blockelement = sizeof(int);

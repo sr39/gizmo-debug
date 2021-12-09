@@ -85,7 +85,7 @@ void determine_where_SNe_occur(void)
 #ifdef ADM
 	double RSNe;
 	if(P[i].Type == 4) { // if it's a generic star particle (gas particles are omitted from this loop so we don't care about them)
-	    if(P[i].adm != 0) {RSNe = mechanical_fb_calculate_eventrates_adm(i,dt);}	    
+	    if(P[i].adm != 0) {RSNe = mechanical_fb_calculate_eventrates_adm(i,dt); printf("ADM Alert! mechanical_fb.c, determine_where_SNE");}	    
             else {RSNe = mechanical_fb_calculate_eventrates(i,dt);}
 	} else { // if it's not a star particle
 		RSNe = mechanical_fb_calculate_eventrates(i,dt);
@@ -153,14 +153,14 @@ void particle2in_addFB(struct addFB_evaluate_data_in_ *in, int i, int loop_itera
 #ifdef ADM
     in->adm = 0; // set ADM type to 0 by default and update accordingly
     if((P[i].Type == 4)||(P[i].Type == 0)) { // ADM particles can only be stars or gas currently.
-	if(P[i].adm != 0) {in->adm = P[i].adm;}
+	if(P[i].adm != 0) {in->adm = P[i].adm; printf("ADM Alert! mechanical_fb.c, particle2in_addFB, adm type");}
     } // In the future, use the in.adm value for the "particle2in_addFB_from_stars" function.  
 #endif
     if((P[i].DensAroundStar <= 0)||(P[i].Mass <= 0)) {return;} // events not possible [catch for mass->0]
     if(loop_iteration < 0) {in->Msne=P[i].Mass; in->unit_mom_SNe=1.e-4; in->SNe_v_ejecta=1.0e-4; return;} // weighting loop
 #ifdef ADM
     if((P[i].Type == 4)||(P[i].Type == 0)) { // ADM particles can only be stars or gas currently.
-        if(P[i].adm != 0) {particle2in_addFB_fromstars_adm(in,i,loop_iteration);}
+        if(P[i].adm != 0) {particle2in_addFB_fromstars_adm(in,i,loop_iteration); printf("ADM Alert! mechanical_fb.c, particle2in_addFB");}
 	else {particle2in_addFB_fromstars(in,i,loop_iteration);}
     } else { // if not a star or gas particle
 	particle2in_addFB_fromstars(in,i,loop_iteration);
@@ -208,7 +208,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     h2 = local.Hsml*local.Hsml; kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
     double unitlength_in_kpc=UNIT_LENGTH_IN_KPC * All.cf_atime, density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS; // some units (just used below, but handy to define for clarity) //
 #ifdef ADM
-    if(local.adm != 0) {density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS*PROTONMASS/All.ADM_ProtonMass;}
+    if(local.adm != 0) {density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS*PROTONMASS/All.ADM_ProtonMass; printf("ADM Alert! mechanical_fb.c, addFBevaluate");}
 #endif
 
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
@@ -232,7 +232,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
         while(startnode >= 0)
         {
 #ifdef ADM
-	    numngb_inbox = ngb_treefind_pairs_threads_adm(local.Pos, local.adm, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);	
+//	    numngb_inbox = ngb_treefind_pairs_threads_adm(local.Pos, local.adm, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);	
+        numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #else
             numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #endif
@@ -420,7 +421,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(InternalEnergy_j > uion) {
                     #pragma omp atomic write
 #ifdef ADM	
-		    if(P[j].adm == 0) {SphP[j].Ne = 1.0 + 2.0*yhelium(j);} // if baryonic, then do ionisation.
+		    if(P[j].adm != 0) {SphP[i].Ne += 0; printf("ADM Alert! mechanical_fb.c, hii_heating, SphP.Ne");} // if ADM, keep it the same.
+            else {SphP[j].Ne = 1.0 + 2.0*yhelium(j);} /* reset ionized fraction and treat as fully-ionized from the shock */
 #else
                     SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* reset ionized fraction and treat as fully-ionized from the shock */
 #endif
@@ -511,7 +513,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4); // define kernel quantities
     double unitlength_in_kpc= UNIT_LENGTH_IN_KPC * All.cf_atime, density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS;
 #ifdef ADM
-    if(local.adm != 0) {density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS*PROTONMASS/All.ADM_ProtonMass;}
+    if(local.adm != 0) {density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS*PROTONMASS/All.ADM_ProtonMass; printf("ADM Alert! mechanical_fb, addFBevaluate, v2\n");}
 #endif
 
     // now define quantities that will be used below //
@@ -563,7 +565,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
         while(startnode >= 0)
         {
 #ifdef ADM
-            numngb_inbox = ngb_treefind_pairs_threads_adm(local.Pos, local.adm, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+//            numngb_inbox = ngb_treefind_pairs_threads_adm(local.Pos, local.adm, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #else 
             numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #endif
@@ -812,10 +815,11 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double uion = HIIRegion_Temp / (0.59*(5./3.-1.)*U_TO_TEMP_UNITS);
                     if(InternalEnergy_j > uion) {
                         #pragma omp atomic write
-#ifdef ADM          
-                   	 if(P[j].adm == 0) {SphP[j].Ne = 1.0 + 2.0*yhelium(j);} // if baryonic, then do ionisation.
+#ifdef ADM	
+		    if(P[j].adm != 0) {SphP[i].Ne += 0; printf("ADM Alert! mechanical_fb.c, hii_heating, SphP.Ne, v2");} // if ADM, keep it the same.
+            else {SphP[j].Ne = 1.0 + 2.0*yhelium(j);} /* reset ionized fraction and treat as fully-ionized from the shock */
 #else
-                        SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* reset ionized fraction and treat as fully-ionized from the shock */
+                    SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* reset ionized fraction and treat as fully-ionized from the shock */
 #endif
                     }
 #endif

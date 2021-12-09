@@ -96,7 +96,7 @@ double particle_ionizing_luminosity_in_cgs(long i)
 {
 #ifdef ADM
     if((P[i].Type == 0) || (P[i].Type == 4)) { // if we have an ADM star or gas particle, return 0 luminosity
-	if(P[i].adm != 0) {return 0;} 
+	if(P[i].adm != 0) {printf("ADM Alert! stellar_evolution, particle_ionizing_luminosity\n"); return 0;} 
     }
 #endif
 

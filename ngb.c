@@ -118,6 +118,7 @@ int ngb_treefind_pairs_threads_adm(MyDouble searchcenter[3], int adm_type, MyFlo
                                int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
 {
 #include "system/ngb_codeblock_before_condition.h"
+    printf("ADM Alert! ngb_treefind_pairs_threads_adm\n");
     if(P[p].Type > 0) continue; // skip particles with non-gas types
     if(P[p].Mass <= 0) continue; // skip zero-mass particles
     if(P[p].adm != adm_type) continue; // skip particles that aren't the same ADM type
@@ -147,6 +148,7 @@ int ngb_treefind_variable_threads_adm(MyDouble searchcenter[3], int adm_type,  M
                                   int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
 {
 #include "system/ngb_codeblock_before_condition.h"
+    printf("ADM Alert! ngb_treefind_variable_threads_adm\n");
     if(P[p].Type > 0) continue; // skip particles with non-gas types
     if(P[p].Mass <= 0) continue; // skip zero-mass particles
     if(P[p].adm != adm_type) continue; // skip particles that aren't the same ADM type
@@ -179,6 +181,7 @@ int ngb_treefind_variable_targeted_adm(int i, MyDouble searchcenter[3], MyFloat 
 {
     long nexport_save = *nexport; /* this line must be here in the un-threaded versions */
 #include "system/ngb_codeblock_before_condition.h" // call the same variable/initialization block
+    printf("ADM Alert! ngb_treefind_variable_targeted_adm\n");
     if(!((1 << P[p].Type) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
     if(P[p].Mass <= 0) continue; // skip zero-mass particles
     if((P[i].Type == 0) || (P[i].Type == 4)) { // if star or gas particle, check that ADM type of neighbor and source are the same

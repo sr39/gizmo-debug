@@ -34,7 +34,7 @@ static double *BetaH0_adm, *BetaHep_adm, *Betaff_adm, *AlphaHpRate_adm, *AlphaHp
 #ifdef COOL_METAL_LINES_BY_SPECIES
 /* if this is enabled, the cooling table files should be in a folder named 'spcool_tables' in the run directory.
  cooling tables can be downloaded at: http://www.tapir.caltech.edu/~phopkins/public/spcool_tables.tgz or on the Bitbucket site (downloads section) */
-static float *SpCoolTable0, *SpCoolTable1;
+static float *SpCoolTable0_adm, *SpCoolTable1_adm;
 #endif
 /* these are constants of the UV background at a given redshift: they are interpolated from TREECOOL but then not modified particle-by-particle */
 static double J_UV_adm = 0, gJH0_adm = 0, gJHep_adm = 0, gJHe0_adm = 0, epsH0_adm = 0, epsHep_adm = 0, epsHe0_adm = 0;
@@ -57,6 +57,7 @@ struct Chimes_depletion_data_structure *ChimesDepletionData;
 /* subroutine which actually sends the particle data to the cooling routine and updates the entropies */
 void do_the_cooling_for_particle_adm(int i)
 {
+    printf("ADM Alert! cooling_adm.c We have a problem!\n");
     double unew, dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
 
     if((dtime>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
@@ -182,6 +183,7 @@ void do_the_cooling_for_particle_adm(int i)
 double DoCooling_adm(double u_old, double rho, double dt, double ne_guess, int target)
 {
     double u, du; u=0; du=0;
+    printf("ADM Alert! cooling_adm, doCooling_adm\n");
 
 #ifdef COOL_GRACKLE
 #ifndef COOLING_OPERATOR_SPLIT
@@ -306,6 +308,7 @@ double DoCooling_adm(double u_old, double rho, double dt, double ne_guess, int t
  */
 double GetCoolingTime_adm(double u_old, double rho, double ne_guess, int target)
 {
+printf("ADM Alert! cooling_adm, getcoolingtime\n");
 #if defined(COOL_GRACKLE) && !defined(GALSF_EFFECTIVE_EQS)
     double LambdaNet = CallGrackle(u_old, rho, 0.0, ne_guess, target, 1);
     if(LambdaNet >= 0) LambdaNet = 0.0;
@@ -326,6 +329,7 @@ double GetCoolingTime_adm(double u_old, double rho, double ne_guess, int target)
  */
 double DoInstabilityCooling_adm(double m_old, double u, double rho, double dt, double fac, double ne_guess, int target)
 {
+    printf("ADM Alert! cooling_adm, instabilitycooling\n");
     if(fac <= 0) {return 0.01*m_old;} /* the hot phase is actually colder than the cold reservoir! */
     double m, dm, m_lower, m_upper, ratefact, LambdaNet;
     int iter = 0;
@@ -391,6 +395,7 @@ double chimes_convert_u_to_temp(double u, double rho, int target)
  * Ionization abundances and the rates for the emission are also computed */
 double convert_u_to_temp_adm(double u, double rho, int target, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess, double *mu_guess)
 {
+    printf("ADM Alert! cooling_adm, convert u to temp\n");
     int iter = 0;
     double temp, temp_old, temp_old_old = 0, temp_new, prefac_fun_old, prefac_fun, fac, err_old, err_new, T_bracket_errneg = 0, T_bracket_errpos = 0, T_bracket_min = 0, T_bracket_max = 1.e20, bracket_sign = 0; // double max = 0;
     double u_input = u, rho_input = rho, temp_guess;
@@ -481,6 +486,7 @@ double find_abundances_and_rates_adm(double logT, double rho, int target, double
                                  double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess,
                                  double *mu_guess)
 {
+    printf("ADM Alert! cooling_adm, abundances and rates\n");
     int j, niter;
     double Tlow, Thi, flow, fhi, t, gJH0ne, gJHe0ne, gJHepne, logT_input, rho_input, ne_input, neold, nenew;
     double bH0, bHep, bff, aHpRate, aHp, aHep, aHepp, ad, geH0, geHe0, geHep, EPSILON_SMALL=1.e-40;
@@ -763,6 +769,7 @@ extern FILE *fd;
  */
 double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
 {
+    printf("ADM Alert! cooling_adm, coolingrate\n");
     double n_elec=n_elec_guess, nH0, nHe0, nHp, nHep, nHepp, mu; /* ionization states [computed below] */
     double Lambda, Heat, LambdaFF, LambdaCompton, LambdaExcH0, LambdaExcHep, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
     double LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, T, shieldfac, LambdaMol, LambdaMetal;
@@ -1139,6 +1146,7 @@ double CoolingRate_adm(double logT, double rho, double n_elec_guess, int target)
 
 void InitCoolMemory_adm(void)
 {
+    //printf("ADM Alert! cooling_adm, initcoolmemory\n");
     BetaH0_adm = (double *) mymalloc("BetaH0_adm", (NCOOLTAB_ADM + 1) * sizeof(double));
     BetaHep_adm = (double *) mymalloc("BetaHep_adm", (NCOOLTAB_ADM + 1) * sizeof(double));
     AlphaHp_adm = (double *) mymalloc("AlphaHp_adm", (NCOOLTAB_ADM + 1) * sizeof(double));
@@ -1153,8 +1161,8 @@ void InitCoolMemory_adm(void)
 
 #ifdef COOL_METAL_LINES_BY_SPECIES
     long i_nH=41; long i_T=176; long kspecies=(long)NUM_LIVE_SPECIES_FOR_COOLTABLES;
-    SpCoolTable0 = (float *) mymalloc("SpCoolTable0",(kspecies*i_nH*i_T)*sizeof(float));
-    if(All.ComovingIntegrationOn) {SpCoolTable1 = (float *) mymalloc("SpCoolTable1",(kspecies*i_nH*i_T)*sizeof(float));}
+    SpCoolTable0_adm = (float *) mymalloc("SpCoolTable0_adm",(kspecies*i_nH*i_T)*sizeof(float));
+    if(All.ComovingIntegrationOn) {SpCoolTable1_adm = (float *) mymalloc("SpCoolTable1_adm",(kspecies*i_nH*i_T)*sizeof(float));}
 #endif
 }
 
@@ -1164,6 +1172,7 @@ void MakeCoolingTable_adm(void)
      /* Set up interpolation tables in T for cooling rates given in KWH, ApJS, 105, 19
         Hydrogen, Helium III recombination rates and collisional ionization cross-sections are updated */
 {
+    //printf("ADM Alert! cooling_adm, make cooling table\n");
     int i; double T,Tfact;
     if(All.MinGasTemp > 0.0) {Tmin_adm = log10(All.MinGasTemp);} else {Tmin_adm=-1.0;} // set minimum temperature in this table to some very low value if zero, where none of the cooling approximations above make sense
     deltaT_adm = (Tmax_adm - Tmin_adm) / NCOOLTAB_ADM;
@@ -1209,6 +1218,7 @@ void MakeCoolingTable_adm(void)
 
 void LoadMultiSpeciesTables_adm(void)
 {
+    //printf("ADM Alert! cooling_adm, multispeciestable_adm\n");
     if(All.ComovingIntegrationOn) {
         int i;
         double z;
@@ -1230,20 +1240,21 @@ void LoadMultiSpeciesTables_adm(void)
 
 void ReadMultiSpeciesTables_adm(int iT)
 {
+    //printf("ADM Alert! cooling_adm, readmultispeciestables\n");
     /* read table w n,T for each species */
     long i_nH=41; long i_Temp=176; long kspecies=(long)NUM_LIVE_SPECIES_FOR_COOLTABLES; long i,j,k,r;
     /* int i_He=7;  int l; */
     FILE *fdcool; char *fname;
 
     fname=GetMultiSpeciesFilename_adm(iT,0);
-    if(ThisTask == 0) printf(" ..opening Cooling Table %s \n",fname);
+    if(ThisTask == 0) printf(" ..opening ADM Cooling Table %s \n",fname);
     if(!(fdcool = fopen(fname, "r"))) {
-        printf(" Cannot read species cooling table in file `%s'\n", fname); endrun(456);}
+        printf(" Cannot read ADM species cooling table in file `%s'\n", fname); endrun(456);}
     for(i=0;i<kspecies;i++) {
         for(j=0;j<i_nH;j++) {
             for(k=0;k<i_Temp;k++) {
-                r=fread(&SpCoolTable0[i*i_nH*i_Temp + j*i_Temp + k],sizeof(float),1,fdcool);
-                if(r!=1) {printf(" Reached Cooling EOF! \n");
+                r=fread(&SpCoolTable0_adm[i*i_nH*i_Temp + j*i_Temp + k],sizeof(float),1,fdcool);
+                if(r!=1) {printf(" Reached ADM Cooling EOF! \n");
                 }
             }}}
     fclose(fdcool);
@@ -1260,14 +1271,14 @@ void ReadMultiSpeciesTables_adm(int iT)
      */
     if (All.ComovingIntegrationOn && i<48) {
         fname=GetMultiSpeciesFilename_adm(iT+1,0);
-        if(ThisTask == 0) printf(" ..opening (z+) Cooling Table %s \n",fname);
+        if(ThisTask == 0) printf(" ..opening (z+) ADM Cooling Table %s \n",fname);
         if(!(fdcool = fopen(fname, "r"))) {
-            printf(" Cannot read species 1 cooling table in file `%s'\n", fname); endrun(456);}
+            printf(" Cannot read ADM species 1 cooling table in file `%s'\n", fname); endrun(456);}
         for(i=0;i<kspecies;i++) {
             for(j=0;j<i_nH;j++) {
                 for(k=0;k<i_Temp;k++) {
-                    r=fread(&SpCoolTable1[i*i_nH*i_Temp + j*i_Temp + k],sizeof(float),1,fdcool);
-                    if(r!=1) {printf(" Reached Cooling EOF! \n");
+                    r=fread(&SpCoolTable1_adm[i*i_nH*i_Temp + j*i_Temp + k],sizeof(float),1,fdcool);
+                    if(r!=1) {printf(" Reached ADM Cooling EOF! \n");
                     }
                 }}}
         fclose(fdcool);
@@ -1287,6 +1298,7 @@ void ReadMultiSpeciesTables_adm(int iT)
 
 char *GetMultiSpeciesFilename_adm(int i, int hk)
 {
+    //printf("ADM Alert! cooling_adm, multispeciesfilename\n");
     static char fname[100];
     if(i<0) i=0; if(i>48) i=48;
     if(hk==0) {
@@ -1315,13 +1327,14 @@ static int nheattab_adm;		/* length of table */
 
 void ReadIonizeParams_adm(char *fname)
 {
+    //printf("ADM Alert! cooling_adm, read ionize params\n");
     int i; FILE *fdcool;
-    if(!(fdcool = fopen(fname, "r"))) {printf(" Cannot read ionization table in file `%s'. Make sure the correct TREECOOL file is placed in the code run-time directory, and that any leading comments (e.g. lines preceded by ##) are deleted from the file.\n", fname); endrun(456);}
+    if(!(fdcool = fopen(fname, "r"))) {printf(" Cannot read ionization table in file `%s'. Make sure the correct ADM TREECOOL file is placed in the code run-time directory, and that any leading comments (e.g. lines preceded by ##) are deleted from the file.\n", fname); endrun(456);}
     for(i=0; i<TABLESIZE_ADM; i++) {gH0_adm[i]=0;}
     for(i=0; i<TABLESIZE_ADM; i++) {if(fscanf(fdcool, "%g %lg %lg %lg %lg %lg %lg", &inlogz_adm[i], &gH0_adm[i], &gHe_adm[i], &gHep_adm[i], &eH0_adm[i], &eHe_adm[i], &eHep_adm[i]) == EOF) {break;}}
     fclose(fdcool);
     for(i=0, nheattab_adm=0; i<TABLESIZE_ADM; i++) {if(gH0_adm[i] != 0.0) {nheattab_adm++;} else {break;}} /*  nheattab_adm is the number of entries in the table */
-    if(ThisTask == 0) printf(" ..read ionization table [TREECOOL] with %d non-zero UVB entries in file `%s'. Make sure to cite the authors from which the UV background was compiled! (See user guide for the correct references).\n", nheattab_adm, fname);
+    if(ThisTask == 0) printf(" ..read ADM ionization table [TREECOOL] with %d non-zero UVB entries in file `%s'. Make sure to cite the authors from which the UV background was compiled! (See user guide for the correct references).\n", nheattab_adm, fname);
 }
 
 
@@ -1334,6 +1347,7 @@ void IonizeParams_adm(void)
 
 void IonizeParamsTable_adm(void)
 {
+    //printf("ADM Alert! cooling_adm, ionise params table\n");
     int i, ilow;
     double logz, dzlow, dzhi;
     double redshift;
@@ -1376,12 +1390,14 @@ void IonizeParamsTable_adm(void)
 
 void SetZeroIonization_adm(void)
 {
+    //printf("ADM Alert! cooling_adm, set zero ionisation\n");
     gJHe0_adm = gJHep_adm = gJH0_adm = 0; epsHe0_adm = epsHep_adm = epsH0_adm = 0; J_UV_adm = 0;
 }
 
 
 void IonizeParamsFunction_adm(void)
 {
+    //printf("ADM Alert! cooling_adm, ionise params function\n");
     int i, nint;
     double a0, planck, ev, e0_H, e0_He, e0_Hep;
     double gint, eint, t, tinv, fac, eps;
@@ -1469,6 +1485,7 @@ void IonizeParamsFunction_adm(void)
 
 void InitCool_adm(void)
 {
+    //printf("ADM Alert! cooling_adm, init cool adm\n");
     if(ThisTask == 0) printf("Initializing ADM cooling ...\n");
 
     All.Time = All.TimeBegin;
@@ -1543,6 +1560,7 @@ void InitCool_adm(void)
 #ifdef COOL_METAL_LINES_BY_SPECIES
 double GetCoolingRateWSpecies_adm(double nHcgs, double logT, double *Z)
 {
+    printf("ADM Alert! cooling_adm, GetCoolingRateWSpecies_adm\n");
     double ne_over_nh_tbl=1, Lambda=0;
     int k, N_species_active = (int)NUM_LIVE_SPECIES_FOR_COOLTABLES;
 
@@ -1580,21 +1598,22 @@ double GetCoolingRateWSpecies_adm(double nHcgs, double logT, double *Z)
 
 double GetLambdaSpecies_adm(long k_index, long index_x0y0, long index_x0y1, long index_x1y0, long index_x1y1, double dx, double dy, double dz, double mdz)
 {
+    printf("ADM Alert! cooling_adm, getlambdaspecies_adm\n");
     long x0y0 = index_x0y0 + k_index;
     long x0y1 = index_x0y1 + k_index;
     long x1y0 = index_x1y0 + k_index;
     long x1y1 = index_x1y1 + k_index;
     double i1, i2, j1, j2, w1, w2, u1;
-    i1 = SpCoolTable0[x0y0];
-    i2 = SpCoolTable0[x0y1];
-    j1 = SpCoolTable0[x1y0];
-    j2 = SpCoolTable0[x1y1];
+    i1 = SpCoolTable0_adm[x0y0];
+    i2 = SpCoolTable0_adm[x0y1];
+    j1 = SpCoolTable0_adm[x1y0];
+    j2 = SpCoolTable0_adm[x1y1];
     if(dz > 0)
     {
-        i1 = mdz * i1 + dz * SpCoolTable1[x0y0];
-        i2 = mdz * i2 + dz * SpCoolTable1[x0y1];
-        j1 = mdz * j1 + dz * SpCoolTable1[x1y0];
-        j2 = mdz * j2 + dz * SpCoolTable1[x1y1];
+        i1 = mdz * i1 + dz * SpCoolTable1_adm[x0y0];
+        i2 = mdz * i2 + dz * SpCoolTable1_adm[x0y1];
+        j1 = mdz * j1 + dz * SpCoolTable1_adm[x1y0];
+        j2 = mdz * j2 + dz * SpCoolTable1_adm[x1y1];
     }
     w1 = i1*(1-dy) + i2*dy;
     w2 = j1*(1-dy) + j2*dy;
@@ -1609,6 +1628,7 @@ double GetLambdaSpecies_adm(long k_index, long index_x0y0, long index_x0y1, long
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
 void selfshield_local_incident_uv_flux_adm(void)
 {   /* include local self-shielding with the following */
+printf("ADM Alert! cooling_adm, selfshield_local_uv_flux\n");
     int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if(P[i].Type==0)
@@ -1649,6 +1669,7 @@ void selfshield_local_incident_uv_flux_adm(void)
  * */
 void update_explicit_molecular_fraction_adm(int i, double dtime_cgs)
 {
+    printf("ADM Alert! cooling_adm, update_explicit_molecular_fraction\n");
     if(dtime_cgs <= 0) {return;}
 #ifdef COOL_MOLECFRAC_NONEQM
     // first define a number of environmental variables that are fixed over this update step
@@ -1794,6 +1815,7 @@ void update_explicit_molecular_fraction_adm(int i, double dtime_cgs)
 /* simple subroutine to estimate the dust temperatures in our runs without detailed tracking of these individually [more detailed chemistry models do this] */
 double get_equilibrium_dust_temperature_estimate_adm(int i, double shielding_factor_for_exgalbg)
 {   /* simple three-component model [can do fancier] with cmb, dust, high-energy photons */
+printf("ADM Alert! cooling_adm, get_equilibrium_dust_temperature_estimate_adm\n");
 #if defined(RT_INFRARED)
     if(i >= 0) {return SphP[i].Dust_Temperature;} // this is pre-computed -- simply return it
 #endif
@@ -1836,6 +1858,7 @@ double get_equilibrium_dust_temperature_estimate_adm(int i, double shielding_fac
 /* this function estimates the free electron fraction from heavy ions, assuming a simple mix of cold molecular gas, Mg, and dust, with the ions from singly-ionized Mg, to prevent artificially low free electron fractions */
 double return_electron_fraction_from_heavy_ions_adm(int target, double temperature, double density_cgs, double n_elec_HHe)
 {
+    printf("ADM Alert! cooling_adm, return_electron_fraction_from_heavy_ions_adm\n");
     if(All.ComovingIntegrationOn) {double rhofac=density_cgs/(1000.*COSMIC_BARYON_DENSITY_CGS); if(rhofac<0.2) {return 0;}} // ignore these reactions in the IGM
     double zeta_cr=1.0e-17, f_dustgas=0.01, n_ion_max=4.1533e-5, XH=HYDROGEN_MASSFRAC; // cosmic ray ionization rate (fixed as constant for non-CR runs) and dust-to-gas ratio
 #ifdef COSMIC_RAYS
@@ -1876,6 +1899,7 @@ double return_electron_fraction_from_heavy_ions_adm(int target, double temperatu
     are evolved, as well as the proper relativistic or non-relativistic effects and two-temperature plasma effects. */
 double evaluate_Compton_heating_cooling_rate_adm(int target, double T, double nHcgs, double n_elec, double shielding_factor_for_exgalbg)
 {
+    printf("ADM Alert! cooling_adm, evaluate_Compton_heating_cooling_rate_adm\n");
     double Lambda = 0;
     //double compton_prefac_eV = 2.16e-35 / nHcgs; // multiply field in eV/cm^3 by this and temperature difference to obtain rate
 
@@ -1983,6 +2007,8 @@ double evaluate_Compton_heating_cooling_rate_adm(int target, double T, double nH
 /*  this function computes the self-consistent temperature and electron fraction */
 double ThermalProperties_adm(double u, double rho, int target, double *mu_guess, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess)
 {
+
+printf("ADM Alert! cooling_adm, thermal properties adm\n");
 #if defined(CHIMES)
     int i = target; *ne_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_elec]]; *nH0_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_HI]];
     *nHp_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_HII]]; *nHe0_guess = ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[sp_HeI]];
@@ -2007,6 +2033,7 @@ double ThermalProperties_adm(double u, double rho, int target, double *mu_guess,
 /* function to return the local multiplier relative to the UVB model to account in some local RHD models for local ionizing sources */
 double return_local_gammamultiplier_adm(int target)
 {
+printf("ADM Alert! cooling_adm, local_gammamultiplier\n");
 // Added this first line to automatically turn off any local UVB multiplier for ADM. Edit this for future, feedback-related runs!
 return 1;
 
@@ -2026,6 +2053,7 @@ return 1;
 /* function to attenuate the UVB to model self-shielding in optically-thin simulations */
 double return_uvb_shieldfac_adm(int target, double gamma_12, double nHcgs, double logT)
 {
+    printf("ADM Alert! cooling_adm, return_uvb_shieldfac\n");
 #ifdef GALSF_EFFECTIVE_EQS
     return 1; // self-shielding is implicit in the sub-grid model already //
 #endif

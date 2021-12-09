@@ -5,8 +5,7 @@
 # a new system.
 #
 #############
-SYSTYPE="SciNet_niagara"
-#SYSTYPE="Niagara"
+SYSTYPE='SciNet_niagara'
 #SYSTYPE="Della"
 #SYSTYPE="Frontera"
 #SYSTYPE="Stampede2"

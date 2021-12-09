@@ -404,6 +404,7 @@ void star_formation_parent_routine(void)
 #ifdef ADM
         double PhysDensThresh_ADM = CritPhysDensity_ADM / (HYDROGEN_MASSFRAC_ADM * UNIT_DENSITY_IN_NHCGS * PROTONMASS/All.ADM_ProtonMass); 
 	if(P[i].adm != 0) { //if ADM particle
+                printf("ADM Alert! sfr_eff, phys dens thresh.\n");
                 if(SphP[i].Density * All.cf_a3inv >= PhysDensThresh_ADM) {flag = 0;} // if sufficiently dense, go forward into SF routine //
 		//if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh) {flag = 0;}
         }
@@ -422,6 +423,7 @@ void star_formation_parent_routine(void)
 #ifdef ADM
 	if(P[i].adm != 0) { // if ADM particle
 	  sm =  get_starformation_rate_adm(i) * dtime; // expected adm stellar mass formed in this time step
+      printf("ADM Alert! sfr_eff, star_formation_rate"); 
         } else { 
 	  sm = get_starformation_rate(i) * dtime; // expected stellar mass formed this timestep
 	}
@@ -555,7 +557,7 @@ void star_formation_parent_routine(void)
 #if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) || defined(EOS_GMC_BAROTROPIC)
 		double nHcgs;
 #ifdef ADM
-		if(P[i].adm != 0) {nHcgs = HYDROGEN_MASSFRAC_ADM * (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS * PROTONMASS/All.ADM_ProtonMass);}
+		if(P[i].adm != 0) {nHcgs = HYDROGEN_MASSFRAC_ADM * (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS * PROTONMASS/All.ADM_ProtonMass); printf("ADM Alert! sfr_eff, nHCgs");}
 		else{
 			nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
 			if(nHcgs > 1e10) cs *= pow(nHcgs/1e10, 1./5); // if we're getting opacity-limited then we can set a smaller sink radius, since cs ~ n^1/5	

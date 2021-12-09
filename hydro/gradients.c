@@ -1771,7 +1771,8 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #ifdef TURB_DIFF_DYNAMIC
             if (gradient_iteration == 0) {
 #ifdef ADM
-		numngb = ngb_treefind_pairs_threads_adm(local.Pos, local.adm, All.TurbDynamicDiffFac * kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+//		numngb = ngb_treefind_pairs_threads_adm(local.Pos, local.adm, All.TurbDynamicDiffFac * kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+                numngb = ngb_treefind_pairs_threads(local.Pos, All.TurbDynamicDiffFac * kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #else
                 numngb = ngb_treefind_pairs_threads(local.Pos, All.TurbDynamicDiffFac * kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #endif
@@ -1780,7 +1781,8 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
             {
 #ifdef ADM
-		numngb = ngb_treefind_pairs_threads_adm(local.Pos, local.adm, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+//		numngb = ngb_treefind_pairs_threads_adm(local.Pos, local.adm, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+                numngb = ngb_treefind_pairs_threads(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #else
                 numngb = ngb_treefind_pairs_threads(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #endif

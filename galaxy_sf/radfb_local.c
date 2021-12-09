@@ -33,7 +33,7 @@ void radiation_pressure_winds_consolidated(void)
 
 #ifdef ADM
 	    if(P[i].Type == 4) { // if the source is an ADM star particle, ignore it.
-		if(P[i].adm != 0) {continue;}
+		if(P[i].adm != 0) {printf("ADM Alert! radfb_local.c, radiation_pressure_winds...\n"); continue;}
 	    }
 #endif
 
@@ -80,7 +80,8 @@ void radiation_pressure_winds_consolidated(void)
                     if(h<=0) {h=All.ForceSoftening[0];} else {if(h>RtauMax) {h=RtauMax;}}
                     do {
 #ifdef ADM
-			numngb_inbox = ngb_treefind_variable_targeted_adm(i, pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas of same ADM type, use the 'see one way' search, since weights below are all within-kernel, for now
+//			numngb_inbox = ngb_treefind_variable_targeted_adm(i, pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas of same ADM type, use the 'see one way' search, since weights below are all within-kernel, for now
+            numngb_inbox = ngb_treefind_variable_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
 #else
                         numngb_inbox = ngb_treefind_variable_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
 #endif
@@ -266,7 +267,8 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                     jnearest=-1; rnearest=MAX_REAL_NUMBER;
                     R_search = RHII; if(h_i>R_search) {R_search=h_i;}
 #ifdef ADM
-                    numngb = ngb_treefind_variable_targeted_adm(i, pos, R_search, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas of same ADM type, use the 'see one way' search, since weights below are all within-kernel, for now
+//                    numngb = ngb_treefind_variable_targeted_adm(i, pos, R_search, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas of same ADM type, use the 'see one way' search, since weights below are all within-kernel, for now
+                    numngb = ngb_treefind_variable_targeted(pos, R_search, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
 #else
                     numngb = ngb_treefind_variable_targeted(pos, R_search, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
 #endif
@@ -400,7 +402,7 @@ int do_the_local_ionization(int target, double dt, int source)
 {
 
 #ifdef ADM
-    if(P[target].adm != 0) {return 1;} // if ADM neighbor particle, don't alter/ionise it. 
+    if(P[target].adm != 0) {printf("ADM Alert! radfb_local, do_local_ionisation"); return 1;} // if ADM neighbor particle, don't alter/ionise it. 
 #endif
 
 #if defined(CHIMES_HII_REGIONS) // set a number of chimes-specific quantities here //

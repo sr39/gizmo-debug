@@ -34,6 +34,8 @@ void particle2in_addFB_fromstars_adm(struct addFB_evaluate_data_in_ *in, int i, 
 //    if(fb_loop_iteration == 3) {particle2in_addFB_ageTracer(in,i);}
 //    return;
 //#endif
+
+    printf("ADM Alert! stellar_evolution_adm.c, particle2in_addFB_fromstars_adm\n");
     if(P[i].SNe_ThisTimeStep<=0) {in->Msne=0; return;} // no event
     else {in->Msne=0; return;} // For now, I don't want any ADM feedback. Subject to change later.
 
@@ -59,6 +61,7 @@ void particle2in_addFB_fromstars_adm(struct addFB_evaluate_data_in_ *in, int i, 
     quantities from stars. */
 double mechanical_fb_calculate_eventrates_adm(int i, double dt)
 {
+printf("ADM Alert! stellar_evolution_adm.c, mechanical_fb_calculate_eventrates_adm\n");
 //#if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) // FIRE-specific stellar population version: separate calculation for SNe, stellar mass loss, R-process injection //
 //    double SNe_rate = mechanical_fb_calculate_eventrates_SNe(i,dt);
 //    mechanical_fb_calculate_eventrates_Winds(i,dt);

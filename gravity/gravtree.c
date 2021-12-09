@@ -223,6 +223,14 @@ void gravity_tree(void)
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
                 GravDataIn[j].Mass = P[place].Mass;
 #endif
+
+#if defined(ADM)
+                GravDataIn[j].adm = 0; // by default, assign adm type 0
+                if((P[place].Type == 4)||(P[place].Type==0)) { // if star or gas particle...
+                    if(P[place].adm != 0) {GravDataIn[j].adm = P[place].adm; printf("ADM Alert! gravtree.c, adm type not 0\n");} // if adm, assign adm type
+                }
+#endif
+
 #if defined(BH_DYNFRICTION_FROMTREE)
                 if(P[place].Type==5) {GravDataIn[j].BH_Mass = P[place].BH_Mass;}
 #endif
@@ -393,8 +401,11 @@ void gravity_tree(void)
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
 #ifdef ADM
-               	if(P[place].Type==0) {if(P[place].adm == 0) {SphP[place].Rad_Flux_UV += GravDataOut[j].Rad_Flux_UV;}}
-                if(P[place].Type==0) {if(P[place].adm == 0) {SphP[place].Rad_Flux_EUV += GravDataOut[j].Rad_Flux_EUV;}}
+//               	if(P[place].Type==0) {if(P[place].adm == 0) {SphP[place].Rad_Flux_UV += GravDataOut[j].Rad_Flux_UV;}}
+//                if(P[place].Type==0) {if(P[place].adm == 0) {SphP[place].Rad_Flux_EUV += GravDataOut[j].Rad_Flux_EUV;}}
+                if(P[place].Type==0) {SphP[place].Rad_Flux_UV += GravDataOut[j].Rad_Flux_UV;}
+                if(P[place].Type==0) {SphP[place].Rad_Flux_EUV += GravDataOut[j].Rad_Flux_EUV;}
+
 #else
                 if(P[place].Type==0) {SphP[place].Rad_Flux_UV += GravDataOut[j].Rad_Flux_UV;}
                 if(P[place].Type==0) {SphP[place].Rad_Flux_EUV += GravDataOut[j].Rad_Flux_EUV;}
@@ -416,7 +427,8 @@ void gravity_tree(void)
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
 
 #ifdef ADM
-		if(P[place].Type==0) {if(P[place].adm == 0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[place].Rad_E_gamma[kf] += GravDataOut[j].Rad_E_gamma[kf];}} }
+//		if(P[place].Type==0) {if(P[place].adm == 0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[place].Rad_E_gamma[kf] += GravDataOut[j].Rad_E_gamma[kf];}} }
+                if(P[place].Type==0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[place].Rad_E_gamma[kf] += GravDataOut[j].Rad_E_gamma[kf];}}
 #else
                 if(P[place].Type==0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[place].Rad_E_gamma[kf] += GravDataOut[j].Rad_E_gamma[kf];}}
 #endif
@@ -425,7 +437,8 @@ void gravity_tree(void)
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
 
 #ifdef ADM
-		if(P[place].Type==0) {if(P[place].adm == 0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[place].Rad_Flux[kf][k2] += GravDataOut[j].Rad_Flux[kf][k2];}}} }
+//		if(P[place].Type==0) {if(P[place].adm == 0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[place].Rad_Flux[kf][k2] += GravDataOut[j].Rad_Flux[kf][k2];}}} }
+                if(P[place].Type==0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[place].Rad_Flux[kf][k2] += GravDataOut[j].Rad_Flux[kf][k2];}}}
 #else
                 if(P[place].Type==0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[place].Rad_Flux[kf][k2] += GravDataOut[j].Rad_Flux[kf][k2];}}}
 #endif

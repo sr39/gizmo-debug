@@ -1677,7 +1677,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double jerk[3] = {0,0,0};
 #endif
     double pos_x, pos_y, pos_z, aold;
-
+#ifdef ADM
+    int admtype;
+#endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
     double vel_x, vel_y, vel_z;
 #endif
@@ -1792,6 +1794,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         pos_y = P[target].Pos[1];
         pos_z = P[target].Pos[2];
         ptype = P[target].Type;
+#if defined(ADM)
+        if((ptype == 4)||(ptype == 0)) { // if star or gas particle (the only types that can be ADM)
+            admtype = P[target].adm;
+            if(admtype != 0) {printf("ADM Alert! forcetree.c, ADM type not 0!\n");}
+        } else {
+            admtype = 0;
+        }
+#endif
 
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
         pmass = P[target].Mass;
@@ -1835,6 +1845,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         pos_z = GravDataGet[target].Pos[2];
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
         pmass = GravDataGet[target].Mass;
+#endif
+#if defined(ADM)
+        admtype = GravDataGet[target].adm;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
         vel_x = GravDataGet[target].Vel[0];
@@ -1901,7 +1914,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 // FILLER LINE FOR ADM. IF ADM PARTICLE, WE WANT TO LEAVE IT OUT OF THIS LOOP. EDIT THIS FOR FUTURE RUNS!!
 #ifdef ADM
     if(ptype==0) {
-    	if(P[target].adm != 0) {valid_gas_particle_for_rt = 0;}
+    	if(admtype != 0) {valid_gas_particle_for_rt = 0; printf("ADM Alert! forcetree.c, non-valid gas particle for rt\n");}
     }
 #endif
 

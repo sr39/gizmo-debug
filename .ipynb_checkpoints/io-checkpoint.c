@@ -351,6 +351,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 		        temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
 		    } else {
                 temp = ThermalProperties_adm(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
+                printf("ADM Alert! io-checkpoint.c, thermal properties.\n");
 		    } 
 #else 
                     temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);

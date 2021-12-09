@@ -30,6 +30,7 @@
 /* Routine to actually determine the SFR assigned to an individual gas particle at each time */
 double get_starformation_rate_adm(int i)
 {
+    printf("ADM Alert! sfr_eff_adm.c, starformation rate adm");
     double rateOfSF,tsfr,y; y=0; int flag=1, j, k; /* flag to proceed to SFR calc */
     if(P[i].Mass <= 0 || SphP[i].Density <= 0) {flag=0;} /* zero-mass elements [for deletion] not eligible for SF */
 #ifdef GALSF_SUBGRID_WINDS

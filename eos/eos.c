@@ -216,6 +216,7 @@ void check_particle_for_temperature_minimum(int i)
         }
 #ifdef ADM
 	if(P[i].adm != 0) { // If ADM particle, use ADM min energy specification
+        printf("ADM Alert! eos.c, check_particle_for_temperature_minimum\n");
 	    if (SphP[i].InternalEnergy < All.MinEgySpec_adm) {
 	    	SphP[i].InternalEnergy = All.MinEgySpec_adm;
 		SphP[i].DtInternalEnergy = 0;
@@ -318,6 +319,7 @@ double Get_Gas_Ionized_Fraction(int i)
 	temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
     }  else  {
 	temperature = ThermalProperties_adm(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get ADM thermodynamic properties
+    printf("ADM Alert! eos.c, get_gas_ionised_fraction\n");
     }
 #else
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
@@ -335,7 +337,7 @@ double Get_Gas_Ionized_Fraction(int i)
 double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral_fraction, double free_electron_ratio, double urad_from_uvb_in_G0)
 {
 #ifdef ADM
-    if(P[i].adm != 0) {return 0;} // if ADM particle, force it to return 0 molecular fraction.
+    if(P[i].adm != 0) {return 0; printf("ADM Alert! eos.c, Get_Gas_Molecular_Mass_Fraction\n");} // if ADM particle, force it to return 0 molecular fraction.
 #endif
 
     /* if tracking chemistry explicitly, return the explicitly-evolved H2 fraction */
@@ -529,7 +531,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 double yhelium(int target)
 {
 #ifdef ADM
-    if(P[target].adm != 0) {return ((1.-HYDROGEN_MASSFRAC_ADM)/(4.*HYDROGEN_MASSFRAC_ADM));} // if ADM particle, force it to be purely atomic (no dark He)
+    if(P[target].adm != 0) {return ((1.-HYDROGEN_MASSFRAC_ADM)/(4.*HYDROGEN_MASSFRAC_ADM)); printf("ADM Alert! eos.c, yhelium\n");} // if ADM particle, force it to be purely atomic (no dark He)
 #endif
 #ifdef COOL_METAL_LINES_BY_SPECIES
     if(target >= 0) {double ytmp=DMIN(0.5,P[target].Metallicity[1]); return 0.25*ytmp/(1.-ytmp);} else {return ((1.-HYDROGEN_MASSFRAC)/(4.*HYDROGEN_MASSFRAC));}
@@ -550,6 +552,7 @@ double Get_Gas_Mean_Molecular_Weight_mu(double T_guess, double rho, double *xH0,
 #ifdef ADM
     if(P[target].adm != 0) { // if ADM particle
     	return 1. / (1.0 + *ne_guess); // Assuming that fmol_adm=0, H_MASSFRAC_ADM=1, Z_adm=0. Edit this if abandoning that assumption.
+        printf("ADM Alert! eos.c, Get_Gas_Mean_Molecular_Weight_mu\n");
     }
 #endif
 
