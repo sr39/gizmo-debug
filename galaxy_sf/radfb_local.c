@@ -80,8 +80,8 @@ void radiation_pressure_winds_consolidated(void)
                     if(h<=0) {h=All.ForceSoftening[0];} else {if(h>RtauMax) {h=RtauMax;}}
                     do {
 #ifdef ADM
-//			numngb_inbox = ngb_treefind_variable_targeted_adm(i, pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas of same ADM type, use the 'see one way' search, since weights below are all within-kernel, for now
-            numngb_inbox = ngb_treefind_variable_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
+			numngb_inbox = ngb_treefind_variable_targeted_adm(i, pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas of same ADM type, use the 'see one way' search, since weights below are all within-kernel, for now
+//            numngb_inbox = ngb_treefind_variable_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
 #else
                         numngb_inbox = ngb_treefind_variable_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
 #endif

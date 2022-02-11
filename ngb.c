@@ -118,9 +118,9 @@ int ngb_treefind_pairs_threads_adm(MyDouble searchcenter[3], int adm_type, MyFlo
                                int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
 {
 #include "system/ngb_codeblock_before_condition.h"
-    printf("ADM Alert! ngb_treefind_pairs_threads_adm\n");
     if(P[p].Type > 0) continue; // skip particles with non-gas types
     if(P[p].Mass <= 0) continue; // skip zero-mass particles
+    if((P[p].adm!=0)||(adm_type!=0)) {printf("ADM Alert! ngb_treefind_pairs_threads_adm, ADM particle\n");}
     if(P[p].adm != adm_type) continue; // skip particles that aren't the same ADM type
 #define SEARCHBOTHWAYS 1 // need neighbors that can -mutually- see one another, not just single-directional searching here
 #include "system/ngb_codeblock_after_condition_threaded.h"
@@ -144,13 +144,15 @@ int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int ta
 #ifdef ADM
 /*! Same as the ngb_treefind_variable_threads function above but modified to only allow gas particles of same ADM type
  *  *   */
-int ngb_treefind_variable_threads_adm(MyDouble searchcenter[3], int adm_type,  MyFloat hsml, int target, int *startnode,
+int ngb_treefind_variable_threads_adm(MyDouble searchcenter[3], int adm_type, int type, MyFloat hsml, int target, int *startnode,
                                   int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
 {
 #include "system/ngb_codeblock_before_condition.h"
-    printf("ADM Alert! ngb_treefind_variable_threads_adm\n");
     if(P[p].Type > 0) continue; // skip particles with non-gas types
     if(P[p].Mass <= 0) continue; // skip zero-mass particles
+    if((P[p].adm!=0)||(adm_type!=0)) {
+        printf("ADM Alert! ngb_treefind_variable_threads_adm, Type: %d, typeadm: %d, P[p].Type: %d, P[p].adm: %d\n",type, adm_type, P[p].Type, P[p].adm);
+    }
     if(P[p].adm != adm_type) continue; // skip particles that aren't the same ADM type
 #define SEARCHBOTHWAYS 0 // only need neighbors inside of search radius, not particles 'looking at' primary
 #include "system/ngb_codeblock_after_condition_threaded.h"
@@ -181,9 +183,10 @@ int ngb_treefind_variable_targeted_adm(int i, MyDouble searchcenter[3], MyFloat 
 {
     long nexport_save = *nexport; /* this line must be here in the un-threaded versions */
 #include "system/ngb_codeblock_before_condition.h" // call the same variable/initialization block
-    printf("ADM Alert! ngb_treefind_variable_targeted_adm\n");
     if(!((1 << P[p].Type) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
     if(P[p].Mass <= 0) continue; // skip zero-mass particles
+    // The following debugging line only works when P[i].Type is 0 or 4 (only for cosmo runs). Doesn't work for non-cosmo runs.
+    if((P[i].adm!=0)||(P[p].adm!=0)) {printf("ADM Alert! ngb_treefind_variable_targeted_adm, ADM particle\n");}
     if((P[i].Type == 0) || (P[i].Type == 4)) { // if star or gas particle, check that ADM type of neighbor and source are the same
 	if(P[i].adm != P[p].adm) {continue;}
     } else { // if not star or gas particle, ignore ADM particles as neighbors.

@@ -132,13 +132,16 @@ void hydrokerneldensity_particle2in(struct INPUT_STRUCT_NAME *in, int i, int loo
     in->Hsml = PPP[i].Hsml;
     for(k=0;k<3;k++) {in->Pos[k] = P[i].Pos[k];}
     for(k=0;k<3;k++) {if(P[i].Type==0) {in->Vel[k]=SphP[i].VelPred[k];} else {in->Vel[k]=P[i].Vel[k];}}
+#ifdef ADM
+        in->adm = 0; // set adm type to 0 by default
+        if((P[i].Type == 0)||(P[i].Type == 4)) {
+            if(P[i].adm != 0) {in->adm = P[i].adm; printf("ADM Alert! density.c, hydrokerneldensity_particle2in\n");}
+        }
+#endif
     if(P[i].Type == 0)
     {
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
         for(k=0;k<3;k++) {in->Accel[k] = All.cf_a2inv*P[i].GravAccel[k] + SphP[i].HydroAccel[k];} // PHYSICAL units //
-#endif
-#ifdef ADM
-        in->adm = P[i].adm;
 #endif
 #ifdef GALSF_SUBGRID_WINDS
         in->DelayTime = SphP[i].DelayTime;
@@ -296,8 +299,8 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     while(startnode >= 0) {
         while(startnode >= 0) {
 #ifdef ADM
-//	    numngb_inbox = ngb_treefind_variable_threads_adm(local.Pos, local.adm, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
-            numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+	    numngb_inbox = ngb_treefind_variable_threads_adm(local.Pos, local.adm, local.Type, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+//            numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #else
             numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #endif
@@ -1146,8 +1149,8 @@ int cellcorrections_evaluate(int target, int mode, int *exportflag, int *exportn
     while(startnode >= 0) {
         while(startnode >= 0) {
 #ifdef ADM
-//	    numngb_inbox = ngb_treefind_pairs_threads_adm(local.Pos, local.adm, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
-            numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+	    numngb_inbox = ngb_treefind_pairs_threads_adm(local.Pos, local.adm, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+//            numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #else
             numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #endif

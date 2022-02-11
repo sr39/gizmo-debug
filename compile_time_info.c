@@ -5,6 +5,7 @@ printf(
 "        ALLOW_IMBALANCED_GASPARTICLELOAD\n"
 "        GALSF\n"
 "        ADAPTIVE_GRAVSOFT_FORGAS\n"
+"        ADM\n"
 "        EOS_GAMMA=(5.0/3.0)\n"
 "        HYDRO_MESHLESS_FINITE_MASS\n"
 "        GALSF_SFR_VIRIAL_SF_CRITERION=0\n"
